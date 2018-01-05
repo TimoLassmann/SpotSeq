@@ -33,3 +33,9 @@ randomkit.c
 
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
+
+check_PROGRAMS = libihmm_ITEST
+
+libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
+libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)

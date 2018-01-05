@@ -3,7 +3,7 @@ AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
 AC_PROG_CC
 AC_PROG_INSTALL
-
+AC_PROG_RANLIB
 
 tldevel_check_f=$ac_abs_confdir/tldevel/README
 

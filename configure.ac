@@ -4,6 +4,9 @@ AM_INIT_AUTOMAKE
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_RANLIB
+AM_SILENT_RULES([no])
+
+
 
 tldevel_check_f=$ac_abs_confdir/tldevel/README
 
@@ -25,18 +28,21 @@ AC_CHECK_LIB([m], [log])
 # FIXME: Replace `main' with a function in `-lpthread':
 AC_CHECK_LIB([pthread], [pthread_create])
 
-AC_CHECK_HEADERS([stdlib.h string.h])
+AC_CHECK_HEADERS([stdlib.h string.h float.h limits.h stddef.h stdlib.h sys/time.h sys/timeb.h unistd.h])
+
 
 LIB_TLDEVELDIR="tldevel"
 AC_SUBST(LIB_TLDEVELDIR)
+
+AC_TYPE_SIZE_T
 
 AC_TYPE_UINT8_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
 
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([pow])
 AC_CHECK_FUNCS([arc4random arc4random_uniform])
+AC_CHECK_FUNCS([floor gettimeofday pow sqrt])
 
 
 AC_ARG_ENABLE(debugging,[AS_HELP_STRING([--enable-debugging],[include debugging code])

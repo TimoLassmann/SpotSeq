@@ -20,6 +20,15 @@ LIBS = -lm -lpthread
 AM_CPPFLAGS=${MYINCDIRS} 
 
 
+
+bin_PROGRAMS = build_ihmm 
+
+build_ihmm_SOURCES = \
+model_nuc_seq.c
+build_ihmm_LDADD =  ${MYLIBDIRS}  libihmm.a
+
+
+
 noinst_LIBRARIES = libihmm.a
 
 # AUTOMAKE_OPTIONS = subdir-objects

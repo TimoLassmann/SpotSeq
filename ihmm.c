@@ -2,6 +2,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #include "tldevel.h"
 
 #include "ihmm.h"
@@ -63,6 +64,7 @@ static int clear_dp(struct dp* dp);
 static int resize_dp(struct dp* dp, int num_states,int len);
 static int free_dp(struct dp* dp);
 
+static int add_random_counts(struct iHMM_model* model, int count);
 static int fill_counts(struct ihmm_sequences* iseq,struct iHMM_model* model);
 static int sample_counts(struct iHMM_model* model);
 static int clear_counts(struct iHMM_model* model);
@@ -96,14 +98,6 @@ int run_make_ihmm(struct iHMM_model* model,char** sequences,int numseq)
 	
         aln_len = (int) strlen(sequences[0]);
 	
-        /*for(i = 0; i < numseq;i++){
-          for(j = 0; j < aln_len;j++){
-          fprintf(stdout,"%c",sequences[i][j]);
-          }
-          fprintf(stdout,"\n");
-          }
-          fprintf(stdout,"\n");
-        */
         RUN(set_labels_based_on_alignment(iseq, sequences, aln_len,numseq));
 	
         //testing
@@ -274,9 +268,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         ASSERT(numseq !=0,"no sequences provided");
         init_logsum();
-	
-	
-	
+		
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
 	
         //RUNP(model = init_model(),"init hypers failed.");
@@ -321,6 +313,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         //DPRINTF2("GOT background.");
         clear_counts(model);
+        //add_random_counts(model,1); 
         fill_counts(iseq, model);
         //trim_counts(model);
         for(i = 0; i < 5;i++){
@@ -333,20 +326,20 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         //print_hyper_parameters(model);
         //exit(0);
         float s0,s1,s2;
-        for(iter = 0; iter <= model->numb + (model->nums -1)  *model->numi; iter++){//(numb + (nums-1)*numi);iter++){
-		
+        for(iter = 0; iter <= model->numb + (model->nums -1)  *model->numi; iter++){//(numb + (nums-1)*numi);iter++){	
                 for(i = 0; i < numseq;i++){
                         RUN(pgas_sample(model,pgas, iseq, i));
                 }
                 //	DPRINTF2("SAMPLING DONE.");
                 clear_counts(model);
                 remove_unused_states_smc(model, iseq);
+                //add_random_counts(model,1); 
                 fill_counts(iseq, model);
                 //trim_counts(model);
 		
                 RUN(iHmmHyperSample(model,20));
                 sample_counts(model);
-                //fprintf(stderr,"Iteration %4d: K = %3d, alpha0 = %f, gamma = %f\n",iter, model->K+1, model->alpha0, model->gamma);
+                fprintf(stderr,"Iteration %4d: K = %3d, alpha0 = %f, gamma = %f\n",iter, model->K+1, model->alpha0, model->gamma);
 		
                 //model->alpha0 *= 0.99;//(float) total_len*1;
                 //model->gamma *= 0.99;
@@ -450,8 +443,10 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
 	
 	
         /*
-          Calculate the probability of the previous path using the current transition and emission probabiloities.
-          Note: this is done backward so we can concatenate sampled paths with the old path for weighting ancestors later.
+          Calculate the probability of the previous path using the current
+          transition and emission probabiloities. Note: this is done backward so
+          we can concatenate sampled paths with the old path for weighting
+          ancestors later.
         */
         pgas->previous_path_score[len] = prob2scaledprob(1.0);
 	
@@ -770,7 +765,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                 pgas->particle_path_prob[j] = pgas->tmp_particle_path_prob[j];
         }
 	
-        //fprintf(stdout,"Marginal: %f\n", marginal_likelihood );
+        fprintf(stdout,"Marginal: %f\n", marginal_likelihood );
 	
 	
         iseq->score[num] = marginal_likelihood;
@@ -1353,10 +1348,6 @@ int iHmmHyperSample(struct iHMM_model* model, int iterations)
                         }
                         ialpha0 = rk_gamma(&model->rndstate, model->alpha0_a + (float) totalM - sum_s, 1.0 / (model->alpha0_b -sum_w));
                 }
-		
-                //MFREE(w);//, sizeof(double) * K);
-                //MFREE(p);//, sizeof(double) * K);sample
-                //MFREE(s);//, sizeof(double) * K);
                 model->alpha0 = ialpha0;
         }
 	
@@ -1439,6 +1430,8 @@ int print_trans_count_matrix(struct iHMM_model* model)
         return OK;
 }
 
+
+
 int print_prior(struct iHMM_model* model)
 {
         int i;
@@ -1473,6 +1466,26 @@ int print_emisson_matrix(struct iHMM_model* model)
         return OK;
 }
 
+int add_random_counts(struct iHMM_model* model,int count)
+{
+        int i,j;
+	
+        //for(i = 0; i <= model->K;i++){
+        //	model->prior_counts[i] = 0.0;
+        //}
+	
+        for(i = 0; i <= model->K;i++){
+                for(j = 0; j <= model->K;j++){
+                        model->trans_counts[i][j] += count;
+                }
+        }
+        for(i = 0; i <= model->K;i++){
+                for(j = 0; j < model->L;j++){
+                        model->emit_counts[i][j] += count;
+                }
+        }
+        return OK;
+}
 
 
 int fill_counts(struct ihmm_sequences* iseq,struct iHMM_model* model)
@@ -1660,7 +1673,7 @@ struct iHMM_model* init_iHMM_model(void)
         model->beta = NULL;
 	
         model->prior_counts = NULL;
-        model->trans_counts=NULL;
+        model->trans_counts = NULL;
         model->emit_counts = NULL;
 	
         model->back = NULL;
@@ -2288,7 +2301,7 @@ int main(const int argc,const char * argv[])
         model->gamma_b = 6.0;
 	
 	
-        model->numb = 100;
+        model->numb = 500;
         model->nums = 10;
         model->numi = 10;
 

@@ -22,12 +22,14 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
 
         /* oh oh annoying + 1's again = necessary here as there are <=
          * infinityghost states */
-        RUNP(matrix = alloc_double_matrix(model->infinityghost +1, model->infinityghost + 6 + 1, 32));
+        RUNP(matrix = alloc_double_matrix(model->infinityghost +2, model->infinityghost + 6 + 1, 32));
 
         /* Column names */
         for(i = 0; i <= model->infinityghost; i++){
                 snprintf(matrix->col_names[i],32,"State%d",i+1);
         }
+        snprintf(matrix->col_names[model->infinityghost+1],32,"Background");
+        
         /* First rows for emission and other  */
         for(i = 0; i < 4;i++){
                 snprintf(matrix->row_names[i],32,"Emission%c","ACGT"[i]);
@@ -39,6 +41,11 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
         for(i = 0; i<= model->infinityghost ;i++){
                 snprintf(matrix->row_names[i+6],32,"Trans%d", i+1);
         }
+        /* fill in background..  */
+        for(j = 0;j < model->L;j++){
+                matrix->matrix[j][model->infinityghost+1] = model->back[j];// emission[i][j];
+        }
+        
 
         /* fill in emission and usage...  */
         for(i = 0; i <= model->infinityghost;i++){

@@ -11,13 +11,12 @@
 
 #include "tldevel.h"
 
+#include "ihmm.h"
+
 struct parameters{       
         char* input;
         char* output;
 };
-
-
-
 
 /* Structs to hold sequences  */
 
@@ -123,7 +122,9 @@ int run_build_ihmm(struct parameters* param)
         ASSERT(param!= NULL, "No parameters found.");
         
         struct seq_buffer* sb = NULL;
-        int i;
+        struct iHMM_model* model = NULL;
+        char** tmp_seq_pointer = NULL;
+        int i,j;
 
         /* Step one read in sequences */
         LOG_MSG("Loading sequences.");
@@ -135,10 +136,59 @@ int run_build_ihmm(struct parameters* param)
                 fprintf(stdout,"%i\t%s\n",i,(char*) sb->seqs[i]->seq);
 
         }
-        free_sb(sb);
-                
+        
+
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
+        MMALLOC(tmp_seq_pointer,sizeof(char*) * sb->num_seq);
+        for(i = 0; i < sb->num_seq;i++){
+                tmp_seq_pointer[i] = (char*) sb->seqs[i]->seq;
+        }
+
+       
+	
+        RUNP(model = init_iHMM_model());
+        /* Don't think I need three different variables here...  */
+        model->numb = 10;
+        model->nums = 10;
+        model->numi = 10;
+
+        //DPRINTF2("START PGAS.");
+        RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
+	
+        /*for(i = 0; i <= model->K;i++){
+                model->sumM[i] = 0;
+        }
+        for(i = 0; i < iseq->num_seq;i++){
+                for(j= 0; j <  iseq->len[i];j++){
+                        model->sumM[iseq->labels[i][j]]++;
+                }
+                }*/
+	
+        //print_transistion_matrix(model);
+        //print_emisson_matrix(model);
+	
+        /*for(i =0;i < iseq->num_seq;i++){
+                for(j = 0; j < iseq->len[i];j++){
+                        fprintf(stdout,"  %c ","ACGT"[(int)iseq->seq[i][j]]);
+                }
+                fprintf(stdout,"\n");
+                for(j = 0; j < iseq->len[i];j++){
+                        fprintf(stdout,"%3d ",iseq->labels[i][j]);
+                }
+                fprintf(stdout,"\n");
+                }*/
+	
+	
+        //DPRINTF2("DONE PGAS.");
+        free_iHMM_model(model);
+        
+        MFREE(tmp_seq_pointer);
+        free_sb(sb);        
+        
         return OK;
 ERROR:
+        free_sb(sb);
         return FAIL;
 }
 
@@ -198,9 +248,6 @@ struct seq_buffer* load_sequences(struct parameters* param)
         
         RUNP(f_ptr = fopen(param->input, "r" ));
         while(fgets(line, LINE_LEN, f_ptr)){
-                //reading name .... 
-                //fprintf(stderr,"%s",line);
-                //if(line[0] != '#'){ 
                 if(line[0] == '@' || line[0] == '>'){
                         line[strlen(line)-1] = 0;                       
                         for(i =0 ; i<strlen(line);i++){
@@ -227,20 +274,14 @@ struct seq_buffer* load_sequences(struct parameters* param)
                                         MMALLOC(sequence->name, sizeof(char) * 256);
                                         sb->seqs[i] = sequence;
                                 }
-                                
                         }
                         sequence = sb->seqs[sb->num_seq];
                         snprintf(sequence->name,256,"%s",line+1);
-
                         seq_p = 1;
-
                 }else if(line[0] == '+'){
                         seq_p = 0;
-
                 }else{	
-                
                         if(seq_p){
-
                                 for(i = 0;i < LINE_LEN;i++){
                                         if(isalpha((int)line[i])){
                                                 sequence->seq[sequence->seq_len] = line[i];
@@ -259,9 +300,13 @@ struct seq_buffer* load_sequences(struct parameters* param)
                       
                 }
         }
-
+        fclose(f_ptr);
         return sb;
 ERROR:
+        free_sb(sb);
+        if(f_ptr){
+                fclose(f_ptr);
+        }
         return NULL;
 }
 
@@ -280,52 +325,3 @@ void free_sb(struct seq_buffer* sb)
                 MFREE(sb);
         }
 }
-
-
-/*
-struct qs_struct* read_fasta_fastq2(FILE *file, struct qs_struct* qs,struct parameters* param) 
-{
-        int park_pos = -1;
-        char line[LINE_LEN];
-        unsigned char rc[LINE_LEN];
-        int i,j;
-        int seq_p = 0;
-        int set = 0;
-        int len = 0;
-        int fastq = 0;
-        qs->size = 0;
-        for(i = 0; i < param->num_query ;i++){
-                //qs->seq_info[i] = malloc(sizeof(struct seq_info));
-                if(qs->seq_info[i]->sn){
-                        free(qs->seq_info[i]->sn);//
-                        free(qs->seq_info[i]->seq);
-                        free(qs->seq_info[i]->reverse_seq);
-                }
-                if(qs->seq_info[i]->qual){
-                        //fprintf(stderr,"%s\n",qs->seq_info[i]->qual);
-                        free(qs->seq_info[i]->qual);
-        s        }
-
-                qs->seq_info[i]->sn = 0;
-                qs->seq_info[i]->seq = 0;
-                qs->seq_info[i]->reverse_seq = 0;
-                qs->seq_info[i]->qual = 0;
-		
-		
-                qs->seq_info[i]->last_f_test = -1000;
-                qs->seq_info[i]->last_r_test = -1000;
-                //qs->seq_info[i]->match_units= malloc(sizeof(unsigned long int) *  LIST_STORE_SIZE);//param->reported_seed_hits );
-                for(j = 0; j < LIST_STORE_SIZE;j++){
-                        qs->seq_info[i]->hits[j].chr = 0;
-                        qs->seq_info[i]->hits[j].pos = 0;
-                        qs->seq_info[i]->hits[j].strand = 0;
-                        qs->seq_info[i]->hits[j].error = 0xF;
-                        
-                }
-        }
-                //}
-        }
-        return qs;
-}
-
-*/

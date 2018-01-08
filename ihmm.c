@@ -261,7 +261,8 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 {
         struct ihmm_sequences* iseq = NULL;
         struct pgas* pgas = NULL;
-	
+        float sum = 0.0;
+        
         int i,j;
 	
         int iter;
@@ -271,12 +272,20 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 		
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
 	
-        //RUNP(model = init_model(),"init hypers failed.");
-        // set expected states to number of columns in the kalign alignment
-        model->expected_K = iseq->max_len*5;
 
+        if(model->expected_K == 0){
+                WARNING_MSG("Expected number of states is set to zero.");
+                model->expected_K = iseq->max_len*5;
+                LOG_MSG("Setting expected number of states to %d.",model->expected_K);
+                            
+        }
+
+
+        /* Setting up model structure */
+        
         RUN(start_iHMM_model(model, model->expected_K));
-	
+
+        /* Setting up structure do deal with particles  */
         RUNP(pgas = init_pgas(iseq->max_len, model->malloced_states, 10));
         //float back[4];
         for(i = 0; i < 4;i++){
@@ -301,7 +310,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
           }
         */
 	
-        float sum = 0.0;
+        
 	
         for(i = 0; i < 4;i++){
                 sum += model->back[i];// 0.0f;
@@ -370,30 +379,8 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                 s1 += (iseq->score[i] - sum);
                 s2 += (iseq->score[i] - sum)*  (iseq->score[i] - sum);
         }
-        //fprintf(stderr,"Log likelihood: %f %f	%f	%f\n",s1/s0, sqrt(  (s0 * s2 - pow(s1,2.0))   /  (  s0 *(s0-1.0) )),model->collect_alpha,model->collect_gamma);
-        for(i = 0; i <= model->K;i++){
-                model->sumM[i] = 0;
-        }
-        for(i = 0; i < iseq->num_seq;i++){
-                for(j= 0; j <  iseq->len[i];j++){
-                        model->sumM[iseq->labels[i][j]]++;
-                }
-        }
-	
-        print_transistion_matrix(model);
-        print_emisson_matrix(model);
-	
-        for(i =0;i < iseq->num_seq;i++){
-                for(j = 0; j < iseq->len[i];j++){
-                        fprintf(stdout,"  %c ","ACGT"[(int)iseq->seq[i][j]]);
-                }
-                fprintf(stdout,"\n");
-                for(j = 0; j < iseq->len[i];j++){
-                        fprintf(stdout,"%3d ",iseq->labels[i][j]);
-                }
-                fprintf(stdout,"\n");
-        }
-	
+        fprintf(stderr,"Log likelihood: %f %f	%f	%f\n",s1/s0, sqrt(  (s0 * s2 - pow(s1,2.0))   /  (  s0 *(s0-1.0) )),model->collect_alpha,model->collect_gamma);
+        
 	
 	
 	
@@ -1898,7 +1885,7 @@ int start_iHMM_model(struct iHMM_model* model, int num_states)
 	
         return OK;
 ERROR:
-        //ksl_error("Something went wrong in init_sample:%d", status);
+        free_iHMM_model(model);
         return FAIL;
 }
 

@@ -27,6 +27,7 @@ build_ihmm_SOURCES = \
 model_nuc_seq.c \
 matrix_io.h \
 matrix_io.c \
+ihmm_io.h \
 ihmm_io.c \
 outdir.h\
 outdir.c

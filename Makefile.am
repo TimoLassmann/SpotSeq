@@ -24,7 +24,13 @@ AM_CPPFLAGS=${MYINCDIRS}
 bin_PROGRAMS = build_ihmm 
 
 build_ihmm_SOURCES = \
-model_nuc_seq.c
+model_nuc_seq.c \
+matrix_io.h \
+matrix_io.c \
+ihmm_io.c \
+outdir.h\
+outdir.c
+
 build_ihmm_LDADD =  ${MYLIBDIRS}  libihmm.a
 
 

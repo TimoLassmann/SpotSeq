@@ -11,11 +11,16 @@
 
 #include "tldevel.h"
 
+#include "outdir.h"
+
 #include "ihmm.h"
+
+#include "ihmm_io.h"
+
 
 struct parameters{       
         char* input;
-        char* output;
+        char* outdir;
 };
 
 /* Structs to hold sequences  */
@@ -39,6 +44,11 @@ static int run_build_ihmm(struct parameters* param);
 static struct seq_buffer* load_sequences(struct parameters* param);
 static void free_sb(struct seq_buffer* sb);
 
+int write_model(struct parameters* param, struct iHMM_model* model);
+
+
+
+
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -52,7 +62,7 @@ int main (int argc, char *argv[])
         
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
-        param->output = NULL;
+        param->outdir = NULL;
                 
         while (1){	
                 static struct option long_options[] ={
@@ -73,7 +83,7 @@ int main (int argc, char *argv[])
                         break;
                                  
                 case 'o':
-                        param->output = optarg;
+                        param->outdir = optarg;
                         break;
                                           
                 case 'h':
@@ -99,7 +109,7 @@ int main (int argc, char *argv[])
                         ERROR_MSG("The file <%s> does not exist.",param->input);               
                 }           
         }
-        if(!param->output){
+        if(!param->outdir){
                 RUN(print_help(argv));
                 ERROR_MSG("No output file! use -o <blah.fa>");
                 
@@ -119,16 +129,30 @@ ERROR:
 
 int run_build_ihmm(struct parameters* param)
 {
-        ASSERT(param!= NULL, "No parameters found.");
-        
+        char buffer[BUFFER_LEN];
         struct seq_buffer* sb = NULL;
         struct iHMM_model* model = NULL;
         char** tmp_seq_pointer = NULL;
-        int i,j;
 
+        int i;
+       
+        ASSERT(param!= NULL, "No parameters found.");
+        
+
+
+        RUN(create_output_directories(param->outdir));
+        
+        RUN(set_log_file(param->outdir,"scs_net"));
+
+         snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
+        DECLARE_CHK(MAIN_CHECK, buffer);
+        
         /* Step one read in sequences */
         LOG_MSG("Loading sequences.");
-        
+
+       
+
+
         RUNP(sb = load_sequences(param));
 
         for(i = 0; i < MACRO_MIN(sb->num_seq, 10);i++){
@@ -149,13 +173,15 @@ int run_build_ihmm(struct parameters* param)
 	
         RUNP(model = init_iHMM_model());
         /* Don't think I need three different variables here...  */
-        model->numb = 10;
-        model->nums = 10;
-        model->numi = 10;
+        model->numb = 1;
+        model->nums = 1;
+        model->numi = 1;
 
         //DPRINTF2("START PGAS.");
         RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
-	
+
+        RUN(write_model(param, model));
+        
         /*for(i = 0; i <= model->K;i++){
                 model->sumM[i] = 0;
         }
@@ -184,7 +210,8 @@ int run_build_ihmm(struct parameters* param)
         free_iHMM_model(model);
         
         MFREE(tmp_seq_pointer);
-        free_sb(sb);        
+        free_sb(sb);
+        DESTROY_CHK(MAIN_CHECK);
         
         return OK;
 ERROR:
@@ -192,6 +219,24 @@ ERROR:
         return FAIL;
 }
 
+
+
+
+
+int write_model(struct parameters* param, struct iHMM_model* model)
+{
+        char buffer[BUFFER_LEN];
+                
+        ASSERT(model != NULL, "No model.");
+        ASSERT(param != NULL, "No param.");
+        
+        snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
+        LOG_MSG("Writing to: %s.",buffer);
+        RUN(write_ihmm_parameters_to_file(model,buffer));
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int free_parameters(struct parameters* param)
 {
@@ -228,6 +273,8 @@ struct seq_buffer* load_sequences(struct parameters* param)
 
         ASSERT(param->input != NULL,"No input file specified - this should have been caught before!");
 
+
+        seq_p = 0;
         MMALLOC(sb,sizeof(struct seq_buffer));
         sb->malloc_num = 1024;
         sb->num_seq = -1; 

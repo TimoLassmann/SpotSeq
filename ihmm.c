@@ -381,6 +381,14 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         }
         fprintf(stderr,"Log likelihood: %f %f	%f	%f\n",s1/s0, sqrt(  (s0 * s2 - pow(s1,2.0))   /  (  s0 *(s0-1.0) )),model->collect_alpha,model->collect_gamma);
         
+        for(i = 0; i <= model->K;i++){
+                model->sumM[i] = 0;
+        }
+        for(i = 0; i < iseq->num_seq;i++){
+                for(j= 0; j <  iseq->len[i];j++){
+                        model->sumM[iseq->labels[i][j]]++;
+                }
+        }
 	
 	
 	
@@ -390,8 +398,8 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         //MFREE(sequences);//, numseq, sizeof(char*) );
         //free_model(model);
-	
-	
+        print_emisson_matrix(model);
+        
         free_ihmm_seq(iseq);
 	
         free_pgas(pgas);
@@ -2296,7 +2304,8 @@ int main(const int argc,const char * argv[])
         RUN(particle_gibbs_with_ancestors_controller(model,  sequences, numseq));
 	
 	
-	
+        print_emisson_matrix(model);
+        
         //DPRINTF2("DONE PGAS.");
         free_iHMM_model(model);
 	

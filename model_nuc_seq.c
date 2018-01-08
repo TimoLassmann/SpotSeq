@@ -17,6 +17,7 @@
 
 #include "ihmm_io.h"
 
+#include "matrix_io.h"
 
 struct parameters{       
         char* input;
@@ -44,9 +45,9 @@ static int run_build_ihmm(struct parameters* param);
 static struct seq_buffer* load_sequences(struct parameters* param);
 static void free_sb(struct seq_buffer* sb);
 
-int write_model(struct parameters* param, struct iHMM_model* model);
+int make_model(struct parameters* param, struct seq_buffer* sb);
 
-
+int make_dot_files(struct parameters* param);
 
 
 static int print_help(char **argv);
@@ -131,9 +132,7 @@ int run_build_ihmm(struct parameters* param)
 {
         char buffer[BUFFER_LEN];
         struct seq_buffer* sb = NULL;
-        struct iHMM_model* model = NULL;
-        char** tmp_seq_pointer = NULL;
-
+        
         int i;
        
         ASSERT(param!= NULL, "No parameters found.");
@@ -144,7 +143,7 @@ int run_build_ihmm(struct parameters* param)
         
         RUN(set_log_file(param->outdir,"scs_net"));
 
-         snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
+        snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
         DECLARE_CHK(MAIN_CHECK, buffer);
         
         /* Step one read in sequences */
@@ -164,52 +163,46 @@ int run_build_ihmm(struct parameters* param)
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
-        MMALLOC(tmp_seq_pointer,sizeof(char*) * sb->num_seq);
-        for(i = 0; i < sb->num_seq;i++){
-                tmp_seq_pointer[i] = (char*) sb->seqs[i]->seq;
-        }
-
+      
        
 	
-        RUNP(model = init_iHMM_model());
-        /* Don't think I need three different variables here...  */
-        model->numb = 1;
-        model->nums = 1;
-        model->numi = 1;
+        LOG_MSG("Make model.");
+        snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
+        RUN_CHECKPOINT(MAIN_CHECK,make_model(param,sb),buffer);
 
-        //DPRINTF2("START PGAS.");
-        RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
+        LOG_MSG("Make dotfiles.");
+        snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
+        RUN_CHECKPOINT(MAIN_CHECK,make_dot_files(param),buffer);
 
-        RUN(write_model(param, model));
         
         /*for(i = 0; i <= model->K;i++){
-                model->sumM[i] = 0;
-        }
-        for(i = 0; i < iseq->num_seq;i++){
-                for(j= 0; j <  iseq->len[i];j++){
-                        model->sumM[iseq->labels[i][j]]++;
-                }
-                }*/
+          model->sumM[i] = 0;
+          }
+          for(i = 0; i < iseq->num_seq;i++){
+          for(j= 0; j <  iseq->len[i];j++){
+          model->sumM[iseq->labels[i][j]]++;
+          }
+          }*/
 	
         //print_transistion_matrix(model);
         //print_emisson_matrix(model);
 	
         /*for(i =0;i < iseq->num_seq;i++){
-                for(j = 0; j < iseq->len[i];j++){
-                        fprintf(stdout,"  %c ","ACGT"[(int)iseq->seq[i][j]]);
-                }
-                fprintf(stdout,"\n");
-                for(j = 0; j < iseq->len[i];j++){
-                        fprintf(stdout,"%3d ",iseq->labels[i][j]);
-                }
-                fprintf(stdout,"\n");
-                }*/
+          for(j = 0; j < iseq->len[i];j++){
+          fprintf(stdout,"  %c ","ACGT"[(int)iseq->seq[i][j]]);
+          }
+          fprintf(stdout,"\n");
+          for(j = 0; j < iseq->len[i];j++){
+          fprintf(stdout,"%3d ",iseq->labels[i][j]);
+          }
+          fprintf(stdout,"\n");
+          }*/
 	
 	
         //DPRINTF2("DONE PGAS.");
-        free_iHMM_model(model);
+       
         
-        MFREE(tmp_seq_pointer);
+       
         free_sb(sb);
         DESTROY_CHK(MAIN_CHECK);
         
@@ -223,20 +216,58 @@ ERROR:
 
 
 
-int write_model(struct parameters* param, struct iHMM_model* model)
+int make_model(struct parameters* param,struct seq_buffer* sb)
 {
         char buffer[BUFFER_LEN];
-                
-        ASSERT(model != NULL, "No model.");
-        ASSERT(param != NULL, "No param.");
+        struct iHMM_model* model = NULL;
+        char** tmp_seq_pointer = NULL;
         
+        int i;
+        ASSERT(param != NULL, "No param.");
+
+        MMALLOC(tmp_seq_pointer,sizeof(char*) * sb->num_seq);
+        for(i = 0; i < sb->num_seq;i++){
+                tmp_seq_pointer[i] = (char*) sb->seqs[i]->seq;
+        }
+        
+        RUNP(model = init_iHMM_model());
+        /* Don't think I need three different variables here...  */
+        model->numb = 1;
+        model->nums = 1;
+        model->numi = 1;
+
+        //DPRINTF2("START PGAS.");
+        RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
         snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_ihmm_parameters_to_file(model,buffer));
+        free_iHMM_model(model);
+        MFREE(tmp_seq_pointer);
         return OK;
 ERROR:
+        free_iHMM_model(model);
+        MFREE(tmp_seq_pointer);
         return FAIL;
 }
+
+
+int make_dot_files(struct parameters* param)
+{
+        char buffer[BUFFER_LEN];
+        struct double_matrix* matrix = NULL;
+        ASSERT(param != NULL, "No param.");
+        snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
+        LOG_MSG("Reading from:  %s.",buffer);
+
+        RUNP(matrix = read_double_matrix(buffer,1,1));
+        print_double_matrix(matrix,stdout,1,1);
+        free_double_matrix(matrix);
+        return OK;
+ERROR:
+        free_double_matrix(matrix);
+        return FAIL;
+}
+
 
 int free_parameters(struct parameters* param)
 {

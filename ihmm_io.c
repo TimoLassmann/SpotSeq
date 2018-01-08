@@ -25,7 +25,7 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
         RUNP(matrix = alloc_double_matrix(model->infinityghost +1, model->infinityghost + 6 + 1, 32));
 
         /* Column names */
-        for(i = 0; i < model->infinityghost; i++){
+        for(i = 0; i <= model->infinityghost; i++){
                 snprintf(matrix->col_names[i],32,"State%d",i+1);
         }
         /* First rows for emission and other  */

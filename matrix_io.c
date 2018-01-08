@@ -399,7 +399,6 @@ int fill_random_matrix(struct double_matrix* m)
         return OK;
 }
 
-
 int shuffle_double_matrix(struct double_matrix* m)
 {
         int i,j,a;
@@ -427,7 +426,6 @@ int print_double_matrix(struct double_matrix* m,FILE* file, int has_col_names,in
                         if(j != m->ncol-1){
                                 fprintf(file,",");
                         }
-
                 }
                 fprintf(file,"\n");
         }
@@ -440,7 +438,6 @@ int print_double_matrix(struct double_matrix* m,FILE* file, int has_col_names,in
                         if(j != m->ncol-1){
                                 fprintf(file,",");
                         }
-
                 }
                 fprintf(file,"\n");
         }
@@ -456,7 +453,6 @@ void free_double_matrix(struct double_matrix* m)
                 }
                 for(i = 0; i < m->nrow ;i++){
                         MFREE(m->matrix[i]);
-
                         MFREE(m->row_names[i]);// = malloc(sizeof(char) * (longest_entry+1));
                 }
                 MFREE(m->label);

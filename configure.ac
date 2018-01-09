@@ -93,8 +93,9 @@ AC_MSG_RESULT($opt_valgrind_tests)
 ac_configure_args="$ac_configure_args PACKAGE_VERSION=$PACKAGE_VERSION   PACKAGE_NAME=$PACKAGE_NAME"
 
 
-AC_CONFIG_FILES([Makefile])
-		 
+
+AC_CONFIG_FILES([Makefile
+                  src/Makefile])
 AC_CONFIG_SUBDIRS([tldevel])
 
 AC_OUTPUT

@@ -162,12 +162,8 @@ int run_build_ihmm(struct parameters* param)
 
         }
         
-
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
-      
-       
-	
         LOG_MSG("Make model.");
         snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
         RUN_CHECKPOINT(MAIN_CHECK,make_model(param,sb),buffer);
@@ -234,10 +230,10 @@ int make_model(struct parameters* param,struct seq_buffer* sb)
         
         RUNP(model = init_iHMM_model());
         /* Don't think I need three different variables here...  */
-        model->numb = 100;
+        model->numb = 10000;
         model->nums = 1;
         model->numi = 1;
-
+        model->expected_K = 5;
         //DPRINTF2("START PGAS.");
         RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
         snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
@@ -380,6 +376,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
                 }
         }
         fclose(f_ptr);
+        sb->num_seq++; 
         return sb;
 ERROR:
         free_sb(sb);

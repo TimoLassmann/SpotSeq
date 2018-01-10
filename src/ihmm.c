@@ -280,13 +280,13 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                             
         }
 
-
+        
         /* Setting up model structure */
         
         RUN(start_iHMM_model(model, model->expected_K));
 
         /* Setting up structure do deal with particles  */
-        RUNP(pgas = init_pgas(iseq->max_len, model->malloced_states, 10));
+        RUNP(pgas = init_pgas(iseq->max_len, model->malloced_states, 2));
         //float back[4];
         for(i = 0; i < 4;i++){
                 model->back[i] = 0.0f;
@@ -322,8 +322,8 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         //DPRINTF2("GOT background.");
         clear_counts(model);
-        //add_random_counts(model,1); 
-        fill_counts(iseq, model);
+        add_random_counts(model,100); 
+        //fill_counts(iseq, model);
         //trim_counts(model);
         for(i = 0; i < 5;i++){
                 RUN(iHmmHyperSample(model,10));
@@ -760,7 +760,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                 pgas->particle_path_prob[j] = pgas->tmp_particle_path_prob[j];
         }
 	
-        fprintf(stdout,"Marginal: %f\n", marginal_likelihood );
+        //fprintf(stdout,"Marginal: %f\n", marginal_likelihood );
 	
 	
         iseq->score[num] = marginal_likelihood;
@@ -1657,15 +1657,15 @@ struct iHMM_model* init_iHMM_model(void)
         model->collect_gamma = 0.0;
         model->alpha0 = 0.0;
         model->gamma = 0.0;
-        model->alpha0_a = 1.0;
+        model->alpha0_a = 4.0;
         model->alpha0_b = 1.0;
-        model->gamma_a =  2.0;
-        model->gamma_b = 1.0;
+        model->gamma_a =  3.0;
+        model->gamma_b = 6.0;
         model->expected_K = 20;
         model->numb = 100;
         model->nums = 1;
         model->numi = 1;
-        model->beta = NULL;
+        model->beta = NULL;     
 	
         model->prior_counts = NULL;
         model->trans_counts = NULL;

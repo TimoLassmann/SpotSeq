@@ -19,7 +19,17 @@ AM_CPPFLAGS=${MYINCDIRS}
 
 
 
-bin_PROGRAMS = build_ihmm 
+bin_PROGRAMS = build_ihmm sim_seq
+
+sim_seq_SOURCES = \
+outdir.h \
+outdir.c \
+matrix_io.h \
+matrix_io.c \
+sim_seq.c
+
+sim_seq_LDADD =  ${MYLIBDIRS} 
+
 
 build_ihmm_SOURCES = \
 model_nuc_seq.c \

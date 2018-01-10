@@ -272,21 +272,19 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 		
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
 	
-
         if(model->expected_K == 0){
                 WARNING_MSG("Expected number of states is set to zero.");
                 model->expected_K = iseq->max_len*5;
                 LOG_MSG("Setting expected number of states to %d.",model->expected_K);
                             
         }
-
         
         /* Setting up model structure */
         
         RUN(start_iHMM_model(model, model->expected_K));
 
         /* Setting up structure do deal with particles  */
-        RUNP(pgas = init_pgas(iseq->max_len, model->malloced_states, 2));
+        RUNP(pgas = init_pgas(iseq->max_len, model->malloced_states, 10));
         //float back[4];
         for(i = 0; i < 4;i++){
                 model->back[i] = 0.0f;
@@ -345,7 +343,6 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                 //add_random_counts(model,1); 
                 fill_counts(iseq, model);
                 //trim_counts(model);
-		
                 RUN(iHmmHyperSample(model,20));
                 sample_counts(model);
                 fprintf(stderr,"Iteration %4d: K = %3d, alpha0 = %f, gamma = %f\n",iter, model->K+1, model->alpha0, model->gamma);
@@ -456,9 +453,6 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
         }
 	
         //pretty_print_vector_float("Previous path scores:",pgas->previous_path_score,len,1);
-	
-	
-	
         // figure out probability of seeing y[0] in any state
 	
         //sample from this ...
@@ -473,21 +467,16 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                   x[j] = 0.0;
                   }*/
 		
-                x[j] = emission[j][letter]*   model->transition[iHMM_START_STATE][j];// model->prior[j];// (1.0f/ (float) (model->K+1)) ;// * 1.0f/ (float) model->K;
+                x[j] = emission[j][letter] * model->transition[iHMM_START_STATE][j];// model->prior[j];// (1.0f/ (float) (model->K+1)) ;// * 1.0f/ (float) model->K;
                 sum += x[j];
                 //sum = logsum(sum, x[j]);
         }
         for(j = 1;j <= model->K;j++){
                 // q ( xj | y1)
-                x[j] /=sum;
-                //DPRINTF3("%f", x[j]);
-
+                x[j] /= sum;
                 //y[j] = 0.0;
         }
-	
-	
         //fprintf(stdout,"letter %d: %d\n",0, letter);
-	
         //pretty_print_vector_float("P (Xj | y1) - to be sampled from...",x,model->K+1,0);
 	
         // sample particels ;
@@ -504,12 +493,6 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                 pgas->particle_ancestry[0][j] = c;
                 m_sum += x[c];
 		
-                //	DPRINTF3("%d	selected",c);
-                /*if(c ==0){
-                  tmp_x =emission[c][letter];
-                  }else{
-                  tmp_x = 0.0;
-                  }*/
                 tmp_x = emission[c][letter] *  model->transition[iHMM_START_STATE][c];//   model->prior[c];// * (1.0f/ (float) (model->K+1)) *
 		
                 //	DPRINTF3("prob: prior %f * emission %f = %f\n",  (1.0f/ (float)( model->K+1)) ,emission[c][letter], tmp_x);
@@ -792,12 +775,16 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
 	
         j = -1;
         sum = prob2scaledprob((1.0f/ (float) (model->K+1)));
+
+        
         //fprintf(stdout,"Sum:%f\n",sum);
         for(i = len-1;i >= 0 ;i--){
+                
                 g =pgas->particle_ancestry[i][c]& 0xFFFFFF;
 		
                 iseq->labels[num][i] = g;
-                //fprintf(stdout,"%d %d	\n%f\n",pgas->particle_ancestry[i][c]& 0xFFFFFF, pgas->particle_ancestry[i][c] >> 24,scaledprob2prob(sum));
+                
+//fprintf(stdout,"%d %d	\n%f\n",pgas->particle_ancestry[i][c]& 0xFFFFFF, pgas->particle_ancestry[i][c] >> 24,scaledprob2prob(sum));
                 if(j == -1){
                         sum = sum + prob2scaledprob(emission[g][(int)seq[i]]);
                 }else{
@@ -807,6 +794,34 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                 j =g;
                 c = pgas->particle_ancestry[i][c] >> 24;
         }
+        /*float max_lab = 0;
+        float max_count= 0;
+        for(i = len-1;i >= 0 ;i--){
+                for(j = 0; j < pgas->num_particles;j++){
+                        pgas->tmp_particle_path_prob[j] =0;
+                }
+                for(j = 0; j < pgas->num_particles;j++){
+                        c = pgas->particle_ancestry[i][j]& 0xFFFFFF;
+                        pgas->tmp_particle_path_prob[c]++;// BUG!!! - there can be more states than particles!
+                     
+                }
+                max_lab = -1.0;
+                max_count = -1.0;
+                for(j = 0; j < pgas->num_particles;j++){
+                        if(pgas->tmp_particle_path_prob[j] > max_count){
+                                max_count = pgas->tmp_particle_path_prob[j];
+                                max_lab =j;
+                        }
+                        
+                }
+                for(j = 0; j < pgas->num_particles;j++){
+                       fprintf(stdout,"%d ",pgas->particle_ancestry[i][j]& 0xFFFFFF);
+                }
+
+                iseq->labels[num][i] = max_lab;
+                fprintf(stdout," PICK: %d\n",iseq->labels[num][i]);
+        }
+        */
         return OK;
 ERROR:
 	
@@ -1830,23 +1845,11 @@ int start_iHMM_model(struct iHMM_model* model, int num_states)
 {
 	
         int i;
-	
-	
         model->L = 4;
-        model->K = num_states+1; // first state is 1 not zero ....
-	
+        model->K = num_states + 1; // first state is 1 not zero ....
         model->infinityghost = num_states+2;
-	
-	
         model->malloced_states = num_states+3;
 	
-	
-	
-	
-	
-        //sample->S = NULL;
-        //model->alpha0 = 0.0;
-        //model->gamma = 0.0;
         model->beta = NULL;
         model->transition = NULL;
         model->emission = NULL;
@@ -2127,7 +2130,7 @@ int select_random(float* vector,int num_elem,int* selected,float r )
         return OK;
 //ERROR:
 //	return FAIL;
-}
+} /*  */
 
 
 

@@ -230,10 +230,10 @@ int make_model(struct parameters* param,struct seq_buffer* sb)
         
         RUNP(model = init_iHMM_model());
         /* Don't think I need three different variables here...  */
-        model->numb = 10000;
+        model->numb = 1000;
         model->nums = 1;
         model->numi = 1;
-        model->expected_K = 5;
+        model->expected_K = 100;
         //DPRINTF2("START PGAS.");
         RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
         snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");

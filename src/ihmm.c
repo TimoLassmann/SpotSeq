@@ -322,7 +322,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         clear_counts(model);
         add_random_counts(model,100); 
         //fill_counts(iseq, model);
-        //trim_counts(model);
+        //trim_counts(model);l
         for(i = 0; i < 5;i++){
                 RUN(iHmmHyperSample(model,10));
         }
@@ -340,10 +340,10 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                 //	DPRINTF2("SAMPLING DONE.");
                 clear_counts(model);
                 remove_unused_states_smc(model, iseq);
-                //add_random_counts(model,1); 
+//                Add_random_counts(model,1); 
                 fill_counts(iseq, model);
                 //trim_counts(model);
-                RUN(iHmmHyperSample(model,20));
+                RUN(iHmmHyperSample(model,10));
                 sample_counts(model);
                 fprintf(stderr,"Iteration %4d: K = %3d, alpha0 = %f, gamma = %f\n",iter, model->K+1, model->alpha0, model->gamma);
 		
@@ -827,6 +827,9 @@ ERROR:
 	
         return FAIL;
 }
+
+
+
 
 int remove_unused_states_smc(struct iHMM_model* model, struct ihmm_sequences* iseq)
 {
@@ -1486,12 +1489,16 @@ int add_random_counts(struct iHMM_model* model,int count)
 	
         for(i = 0; i <= model->K;i++){
                 for(j = 0; j <= model->K;j++){
+                        //if(random_int_zero_to_x(1.0) >= 0.5){
                         model->trans_counts[i][j] += count;
+                        //}
                 }
         }
         for(i = 0; i <= model->K;i++){
                 for(j = 0; j < model->L;j++){
+                        //if(random_int_zero_to_x(1.0) >= 0.5){
                         model->emit_counts[i][j] += count;
+                        //}
                 }
         }
         return OK;

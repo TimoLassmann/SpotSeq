@@ -9,6 +9,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <float.h>
 
 #include "tldevel.h"
 
@@ -60,6 +61,7 @@ struct hmm{
 static int run_sim_seq(struct parameters* param);
 
 
+int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb, float mainres_emission); 
 int two_state_example(struct parameters* param, struct seq_buffer* sb);
 
 static int print_help(char **argv);
@@ -159,7 +161,7 @@ int run_sim_seq(struct parameters* param)
         struct seq_buffer* sb = NULL;
         
         int i;
-       
+        int j;
         ASSERT(param!= NULL, "No parameters found.");
         
 
@@ -181,8 +183,15 @@ int run_sim_seq(struct parameters* param)
         /* CpG example from black book */
 
         RUN(two_state_example(param,sb));
-        
         RUN(reset_sb(sb));
+       
+
+        for(i = 50;i <= 100;i+=5){
+                RUN(ACGT_concat_example(param,sb, (float) i / 100.0));
+                RUN(reset_sb(sb));
+        }
+        
+        
         
         free_sb(sb);
         DESTROY_CHK(MAIN_CHECK);
@@ -191,6 +200,106 @@ int run_sim_seq(struct parameters* param)
 ERROR:
         free_sb(sb);
         return FAIL;
+}
+
+int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission)
+{
+        char buffer[BUFFER_LEN];
+        struct hmm* hmm = NULL;
+        float leave;
+        float sum;
+        int i,j;
+        int expected_length = 1000;
+
+
+        ASSERT(sb != NULL,"No seq buffer");
+
+        ASSERT(sb->seqs[0]->seq_len == 0,"Need to reset seq buffer");
+        
+        ASSERT(mainres_emission <= 1.0,"Main emission has to be smaller than 1.0.");
+
+
+        ASSERT(mainres_emission >= 0.0,"Main emission has to be greater than 0.0.");
+
+        RUNP(hmm = malloc_hmm(4,4,expected_length));
+
+        /*
+          NOTE This should be:
+          leave = 1.0 - (float) ((expected_length) /(float)(1+   expected_length));
+          BUT:
+          I will substract one from the expected length because I co not allow a transition from start to stop (i.e. a zero length sequence
+        */
+        
+        leave = 1.0 - (float) ((expected_length-1) /(float)(   expected_length));
+
+        /* set transition to end to 1/ expected lengeth  */
+
+        hmm->transitions[STARTSTATE][2] = 0.25f;
+        hmm->transitions[STARTSTATE][3] = 0.25f;
+        hmm->transitions[STARTSTATE][4] = 0.25f;
+        hmm->transitions[STARTSTATE][5] = 0.25f;
+
+      
+        hmm->transitions[2][2] = (1.0-leave) * 0.0; /* self transition */
+        hmm->transitions[2][3] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[2][4] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[2][5] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[2][ENDSTATE]  = leave;
+
+        hmm->transitions[3][2] = (1.0-leave) * 0.0; /* self transition */
+        hmm->transitions[3][3] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[3][4] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[3][5] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[3][ENDSTATE]  = leave;
+
+        hmm->transitions[4][2] = (1.0-leave) * 0.0; /* self transition */
+        hmm->transitions[4][3] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[4][4] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[4][5] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[4][ENDSTATE]  = leave;
+
+        hmm->transitions[5][2] = (1.0-leave) * 1.0; /* self transition */
+        hmm->transitions[5][3] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[5][4] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[5][5] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[5][ENDSTATE]  = leave;
+
+
+        for(i = 0; i < 4;i++){
+                for(j = 0; j < 4;j++){
+                        if(i ==j){
+                                hmm->emissions[i+2][j] = mainres_emission;
+                        }else{
+                                hmm->emissions[i+2][j] = (1.0 - mainres_emission) / 3.0;
+                        }
+                        fprintf(stdout,"%f ",hmm->emissions[i+2][j]);
+                }
+                fprintf(stdout,"\n");
+        }
+        
+        RUN(sanity_check_hmm(hmm));
+        RUN(cumsum_hmm(hmm));
+
+        sum =0.0;
+        for(i =0; i < sb->malloc_num;i++){
+                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
+                sb->num_seq++;
+        }
+        LOG_MSG("Simulated %d seq of length %f\n",sb->malloc_num,sum / (float)sb->malloc_num);
+        LOG_MSG("%f leave.",leave);
+
+        /* write sequence  */
+        snprintf(buffer, BUFFER_LEN, "%s/%s/%s%0.2f.fa",param->outdir,OUTDIR_MODEL,"ACGT_states_RES",mainres_emission);
+        LOG_MSG("Writing to: %s.",buffer);
+        RUN(write_sequences_to_file(sb,buffer));
+        
+        free_hmm(hmm);
+        return OK;
+ERROR:
+        free_hmm(hmm);
+        return FAIL;
+        
 }
 
 int two_state_example(struct parameters* param,  struct seq_buffer* sb)
@@ -467,13 +576,11 @@ int sanity_check_hmm(struct hmm*  hmm)
 
         for(i = 0; i < hmm->num_states;i++){
                 if(i != ENDSTATE){
-                sum = 0.0;
-                for(j = 0; j < hmm->num_states;j++){
-                        sum +=  hmm->transitions[i][j];
-                }
-                sum = (int) (10000.0 * sum);
-                
-                ASSERT(sum == 10000.0,"State transitions from %d do not sum to 1:%20.20f",i,sum);
+                        sum = 0.0;
+                        for(j = 0; j < hmm->num_states;j++){
+                                sum +=  hmm->transitions[i][j];
+                        }
+                        ASSERT(fabs(1.0 - sum) < FLT_EPSILON,"State transitions from %d do not sum to 1:%20.20f",i,sum);
                 }
         }
 	
@@ -482,9 +589,7 @@ int sanity_check_hmm(struct hmm*  hmm)
                 for(j = 0; j < 4;j++){
                         sum += hmm->emissions[i][j];
                 }
-		
-                sum = (int) (10000.0 * sum);
-                ASSERT(sum == 10000.0 ,"State transitions from %d do not sum to 1:%20.20f",i,sum);
+                ASSERT(fabs(1.0 - sum) < FLT_EPSILON,"State transitions from %d do not sum to 1:%20.20f",i,sum);
         }
         return OK;
 ERROR:

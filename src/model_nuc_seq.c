@@ -233,7 +233,7 @@ int make_model(struct parameters* param,struct seq_buffer* sb)
         model->numb = 1000;
         model->nums = 1;
         model->numi = 1;
-        model->expected_K = 100;
+        model->expected_K = 10;
         //DPRINTF2("START PGAS.");
         RUN(particle_gibbs_with_ancestors_controller(model, tmp_seq_pointer,sb->num_seq));
         snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
@@ -318,6 +318,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
                 sequence->seq_len = 0;
                 MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
                 MMALLOC(sequence->name, sizeof(char) * 256);
+
                 sb->seqs[i] = sequence;
         }
         

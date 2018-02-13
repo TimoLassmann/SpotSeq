@@ -68,10 +68,6 @@ static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
 
-
-
-
-
 /* seqbuffer stuff  */
 static struct seq_buffer* alloc_seq_buffer(struct parameters* param);
 static int write_sequences_to_file(struct seq_buffer* sb,char* filename);
@@ -159,19 +155,29 @@ int run_sim_seq(struct parameters* param)
 {
         char buffer[BUFFER_LEN];
         struct seq_buffer* sb = NULL;
-        
+        FILE* f_ptr = NULL;
         int i;
         int j;
         ASSERT(param!= NULL, "No parameters found.");
         
 
+        snprintf(buffer, BUFFER_LEN, "%s/" ,param->outdir);
 
-        RUN(create_output_directories(param->outdir));
+        RUN(create_dir(buffer,1));
+
+        //RUN(create_output_directories(param->outdir));
+
+        snprintf(buffer, BUFFER_LEN, "%s/%s.log",param->outdir,"simlog");
         
-        RUN(set_log_file(param->outdir,"scs_net"));
+        RUNP(f_ptr = fopen(buffer, "w"));
+        fclose(f_ptr);
+        
+        tlog.set_logfile(buffer);
+        
+        // RUN(set_log_file(param->outdir,"sim_log"));
 
-        snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
-        DECLARE_CHK(MAIN_CHECK, buffer);
+        //snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
+        //DECLARE_CHK(MAIN_CHECK, buffer);
         
         /* Step one allocate seq struct.. */
         RUNP(sb = alloc_seq_buffer(param));
@@ -194,7 +200,7 @@ int run_sim_seq(struct parameters* param)
         
         
         free_sb(sb);
-        DESTROY_CHK(MAIN_CHECK);
+        //DESTROY_CHK(MAIN_CHECK);
         
         return OK;
 ERROR:
@@ -290,7 +296,7 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         LOG_MSG("%f leave.",leave);
 
         /* write sequence  */
-        snprintf(buffer, BUFFER_LEN, "%s/%s/%s%0.2f.fa",param->outdir,OUTDIR_MODEL,"ACGT_states_RES",mainres_emission);
+        snprintf(buffer, BUFFER_LEN, "%s/%s%0.2f.fa",param->outdir,"ACGT_states_RES",mainres_emission);
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_sequences_to_file(sb,buffer));
         
@@ -362,7 +368,7 @@ int two_state_example(struct parameters* param,  struct seq_buffer* sb)
         LOG_MSG("%f leave.",leave);
 
         /* write sequence  */
-        snprintf(buffer, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"two_states.fa");
+        snprintf(buffer, BUFFER_LEN, "%s/%s",param->outdir,"two_states.fa");
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_sequences_to_file(sb,buffer));
         
@@ -611,6 +617,8 @@ int print_help(char **argv)
         const char usage[] = " -in <fasta> -out <outfile>";
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
         fprintf(stdout,"Options:\n\n");
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--num","Number of sequences." ,"[1000]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--out","Output directory path." ,"[1000]"  );
         return OK;
 }
 

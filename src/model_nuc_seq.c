@@ -163,11 +163,11 @@ int run_build_ihmm(struct parameters* param)
         }
         
         LOG_MSG("Read %d sequences.",sb->num_seq);
-
+        
         LOG_MSG("Make model.");
         snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
         RUN_CHECKPOINT(MAIN_CHECK,make_model(param,sb),buffer);
-
+        
         LOG_MSG("Make dotfiles.");
         snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
         //RUN_CHECKPOINT(MAIN_CHECK,make_dot_files(param),buffer);
@@ -370,6 +370,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
                                         if(iscntrl((int)line[i])){
                                                 sequence->seq[sequence->seq_len] = 0;
                                                 break;
+
                                         }
                                 }
                         } /* here I would look for quality values.... */

@@ -36,6 +36,7 @@ struct ihmm_sequences{
         char** seq;
         float** u;
         float* score;
+        float background[4];
         int** labels;
         int* len;
         int num_seq;
@@ -53,8 +54,16 @@ static int dyn_prog(struct dp* dyn,struct iHMM_model* model, struct ihmm_sequenc
 static int remove_unused_states(struct dp* dyn,struct iHMM_model* model, struct ihmm_sequences* iseq);
 static int print_hyper_parameters(struct iHMM_model* model);
 
+
 static struct ihmm_sequences* init_ihmm_seq(char** sequences,int numseq);
+static struct ihmm_sequences* make_random_sequences(struct ihmm_sequences* real_seq,int numseq);
+
+struct ihmm_sequences* alloc_ihmm_sequences(int numseq, int maxlen);
+int reset_random_sequences(struct ihmm_sequences* rand, struct ihmm_sequences* org);
 static void free_ihmm_seq(struct ihmm_sequences* iseq);
+
+
+
 static int set_labels_based_on_alignment(struct ihmm_sequences* iseq,char** aln,int aln_len,int num_seq_in_aln);
 
 static int add_state_to_model(struct iHMM_model* model);
@@ -271,7 +280,9 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         init_logsum();
 		
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
-	
+        struct ihmm_sequences* rand_seq = NULL;
+	      RUNP(rand_seq = make_random_sequences(iseq,numseq));
+        //exit(0);
         if(model->expected_K == 0){
                 WARNING_MSG("Expected number of states is set to zero.");
                 model->expected_K = iseq->max_len*5;
@@ -290,6 +301,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                 model->back[i] = 0.0f;
         }
         for(i = 0; i < numseq;i++){
+                
                 for(j = 0; j < iseq->len[i];j++){
                         iseq->labels[i][j] = (int)rk_interval(model->expected_K -1,   &model->rndstate)+2 ; // +2 for start and end state...
                         model->back[(int) iseq->seq[i][j]]++;
@@ -320,8 +332,8 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         //DPRINTF2("GOT background.");
         clear_counts(model);
-        add_random_counts(model,100); 
-        //fill_counts(iseq, model);
+        //add_random_counts(model,100); 
+        fill_counts(iseq, model);
         //trim_counts(model);l
         for(i = 0; i < 5;i++){
                 RUN(iHmmHyperSample(model,10));
@@ -334,10 +346,14 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         //exit(0);
         float s0,s1,s2;
         for(iter = 0; iter <= model->numb + (model->nums -1)  *model->numi; iter++){//(numb + (nums-1)*numi);iter++){	
-                for(i = 0; i < numseq;i++){
+                for(i = 0; i < iseq->num_seq;i++){
                         RUN(pgas_sample(model,pgas, iseq, i));
                 }
                 //	DPRINTF2("SAMPLING DONE.");
+                for(i = 0; i < rand_seq->num_seq ;i++){
+                        RUN(pgas_sample(model, pgas, rand_seq , i));
+                }
+
                 clear_counts(model);
                 remove_unused_states_smc(model, iseq);
 //                Add_random_counts(model,1); 
@@ -356,6 +372,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                         model->collect_alpha += model->alpha0;
                         model->collect_gamma += model->gamma;
                 }
+                RUN(reset_random_sequences(rand_seq, iseq));
         }
 	
         model->collect_gamma = model->collect_gamma / (float) model->nums;
@@ -398,7 +415,9 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         print_emisson_matrix(model);
         
         free_ihmm_seq(iseq);
-	
+        free_ihmm_seq(rand_seq);
+
+        
         free_pgas(pgas);
 	
 	
@@ -1963,34 +1982,23 @@ struct ihmm_sequences* init_ihmm_seq(char** sequences,int numseq)
 {
         int i,j;
         struct ihmm_sequences* iseq = NULL;
+        int maxlen;
 
 	
         ASSERT(numseq !=0,"no sequences provided");
-        MMALLOC(iseq, sizeof(struct ihmm_sequences));
-        iseq->max_len = 0;
-        iseq->len = NULL;
-        iseq->u = NULL;
-        iseq->seq = NULL;
-        iseq->labels = NULL;
-        iseq->score = NULL;
-        iseq->num_seq = numseq;
-	
-        MMALLOC(iseq->len, sizeof(int) * numseq);
-	
+        maxlen = -1;
         for(i = 0;i < numseq;i++){
-                if((j = (int)strlen(sequences[i])) > iseq->max_len){
-                        iseq->max_len = j;
+                if((j = (int)strlen(sequences[i])) > maxlen){
+                        maxlen = j;
                 }
-                iseq->len[i] = j;
+                //iseq->len[i] = j;
         }
-        ASSERT(iseq->max_len > 1,"something wrong with sequence lengths");
-	
-        MMALLOC(iseq->score, sizeof(float) * numseq);
-        iseq->labels = malloc_2d_int(iseq->labels , numseq, iseq->max_len, 0);
-        iseq->u = malloc_2d_float(iseq->u, numseq,  iseq->max_len, 0);
-        iseq->seq = malloc_2d_char(iseq->seq, numseq,  iseq->max_len, 0);
+        ASSERT(maxlen != -1,"something wrong with sequence lengths");
+
+        RUNP(iseq = alloc_ihmm_sequences(numseq, maxlen));
+
         for(i = 0;i < numseq;i++){
-		
+                iseq->len[i] = (int)strlen(sequences[i]);
                 iseq->score[i] = prob2scaledprob(0.0f);
                 for(j = 0;j < iseq->len[i];j++){
                         switch(sequences[i][j]){
@@ -2022,6 +2030,124 @@ struct ihmm_sequences* init_ihmm_seq(char** sequences,int numseq)
 ERROR:
         free_ihmm_seq(iseq);
         return NULL;
+}
+
+struct ihmm_sequences* alloc_ihmm_sequences(int numseq, int maxlen)
+{
+        struct ihmm_sequences* iseq = NULL;
+
+        ASSERT(numseq > 0,"No numseq specified");
+        ASSERT(maxlen > 5,"Sequences too short");
+        
+        MMALLOC(iseq, sizeof(struct ihmm_sequences));
+        iseq->max_len = maxlen;
+        iseq->background[0] = -1;
+        iseq->background[1] = -1;
+        iseq->background[2] = -1;
+        iseq->background[3] = -1;
+        
+        iseq->len = NULL;
+        iseq->u = NULL;
+        iseq->seq = NULL;
+        iseq->labels = NULL;
+        iseq->score = NULL;
+        iseq->num_seq = numseq;
+        MMALLOC(iseq->len, sizeof(int) * numseq);
+        MMALLOC(iseq->score, sizeof(float) * numseq);
+        iseq->labels = malloc_2d_int(iseq->labels , numseq, iseq->max_len, 0);
+        iseq->u = malloc_2d_float(iseq->u, numseq,  iseq->max_len, 0);
+        iseq->seq = malloc_2d_char(iseq->seq, numseq,  iseq->max_len, 0);
+         
+        return iseq;
+ERROR:
+        free_ihmm_seq(iseq);
+        return OK; 
+}
+
+struct ihmm_sequences* make_random_sequences(struct ihmm_sequences* real_seq,int numseq)
+{
+        struct ihmm_sequences* rand_seq = NULL;
+       
+      
+        ASSERT(real_seq != NULL,"No real sequences.");
+
+        /*rk_randomseed(&rndstate);
+        for(i = 0; i< 4;i++){
+                background[i] = 0.0f;
+        }
+        for (i = 0; i < real_seq->num_seq;i++){
+                average_len += real_seq->len[i];
+                for(j = 0; j < real_seq->len[i];j++){
+                        background[(int)real_seq->seq[i][j]]++;
+                }
+        }
+        average_len /= real_seq->num_seq;
+        sum = 0.0f;
+        for(i = 0; i< 4;i++){
+                sum += background[i];
+        }
+        for(i = 0; i< 4;i++){
+                background[i] = background[i] / sum;
+        }*/
+        RUNP(rand_seq =  alloc_ihmm_sequences(real_seq->num_seq, real_seq->max_len));
+        RUN(reset_random_sequences(rand_seq, real_seq));
+        return rand_seq;
+ERROR:
+        free_ihmm_seq(rand_seq);
+        return NULL;
+
+}
+
+int reset_random_sequences(struct ihmm_sequences* rand, struct ihmm_sequences* org)
+{
+        int i,j,c;
+        float background[4];
+        float sum = 0;
+
+        int average_len = 0;
+
+
+        rk_state rndstate;
+      
+        ASSERT(rand != NULL,"No rand seq struct.");
+        ASSERT(org  != NULL,"No real seq struct");
+        
+        rk_randomseed(&rndstate);
+        if(rand->background[0] == -1){
+                for(i = 0; i< 4;i++){
+                        background[i] = 0.0f;
+                }
+                for (i = 0; i < org->num_seq;i++){
+                        for(j = 0; j < org->len[i];j++){
+                                background[(int)org->seq[i][j]]++;
+                        }
+                }
+              
+                sum = 0.0f;
+                for(i = 0; i< 4;i++){
+                        sum += background[i];
+                }
+                for(i = 0; i< 4;i++){
+                        background[i] = background[i] / sum;
+                }
+        }
+
+        for (i = 0; i < org->num_seq;i++){
+                average_len += org->len[i];
+        }
+        average_len /= org->num_seq;
+                
+        for(i = 0;i < org->num_seq;i++){
+                rand->score[i] = prob2scaledprob(0.0f);
+                rand->len[i] = average_len;
+                for(j = 0;j < average_len;j++){
+                        RUN( select_random(background,4,&c , rk_double(&rndstate)));
+                        rand->seq[i][j] =c;                        
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 void free_ihmm_seq(struct ihmm_sequences* iseq)

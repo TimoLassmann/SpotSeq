@@ -43,20 +43,17 @@ ERROR:
 
 int set_log_file(char* root, char* name)
 {
+        FILE* test_ptr = NULL;
         char buffer[BUFFER_LEN];
         char out_root_dir[BUFFER_LEN];
         snprintf(out_root_dir, BUFFER_LEN, "%s/" ,root);
         snprintf(buffer, BUFFER_LEN, "%s%s/%s.log",out_root_dir,OUTDIR_LOG,name);
-
-        FILE* test_ptr = NULL;
-
+        
         RUNP(test_ptr = fopen(buffer, "w"));
         fclose(test_ptr);
-
+        
         tlog.set_logfile(buffer);
-
-
-
+        
         return OK;
 ERROR:
         WARNING_MSG("Log file: %s cannot be opened",buffer);

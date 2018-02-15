@@ -10,62 +10,60 @@
 #define iHMM_STOP_STATE 1
 
 struct iHMM_model{
+        //model parameters
+        rk_state rndstate;
+        double* tmp;
+        
+        //priors
+        int soft;
+        float alpha0_a;
+        float alpha0_b;
 	
-	//model parameters
-	rk_state rndstate;
-	double* tmp;
+        float gamma_a;
+        float gamma_b;
+        int expected_K;
 	
-	//priors
-	int soft;
-	float alpha0_a;
-	float alpha0_b;
-	
-	float gamma_a;
-	float gamma_b;
-	int expected_K;
-	
-	int L; // alphabet length....
-	int K; //number of states;
-	int infinityghost; //  is the index beyond the allocated states...
-	int malloced_states;
+        int L; // alphabet length....
+        int K; //number of states;
+        int infinityghost; //  is the index beyond the allocated states...
+        int malloced_states;
 	
 	
-	//model parameters
-	float alpha0;
-	float gamma;
+        //model parameters
+        float alpha0;
+        float gamma;
 	
-	float collect_alpha;
-	float collect_gamma;
+        float collect_alpha;
+        float collect_gamma;
 	
-	float* beta;
-	//float* collect_beta;
+        float* beta;
+        //float* collect_beta;
 	
-	int* prior_counts;
-	int** trans_counts;
-	int** emit_counts;
-	float* back; 
-	
-	float* prior;
+        int* prior_counts;
+        int** trans_counts;
+        int** emit_counts;
+        float* back;
+        float* prior;
 	
 	
 	
-	// misc structs used internally
-	float** transition;
-	float** emission;
+        // misc structs used internally
+        float** transition;
+        float** emission;
 	
-	float* w;
-	float* p;
-	float* s;
+        float* w;
+        float* p;
+        float* s;
 	
-	int** M;
-	int* sumM;
-	int* sumN;
+        int** M;
+        int* sumM;
+        int* sumN;
 	
-	//run info
+        //run info
 	
-	int numb;
-	int nums;
-	int numi;
+        int numb;
+        int nums;
+        int numi;
 };
 
 extern struct iHMM_model* init_iHMM_model(void);

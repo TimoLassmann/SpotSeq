@@ -85,6 +85,7 @@ static int print_trans_count_matrix(struct iHMM_model* model);
 static int print_emisson_matrix(struct iHMM_model* model);
 
 static int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequences* iseq,int num);
+static int set_random_emission( struct iHMM_model* model);
 
 static int remove_unused_states_smc(struct iHMM_model* model, struct ihmm_sequences* iseq);
 
@@ -278,7 +279,48 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
 	
         ASSERT(numseq !=0,"no sequences provided");
         init_logsum();
-		
+
+        double test[4];
+
+
+       
+
+         for(i =0;i < 100;i++){
+                 sum = 0.0;
+                 for(j = 0; j < 4;j++){
+                         test[j] = 100 + EMISSION_H;
+                         if(j == 0){
+                                 test[j] += i;     
+                         }
+                         test[j]  = rk_gamma(&model->rndstate, test[j], 1.0);
+                         sum+= test[j];
+                 }
+                 for(j = 0; j < 4;j++){
+                         for(j = 0; j < 4;j++){
+                                 fprintf(stdout,"%f ",test[j] / sum);
+                         }
+                         fprintf(stdout,"\n");
+                 }
+
+                
+        }
+         // exit(0);      
+        for(i =0;i < 100;i++){
+                sum = 0.0;
+                for(j = 0; j < 4;j++){
+                        test[j] = rk_gamma(&model->rndstate, 100, 1.0);
+                        sum+= test[j];
+                }
+                for(j = 0; j < 4;j++){
+                        for(j = 0; j < 4;j++){
+                                fprintf(stdout,"%f ",test[j] / sum);
+                        }
+                        fprintf(stdout,"\n");
+                }
+
+                
+        }
+        //exit(0);
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
         struct ihmm_sequences* rand_seq = NULL;
 	      RUNP(rand_seq = make_random_sequences(iseq,numseq));
@@ -300,8 +342,7 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         for(i = 0; i < 4;i++){
                 model->back[i] = 0.0f;
         }
-        for(i = 0; i < numseq;i++){
-                
+        for(i = 0; i < numseq;i++){                
                 for(j = 0; j < iseq->len[i];j++){
                         iseq->labels[i][j] = (int)rk_interval(model->expected_K -1,   &model->rndstate)+2 ; // +2 for start and end state...
                         model->back[(int) iseq->seq[i][j]]++;
@@ -527,7 +568,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
         //What is the weigth of state 1,2 ... K ?
 	
         for(j = 0;j  <pgas->num_particles;j++){
-                y[j] =    prob2scaledprob(y[j] /  sum);
+                y[j] = prob2scaledprob(y[j] /  sum);
 		
                 ///weighth of state j according to particles is :
                 //1 ) probability of getting there given y1
@@ -570,7 +611,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                         //fprintf(stdout,"%d %f\n",j, scaledprob2prob(tmp_x -pgas->particle_path_prob[j]));
                 }
                 sum = prob2scaledprob(0.0);
-                for(j = 0;j <pgas->num_particles;j++){
+                for(j = 0;j < pgas->num_particles;j++){
                         //	DPRINTF3("sum:%f next %f\n", sum,pgas->ancestor_weight[j]  );
                         sum = logsum(sum,  pgas->ancestor_weight[j]);
                         //sum +=pgas->ancestor_weight[j];
@@ -624,10 +665,13 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                                 x[c] = transition[g][c]  *emission[c][letter];
                                 sum += x[c];
                         }
+
+                       
+                        
                         c = model->infinityghost;
-                        x[c] =  rk_gamma(&model->rndstate, EMISSION_H, 1.0);
-                        x[c]  = x[c]  / ( x[c]  + rk_gamma(&model->rndstate, EMISSION_H, 1.0)+ rk_gamma(&model->rndstate, EMISSION_H, 1.0)+ rk_gamma(&model->rndstate, EMISSION_H, 1.0));
-                        x[c]= x[c] * transition[g][c];
+                        // sets first L elements of tmp to new emission probabilities.. 
+                        RUN(set_random_emission(model));
+                        x[c]= transition[g][c] * model->tmp[letter];
                         sum += x[c];
 			
                         for(c = 0; c <= model->infinityghost;c++){
@@ -646,7 +690,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                         //c =model->infinityghost;
                         if(c == model->infinityghost){
 				
-                                //	fprintf(stderr,"Generated new STATE!!!!\n");//
+                                //	fprintf(stderr,"generated new STATE!!!!\n");//
                                 RUN(add_state_to_model(model));
                                 RUN(resize_pgas(pgas, model->malloced_states));
 				
@@ -674,7 +718,7 @@ int pgas_sample(struct iHMM_model* model, struct pgas* pgas,struct ihmm_sequence
                         //fprintf(stdout,"%f	- emission\n",emission[c][letter]);
                         //fflush(stdout);
 			
-                        pgas->tmp_particle_path_prob[j] =pgas->particle_path_prob[pgas->ancestors[j]] + prob2scaledprob(transition[g][c]  *emission[c][letter]);
+                        pgas->tmp_particle_path_prob[j] = pgas->particle_path_prob[pgas->ancestors[j]] + prob2scaledprob(transition[g][c]  *emission[c][letter]);
 			
 			
                         //if(pgas->ancestors[j]!= -1){
@@ -848,7 +892,20 @@ ERROR:
 }
 
 
-
+int set_random_emission( struct iHMM_model* model)
+{
+        double sum = 0.0f;
+        int i;
+        for(i = 0; i < model->L;i++){
+                model->tmp[i] = rk_gamma(&model->rndstate, EMISSION_H, 1.0);
+                sum += model->tmp[i];
+        }
+        for(i = 0; i < model->L;i++){
+                model->tmp[i] /= sum;
+                
+        }
+        return OK;
+}
 
 int remove_unused_states_smc(struct iHMM_model* model, struct ihmm_sequences* iseq)
 {
@@ -1659,7 +1716,7 @@ int sample_counts(struct iHMM_model* model)
                 }
                 for(j = 0;j <model->L;j++){
                         model->emission[i][j] /= sum;
-                }
+                }                
         }
         return OK;
 }
@@ -1749,12 +1806,6 @@ int add_state_to_model(struct iHMM_model* model)
         tmp_old_infinityghost = model->infinityghost;
         tmp_old_k = model->K;
 	
-	
-	
-	
-	
-
-	
         if(model->infinityghost+1 == model->malloced_states){
                 model->malloced_states = model->malloced_states+10;
 //		fprintf(stdout,"RESIZING: %d \n",model->malloced_states);
@@ -1769,7 +1820,7 @@ int add_state_to_model(struct iHMM_model* model)
                 MREALLOC(model->prior_counts, sizeof(int) *model->malloced_states);
                 MREALLOC(model->sumM, model->malloced_states*sizeof(int));
                 MREALLOC(model->sumN, model->malloced_states*sizeof(int));
-                MREALLOC(model->tmp,sizeof(double) *model->malloced_states);
+                MREALLOC(model->tmp,sizeof(double) *  MACRO_MAX(model->L,model->malloced_states));
 		
 		
 		
@@ -1784,8 +1835,11 @@ int add_state_to_model(struct iHMM_model* model)
 	
         model->infinityghost++;
         //fill new column in beta vector...
-		
-		
+        // fills new emissions. IMPORTANT assumes that set_random_emission was called!!! 
+        for(i = 0; i < model->L;i++){
+                model->emission[tmp_old_infinityghost][i] = model->tmp[i];// rk_gamma(&model->rndstate, EMISSION_H, 1.0);
+                //sum +=model->emission[tmp_old_infinityghost][i];
+        }
 		
         //fill new row in transition....
         sum = 0.0;
@@ -1807,14 +1861,14 @@ int add_state_to_model(struct iHMM_model* model)
 	
         //fill new row in emission....
 	
-        sum = 0;
+        /*sum = 0;
         for(i = 0; i < model->L;i++){
                 model->emission[tmp_old_infinityghost][i] = rk_gamma(&model->rndstate, EMISSION_H, 1.0);
                 sum +=model->emission[tmp_old_infinityghost][i];
         }
         for(i = 0; i < model->L;i++){
                 model->emission[tmp_old_infinityghost][i] = model->emission[tmp_old_infinityghost][i] / sum;
-        }
+                }*/
 	
         //split last column of transistion matrix.... i.e.allow existing states to connect to new state...
 	
@@ -1901,7 +1955,7 @@ int start_iHMM_model(struct iHMM_model* model, int num_states)
 	
         MMALLOC(model->prior, sizeof(float) *model->malloced_states);
         MMALLOC(model->prior_counts, sizeof(int) *model->malloced_states);
-        MMALLOC(model->tmp,sizeof(double) *model->malloced_states);
+        MMALLOC(model->tmp,sizeof(double) * MACRO_MAX(model->L, model->malloced_states));
         MCALLOC(model->sumM, model->malloced_states,sizeof(int));
         MCALLOC(model->sumN, model->malloced_states,sizeof(int));
 	

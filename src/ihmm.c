@@ -276,52 +276,18 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
         int i,j;
 	
         int iter;
+
+
+       
 	
         ASSERT(numseq !=0,"no sequences provided");
         init_logsum();
 
-        double test[4];
 
-
-       
-
-         for(i =0;i < 100;i++){
-                 sum = 0.0;
-                 for(j = 0; j < 4;j++){
-                         test[j] = 100 + EMISSION_H;
-                         if(j == 0){
-                                 test[j] += i;     
-                         }
-                         test[j]  = rk_gamma(&model->rndstate, test[j], 1.0);
-                         sum+= test[j];
-                 }
-                 for(j = 0; j < 4;j++){
-                         for(j = 0; j < 4;j++){
-                                 fprintf(stdout,"%f ",test[j] / sum);
-                         }
-                         fprintf(stdout,"\n");
-                 }
-
-                
-        }
-         // exit(0);      
-        for(i =0;i < 100;i++){
-                sum = 0.0;
-                for(j = 0; j < 4;j++){
-                        test[j] = rk_gamma(&model->rndstate, 100, 1.0);
-                        sum+= test[j];
-                }
-                for(j = 0; j < 4;j++){
-                        for(j = 0; j < 4;j++){
-                                fprintf(stdout,"%f ",test[j] / sum);
-                        }
-                        fprintf(stdout,"\n");
-                }
-
-                
-        }
-        //exit(0);
         RUNP(iseq =init_ihmm_seq(sequences,numseq));
+
+            
+
         struct ihmm_sequences* rand_seq = NULL;
 	      RUNP(rand_seq = make_random_sequences(iseq,numseq));
         //exit(0);
@@ -391,9 +357,9 @@ int particle_gibbs_with_ancestors_controller(struct iHMM_model* model,char** seq
                         RUN(pgas_sample(model,pgas, iseq, i));
                 }
                 //	DPRINTF2("SAMPLING DONE.");
-                for(i = 0; i < rand_seq->num_seq ;i++){
-                        RUN(pgas_sample(model, pgas, rand_seq , i));
-                }
+                // f//or(i = 0; i < rand_seq->num_seq ;i++){
+                 //       RUN(pgas_sample(model, pgas, rand_seq , i));
+                        // }
 
                 clear_counts(model);
                 remove_unused_states_smc(model, iseq);
@@ -897,7 +863,8 @@ int set_random_emission( struct iHMM_model* model)
         double sum = 0.0f;
         int i;
         for(i = 0; i < model->L;i++){
-                model->tmp[i] = rk_gamma(&model->rndstate, EMISSION_H, 1.0);
+                model->tmp[i] =  EMISSION_H;
+                //model->tmp[i] = rk_gamma(&model->rndstate, EMISSION_H, 1.0);
                 sum += model->tmp[i];
         }
         for(i = 0; i < model->L;i++){
@@ -1024,6 +991,7 @@ void free_pgas(struct pgas* pgas)
 int iHmmSampleBeam(struct ihmm_sequences* iseq,struct iHMM_model* model)
 {
         //rk_randomseed( &rndstate);
+        
 	
         struct dp* dp = NULL;
         int i,j,iter;
@@ -1031,6 +999,8 @@ int iHmmSampleBeam(struct ihmm_sequences* iseq,struct iHMM_model* model)
         float max_into_infinity = 0.0;
         float old_average = 0.0;
         float score = 0;
+
+        
         RUN(start_iHMM_model(model, model->expected_K));
 	
         RUNP(dp = init_dp(model->infinityghost, iseq->max_len ));
@@ -1401,7 +1371,7 @@ int iHmmHyperSample(struct iHMM_model* model, int iterations)
         sum = 0.0;
         model->beta[0] = 0;
         for(i = 1; i <=  model->K;i++){
-                model->beta[i] =rk_gamma(&model->rndstate, (float)sumM[i], 1.0);
+                model->beta[i] = rk_gamma(&model->rndstate, (float)sumM[i], 1.0);
                 sum += model->beta[i];
         }
 	
@@ -1710,8 +1680,8 @@ int sample_counts(struct iHMM_model* model)
         for(i = 2; i <= model->K;i++){
                 sum = 0.0;
                 for(j = 0; j < model->L;j++){
-                        model->emission[i][j]  = model->emit_counts[i][j]  + EMISSION_H;
-                        model->emission[i][j]  = rk_gamma(&model->rndstate, model->emission[i][j], 1.0);
+                        model->emission[i][j]  = rk_gamma(&model->rndstate, model->emission[i][j]+ EMISSION_H, 1.0);
+                        //model->emission[i][j]  =  model->emission[i][j]+ EMISSION_H;
                         sum +=model->emission[i][j];
                 }
                 for(j = 0;j <model->L;j++){
@@ -1756,7 +1726,7 @@ struct iHMM_model* init_iHMM_model(void)
         model->alpha0 = 0.0;
         model->gamma = 0.0;
         model->alpha0_a = 4.0;
-        model->alpha0_b = 1.0;
+        model->alpha0_b = 2.0;
         model->gamma_a =  3.0;
         model->gamma_b = 6.0;
         model->expected_K = 20;

@@ -65,7 +65,7 @@ libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-fast_transition_ITEST_SOURCES = fast_transition.c fast_transition.h distributions.h \
+fast_transition_ITEST_SOURCES = fast_hmm_param.c fast_hmm_param.h distributions.h \
 distributions.c \
 randomkit.h \
 randomkit.c

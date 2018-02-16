@@ -1,5 +1,5 @@
-#ifndef FAST_TRANSITION_H
-#define FAST_TRANSITION_H
+#ifndef FAST_HMM_PARAM_H
+#define FAST_HMM_PARAM_H
 
 
 #ifdef HAVE_CONFIG_H
@@ -19,7 +19,7 @@ struct fast_t_item{
         uint16_t to;
 };
 
-struct fast_transition{
+struct fast_hmm_param{
         struct fast_t_item** list;
         int8_t* active_states;
         uint16_t last_state; 
@@ -30,12 +30,11 @@ struct fast_transition{
 };
 
 /* Housekeeping function */
-extern struct fast_transition* alloc_fast_transition(void);
-extern int expand_fast_transition_if_necessary(struct fast_transition* ft, int k);
-extern void free_fast_transition(struct fast_transition* ft);
+extern struct fast_hmm_param* alloc_fast_hmm_param(void);
+extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k);
+extern void free_fast_hmm_param(struct fast_hmm_param* ft);
 
 /* key Operations  */
-extern int add_state_from_fast_transition(rk_state rndstate,struct fast_transition* ft, float* beta, float alpha, float gamma);
-extern int delete_state_from_fast_transition(struct fast_transition* ft, int x);
+extern int add_state_from_fast_hmm_param(rk_state rndstate,struct fast_hmm_param* ft, float* beta, float alpha, float gamma);
 /* Sorting and binary search  */
 #endif

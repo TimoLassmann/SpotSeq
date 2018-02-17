@@ -127,19 +127,23 @@ ERROR:
 
 
 
-struct fast_hmm_param* alloc_fast_hmm_param(void)
+struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 {
         struct fast_hmm_param* ft = NULL;
         int i;
         
-
+        ASSERT(L > 1, "Need more than one letter");
         MMALLOC(ft, sizeof(struct fast_hmm_param));
-        ft->alloc_num_states = 2;
+        ft->alloc_num_states = k+2;
         ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
         ft->last_state = 0;
         ft->active_states = NULL;
         ft->list = NULL;
         ft->num_items = 0;
+        ft->emission = NULL;    /* This will be indexed by letter i.e. e['A']['numstate'] */
+        ft->L = L;
+
+        RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
 
         MMALLOC(ft->active_states, sizeof(int8_t)* ft->alloc_num_states);
 
@@ -147,6 +151,8 @@ struct fast_hmm_param* alloc_fast_hmm_param(void)
                 ft->active_states[i] =0;
         }
 
+
+        
         MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
 
         for(i = 0; i < ft->alloc_items;i++){
@@ -173,6 +179,8 @@ int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k)
                 while(k > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
                 }
+
+                RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
                 
                 MREALLOC(ft->active_states, sizeof(int8_t)* ft->alloc_num_states);
                 for(i = cur_k; i < ft->alloc_num_states;i++){
@@ -207,6 +215,9 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
                                 MFREE(ft->list[i]);
                         }
                         MFREE(ft->list);
+                }
+                if(ft->emission){
+                        free_2d((void**) ft->emission);
                 }
                 if(ft->active_states){
                         MFREE(ft->active_states);
@@ -420,7 +431,7 @@ int main(const int argc,const char * argv[])
         int res = 0;
         float x; 
 
-        RUNP(ft = alloc_fast_hmm_param());
+        RUNP(ft = alloc_fast_hmm_param(4,4));
 
         RUN(fill_with_random_transitions(ft, 8));
         RUN(print_fast_hmm_params(ft));

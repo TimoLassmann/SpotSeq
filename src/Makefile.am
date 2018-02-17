@@ -59,17 +59,30 @@ randomkit.c
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-check_PROGRAMS = libihmm_ITEST fast_transition_ITEST
+TESTS= fast_hmm_param_ITEST model_ITEST iseq_ITEST
+
+TESTS_ENVIRONMENT = \
+	$(VALGRIND)
+
+check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST
 
 libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-fast_transition_ITEST_SOURCES = fast_hmm_param.c fast_hmm_param.h distributions.h \
+model_ITEST_SOURCES = model.h model.c ihmm_seq.h ihmm_seq.c
+model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+model_ITEST_LDADD = $(libihmm_a_LIBADD)
+
+iseq_ITEST_SOURCES = ihmm_seq.h ihmm_seq.c
+iseq_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTSEQ
+iseq_ITEST_LDADD = $(libihmm_a_LIBADD)
+
+fast_hmm_param_ITEST_SOURCES = fast_hmm_param.c fast_hmm_param.h distributions.h \
 distributions.c \
 randomkit.h \
 randomkit.c
 
-fast_transition_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
-fast_transition_ITEST_LDADD = $(MYLIBDIRS)
+fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+fast_hmm_param_ITEST_LDADD = $(MYLIBDIRS)
 

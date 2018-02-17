@@ -2448,7 +2448,6 @@ int main(const int argc,const char * argv[])
         model->expected_K = 10;//  	  ; //iseq->max_len*2;//aln_len;//100;// iseq->len[0];
         model->alpha0 = 0.0;
         model->gamma = 0.0;
-        model->alpha0_a  = 4.0;//(float) total_len;
         model->alpha0_b = 1.0;
 	
 	

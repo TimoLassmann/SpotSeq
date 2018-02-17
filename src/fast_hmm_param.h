@@ -21,16 +21,18 @@ struct fast_t_item{
 
 struct fast_hmm_param{
         struct fast_t_item** list;
+        float** emission;
         int8_t* active_states;
         uint16_t last_state; 
         uint32_t alloc_items;
         uint32_t num_items;
         
         uint32_t alloc_num_states;
+        uint32_t L;
 };
 
 /* Housekeeping function */
-extern struct fast_hmm_param* alloc_fast_hmm_param(void);
+extern struct fast_hmm_param* alloc_fast_hmm_param(int k,int L);
 extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k);
 extern void free_fast_hmm_param(struct fast_hmm_param* ft);
 

@@ -1,5 +1,4 @@
 
-
 #include "beam_sample.h"
 
 #include "fast_hmm_param_test_functions.h"
@@ -64,11 +63,13 @@ static int shrink_grow_integration_test(void)
        
        RUN(print_model_parameters(model));
        RUN(fill_fast_transitions(model,ft));
-       
+       RUN(print_fast_hmm_params(ft));
+
        for(i = 0;i < 10;i++){
                RUN(add_state_from_fast_hmm_param(model,ft));
        }
        RUN(print_model_parameters(model));
+       RUN(print_fast_hmm_params(ft));
 
        RUN(random_label_ihmm_sequences(iseq, 6));
        RUN(fill_counts(model,iseq));
@@ -305,7 +306,8 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         int i,new_k,list_index;
         int l,r;
         
-        
+        //int pg_hack;            /* I don't want add states that are not reachable. */
+        //float* tmp_pg = NULL;
 
 
         ASSERT(ihmm != NULL, "No model");
@@ -358,7 +360,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         
         
         //first get beta for new column
-	
         be = beta[ft->last_state];
         bg = rk_beta(&rndstate, 1.0,gamma );
 	
@@ -367,18 +368,43 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         
         ihmm->beta = beta;
         //now split prob in last columns...
-	
         a = alpha * beta[ft->last_state];
         b = 0.0;
         for(i = 0; i <= ft->last_state;i++){
-                //fprintf(stdout,"%d %f\n", i, beta[i]);
+                
                 b += beta[i];
         }
-        //fprintf(stdout,"%d %f\n", i, beta[ft->last_state+1]);
-
-        
         b = alpha * (1.0 - b);
 
+        /*
+        MMALLOC(tmp_pg, sizeof(float)* (ft->last_state+1));
+        
+        pg_hack = -1;
+        while(pg_hack == -1){
+                for(i = 0; i < ft->last_state+1;i++){
+                       
+                        if(a < 1e-2 || b < 1e-2){     // % This is an approximation when a or b are really small.
+                                pg = rk_binomial(&rndstate, 1.0, a / (a+b));
+                        }else{
+                                pg = rk_beta(&rndstate, a, b);
+                        }
+                        tmp_pg[i] = pg;
+                        
+                }
+                for(i = 0; i < ft->last_state;i++){
+                        if(i != IHMM_END_STATE){
+                                if(tmp_pg[i] != 1){
+                                        pg_hack = 1;
+                                }
+                        }
+                }
+                
+        }
+        for(i = 0; i < ft->last_state+1;i++){
+                fprintf(stdout,"from:%d pg:%f\n",i,tmp_pg[i]);
+        }
+        */
+        
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
 
         
@@ -392,22 +418,40 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                         pg = rk_beta(&rndstate, a, b);
                 }
                 pe = list[i]->t;
-                //fprintf(stdout,"Filling in %d -> %d : %f to %f\n",list[i]->from,list[i]->to,list[i]->t,list[i]->t *pe  );
+                //fprintf(stdout,"Filling in %d -> %d : %f to %f   PG:%f\n",list[i]->from,list[i]->to,pe,pg*pe ,pg );
                 list[i]->t = pg * pe;
 
                 list[list_index]->from = list[i]->from;
                 list[list_index]->to = new_k+1;
                 list[list_index]->t = (1.0-pg) * pe;
+
+                //fprintf(stdout,"Filling in %d -> %d : %f to %f\n",list[i]->from,list[i]->to,pe,(1.0-pg) * pe);
                
                 list_index++;
   
         }
+
+
+        /* add emission  */
+        sum = 0.0;
+        for(i = 0; i < ihmm->L;i++){
+                ft->emission[i][new_k] =rk_gamma(&rndstate, EMISSION_H, 1.0);
+                sum += ft->emission[i][new_k];
+        }
+        for(i = 0; i < ihmm->L;i++){
+                ft->emission[i][new_k] /= sum;
+        }
+
         
+        //MFREE(tmp_pg);
         ft->num_items = list_index;
         ft->last_state = new_k+1;
-
+        ihmm->rndstate = rndstate;
         return OK;
 ERROR:
+        //if(tmp_pg){
+        //        MFREE(tmp_pg);
+        // }
         return FAIL;
 }
 

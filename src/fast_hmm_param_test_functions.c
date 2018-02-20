@@ -21,12 +21,28 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
                 fprintf(stdout,"S%d",i);
                 sum = 0.0;
                 for(j = 0; j< ft->last_state+1;j++){
-                        fprintf(stdout," %0.4f",m[i][j]);
+                        fprintf(stdout," %0.3f",m[i][j]);
                         sum+= m[i][j];
                 }
                 fprintf(stdout,"\ts:%f\n",sum);
         }
         fprintf(stdout,"\n");
+
+        fprintf(stdout,"Emission:\n");
+
+      
+        for(j = 0; j< ft->last_state+1;j++){
+                sum = 0.0;
+                for(i = 0; i < 4;i++){
+                        fprintf(stdout," %0.3f",ft->emission[i][j]);
+                        sum += ft->emission[i][j];
+                }
+                fprintf(stdout,"\ts:%f\n",sum);
+        }
+    
+
+        
+        
         free_2d((void**)m);
         return OK;
 ERROR:

@@ -36,13 +36,20 @@ AC_SUBST(LIB_TLDEVELDIR)
 
 AC_TYPE_SIZE_T
 
-AC_TYPE_UINT8_T
+AC_TYPE_INT8_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
 
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+
+
+
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([arc4random arc4random_uniform])
-AC_CHECK_FUNCS([floor gettimeofday pow sqrt])
+AC_CHECK_FUNCS([floor gettimeofday pow sqrt getcwd mkdir])
+AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 
 
 AC_ARG_ENABLE(debugging,[AS_HELP_STRING([--enable-debugging],[include debugging code])

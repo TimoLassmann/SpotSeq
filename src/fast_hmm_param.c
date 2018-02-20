@@ -16,113 +16,7 @@
 /* - alloc, relic , free*/
 /* - sort */
 /* - bin_search upper lower */
-#define iHMM_START_STATE 0
-static int fast_hmm_param_cmp_by_t_desc(const void *a, const void *b);
-static int fast_hmm_param_cmp_by_to_from_asc(const void *a, const void *b);
-static int fast_hmm_param_cmp_by_from_asc(const void *a, const void *b);
-static int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b);
 
-/* return index of first element < x i.e. we can then do for(i =0; i < return;i++) */
-
-static int binarySearch_t(struct fast_hmm_param* ft, float x);
-
-/* These functions return the first and last+1 entry in list that has value of x */
-static int binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x);
-static int binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x);      
-static int binarySearch_from_lower_bound(struct fast_hmm_param* ft, int x);
-static int binarySearch_from_upper_bound(struct fast_hmm_param* ft, int x);
-
-
-
-/* This function assumes (oh no!) that beta has space for an additional
- * element */
-int add_state_from_fast_hmm_param(rk_state rndstate,struct fast_hmm_param* ft, float* beta, float alpha,float gamma)
-{
-        struct fast_t_item** list = NULL;
-        float sum,be,bg,pe,pg, a,b;
-        int i,new_k,list_index;
-        int l,r;
-
-
-
-        ASSERT(ft != NULL, "No ft.");
-        list_index = ft->num_items;
-        /* First add empty space to host the newstate -> old state transitions. */
-        if(list_index + ft->last_state + ft->last_state + 1 >= ft->alloc_num_states){
-                RUN(expand_fast_hmm_param_if_necessary(ft, list_index + ft->last_state + ft->last_state + 1));
-        }
-        
-        new_k = ft->last_state +1;
-       
-        
-        list = ft->list;
-        list_index = ft->num_items;
-        sum = 0.0;
-        for(i = 0;i <= ft->last_state;i++){
-                list[list_index]->from = new_k;
-                list[list_index]->to = i;
-                if(i!= iHMM_START_STATE){
-                        list[list_index]->t = rk_gamma(&rndstate, beta[i] * alpha, 1.0);
-                }else{
-                        list[list_index]->t = 0.0;
-                }
-                sum += list[list_index]->t;
-                list_index++;
-        }
-        for(i = ft->num_items;i < list_index;i++){
-                list[i]->t /= sum;
-        }
-        ft->num_items = list_index;
-    
-        
-        
-        //first get beta for new column
-	
-        be = beta[ft->last_state];
-        bg = rk_beta(&rndstate, 1.0,gamma );
-	
-        beta[ft->last_state] = bg*be;
-        beta[ft->last_state+1] = (1.0 - bg) *be;
-        
-
-        //now split prob in last columns...
-	
-        a = alpha * beta[ft->last_state];
-        b = 0.0;
-        for(i = 0; i <= ft->last_state;i++){
-                b += beta[i];
-        }
-        
-        b = alpha * (1.0 - b);
-
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
-
-        l = binarySearch_to_lower_bound(ft,ft->last_state);
-        r = binarySearch_to_upper_bound(ft,ft->last_state);
-
-        for(i = l;i < r;i++){
-                if(a < 1e-2 || b < 1e-2){     // % This is an approximation when a or b are really small.
-                        pg = rk_binomial(&rndstate, 1.0, a / (a+b));
-                }else{
-                        pg = rk_beta(&rndstate, a, b);
-                }
-                pe = list[i]->t;
-                list[i]->t = pg * pe;
-
-                list[list_index]->from = list[i]->from;
-                list[list_index]->to = new_k;
-                list[list_index]->t = (1.0-pg) * pe;
-               
-                list_index++;
-  
-        }
-        ft->num_items = list_index;
-        ft->last_state = new_k;
-
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 
 
@@ -134,7 +28,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         
         ASSERT(L > 1, "Need more than one letter");
         MMALLOC(ft, sizeof(struct fast_hmm_param));
-        ft->alloc_num_states = k+2;
+        ft->alloc_num_states = k;
         ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
         ft->last_state = 0;
         ft->active_states = NULL;
@@ -303,7 +197,7 @@ int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b)
 }
 
 /* Selects item so that 0 .. return value is greater than x */
-static int binarySearch_t(struct fast_hmm_param* ft, float x)
+int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, float x)
 {
         struct fast_t_item** list = NULL;
         int l,r;
@@ -332,7 +226,7 @@ static int binarySearch_t(struct fast_hmm_param* ft, float x)
 
 
 
-static int binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x)
+int fast_hmm_param_binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x)
 {
         struct fast_t_item** list = NULL;
         int l,r;
@@ -351,7 +245,7 @@ static int binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x)
         return  l;
 }
 
-static int binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x)
+int fast_hmm_param_binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x)
 {
         struct fast_t_item** list = NULL;
         int l,r;
@@ -371,7 +265,7 @@ static int binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x)
         return  l;
 }
 
-static int binarySearch_from_lower_bound(struct fast_hmm_param* ft, int x)
+int fast_hmm_param_binarySearch_from_lower_bound(struct fast_hmm_param* ft, int x)
 {
         struct fast_t_item** list = NULL;
         int l,r;
@@ -390,7 +284,7 @@ static int binarySearch_from_lower_bound(struct fast_hmm_param* ft, int x)
         return  l;
 }
 
-static int binarySearch_from_upper_bound(struct fast_hmm_param* ft, int x)
+int fast_hmm_param_binarySearch_from_upper_bound(struct fast_hmm_param* ft, int x)
 {
         struct fast_t_item** list = NULL;
         int l,r;
@@ -415,12 +309,11 @@ static int binarySearch_from_upper_bound(struct fast_hmm_param* ft, int x)
 
 
 
-#ifdef ITEST
+#ifdef ITESTFASTPARAM
 
 
-/* for testing..  */
-static int fill_with_random_transitions(struct fast_hmm_param* ft, int k);
-static int print_fast_hmm_params(struct fast_hmm_param* ft);
+#include "fast_hmm_param_test_functions.h"
+
 
 
 int main(const int argc,const char * argv[])
@@ -429,7 +322,9 @@ int main(const int argc,const char * argv[])
         struct fast_hmm_param* ft = NULL;
         int i;
         int res = 0;
-        float x; 
+        float x;
+
+        RUN(print_program_header((char * const*)argv,"Fast HMM param test"));
 
         RUNP(ft = alloc_fast_hmm_param(4,4));
 
@@ -442,12 +337,12 @@ int main(const int argc,const char * argv[])
         for(i =0; i < 10;i++){
                 x = random_float_zero_to_x(1.0);
                 
-                res = binarySearch_t(ft, x);
+                res = fast_hmm_param_binarySearch_t(ft, x);
                 fprintf(stdout,"search for %f: %d  \n",x, res);
         }
         x = ft->list[3]->t;
 
-        res = binarySearch_t(ft,x);
+        res = fast_hmm_param_binarySearch_t(ft,x);
         fprintf(stdout,"search for %f: %d   \n",x, res);
 
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
@@ -457,13 +352,13 @@ int main(const int argc,const char * argv[])
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
         RUN(print_fast_hmm_params(ft));
         for(i =0; i < 4;i++){
-                fprintf(stdout,"%d: %d -> %d\n",i, binarySearch_to_lower_bound(ft,i), binarySearch_to_upper_bound(ft,i));
+                fprintf(stdout,"%d: %d -> %d\n",i, fast_hmm_param_binarySearch_to_lower_bound(ft,i), fast_hmm_param_binarySearch_to_upper_bound(ft,i));
         }
         
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_from_asc);
         RUN(print_fast_hmm_params(ft));
         for(i =0; i < 4;i++){
-                fprintf(stdout,"%d: %d -> %d\n",i, binarySearch_from_lower_bound(ft,i), binarySearch_from_upper_bound(ft,i));
+                fprintf(stdout,"%d: %d -> %d\n",i, fast_hmm_param_binarySearch_from_lower_bound(ft,i), fast_hmm_param_binarySearch_from_upper_bound(ft,i));
         }
 
         
@@ -483,7 +378,7 @@ int main(const int argc,const char * argv[])
         
         float* beta = NULL;
         float gamma = 6;
-        float alpha = 1000.2;
+        //float alpha = 1000.2;
         float sum;
         rk_state rndstate;
                 
@@ -506,7 +401,7 @@ int main(const int argc,const char * argv[])
                 //fprintf(stdout,"BETA: %d %f\n",i,beta[i] );
         }
         for(i = 0;i < 4;i++){
-                RUN(add_state_from_fast_hmm_param(rndstate,ft,  beta, alpha, gamma));
+                //RUN(add_state_from_fast_hmm_param(rndstate,ft,  beta, alpha, gamma));
         }
         for(i = 0; i <= ft->last_state;i++){
 		
@@ -528,70 +423,5 @@ ERROR:
         return EXIT_FAILURE;
 }
 
-static int print_fast_hmm_params(struct fast_hmm_param* ft)
-{
-        int i,j;
-        float** m = NULL;
-
-        float sum = 0.0;
-        RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
-        fprintf(stdout,"Transitions:\n");
-        for(i = 0; i < ft->num_items;i++){
-                //fprintf(stdout, "%d) %d -> %d = %f\n", i,ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
-                if(ft->list[i]->t != -1){
-                        m[ft->list[i]->from][ft->list[i]->to] = ft->list[i]->t;
-                }
-        }
-
-        for(i = 0; i< ft->last_state+1;i++){
-                fprintf(stdout,"S%d",i);
-                sum = 0.0;
-                for(j = 0; j< ft->last_state+1;j++){
-                        fprintf(stdout," %0.2f",m[i][j]);
-                        sum+= m[i][j];
-                }
-                fprintf(stdout,"\ts:%f\n",sum);
-        }
-        fprintf(stdout,"\n");
-        free_2d((void**)m);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
-{
-        struct fast_t_item** list = NULL;
-        int i,j;
-        int num;
-        float sum = 0;
-        ASSERT(ft != NULL, "No ft.");
-
-        RUN(expand_fast_hmm_param_if_necessary(ft, k));
-        
-        num = ft->num_items;
-        list = ft->list;
-        
-        srand48(time(0));
-        
-        for(i = 0;i < k;i++){
-                sum = 0.0;
-                for(j = 0;j < k;j++){
-                        list[num]->from = i;
-                        list[num]->to = j;
-                        list[num]->t = random_float_zero_to_x(1.0);
-                        sum+=list[num]->t;
-                        num++;
-                }
-                for(j = 0;j < k;j++){
-                        list[num-k+j]->t /= sum;
-                }
-        }
-        ft->num_items = num;
-        ft->last_state = k-1;
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 #endif 

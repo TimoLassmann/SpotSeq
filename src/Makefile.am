@@ -13,6 +13,10 @@ MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
 
 LIBS = -lm -lpthread 
 
+RANDOMKIT_FILES = distributions.h \
+distributions.c \
+randomkit.h \
+randomkit.c
 
 AM_CPPFLAGS=${MYINCDIRS} 
 
@@ -48,41 +52,44 @@ build_ihmm_LDADD =  ${MYLIBDIRS}  libihmm.a
 noinst_LIBRARIES = libihmm.a
 
 # AUTOMAKE_OPTIONS = subdir-objects
-libihmm_a_SOURCES = \
-ihmm.h \
-ihmm.c \
-distributions.h \
-distributions.c \
-randomkit.h \
-randomkit.c
+libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c 
 
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS= fast_hmm_param_ITEST model_ITEST iseq_ITEST
+TESTS = fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST
+check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST
 
 libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-model_ITEST_SOURCES = model.h model.c ihmm_seq.h ihmm_seq.c
-model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
-model_ITEST_LDADD = $(libihmm_a_LIBADD)
+ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
-iseq_ITEST_SOURCES = ihmm_seq.h ihmm_seq.c
+iseq_ITEST_SOURCES = $(ISEQSOURCE)
 iseq_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTSEQ
 iseq_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-fast_hmm_param_ITEST_SOURCES = fast_hmm_param.c fast_hmm_param.h distributions.h \
-distributions.c \
-randomkit.h \
-randomkit.c
+FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h \
+fast_hmm_param_test_functions.h \
+fast_hmm_param_test_functions.c
 
-fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+fast_hmm_param_ITEST_SOURCES = $(FASTHMMSOURCE) $(RANDOMKIT_FILES)
+fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTFASTPARAM
 fast_hmm_param_ITEST_LDADD = $(MYLIBDIRS)
+
+MODELSOURCE = model.h model.c 
+
+model_ITEST_SOURCES =  $(MODELSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES)
+model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTMODEL
+model_ITEST_LDADD = $(libihmm_a_LIBADD)
+
+BEAMSOURCE = beam_sample.h beam_sample.c 
+beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)
+beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+beam_ITEST_LDADD = $(libihmm_a_LIBADD)
 

@@ -4,9 +4,21 @@
 #include "fast_hmm_param_test_functions.h"
 
 
-#ifdef ITESTBEAM
+
+//static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
+static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u);
+static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max);
+static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
+
+
+/* These are test funtions. */
+        
 static int add_state_integration_test(void);
 static int shrink_grow_integration_test(void);
+static int full_run_test(void);
+
+
+
 
 int main(const int argc,const char * argv[])
 {
@@ -15,17 +27,74 @@ int main(const int argc,const char * argv[])
         RUN(add_state_integration_test());
 
         RUN(shrink_grow_integration_test());
+
+        RUN(full_run_test());
+        
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;
 }
+
+int full_run_test(void)
+{
+   
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        struct seq_buffer* sb = NULL;
+        char *tmp_seq[8] = {
+                "ACAGGCTAAAGGAGGGGGCAGTCCCCA",
+                "AGGCTAAAGGAGGGGGCAGTCCCCACC",
+                "AGGCTAAAGGAGGGGGCAGTCCCCACC",
+                "AGTCCCCACCATATTTGAGTCTTTCTC",
+                "AGTGGATATCACAGGCTAAAGGAGGGG",
+                "AGTGGATATCACAGGCTAAAGGAGGGG",
+                "AGTGGATATCACAGGCTAAAGGAGGGG",
+                "AGTGGATATCACAGGCTAAAGGAGGGG"};
+        int i;
+        int numseq = 8;
+        int initial_states = 8;
+        
+           
+        /* First initialize beam param struct.  */
+
+        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
+
+        RUNP(model = alloc_ihmm_model(initial_states, 4));
+        /* Initial guess... */
+        model->alpha0_a = 4.0f;
+        model->alpha0_b = 2.0f;
+        model->gamma_a = 3.0f;
+        model->gamma_b = 6.0f;
+        model->alpha = IHMM_PARAM_PLACEHOLDER;
+        model->gamma = IHMM_PARAM_PLACEHOLDER;
+
+        
+        RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
+
+        RUN(run_beam_sampling( model, sb, ft, 100, 10));
+
+        
+        //sb, num thread, guess for aplha and gamma.. iterations. 
+
+                
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return FAIL; 
+}
+
 
 
 static int shrink_grow_integration_test(void)
 {
        struct fast_hmm_param* ft = NULL;
        struct ihmm_model* model = NULL;
-       struct ihmm_sequences* iseq = NULL;
+       struct seq_buffer* iseq = NULL;
 
        char *tmp_seq[4] = {
                "ACGT",
@@ -39,7 +108,7 @@ static int shrink_grow_integration_test(void)
        RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
 
        RUNP(model = alloc_ihmm_model(initial_states, 4));
-       RUNP(iseq = create_ihmm_sequences(tmp_seq ,4));
+       RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
        RUN(random_label_ihmm_sequences(iseq, initial_states * 10));
        RUN(fill_counts(model,iseq));
        /* I am doing this as a pre-caution. I don't want the inital model
@@ -96,7 +165,7 @@ static int add_state_integration_test(void)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
-        struct ihmm_sequences* iseq = NULL;
+        struct seq_buffer* iseq = NULL;
 
         char *tmp_seq[4] = {
                 "ACGT",
@@ -113,7 +182,7 @@ static int add_state_integration_test(void)
         RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
 
         RUNP(model = alloc_ihmm_model(initial_states, 4));
-        RUNP(iseq = create_ihmm_sequences(tmp_seq ,4));
+        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
         RUN(random_label_ihmm_sequences(iseq, initial_states));
       
 
@@ -161,7 +230,7 @@ ERROR:
         return FAIL;
 }
 
-#endif
+//#endif
 
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
@@ -175,7 +244,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
         last_state = model->num_states -1;
-        fprintf(stdout,"%d last state",last_state);
+        fprintf(stdout,"%d last state\n",last_state);
         /* check if there is enough space to hold new transitions... */
         /* This is slightly to generous as I am allocating memory for the
          * infinity state as well */
@@ -315,8 +384,9 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         ASSERT(ihmm != NULL, "No model");
         ASSERT(ft != NULL, "No ft.");
-
-        
+        /* Sorting is only strictly necessary if this is called after another function re-sorted it */
+        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+         
         rndstate = ihmm->rndstate;
         
         
@@ -458,3 +528,287 @@ ERROR:
         return FAIL;
 }
 
+
+int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft, int iterations, int num_threads)
+{
+        int i,j;
+        int initial_number_of_states;
+        int K;
+        int iter;
+        float min_u;
+        float max;
+        float** matrix = NULL;
+        ASSERT(model != NULL, "nop model.");
+        ASSERT(sb,"no sequence buffer");
+        ASSERT(sb->num_seq > 0, "No sequences");
+        ASSERT(ft != NULL, "No transition struct");
+        ASSERT(iterations > 1, "No iterations");
+        ASSERT(num_threads > 0, "No threads");
+
+        /* First guess initial number of states. For now I simply pick K = average seq len  */
+        
+        K = 0;
+        for(i = 0; i < sb->num_seq;i++){
+                K += sb->sequences[i]->seq_len;
+        }
+        
+        K = K / sb->num_seq;
+        K = 4;
+        
+        LOG_MSG("Will start with %d states",K);
+        
+        RUN(random_label_ihmm_sequences(sb, K));
+        RUN(fill_counts(model,sb));
+        /* I am doing this as a pre-caution. I don't want the inital model
+         * contain states that are not visited.. */
+        RUN(remove_unused_states_labels(model, sb));
+        RUN(fill_counts(model,sb));
+        RUN(print_counts(model));
+        
+        for(i = 0;i < 10;i++){
+                RUN(iHmmHyperSample(model, 20));
+                RUN(print_model_parameters(model));
+                for(j = 0; j < model->num_states;j++){
+                        model->beta[j] = 1.0 / (float)(model->num_states);
+                }
+        }
+        
+        /* sample transitions / emission */
+        RUN(fill_fast_transitions(model,ft));
+        /* super important to make sure transitions are index-able!! */
+        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        
+        //just to make sure!
+        RUN(check_if_ft_is_indexable(ft,ft->last_state));
+        
+        for(iter = 0;iter < 10;iter++){//}iterations;iter++){
+                /* Set U */
+                LOG_MSG("Iteration %d", iter);
+                RUN(set_u(sb,model,ft, &min_u));
+                //fprintf(stdout,"MIN_U:%f\n",min_u);
+                //print_fast_hmm_params(ft);
+                RUN(get_max_to_last_state_transition(ft, &max));
+                //fprintf(stdout,"MAX:%f\n", max);
+                while(max > min_u){
+                        RUN(add_state_from_fast_hmm_param(model,ft));
+                        RUN(get_max_to_last_state_transition(ft, &max));
+                        ///fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
+                        
+                }
+                print_fast_hmm_params(ft);
+                RUNP(matrix = malloc_2d_float(matrix,sb->max_len, ft->last_state, 0.0f));
+                //dyn prog + labelling
+
+                qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
+        
+                RUN(dynamic_programming(matrix,ft, sb->sequences[0]));
+
+                //exit(0);
+                    
+                //res = fast_hmm_param_binarySearch_t(ft, x);
+                //remove unwantrd.
+                //hyper
+                // fill fast...
+                
+        }
+
+        free_2d((void**) matrix);
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq)
+{
+        int i,j,len,boundary;
+        float* u = NULL;
+        uint8_t* seq = NULL;
+        int* label = NULL;
+        int a,b;
+        float sum;
+        float* emission; 
+
+        struct fast_t_item** list = NULL;
+        ASSERT(ft!= NULL, "no parameters");
+        ASSERT(matrix != NULL,"No dyn matrix");
+
+        u = ihmm_seq->u;
+        len = ihmm_seq->seq_len;
+        seq = ihmm_seq->seq;
+        label = ihmm_seq->label;
+
+        list = ft->list;
+        emission = ft->emission;
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
+        for(i = 0; i < ft->last_state;i++){
+                matrix[0][i] = 0.0f;
+        }
+        //fill first row.
+        for(j = 0; j < boundary;j++){
+                if(list[j]->from == IHMM_START_STATE){
+                        matrix[0][list[j]->to] += list[j]->t;
+                }
+        }
+        sum = 0;
+        emission = ft->emission[seq[0]];
+        for(i = 0; i < ft->last_state;i++){
+                
+                matrix[0][i] *=  emission[i];
+                sum += matrix[0][i];
+        }
+        for(i = 0; i < ft->last_state;i++){
+                matrix[0][i] /= sum;
+        }
+        sum = 0.0;
+
+        fprintf(stdout,"%d %f s:%d",i, u[0],seq[0]);
+        for(i = 0; i < ft->last_state;i++){
+                fprintf(stdout," %f",matrix[0][i]);
+                sum += matrix[0][i];
+        }
+        fprintf(stdout," sum: %f\n",sum);
+        for(i = 1; i < len;i++){
+                emission = ft->emission[seq[i]];
+                for(j = 0; j < ft->last_state;j++){
+                        matrix[i][j] = 0.0f;
+                }
+                
+                boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
+           
+                for(j = 0; j < boundary;j++){
+                        a = list[j]->from;
+                        b = list[j]->to;
+                        matrix[i][b] += matrix[i-1][a];
+                }
+                sum = 0.0;
+
+                for(j = 0; j < ft->last_state;j++){
+                        matrix[i][j] *=  emission[j];
+                        sum += matrix[i][j];
+                }
+                for(j = 0; j < ft->last_state;j++){
+                        matrix[i][j] /= sum;
+                }
+                sum = 0.0;
+                
+                fprintf(stdout,"%d %f s:%d",i, u[i],seq[i]);
+                for(j = 0; j < ft->last_state;j++){
+                        fprintf(stdout," %f",matrix[i][j]);
+                        sum += matrix[i][j];
+                }
+                fprintf(stdout," sum: %f\n",sum);
+        }
+        /* Backtracking...  */
+
+        /* Pick last label based on probabilities in last row. Then look for
+         * transitions to that label with a prob > min_u and select ancestor
+         * based on probs in previous row */
+
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u)
+{
+        int i,j,c,a,b;
+        float* u = 0;
+        int* label =0;
+        int len;
+        int last_state = 0;
+        
+        float local_min_u = 1.0;
+        ASSERT(sb != NULL, "No sequences.");
+        ASSERT(model != NULL, "No model.");
+        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        last_state = ft->last_state;
+        
+        for(i = 0; i < sb->num_seq;i++){
+                label = sb->sequences[i]->label;
+                u = sb->sequences[i]->u;
+                len = sb->sequences[i]->seq_len;
+                c = IHMM_START_STATE * last_state + label[0];
+                //c = a* (num_states-1) + b;
+                u[0] =  rk_double(&model->rndstate) *(ft->list[c]->t);
+                
+                
+                local_min_u = MACRO_MIN(local_min_u, u[0]);
+                for (j = 1; j < len;j++){
+                        c = label[j-1] * last_state + label[j];
+                        u[j] =  rk_double(&model->rndstate) *(ft->list[c]->t);//rk_double(&model->rndstate) *
+                        //if(!i && j < 5){
+                        //       fprintf(stdout,"%d->%d %f\n",label[j-1],label[j],ft->list[c]->t );
+                        //}
+                        //fprintf(stdout,"%d %d  ;; %d %d\n",label[j-1],label[j],ft->list[c]->from ,ft->list[c]->to);
+                        local_min_u = MACRO_MIN(local_min_u, u[j]);
+                }
+        }
+        
+        *min_u = local_min_u;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
+{
+
+        int i,l,r;
+        float local_max;
+        struct fast_t_item** list  = NULL;
+        ASSERT(ft != NULL, "No fast hmm parameters.");
+        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
+
+        list = ft->list;
+        
+        l = fast_hmm_param_binarySearch_to_lower_bound(ft,ft->last_state);
+        r = fast_hmm_param_binarySearch_to_upper_bound(ft,ft->last_state);
+        local_max = -1.0f;
+        for(i = l;i < r;i++){
+                if(list[i]->t > local_max){
+                        local_max = list[i]->t;
+                }
+        }
+        *max = local_max;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+/* Purpose is to check if can random access a particular transition.. */
+int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states)
+{
+       
+        int i,a,b,c;
+        ASSERT(ft != NULL, "No fast hmm parameters");       
+
+        for(i = 0; i < 1000;i++){
+
+                /* NOTE: below has to be -1 because a) the random function
+                 * returns values including the last number. */
+
+
+                /* NOTE: transitions from any state to the start state do not
+                 * appear in FT; */
+                /* NOTE: transitions from the end state do not appear in FT; */
+                a = IHMM_END_STATE;
+                b = IHMM_START_STATE;
+                while(a == IHMM_END_STATE || b == IHMM_START_STATE){
+                        a = random_int_zero_to_x(num_states-1);
+                        b = random_int_zero_to_x(num_states-1);
+                }
+                
+                c = a* (num_states) + b;
+                //fprintf(stdout," %d -> %d ;; %d ->%d\n", a,b,ft->list[c]->from ,ft->list[c]->to);
+                ASSERT(a == ft->list[c]->from,"ft is not index-able. Did you sort based on from then to?");
+                ASSERT(b == ft->list[c]->to,"ft is not index-able. Did you sort based on from then to?");
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}

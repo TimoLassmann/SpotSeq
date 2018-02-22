@@ -15,7 +15,7 @@
 
 #define IHMM_PARAM_PLACEHOLDER -9999.99f
 
-struct ihmm_sequences;          /* forward declaration  */
+struct seq_buffer;          /* forward declaration  */
 
 struct ihmm_model{
         float** transition_counts;
@@ -43,10 +43,9 @@ extern void free_ihmm_model(struct ihmm_model* ihmm);
 
 
 /* Fill counts from sequences  */
+extern int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb);
 
-extern int fill_counts(struct ihmm_model* ihmm, struct ihmm_sequences* iseq) ;
-extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct ihmm_sequences* iseq);
-
+extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb);
 /* re-estimate hyper parameters */
 extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 

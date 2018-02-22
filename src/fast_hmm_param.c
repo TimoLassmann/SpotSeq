@@ -332,7 +332,9 @@ int main(const int argc,const char * argv[])
         RUN(print_fast_hmm_params(ft));
         fprintf(stdout,"%d items\n",ft->num_items);
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
-        
+        for(i = 0; i < ft->num_items;i++){
+                fprintf(stdout,"%d %f\n",i , ft->list[i]->t);
+        }
         RUN(print_fast_hmm_params(ft));
         for(i =0; i < 10;i++){
                 x = random_float_zero_to_x(1.0);

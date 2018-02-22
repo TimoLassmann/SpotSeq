@@ -2,16 +2,17 @@
 #include "model.h"
 #include "ihmm_seq.h"
 
-int remove_unused_states_labels(struct ihmm_model* ihmm, struct ihmm_sequences* iseq)
+int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
 {
         int i,j;
         float sum;
+        int len;
         int* relabel = NULL;
         int* used = NULL;
         int* lab = NULL;
 
         ASSERT(ihmm != NULL, "no model");
-        ASSERT(iseq != NULL, "no seq struct");
+        ASSERT(sb != NULL, "no seq struct");
 
         MMALLOC(relabel, sizeof(int) * ihmm->num_states);
         MMALLOC(used, sizeof(int) * ihmm->num_states);
@@ -22,9 +23,10 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct ihmm_sequences* 
         used[IHMM_START_STATE] = 100;
         used[IHMM_END_STATE] = 100;
                 
-        for(i = 0; i < iseq->numseq;i++){
-                lab = iseq->label[i];
-                for(j = 0; j < iseq->len[i];j++){
+        for(i = 0; i < sb->num_seq;i++){
+                lab = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                for(j = 0; j < len;j++){
                         used[lab[j]]++;
                 }
         }
@@ -74,10 +76,11 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct ihmm_sequences* 
         fprintf(stdout,"\tsum: %f\n",sum);
         
         
-        for(i = 0; i < iseq->numseq;i++){
+        for(i = 0; i < sb->num_seq;i++){
                 fprintf(stdout,"%3d",i);
-                lab = iseq->label[i];
-                for(j= 0; j <  iseq->len[i];j++){
+                lab = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                for(j= 0; j <  len;j++){
                         lab[j] = relabel[lab[j]];
                         fprintf(stdout," %d",lab[j]);
                 }
@@ -92,22 +95,26 @@ ERROR:
         return FAIL;
 }
 
-int fill_counts(struct ihmm_model* ihmm, struct ihmm_sequences* iseq)
+int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
 {
         int i,j;
         int* label = NULL;
-        char* seq;
+        uint8_t* seq;
         float** p = NULL;
         int max_state_ID;
+        int len;
         ASSERT(ihmm != NULL,"No model.");
-        ASSERT(iseq != NULL,"No iseq struct");
+        ASSERT(sb != NULL,"No iseq struct");
 
 
         /* First I need to check what the largest state ID is and see if we have sufficient space allocated in the model.  */
         max_state_ID = -1;
-        for(i = 0; i < iseq->numseq;i++){
-                label = iseq->label[i];
-                for(j = 0; j < iseq->len[i];j++){
+        //fprintf(stdout,"%d numseq\n",sb->num_seq );
+        for(i = 0; i < sb->num_seq;i++){
+                label = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                //fprintf(stdout,"%d len%d\n",i,len);
+                for(j = 0; j < len;j++){
                         if(label[j] > max_state_ID){
                                 max_state_ID = label[j];
                         }
@@ -128,14 +135,16 @@ int fill_counts(struct ihmm_model* ihmm, struct ihmm_sequences* iseq)
                 }
         }
         /* get transition counts */
-        for(i = 0; i < iseq->numseq;i++){
-                label = iseq->label[i];
+        for(i = 0; i < sb->num_seq;i++){
+                label = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                
                  p[IHMM_START_STATE][label[0]] += 1;
-                for(j = 1; j < iseq->len[i];j++){
+                for(j = 1; j < len;j++){
                         p[label[j-1]][label[j]]++;
                 }
 		
-                p[label[iseq->len[i]-1]][IHMM_END_STATE] += 1;
+                p[label[len-1]][IHMM_END_STATE] += 1;
         }
 
         
@@ -147,10 +156,10 @@ int fill_counts(struct ihmm_model* ihmm, struct ihmm_sequences* iseq)
                 }
         }
         /* get emission counts */
-        for(i = 0; i < iseq->numseq ;i++){
-                label = iseq->label[i];
-                seq = iseq->seq[i];
-                for(j =0; j < iseq->len[i];j++){
+        for(i = 0; i < sb->num_seq; i++){
+                label = sb->sequences[i]->label;
+                seq = sb->sequences[i]->seq;
+                for(j =0; j < len;j++){
                         p[(int)seq[j]][label[j]]++;
                 }
         }
@@ -413,7 +422,7 @@ int print_model_parameters(struct ihmm_model* ihmm)
 int main(const int argc,const char * argv[])
 {
         struct ihmm_model* ihmm = NULL;
-        struct ihmm_sequences* iseq = NULL;
+        struct seq_buffer* iseq = NULL;
         int i;
         char *tmp_seq[4] = {
                 "ACGT",
@@ -427,7 +436,7 @@ int main(const int argc,const char * argv[])
         RUN(print_program_header((char * const*)argv,"GAGA"));
         
         
-        RUNP(iseq = create_ihmm_sequences(tmp_seq ,4));
+        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
         RUN(random_label_ihmm_sequences(iseq, 10));
 
         

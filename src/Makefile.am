@@ -1,6 +1,8 @@
 # Build the library in the hand subdirectory first.
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
+
+CLEANFILES = ihmm_seq_itest_read_test.fa
 # top_builddir = @top_builddir@
 
 

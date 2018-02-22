@@ -26,7 +26,6 @@ struct ihmm_sequences* create_ihmm_sequences(char** seq, int numseq)
 {
         struct ihmm_sequences* iseq = NULL;
         int i,j;
-        int max_len;
         ASSERT(seq != NULL, "No sequences");
         MMALLOC(iseq, sizeof(struct ihmm_sequences));
         iseq->label = NULL;
@@ -34,23 +33,23 @@ struct ihmm_sequences* create_ihmm_sequences(char** seq, int numseq)
         iseq->seq = NULL;
         iseq->u = NULL;
         iseq->numseq = numseq;
-
+        iseq->max_len = 0;
         MMALLOC(iseq->len,sizeof(uint32_t) * numseq);
 
-        max_len = 0;
+        iseq->max_len = 0;
         for(i = 0;i < numseq;i++){
                 iseq->len[i] = (uint32_t) strlen(seq[i]);
-                if(iseq->len[i] > max_len){
-                        max_len = iseq->len[i];
+                if(iseq->len[i] > iseq->max_len){
+                        iseq->max_len = iseq->len[i];
                 }
         }
 
-        ASSERT(max_len != 0, "Weird length of sequences is zero");
+        ASSERT(iseq->max_len != 0, "Weird length of sequences is zero");
 
         /* alloc arrays */
-        RUNP(iseq->u = malloc_2d_float(iseq->u, numseq, max_len, 0.0f));
-        RUNP(iseq->label = malloc_2d_int(iseq->label, numseq, max_len, 0.0f));
-        RUNP(iseq->seq = malloc_2d_char(iseq->seq, numseq, max_len, 0.0f));
+        RUNP(iseq->u = malloc_2d_float(iseq->u, numseq, iseq->max_len, 0.0f));
+        RUNP(iseq->label = malloc_2d_int(iseq->label, numseq, iseq->max_len, 0.0f));
+        RUNP(iseq->seq = malloc_2d_char(iseq->seq, numseq, iseq->max_len, 0.0f));
 
 
         /* fill seq */

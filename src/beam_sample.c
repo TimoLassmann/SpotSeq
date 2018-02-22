@@ -3,6 +3,8 @@
 
 #include "fast_hmm_param_test_functions.h"
 
+
+#ifdef ITESTBEAM
 static int add_state_integration_test(void);
 static int shrink_grow_integration_test(void);
 
@@ -159,6 +161,7 @@ ERROR:
         return FAIL;
 }
 
+#endif
 
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {

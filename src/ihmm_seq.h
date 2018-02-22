@@ -16,6 +16,7 @@ struct ihmm_sequences{
         int** label;
         int* len;
         int numseq;
+        int max_len;
 };
 
 extern struct ihmm_sequences* create_ihmm_sequences(char** seq, int numseq);

@@ -61,10 +61,10 @@ int full_run_test(void)
 
         RUNP(model = alloc_ihmm_model(initial_states, 4));
         /* Initial guess... */
-        model->alpha0_a = 4.0f;
-        model->alpha0_b = 2.0f;
-        model->gamma_a = 3.0f;
-        model->gamma_b = 6.0f;
+        model->alpha0_a = 6.0f;
+        model->alpha0_b = 15.0f;
+        model->gamma_a = 16.0f;
+        model->gamma_b = 4.0f;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 
@@ -577,6 +577,8 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         float min_u;
         float max;
         float** matrix = NULL;
+
+        int no_path;
         ASSERT(model != NULL, "nop model.");
         ASSERT(sb,"no sequence buffer");
         ASSERT(sb->num_seq > 0, "No sequences");
@@ -592,7 +594,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         }
         
         K = K / sb->num_seq;
-        K = 100;
         
         LOG_MSG("Will start with %d states",K);
         
@@ -623,7 +624,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         //just to make sure!
         RUN(check_if_ft_is_indexable(ft,ft->last_state));
         
-        for(iter = 0;iter < 1000;iter++){//}iterations;iter++){
+        for(iter = 0;iter < 10000;iter++){//}iterations;iter++){
                 /* Set U */
                 //LOG_MSG("Iteration %d", iter);
                 RUN(set_u(sb,model,ft, &min_u));
@@ -644,30 +645,49 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
                 qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
                 
-               
+                no_path =0;
                 //print_labelled_ihmm_seq(sb->sequences[0]);
                 for(i = 0; i < sb->num_seq;i++){
                         RUN(dynamic_programming(matrix,ft, sb->sequences[i]));
+                        if(sb->sequences[i]->u[0] == -1){
+                                no_path = 1;
+                                //LOG_MSG("%d no path",i);
+                        }
                 }
                 //print_labelled_ihmm_seq(sb->sequences[0]);
                 //exit(0);
-                
-                //res = fast_hmm_param_binarySearch_t(ft, x);
-                RUN(fill_counts(model,sb));
-                //RUN(print_counts(model));
+                if(no_path){
+                        //LOG_MSG("weird split must have happened. %d",iter);
+                        //print_fast_hmm_params(ft);
+                        //RUN(print_counts(model));
+                        RUN(remove_unused_states_labels(model, sb));
+                        RUN(fill_counts(model,sb));
+                        //RUN(print_counts(model));
+                        RUN(fill_fast_transitions(model,ft));
+                        /*for(i = 0; i < sb->num_seq;i++){
+                                print_labelled_ihmm_seq(sb->sequences[i]);
+                        }
+                        exit(0);*/
+                        iterations++;
+                }else{
+                        //res = fast_hmm_param_binarySearch_t(ft, x);
+                        //RUN(fill_counts(model,sb));
+                        //RUN(print_counts(model));
         
-                /* I am doing this as a pre-caution. I don't want the inital model
-                 * contain states that are not visited.. */
-                RUN(remove_unused_states_labels(model, sb));
+                        /* I am doing this as a pre-caution. I don't want the inital model
+                         * contain states that are not visited.. */
+                        RUN(remove_unused_states_labels(model, sb));
              
-                //print_labelled_ihmm_seq(sb->sequences[0]);
-                //remove unwantrd.
-                RUN(fill_counts(model,sb));
-                //hyper
-                RUN(iHmmHyperSample(model, 20));
-                // fill fast...
-                RUN(fill_fast_transitions(model,ft));
-                // print_fast_hmm_params(ft);
+                        //print_labelled_ihmm_seq(sb->sequences[0]);
+                        //remove unwantrd.
+                        RUN(fill_counts(model,sb));
+                        //hyper
+                        RUN(iHmmHyperSample(model, 20));
+                        // fill fast...
+                        RUN(fill_fast_transitions(model,ft));
+                
+                        // print_fast_hmm_params(ft);
+                }
         }
 
         for(i = 0; i < sb->num_seq;i++){
@@ -826,7 +846,8 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                 }
 
         }else{
-                LOG_MSG("No PATH!: %f",sum);
+                u[0] = -1.0f;
+                //LOG_MSG("No PATH!: %f",sum);
         }
         
         return OK;

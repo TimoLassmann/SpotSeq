@@ -35,6 +35,7 @@ extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);
 
+extern int print_labelled_ihmm_seq(struct ihmm_sequence* sequence);
 extern void free_ihmm_sequences(struct seq_buffer* sb);
 
 

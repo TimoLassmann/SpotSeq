@@ -1,7 +1,8 @@
 #include "ihmm_seq.h"
 
 
-static struct ihmm_sequence* alloc_ihmm_seq(void); 
+static struct ihmm_sequence* alloc_ihmm_seq(void);
+static int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k)
@@ -89,10 +90,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
                         sequence->label[c] = 2;
                         c++;
                         if(c == sequence->malloc_len){
-                                sequence->malloc_len = sequence->malloc_len << 1;
-                                MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
-                                MREALLOC(sequence->u, sizeof(float) * sequence->malloc_len);
-                                MREALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
+                                RUN(realloc_ihmm_seq(sequence));
                         }
                         
                 }
@@ -189,10 +187,7 @@ struct seq_buffer* load_sequences(char* in_filename)
                                                 sequence->label[sequence->seq_len] = 2;
                                                 sequence->seq_len++;                                              
                                                 if(sequence->seq_len == sequence->malloc_len){
-                                                        sequence->malloc_len = sequence->malloc_len << 1;
-                                                        MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
-                                                        MREALLOC(sequence->u, sizeof(float) * sequence->malloc_len);
-                                                        MREALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
+                                                        RUN(realloc_ihmm_seq(sequence));
                                                 }
                                         }
                                         if(iscntrl((int)line[i])){
@@ -231,13 +226,46 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->malloc_len = 128;
         sequence->seq_len = 0;
         MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
-        MMALLOC(sequence->u, sizeof(float) * sequence->malloc_len);
+        MMALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
         MMALLOC(sequence->name, sizeof(char) * 256);
         return sequence;
 ERROR:
         free_ihmm_sequence(sequence);
         return NULL;              
+}
+
+int realloc_ihmm_seq(struct ihmm_sequence* sequence)
+{
+        ASSERT(sequence != NULL, "No Sequence.");
+        
+        sequence->malloc_len = sequence->malloc_len << 1;
+        MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
+        MREALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
+        MREALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int print_labelled_ihmm_seq(struct ihmm_sequence* sequence)
+{
+        int i;
+        
+        ASSERT(sequence != NULL, "No Sequence.");
+        for(i = 0; i < sequence->seq_len;i++){
+                fprintf(stdout,"%3c","ACGT"[sequence->seq[i]]);
+        }
+        fprintf(stdout,"\n");
+        for(i = 0; i < sequence->seq_len;i++){
+                fprintf(stdout,"%3d",sequence->label[i]);
+        }
+        fprintf(stdout,"\n");
+
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 void free_ihmm_sequence(struct ihmm_sequence* sequence)

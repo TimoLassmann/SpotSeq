@@ -23,7 +23,6 @@ struct fast_t_item{
 struct fast_hmm_param{
         struct fast_t_item** list;
         float** emission;
-        int8_t* active_states;
         uint16_t last_state; 
         uint32_t alloc_items;
         uint32_t num_items;

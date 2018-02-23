@@ -24,9 +24,9 @@ int main(const int argc,const char * argv[])
 {
         RUN(print_program_header((char * const*)argv,"Integration Test"));
 
-        RUN(add_state_integration_test());
+        //UN(add_state_integration_test());
 
-        RUN(shrink_grow_integration_test());
+        //RUN(shrink_grow_integration_test());
 
         RUN(full_run_test());
         
@@ -356,9 +356,14 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         /* kind of important... */
         ft->num_items = list_index;
         ft->last_state = last_state;
-
-        
-        
+        sum = 0.0f;
+        for(j = 0; j < list_index;j++){
+                if(ft->list[j]->t == 0.0f){
+                        sum += 1.0;
+                }
+        }
+        LOG_MSG("%d elements are blank!",sum);
+        exit(0);
         return OK;
 ERROR:
         return FAIL;
@@ -394,6 +399,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         
         /* First add empty space to host the newstate -> old state transitions. */
         if(list_index + ft->last_state + ft->last_state + 1 >= ft->alloc_num_states){
+                LOG_MSG("requesting more memory in add state...");
                 RUN(expand_fast_hmm_param_if_necessary(ft, list_index + ft->last_state + ft->last_state + 1));
         }
         /* Check if model needs to be extended (mainly beta of course) */
@@ -553,7 +559,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         }
         
         K = K / sb->num_seq;
-        K = 4;
+        K = 100;
         
         LOG_MSG("Will start with %d states",K);
         
@@ -567,6 +573,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
+                
                 RUN(print_model_parameters(model));
                 for(j = 0; j < model->num_states;j++){
                         model->beta[j] = 1.0 / (float)(model->num_states);
@@ -575,13 +582,15 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
+        print_fast_hmm_params(ft);
+        
         /* super important to make sure transitions are index-able!! */
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
         
         //just to make sure!
         RUN(check_if_ft_is_indexable(ft,ft->last_state));
         
-        for(iter = 0;iter < 10;iter++){//}iterations;iter++){
+        for(iter = 0;iter < 10000;iter++){//}iterations;iter++){
                 /* Set U */
                 LOG_MSG("Iteration %d", iter);
                 RUN(set_u(sb,model,ft, &min_u));
@@ -589,29 +598,49 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 //print_fast_hmm_params(ft);
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
-                while(max > min_u){
+                while(max > min_u && model->num_states < sb->max_len){
+                        fprintf(stdout,"Add state! MAX:%f min_U:%f\n", max, min_u);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
-                        ///fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
+                        //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
                         
                 }
-                print_fast_hmm_params(ft);
-                RUNP(matrix = malloc_2d_float(matrix,sb->max_len, ft->last_state, 0.0f));
+                //print_fast_hmm_params(ft);
+                RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 //dyn prog + labelling
-
+                //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
+                sleep(30);
                 qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
-        
-                RUN(dynamic_programming(matrix,ft, sb->sequences[0]));
-
-                //exit(0);
-                    
-                //res = fast_hmm_param_binarySearch_t(ft, x);
-                //remove unwantrd.
-                //hyper
-                // fill fast...
                 
+               
+                //print_labelled_ihmm_seq(sb->sequences[0]);
+                for(i = 0; i < sb->num_seq;i++){
+                        RUN(dynamic_programming(matrix,ft, sb->sequences[i]));
+                }
+                //print_labelled_ihmm_seq(sb->sequences[0]);
+                //exit(0);
+                
+                //res = fast_hmm_param_binarySearch_t(ft, x);
+                RUN(fill_counts(model,sb));
+                //RUN(print_counts(model));
+        
+                /* I am doing this as a pre-caution. I don't want the inital model
+                 * contain states that are not visited.. */
+                RUN(remove_unused_states_labels(model, sb));
+             
+                //print_labelled_ihmm_seq(sb->sequences[0]);
+                //remove unwantrd.
+                RUN(fill_counts(model,sb));
+                //hyper
+                RUN(iHmmHyperSample(model, 20));
+                // fill fast...
+                RUN(fill_fast_transitions(model,ft));
+                // print_fast_hmm_params(ft);
         }
 
+        for(i = 0; i < sb->num_seq;i++){
+                print_labelled_ihmm_seq(sb->sequences[i]);
+        }
         free_2d((void**) matrix);
         
         return OK;
@@ -628,7 +657,9 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         int a,b;
         float sum;
         float* emission; 
-
+        float* tmp_row;
+        float r;
+        int last_pick;
         struct fast_t_item** list = NULL;
         ASSERT(ft!= NULL, "no parameters");
         ASSERT(matrix != NULL,"No dyn matrix");
@@ -640,6 +671,8 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
 
         list = ft->list;
         emission = ft->emission;
+        tmp_row = matrix[len];
+        
         
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         for(i = 0; i < ft->last_state;i++){
@@ -656,19 +689,20 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         for(i = 0; i < ft->last_state;i++){
                 
                 matrix[0][i] *=  emission[i];
+
                 sum += matrix[0][i];
         }
         for(i = 0; i < ft->last_state;i++){
                 matrix[0][i] /= sum;
         }
-        sum = 0.0;
+        /*sum = 0.0;
 
         fprintf(stdout,"%d %f s:%d",i, u[0],seq[0]);
         for(i = 0; i < ft->last_state;i++){
                 fprintf(stdout," %f",matrix[0][i]);
                 sum += matrix[0][i];
         }
-        fprintf(stdout," sum: %f\n",sum);
+        fprintf(stdout," sum: %f\n",sum);*/
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < ft->last_state;j++){
@@ -676,36 +710,111 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                 }
                 
                 boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
-           
+               
                 for(j = 0; j < boundary;j++){
                         a = list[j]->from;
                         b = list[j]->to;
                         matrix[i][b] += matrix[i-1][a];
+                        
                 }
                 sum = 0.0;
+                
 
                 for(j = 0; j < ft->last_state;j++){
                         matrix[i][j] *=  emission[j];
                         sum += matrix[i][j];
+                        
                 }
                 for(j = 0; j < ft->last_state;j++){
                         matrix[i][j] /= sum;
                 }
-                sum = 0.0;
+                /*sum = 0.0;
                 
                 fprintf(stdout,"%d %f s:%d",i, u[i],seq[i]);
                 for(j = 0; j < ft->last_state;j++){
                         fprintf(stdout," %f",matrix[i][j]);
                         sum += matrix[i][j];
                 }
-                fprintf(stdout," sum: %f\n",sum);
+                fprintf(stdout," sum: %f\n",sum);*/
         }
         /* Backtracking...  */
-
+        //exit(0);
         /* Pick last label based on probabilities in last row. Then look for
          * transitions to that label with a prob > min_u and select ancestor
          * based on probs in previous row */
+        last_pick = IHMM_END_STATE;
+        /* First let's check if there is a path! i.e. end is reachable.  */
 
+        sum = 0.0f;
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
+        for(j = 0; j < boundary;j++){
+                a = list[j]->from;
+                b = list[j]->to;
+                if(list[j]->to == last_pick){
+                        sum += matrix[len-1][a];
+                }
+        }
+        if(sum != 0.0){
+                last_pick = IHMM_END_STATE;
+                for(i = len-1; i >= 0; i--){
+                        //fprintf(stdout,"pick: %d %d\n",i,last_pick);
+                        for(j = 0; j < ft->last_state;j++){
+                                tmp_row[j] = -1.0;
+                        }
+                        sum = 0.0f;
+                        boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
+                        for(j = 0; j < boundary;j++){
+                                a = list[j]->from;
+                                b = list[j]->to;
+                                if(list[j]->to == last_pick){
+                                        //fprintf(stdout,"I can go to %d from %d (because %f > u:%f)\n",last_pick,list[j]->from,list[j]->t,u[i+1]);
+                                        tmp_row[a] = matrix[i][a];
+                                        sum += matrix[i][a];
+                                }
+                        }
+                        r =  random_float_zero_to_x(sum);
+                        
+                        for(j = 0; j < boundary;j++){
+                                a = list[j]->from;
+                                b = list[j]->to;
+                                if(list[j]->to == last_pick){
+                                        r -= tmp_row[a];
+                                        if(r <= 0.0f){
+                                                last_pick = a;
+                                        
+                                                break;
+                                        }
+                                        //fprintf(stdout,"I can go to %d from %d (because %f > u:%f)\n",last_pick,list[j]->from,list[j]->t,u[i+1]);
+                                        //tmp_row[a] = matrix[i][a];
+                                        //sum += matrix[i][a];
+                                }
+                        }
+                        
+                        /*sum = 0.0;
+                        fprintf(stdout,"RAND: %f",r);
+                        for(j = 0; j < ft->last_state;j++){
+                                fprintf(stdout," %f",tmp_row[j]);
+                                sum +=tmp_row[j];
+                        }
+                        fprintf(stdout," sum: %f\n",sum);*/
+                        /*ASSERT(r != 0.0,"r == zero ... ");
+                        for(j = 0; j < ft->last_state;j++){
+                                if(tmp_row[j] != -1){
+                                        r -= tmp_row[j];
+                                        if(r <= 0.0f){
+                                                last_pick = j;
+                                        
+                                                break;
+                                        }
+                                }
+                                }*/
+                        label[i] = last_pick;   
+                }
+
+        }else{
+                LOG_MSG("No PATH!");
+        }
         
         return OK;
 ERROR:
@@ -728,13 +837,14 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         last_state = ft->last_state;
         
         for(i = 0; i < sb->num_seq;i++){
+                
                 label = sb->sequences[i]->label;
                 u = sb->sequences[i]->u;
                 len = sb->sequences[i]->seq_len;
                 c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
                 u[0] =  rk_double(&model->rndstate) *(ft->list[c]->t);
-                
+                ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
                 
                 local_min_u = MACRO_MIN(local_min_u, u[0]);
                 for (j = 1; j < len;j++){
@@ -745,12 +855,23 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                         //}
                         //fprintf(stdout,"%d %d  ;; %d %d\n",label[j-1],label[j],ft->list[c]->from ,ft->list[c]->to);
                         local_min_u = MACRO_MIN(local_min_u, u[j]);
+                        ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
+
+                        
                 }
+
+                c = label[len-1] * last_state + IHMM_END_STATE;
+                u[len] =  rk_double(&model->rndstate) *(ft->list[c]->t);
+                                 ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
+                                 //fprintf(stdout,"%d %d -> %d: %f  \n",label[len-1],ft->list[c]->from ,ft->list[c]->to, ft->list[c]->t );
+                local_min_u = MACRO_MIN(local_min_u, u[len]);
+                
         }
         
         *min_u = local_min_u;
         return OK;
 ERROR:
+        print_labelled_ihmm_seq(sb->sequences[i]);
         return FAIL;
 }
 

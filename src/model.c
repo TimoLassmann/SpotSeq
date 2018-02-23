@@ -32,11 +32,11 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
         }
 
         
-        fprintf(stdout,"ORG beta \n");
-        for(i = 0; i < ihmm->num_states;i++){
-                fprintf(stdout,"%3.3f ", ihmm->beta[i]);
-        }
-        fprintf(stdout,"\n");
+        //fprintf(stdout,"ORG beta \n");
+        //for(i = 0; i < ihmm->num_states;i++){
+        //        fprintf(stdout,"%3.3f ", ihmm->beta[i]);
+        //}
+        //fprintf(stdout,"\n");
         
         j = 0;
         sum = 0.0;
@@ -51,40 +51,40 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
                 }
         }
         
-        for(i = 0; i < ihmm->num_states;i++){
+        /*for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout,"%3d ",used[i]);
         }
         fprintf(stdout,"\n");
         for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout,"%3d ",relabel[i]);
         }
-        fprintf(stdout,"\n");
+        fprintf(stdout,"\n");*/
         
         ihmm->beta[j] = sum;
         //for(i = j+1; i < ihmm->num_states;i++){
         //       ihmm->beta[i] = 0;
         //}
-        //ihmm->num_states = j+1; /* need to add one for the infinite stuff */
+        ihmm->num_states = j+1; /* need to add one for the infinite stuff */
         RUN(resize_ihmm_model(ihmm, j+1));
-        fprintf(stdout,"CUR beta \n");
+        //fprintf(stdout,"CUR beta \n");
         sum = 0.0f;
         for(i = 0; i < ihmm->num_states;i++){
-                fprintf(stdout,"%3.3f ", ihmm->beta[i]);
+                //        fprintf(stdout,"%3.3f ", ihmm->beta[i]);
                 sum+= ihmm->beta[i];
         }
         
-        fprintf(stdout,"\tsum: %f\n",sum);
+        //fprintf(stdout,"\tsum: %f\n",sum);
         
         
         for(i = 0; i < sb->num_seq;i++){
-                fprintf(stdout,"%3d",i);
+                //       fprintf(stdout,"%3d",i);
                 lab = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
                 for(j= 0; j <  len;j++){
                         lab[j] = relabel[lab[j]];
-                        fprintf(stdout," %d",lab[j]);
+                        //                fprintf(stdout," %d",lab[j]);
                 }
-                fprintf(stdout,"\n");
+                //       fprintf(stdout,"\n");
         }
         MFREE(used);
         MFREE(relabel);
@@ -239,14 +239,17 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                                                 M[i][j] = M[i][j] + 1; // number of times state i generated color j...
                                                 total_M = total_M + 1;
                                         }
+                                        //M(j,k) = M(j,k) + (rand() < (ialpha0 * ibeta(k)) / (ialpha0 * ibeta(k) + l - 1));
                                 }
+                                
                         }
-                        
+                        //fprintf(stdout," %d(%d)", M[i][j],transition_counts[i][j]);
                         sum_M[j] += M[i][j];
                         sum_N[i] += transition_counts[i][j];
                 }
+                //fprintf(stdout,"\n");
         }
-        
+        //fprintf(stdout,"\n");
         sum = 0.0;
         model->beta[0] = 0;
         for(i = 1; i < last_state;i++){
@@ -360,6 +363,7 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
                 while(K > ihmm->alloc_num_states){
                         ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
                 }
+                LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
                 RUNP(ihmm->transition_counts = malloc_2d_float(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
                 RUNP(ihmm->emission_counts = malloc_2d_float(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
            
@@ -392,6 +396,7 @@ void free_ihmm_model(struct ihmm_model* ihmm)
 int print_counts(struct ihmm_model* ihmm)
 {
         int i,j;
+        fprintf(stdout,"Transition counts\n"); 
         for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout,"s%3d", i ); 
                 for(j = 0; j < ihmm->num_states;j++){

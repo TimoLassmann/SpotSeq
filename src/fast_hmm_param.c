@@ -31,7 +31,6 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->alloc_num_states = k;
         ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
         ft->last_state = 0;
-        ft->active_states = NULL;
         ft->list = NULL;
         ft->num_items = 0;
         ft->emission = NULL;    /* This will be indexed by letter i.e. e['A']['numstate'] */
@@ -39,12 +38,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 
         RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
 
-        MMALLOC(ft->active_states, sizeof(int8_t)* ft->alloc_num_states);
-
-        for(i = 0; i < ft->alloc_num_states;i++){
-                ft->active_states[i] =0;
-        }
-
+      
 
         
         MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
@@ -68,32 +62,33 @@ int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k)
         ASSERT(ft != NULL, "No ft struct!");
         ASSERT(k >2,"No states requested");
         cur_k = ft->alloc_num_states;
-        
+        int64_t mem = 0;
         if(k > ft->alloc_num_states){
+                
                 while(k > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
                 }
-
+                LOG_MSG("expand fast hmm param to: %d because %d requested ",ft->alloc_num_states,k);
                 RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
+                mem += sizeof(float)* ft->L* ft->alloc_num_states;
                 
-                MREALLOC(ft->active_states, sizeof(int8_t)* ft->alloc_num_states);
-                for(i = cur_k; i < ft->alloc_num_states;i++){
-                        ft->active_states[i] =0;
-                }
                 
                 ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
                 
                 MREALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
+                mem += sizeof(struct fast_t_item*) * ft->alloc_items;
                 cur_k = cur_k * cur_k;
                 for(i = cur_k; i < ft->alloc_items;i++){
                         ft->list[i] = NULL;
                         MMALLOC(ft->list[i], sizeof(struct fast_t_item));
+                        mem +=  sizeof(struct fast_t_item);
                         ft->list[i]->from = -1;
                         ft->list[i]->to = -1;
                         ft->list[i]->t = 0.0f;
-                }        
+                }      
                 
         }
+        LOG_MSG("Alloced: %lld\n", mem);
         return OK;        
 ERROR:
         free_fast_hmm_param(ft);
@@ -112,9 +107,6 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
                 }
                 if(ft->emission){
                         free_2d((void**) ft->emission);
-                }
-                if(ft->active_states){
-                        MFREE(ft->active_states);
                 }
                 MFREE(ft);
         }

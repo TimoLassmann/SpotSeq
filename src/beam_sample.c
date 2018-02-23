@@ -244,11 +244,13 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
         last_state = model->num_states -1;
-        fprintf(stdout,"%d last state\n",last_state);
+        //fprintf(stdout,"%d last state\n",last_state);
         /* check if there is enough space to hold new transitions... */
         /* This is slightly to generous as I am allocating memory for the
          * infinity state as well */
-        RUN(expand_fast_hmm_param_if_necessary(ft, model->num_states *model->num_states  ));
+
+        RUN(expand_emission_if_necessary(ft, model->num_states));
+        //RUN(expand_fast_hmm_param_if_necessary(ft, model->num_states *model->num_states  ));
         /* Empty previous transitions by setting the index to zero  */
         ft->num_items = 0;
         list_index = ft->num_items;
@@ -267,12 +269,20 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         list[list_index]->to   = IHMM_START_STATE;
         list[list_index]->t    = 0.0f;
         list_index++;
+        if(list_index == ft->alloc_items){
+                RUN(expand_transition_if_necessary(ft));
+                list = ft->list;
+        }
         
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
         list[list_index]->from = IHMM_START_STATE;
         list[list_index]->to   = IHMM_END_STATE; 
         list[list_index]->t    = 0.0f;
         list_index++;
+        if(list_index == ft->alloc_items){
+                RUN(expand_transition_if_necessary(ft));
+                list = ft->list;
+        }
 
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
@@ -281,6 +291,10 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 list[list_index]->t    = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
                 sum += list[list_index]->t;
                 list_index++;
+                if(list_index == ft->alloc_items){
+                        RUN(expand_transition_if_necessary(ft));
+                        list = ft->list;
+                }
         }
         /* the last to infinity transition (this is just used in stick breaking
          * when adding states ). here there should be no counts as this
@@ -290,6 +304,9 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         list[list_index]->t    = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
         sum += list[list_index]->t;
         list_index++;
+        if(list_index == ft->alloc_items){
+                RUN(expand_transition_if_necessary(ft));
+        }
 
         /* Normalize!  */
         for(i = last_index; i < list_index;i++){
@@ -306,8 +323,11 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 list[list_index]->t    = 0.0f;
                 sum += list[list_index]->t;
                 list_index++;
+                if(list_index == ft->alloc_items){
+                        RUN(expand_transition_if_necessary(ft));
+                        list = ft->list;
+                }
         }
-        
         for(i = 2; i < last_state;i++){
                 /* Remeber where I started filling...  */
                 last_index = list_index; 
@@ -319,12 +339,21 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                         list[list_index]->t    = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
                         sum += list[list_index]->t;
                         list_index++;
+
+                        if(list_index == ft->alloc_items){
+                                RUN(expand_transition_if_necessary(ft));
+                                list = ft->list;
+                        }
                 }
                 list[list_index]->from = i;
                 list[list_index]->to   = last_state;
                 list[list_index]->t    = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
                 sum += list[list_index]->t;
                 list_index++;
+                if(list_index == ft->alloc_items){
+                        RUN(expand_transition_if_necessary(ft));
+                        list = ft->list;
+                }
                 /* Normalize  */
                 for(j = last_index; j < list_index;j++){
                         list[j]->t = list[j]->t / sum; 
@@ -362,8 +391,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                         sum += 1.0;
                 }
         }
-        LOG_MSG("%d elements are blank!",sum);
-        exit(0);
+        //LOG_MSG("TOTAL: %d trans %f elements are blank!", list_index,  sum);
         return OK;
 ERROR:
         return FAIL;
@@ -398,15 +426,16 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         list_index = ft->num_items;
         
         /* First add empty space to host the newstate -> old state transitions. */
-        if(list_index + ft->last_state + ft->last_state + 1 >= ft->alloc_num_states){
-                LOG_MSG("requesting more memory in add state...");
-                RUN(expand_fast_hmm_param_if_necessary(ft, list_index + ft->last_state + ft->last_state + 1));
-        }
+        //if(list_index + ft->last_state + ft->last_state + 1 >= ft->alloc_num_states){
+        //        LOG_MSpG("requesting more memory in add state...");
+                //RUN(expand_fast_hmm_param_if_necessary(ft, list_index + ft->last_state + ft->last_state + 1));
+        //}
         /* Check if model needs to be extended (mainly beta of course) */
 
         RUN(resize_ihmm_model(ihmm, ihmm->num_states + 1));
 
         ihmm->num_states = ihmm->num_states + 1;
+        RUN(expand_emission_if_necessary(ft, ihmm->num_states));
         
         beta = ihmm->beta;
         alpha = ihmm->alpha;
@@ -430,6 +459,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 }
                 sum += list[list_index]->t;
                 list_index++;
+                
         }
         for(i = ft->num_items;i < list_index;i++){
                 list[i]->t /= sum;
@@ -507,7 +537,10 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 //fprintf(stdout,"Filling in %d -> %d : %f to %f\n",list[i]->from,list[i]->to,pe,(1.0-pg) * pe);
                
                 list_index++;
-  
+                if(list_index == ft->alloc_items){
+                        RUN(expand_transition_if_necessary(ft));
+                        list = ft->list;
+                }
         }
 
 
@@ -590,16 +623,16 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         //just to make sure!
         RUN(check_if_ft_is_indexable(ft,ft->last_state));
         
-        for(iter = 0;iter < 10000;iter++){//}iterations;iter++){
+        for(iter = 0;iter < 1000;iter++){//}iterations;iter++){
                 /* Set U */
-                LOG_MSG("Iteration %d", iter);
+                //LOG_MSG("Iteration %d", iter);
                 RUN(set_u(sb,model,ft, &min_u));
                 //fprintf(stdout,"MIN_U:%f\n",min_u);
                 //print_fast_hmm_params(ft);
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
                 while(max > min_u && model->num_states < sb->max_len){
-                        fprintf(stdout,"Add state! MAX:%f min_U:%f\n", max, min_u);
+                        //fprintf(stdout,"Add state! MAX:%f min_U:%f\n", max, min_u);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
@@ -609,7 +642,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 //dyn prog + labelling
                 //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
-                sleep(30);
                 qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
                 
                
@@ -645,6 +677,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         return OK;
 ERROR:
+        if(matrix){
+                free_2d((void**) matrix);
+        }
         return FAIL;
 }
 
@@ -738,7 +773,6 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                 fprintf(stdout," sum: %f\n",sum);*/
         }
         /* Backtracking...  */
-        //exit(0);
         /* Pick last label based on probabilities in last row. Then look for
          * transitions to that label with a prob > min_u and select ancestor
          * based on probs in previous row */
@@ -755,7 +789,8 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                         sum += matrix[len-1][a];
                 }
         }
-        if(sum != 0.0){
+        
+        if(sum != 0.0 && !isnan(sum)){
                 last_pick = IHMM_END_STATE;
                 for(i = len-1; i >= 0; i--){
                         //fprintf(stdout,"pick: %d %d\n",i,last_pick);
@@ -768,52 +803,30 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                                 a = list[j]->from;
                                 b = list[j]->to;
                                 if(list[j]->to == last_pick){
-                                        //fprintf(stdout,"I can go to %d from %d (because %f > u:%f)\n",last_pick,list[j]->from,list[j]->t,u[i+1]);
                                         tmp_row[a] = matrix[i][a];
                                         sum += matrix[i][a];
                                 }
                         }
                         r =  random_float_zero_to_x(sum);
-                        
                         for(j = 0; j < boundary;j++){
+                                
                                 a = list[j]->from;
                                 b = list[j]->to;
                                 if(list[j]->to == last_pick){
+     
                                         r -= tmp_row[a];
                                         if(r <= 0.0f){
                                                 last_pick = a;
                                         
                                                 break;
                                         }
-                                        //fprintf(stdout,"I can go to %d from %d (because %f > u:%f)\n",last_pick,list[j]->from,list[j]->t,u[i+1]);
-                                        //tmp_row[a] = matrix[i][a];
-                                        //sum += matrix[i][a];
                                 }
                         }
-                        
-                        /*sum = 0.0;
-                        fprintf(stdout,"RAND: %f",r);
-                        for(j = 0; j < ft->last_state;j++){
-                                fprintf(stdout," %f",tmp_row[j]);
-                                sum +=tmp_row[j];
-                        }
-                        fprintf(stdout," sum: %f\n",sum);*/
-                        /*ASSERT(r != 0.0,"r == zero ... ");
-                        for(j = 0; j < ft->last_state;j++){
-                                if(tmp_row[j] != -1){
-                                        r -= tmp_row[j];
-                                        if(r <= 0.0f){
-                                                last_pick = j;
-                                        
-                                                break;
-                                        }
-                                }
-                                }*/
                         label[i] = last_pick;   
                 }
 
         }else{
-                LOG_MSG("No PATH!");
+                LOG_MSG("No PATH!: %f",sum);
         }
         
         return OK;

@@ -33,8 +33,13 @@ struct fast_hmm_param{
 
 /* Housekeeping function */
 extern struct fast_hmm_param* alloc_fast_hmm_param(int k,int L);
-extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k);
+//extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int new_num_states,int new_items);
+
+extern int expand_emission_if_necessary(struct fast_hmm_param* ft, int new_num_states);
+extern int expand_transition_if_necessary(struct fast_hmm_param* ft);
+
 extern void free_fast_hmm_param(struct fast_hmm_param* ft);
+
 
 
 /* Sorting and binary search  */

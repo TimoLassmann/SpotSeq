@@ -17,10 +17,6 @@
 /* - sort */
 /* - bin_search upper lower */
 
-
-
-
-
 struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 {
         struct fast_hmm_param* ft = NULL;
@@ -29,7 +25,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ASSERT(L > 1, "Need more than one letter");
         MMALLOC(ft, sizeof(struct fast_hmm_param));
         ft->alloc_num_states = k;
-        ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
+        ft->alloc_items = 1024 ;
         ft->last_state = 0;
         ft->list = NULL;
         ft->num_items = 0;
@@ -56,39 +52,40 @@ ERROR:
         return NULL;
 }
 
-int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int k)
+int expand_emission_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 {
-        int i, cur_k;
         ASSERT(ft != NULL, "No ft struct!");
-        ASSERT(k >2,"No states requested");
-        cur_k = ft->alloc_num_states;
-        int64_t mem = 0;
-        if(k > ft->alloc_num_states){
-                
-                while(k > ft->alloc_num_states){
+        ASSERT(new_num_states >2,"No states requested");
+
+        if(new_num_states > ft->alloc_num_states){
+                while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
+                        
                 }
-                LOG_MSG("expand fast hmm param to: %d because %d requested ",ft->alloc_num_states,k);
                 RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
-                mem += sizeof(float)* ft->L* ft->alloc_num_states;
-                
-                
-                ft->alloc_items = ft->alloc_num_states* ft->alloc_num_states ;
-                
-                MREALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
-                mem += sizeof(struct fast_t_item*) * ft->alloc_items;
-                cur_k = cur_k * cur_k;
-                for(i = cur_k; i < ft->alloc_items;i++){
-                        ft->list[i] = NULL;
-                        MMALLOC(ft->list[i], sizeof(struct fast_t_item));
-                        mem +=  sizeof(struct fast_t_item);
-                        ft->list[i]->from = -1;
-                        ft->list[i]->to = -1;
-                        ft->list[i]->t = 0.0f;
-                }      
-                
         }
-        LOG_MSG("Alloced: %lld\n", mem);
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        return FAIL;
+}
+
+int expand_transition_if_necessary(struct fast_hmm_param* ft)
+{
+        int i, num_old_item;
+        ASSERT(ft != NULL, "No ft struct!");
+        num_old_item = ft->alloc_items;
+        ft->alloc_items += 1024;
+        LOG_MSG("expanding from: %d to %d",num_old_item, ft->alloc_items);
+        MREALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
+        for(i = num_old_item; i < ft->alloc_items;i++){
+                ft->list[i] = NULL;
+                MMALLOC(ft->list[i], sizeof(struct fast_t_item));
+                ft->list[i]->from = -1;
+                ft->list[i]->to = -1;
+                ft->list[i]->t = 0.0f;
+        }      
+        
         return OK;        
 ERROR:
         free_fast_hmm_param(ft);
@@ -361,7 +358,11 @@ int main(const int argc,const char * argv[])
         
 
          
-        RUN(expand_fast_hmm_param_if_necessary(ft, 4));
+        //RUN(expand_fast_hmm_param_if_necessary(ft, 4,521));
+        RUN(expand_emission_if_necessary(ft, 12));
+
+        RUN(expand_transition_if_necessary(ft));
+        
 
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_to_from_asc);
         

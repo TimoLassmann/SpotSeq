@@ -57,7 +57,9 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
         float sum = 0;
         ASSERT(ft != NULL, "No ft.");
 
-        RUN(expand_fast_hmm_param_if_necessary(ft, k));
+        
+        RUN(expand_emission_if_necessary(ft, k));
+        
         
         num = ft->num_items;
         list = ft->list;
@@ -70,6 +72,9 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
                         list[num]->t = random_float_zero_to_x(1.0);
                         sum+=list[num]->t;
                         num++;
+                        if(num == ft->alloc_items){
+                                RUN(expand_transition_if_necessary(ft));
+                        }
                 }
                 for(j = 0;j < k;j++){
                         list[num-k+j]->t /= sum;

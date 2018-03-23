@@ -159,6 +159,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         for(i = 0; i < sb->num_seq; i++){
                 label = sb->sequences[i]->label;
                 seq = sb->sequences[i]->seq;
+                len = sb->sequences[i]->seq_len;
                 for(j =0; j < len;j++){
                         p[(int)seq[j]][label[j]]++;
                 }

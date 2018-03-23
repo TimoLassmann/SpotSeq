@@ -3,7 +3,20 @@
 
 #include "fast_hmm_param_test_functions.h"
 
+struct beam_thread_data{
+        struct fast_hmm_param* ft;
+        struct seq_buffer* sb;
+        float** dyn;
+        int thread_ID;
+        int num_threads;
+};
 
+
+static struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len, int K);
+static int resize_beam_thread_data(struct beam_thread_data** td,int* num_threads, int max_len, int K);
+static void free_beam_thread_data(struct beam_thread_data** td, int num_threads);
+
+void* do_dynamic_programming(void *threadarg);
 
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
 static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u);
@@ -11,6 +24,9 @@ static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
 static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
 
+static int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq);
+
+#ifdef ITESTBEAM
 /* These are test funtions. */
         
 static int add_state_integration_test(void);
@@ -24,9 +40,9 @@ int main(const int argc,const char * argv[])
 {
         RUN(print_program_header((char * const*)argv,"Integration Test"));
 
-        //UN(add_state_integration_test());
+        RUN(add_state_integration_test());
 
-        //RUN(shrink_grow_integration_test());
+        RUN(shrink_grow_integration_test());
 
         RUN(full_run_test());
         
@@ -49,8 +65,8 @@ int full_run_test(void)
                 "AGTGGATATCACAGGCTAAAGGAGGGG",
                 "AGTGGATATCACAGGCTAAAGGAGGGG",
                 "AGTGGATATCACAGGCTAAAGGAGGGG",
-                "AGTGGATATCACAGGCTAAAGGAGGGG"};
-        int i;
+                "AGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGGAGTGGATATCACAGGCTAAAGGAGGGG"};
+
         int numseq = 8;
         int initial_states = 8;
         
@@ -71,7 +87,7 @@ int full_run_test(void)
         
         RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
 
-        RUN(run_beam_sampling( model, sb, ft, 100, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
 
         
         //sb, num thread, guess for aplha and gamma.. iterations. 
@@ -230,7 +246,7 @@ ERROR:
         return FAIL;
 }
 
-//#endif
+#endif
 
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
@@ -459,6 +475,10 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 }
                 sum += list[list_index]->t;
                 list_index++;
+                if(list_index == ft->alloc_items){
+                        RUN(expand_transition_if_necessary(ft));
+                        list = ft->list;
+                }
                 
         }
         for(i = ft->num_items;i < list_index;i++){
@@ -567,16 +587,18 @@ ERROR:
         return FAIL;
 }
 
-
-int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft, int iterations, int num_threads)
+int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft,struct thr_pool* pool, int iterations, int num_threads)
 {
         int i,j;
-        int initial_number_of_states;
+        
         int K;
         int iter;
         float min_u;
         float max;
-        float** matrix = NULL;
+        //float** matrix = NULL;
+        struct thr_pool* local_pool = NULL;
+        struct beam_thread_data** td = NULL;
+        int need_local_pool;
 
         int no_path;
         ASSERT(model != NULL, "nop model.");
@@ -594,16 +616,15 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         }
         
         K = K / sb->num_seq;
-        
         LOG_MSG("Will start with %d states",K);
-        
+        //K = 10;
         RUN(random_label_ihmm_sequences(sb, K));
         RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
         RUN(remove_unused_states_labels(model, sb));
         RUN(fill_counts(model,sb));
-        RUN(print_counts(model));
+        
         
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
@@ -616,7 +637,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
-        print_fast_hmm_params(ft);
+        //print_fast_hmm_params(ft);
         
         /* super important to make sure transitions are index-able!! */
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
@@ -624,7 +645,21 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         //just to make sure!
         RUN(check_if_ft_is_indexable(ft,ft->last_state));
         
-        for(iter = 0;iter < 10000;iter++){//}iterations;iter++){
+        /* Threading setup...  */
+        need_local_pool = 0;
+        if(pool){
+                local_pool = pool;
+        }else{
+                if((local_pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+                need_local_pool  =1;
+        }
+        
+        RUNP(td = create_beam_thread_data(&num_threads,(sb->max_len+1)  , ft->last_state));
+        LOG_MSG("Will use %d threads.", num_threads);
+
+
+        
+        for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
                 //LOG_MSG("Iteration %d", iter);
                 RUN(set_u(sb,model,ft, &min_u));
@@ -633,31 +668,48 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
                 while(max > min_u && model->num_states < sb->max_len){
-                        //fprintf(stdout,"Add state! MAX:%f min_U:%f\n", max, min_u);
+                        fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f\n",iter , max, min_u);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
                         
                 }
                 //print_fast_hmm_params(ft);
-                RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
+                //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
+
+                RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+1)  , ft->last_state));
+                
+                
                 //dyn prog + labelling
                 //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
                 qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
+
+                for(i = 0; i < num_threads;i++){
+
+                        td[i]->ft = ft;
+                        td[i]->sb = sb;
+                        if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
+                                fprintf(stderr,"Adding job to queue failed.");
+                        }
+                }
                 
-                no_path =0;
                 //print_labelled_ihmm_seq(sb->sequences[0]);
+                //for(i = 0; i < sb->num_seq;i++){
+                //        RUN(dynamic_programming(matrix,ft, sb->sequences[i]));
+                        
+                //}
+                thr_pool_wait(local_pool);
+
+                no_path =0;
                 for(i = 0; i < sb->num_seq;i++){
-                        RUN(dynamic_programming(matrix,ft, sb->sequences[i]));
                         if(sb->sequences[i]->u[0] == -1){
                                 no_path = 1;
-                                //LOG_MSG("%d no path",i);
                         }
                 }
                 //print_labelled_ihmm_seq(sb->sequences[0]);
                 //exit(0);
                 if(no_path){
-                        //LOG_MSG("weird split must have happened. %d",iter);
+                        LOG_MSG("weird split must have happened. %d",iter);
                         //print_fast_hmm_params(ft);
                         //RUN(print_counts(model));
                         RUN(remove_unused_states_labels(model, sb));
@@ -677,6 +729,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
                         RUN(remove_unused_states_labels(model, sb));
+                        LOG_MSG("%d states", model->num_states);
              
                         //print_labelled_ihmm_seq(sb->sequences[0]);
                         //remove unwantrd.
@@ -689,18 +742,141 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         // print_fast_hmm_params(ft);
                 }
         }
-
+        
         for(i = 0; i < sb->num_seq;i++){
                 print_labelled_ihmm_seq(sb->sequences[i]);
         }
-        free_2d((void**) matrix);
+
+        if(need_local_pool){
+                 thr_pool_destroy(local_pool);
+        }
+
+        free_beam_thread_data(td, num_threads);
+        //free_2d((void**) matrix);
         
         return OK;
 ERROR:
-        if(matrix){
-                free_2d((void**) matrix);
-        }
+        free_beam_thread_data(td, num_threads);
+       
+        //if(matrix){
+        //       free_2d((void**) matrix);
+        //}
         return FAIL;
+}
+
+struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len, int K)
+{
+        struct beam_thread_data** td = NULL;
+        int i;
+        int local_num_treads;
+        size_t mem_needed;
+        ASSERT(*num_threads> 0, "no threads");
+        local_num_treads = *num_threads;
+
+
+        mem_needed = sizeof(float) * local_num_treads * max_len * K;
+
+        while(mem_needed  > GB){
+                local_num_treads--;
+                ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
+                mem_needed = sizeof(float) * local_num_treads * max_len * K;
+                
+        }
+        
+        MMALLOC(td, sizeof(struct beam_thread_data*) * local_num_treads);
+        for(i = 0; i < local_num_treads;i++){
+                td[i] = NULL;
+                MMALLOC(td[i], sizeof(struct beam_thread_data));
+                td[i]->dyn = NULL;
+                //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
+                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
+                td[i]->ft = NULL;
+                td[i]->sb = NULL;
+                td[i]->thread_ID = i;
+                td[i]->num_threads = local_num_treads;
+               
+                        
+        }
+
+        *num_threads = local_num_treads;
+
+        return td;
+ERROR:
+        free_beam_thread_data(td, *num_threads);
+        return NULL;
+}
+
+
+int resize_beam_thread_data(struct beam_thread_data** td,int* num_threads, int max_len, int K)
+{
+        int i;
+        int local_num_treads;
+        int cur_threads; 
+        size_t mem_needed;
+        ASSERT(*num_threads> 0, "no threads");
+        local_num_treads = *num_threads;
+        cur_threads =  *num_threads;
+
+        mem_needed = sizeof(float) * local_num_treads * max_len * K;
+
+        while(mem_needed  > GB){
+                local_num_treads--;
+                ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
+                mem_needed = sizeof(float) * local_num_treads * max_len * K;
+        }
+
+       
+        for(i = local_num_treads; i < cur_threads;i++){
+                
+                free_2d((void**) td[i]->dyn);
+                MFREE(td[i]);
+        }
+
+        
+        for(i = 0; i < local_num_treads;i++){
+                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
+                td[i]->num_threads = local_num_treads;
+        }
+        *num_threads = local_num_treads;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+void free_beam_thread_data(struct beam_thread_data** td, int num_threads)
+{
+        int i;
+        if(td){
+                for(i = 0; i < num_threads;i++){
+                        free_2d((void**) td[i]->dyn);
+                        MFREE(td[i]);
+                }
+        
+                MFREE(td);
+        }
+}
+
+void* do_dynamic_programming(void *threadarg)
+{
+        struct beam_thread_data *data;
+        int i;
+        int num_threads;
+        int thread_id;
+        data = (struct thread_data *) threadarg;
+
+        num_threads = data->num_threads;
+        thread_id = data->thread_ID; 
+
+        for(i =0; i < data->sb->num_seq;i++){
+                if( i% num_threads == thread_id){
+                        LOG_MSG("Thread %d running sequence %d",thread_id, i);
+                        RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
+                }
+        }
+        return NULL;
+ERROR:
+        return NULL;
 }
 
 int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq)
@@ -725,7 +901,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         label = ihmm_seq->label;
 
         list = ft->list;
-        emission = ft->emission;
+        emission = ft->emission[0];
         tmp_row = matrix[len];
         
         
@@ -858,7 +1034,7 @@ ERROR:
 
 int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u)
 {
-        int i,j,c,a,b;
+        int i,j,c;
         float* u = 0;
         int* label =0;
         int len;

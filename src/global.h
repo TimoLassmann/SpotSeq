@@ -6,4 +6,6 @@
 
 #define EMISSION_H 0.3
 
+#define GB 1073741824LL
+
 #endif

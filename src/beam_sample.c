@@ -39,12 +39,19 @@ static int full_run_test(void);
 int main(const int argc,const char * argv[])
 {
         RUN(print_program_header((char * const*)argv,"Integration Test"));
-
+        LOG_MSG("Start add state test");
         RUN(add_state_integration_test());
 
+        LOG_MSG("DONE add state test");
+
+        LOG_MSG("Start shrink / grow test");
         RUN(shrink_grow_integration_test());
 
-        RUN(full_run_test());
+        LOG_MSG("DONE shrink / grow test");
+
+        //LOG_MSG("START run full test");
+        //RUN(full_run_test());
+        //LOG_MSG("DONE run full test");
         
         return EXIT_SUCCESS;
 ERROR:
@@ -149,21 +156,39 @@ static int shrink_grow_integration_test(void)
        RUN(iHmmHyperSample(model, 10));
        
        RUN(print_model_parameters(model));
+       LOG_MSG("Fill transitions 1");
        RUN(fill_fast_transitions(model,ft));
        RUN(print_fast_hmm_params(ft));
+       LOG_MSG("Fill transitions 2");
+       RUN(fill_fast_transitions(model,ft));
+       RUN(print_fast_hmm_params(ft));
+       LOG_MSG("Fill transitions 3");
 
+       RUN(fill_fast_transitions(model,ft));
+       RUN(print_fast_hmm_params(ft));
+       LOG_MSG("Add 10 states");
        for(i = 0;i < 10;i++){
                RUN(add_state_from_fast_hmm_param(model,ft));
        }
        RUN(print_model_parameters(model));
        RUN(print_fast_hmm_params(ft));
+       RUN(make_flat_param_list(ft));
+       for(i = 0; i< 10;i++){
+               fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
+       }
+
+       int test = fast_hmm_param_binarySearch_t(ft, ft->list[3]->t);
+       fprintf(stdout,"Selected for > %f\n",ft->list[3]->t);
+       for(i = 0; i< test;i++){
+               fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
+       }
 
        RUN(random_label_ihmm_sequences(iseq, 6));
        RUN(fill_counts(model,iseq));
        RUN(print_counts(model));
        RUN(iHmmHyperSample(model, 10));
        RUN(print_model_parameters(model));
-       
+
         
        free_fast_hmm_param(ft);
        free_ihmm_model(model);
@@ -225,14 +250,21 @@ static int add_state_integration_test(void)
         RUN(remove_unused_states_labels(model, iseq));
         RUN(fill_counts(model,iseq));
         RUN(print_counts(model));
-        print_model_parameters(model); 
+        RUN(print_model_parameters(model)); 
+                
+        LOG_MSG("Fill transitions from counts.");
         RUN(fill_fast_transitions(model,ft));
         RUN(print_fast_hmm_params(ft));
-        print_model_parameters(model); 
+        RUN(print_model_parameters(model));
+        LOG_MSG("Add a state.");
         RUN(add_state_from_fast_hmm_param(model,ft));
-        RUN(add_state_from_fast_hmm_param(model,ft));
+        RUN(print_model_parameters(model));
         RUN(print_fast_hmm_params(ft));
-        print_model_parameters(model);       
+        
+        LOG_MSG("Add a state.");
+        RUN(add_state_from_fast_hmm_param(model,ft));
+        RUN(print_model_parameters(model));
+        RUN(print_fast_hmm_params(ft));
         
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
@@ -250,7 +282,9 @@ ERROR:
 
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
-        struct fast_t_item** list = NULL;
+        struct fast_t_item* tmp = NULL;
+        struct fast_t_item** infinity = NULL;
+        float* tmp_prob = NULL;
         int i,j;
         int list_index;
         int last_index; 
@@ -259,121 +293,127 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         ASSERT(model != NULL, "No model");
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
+        // delete old tree...
+
+        if(ft->root){
+                free_rbtree(ft->root->node,ft->root->fp_free);
+                ft->root->node = NULL;
+                ft->root->num_entries = 0;
+                ft->root->cur_data_nodes = 0;
+                if(ft->root->data_nodes){
+                        MFREE(ft->root->data_nodes);
+                }
+               
+        }
+
+        
+        MMALLOC(tmp_prob, sizeof(float) *(model->num_states));
+        
         last_state = model->num_states -1;
         //fprintf(stdout,"%d last state\n",last_state);
         /* check if there is enough space to hold new transitions... */
         /* This is slightly to generous as I am allocating memory for the
          * infinity state as well */
 
-        RUN(expand_emission_if_necessary(ft, model->num_states));
+        RUN(expand_ft_if_necessary(ft, model->num_states));
         //RUN(expand_fast_hmm_param_if_necessary(ft, model->num_states *model->num_states  ));
         /* Empty previous transitions by setting the index to zero  */
-        ft->num_items = 0;
-        list_index = ft->num_items;
-
-        
-        list = ft->list;
-        list_index = ft->num_items;
-        
+        /* Perhaps clear RBtree...  */
+        infinity = ft->infinity;
 
         /* Let's start with the transitions from the start state!  */
-        last_index = list_index;
+        //last_index = list_index;
         sum = 0.0;
         
         /* Disallow Start to start transitions */
-        list[list_index]->from = IHMM_START_STATE;
-        list[list_index]->to   = IHMM_START_STATE;
-        list[list_index]->t    = 0.0f;
-        list_index++;
-        if(list_index == ft->alloc_items){
-                RUN(expand_transition_if_necessary(ft));
-                list = ft->list;
-        }
+        tmp = NULL;
+        MMALLOC(tmp, sizeof(struct fast_t_item));
+        tmp->from = IHMM_START_STATE;
+        tmp->to = IHMM_START_STATE;
+        tmp->t =  0.0f;
+        ft->root->tree_insert(ft->root,tmp);
+        // insert into transition matrix. 
+        ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0f;
         
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
-        list[list_index]->from = IHMM_START_STATE;
-        list[list_index]->to   = IHMM_END_STATE; 
-        list[list_index]->t    = 0.0f;
-        list_index++;
-        if(list_index == ft->alloc_items){
-                RUN(expand_transition_if_necessary(ft));
-                list = ft->list;
-        }
+        tmp = NULL;
+        MMALLOC(tmp, sizeof(struct fast_t_item));
+        tmp->from = IHMM_START_STATE;
+        tmp->to = IHMM_END_STATE;
+        tmp->t =  0.0f;
+        ft->root->tree_insert(ft->root,tmp);
 
+        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0f;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
-                list[list_index]->from = IHMM_START_STATE;
-                list[list_index]->to   = i;
-                list[list_index]->t    = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
-                sum += list[list_index]->t;
-                list_index++;
-                if(list_index == ft->alloc_items){
-                        RUN(expand_transition_if_necessary(ft));
-                        list = ft->list;
-                }
+                tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
+                sum += tmp_prob[i];
         }
         /* the last to infinity transition (this is just used in stick breaking
          * when adding states ). here there should be no counts as this
          * possibility was not observed in the last transition. */
-        list[list_index]->from = IHMM_START_STATE;
-        list[list_index]->to   = last_state;
-        list[list_index]->t    = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
-        sum += list[list_index]->t;
-        list_index++;
-        if(list_index == ft->alloc_items){
-                RUN(expand_transition_if_necessary(ft));
-        }
-
+        tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+        sum += tmp_prob[last_state];
         /* Normalize!  */
-        for(i = last_index; i < list_index;i++){
-                list[i]->t = list[i]->t / sum; 
+        for(i = 2; i < last_state;i++){
+                tmp = NULL;
+                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp->from = IHMM_START_STATE;
+                tmp->to = i;
+                tmp->t =  tmp_prob[i] / sum;
+                ft->root->tree_insert(ft->root,tmp);
+                ft->transition[IHMM_START_STATE][i] = tmp->t;
         }
+        infinity[IHMM_START_STATE]->from = IHMM_START_STATE;
+        infinity[IHMM_START_STATE]->to = last_state;
+        infinity[IHMM_START_STATE]->t = tmp_prob[last_state] / sum;
+        ft->transition[IHMM_START_STATE][last_state] = infinity[IHMM_START_STATE]->t;
+                
 
         /* And now the stop state...  */
         /* There is no possibility escape the end state - all transitions from
          * end are zero. I am not sure if this matters in my dyn prig. code but
          * why not! */
         for(i = 0; i < last_state;i++){
-                list[list_index]->from = IHMM_END_STATE;
-                list[list_index]->to   = i;
-                list[list_index]->t    = 0.0f;
-                sum += list[list_index]->t;
-                list_index++;
-                if(list_index == ft->alloc_items){
-                        RUN(expand_transition_if_necessary(ft));
-                        list = ft->list;
-                }
+                tmp = NULL;
+                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp->from = IHMM_END_STATE;
+                tmp->to = i;
+                tmp->t = 0.0f;
+                ft->root->tree_insert(ft->root,tmp);
+                ft->transition[IHMM_END_STATE][i] = 0.0f;
         }
+        infinity[IHMM_END_STATE]->from = IHMM_END_STATE;
+        infinity[IHMM_END_STATE]->to = last_state;
+        infinity[IHMM_END_STATE]->t = 0.0f;
+        ft->transition[IHMM_END_STATE][last_state] = 0.0f;
+
+        
         for(i = 2; i < last_state;i++){
                 /* Remeber where I started filling...  */
                 last_index = list_index; 
                 sum = 0.0;
                 
                 for(j = 1; j < last_state;j++){
-                        list[list_index]->from = i;
-                        list[list_index]->to   = j;
-                        list[list_index]->t    = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
-                        sum += list[list_index]->t;
-                        list_index++;
-
-                        if(list_index == ft->alloc_items){
-                                RUN(expand_transition_if_necessary(ft));
-                                list = ft->list;
-                        }
+                        tmp_prob[j] = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
+                        sum += tmp_prob[j];
                 }
-                list[list_index]->from = i;
-                list[list_index]->to   = last_state;
-                list[list_index]->t    = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
-                sum += list[list_index]->t;
-                list_index++;
-                if(list_index == ft->alloc_items){
-                        RUN(expand_transition_if_necessary(ft));
-                        list = ft->list;
+                tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+                sum += tmp_prob[last_state];
+               
+                for(j = 1; j < last_state;j++){
+                        tmp = NULL;
+                        MMALLOC(tmp, sizeof(struct fast_t_item));
+                        tmp->from = i;
+                        tmp->to = j;
+                        tmp->t = tmp_prob[j] / sum;
+                        ft->root->tree_insert(ft->root,tmp);
+                        ft->transition[i][j] = tmp->t;
                 }
-                /* Normalize  */
-                for(j = last_index; j < list_index;j++){
-                        list[j]->t = list[j]->t / sum; 
-                }
+                infinity[i]->from = i;
+                infinity[i]->to = last_state;
+                infinity[i]->t = tmp_prob[last_state] / sum;
+                ft->transition[i][last_state] = infinity[i]->t;
         }
 
         /* init emission probabilities.  */
@@ -399,15 +439,8 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         }
 
         /* kind of important... */
-        ft->num_items = list_index;
         ft->last_state = last_state;
-        sum = 0.0f;
-        for(j = 0; j < list_index;j++){
-                if(ft->list[j]->t == 0.0f){
-                        sum += 1.0;
-                }
-        }
-        //LOG_MSG("TOTAL: %d trans %f elements are blank!", list_index,  sum);
+        MFREE(tmp_prob);
         return OK;
 ERROR:
         return FAIL;
@@ -417,7 +450,11 @@ ERROR:
 g * element */
 int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft)
 {
-        struct fast_t_item** list = NULL;
+        struct fast_t_item** infinity = NULL;
+        struct fast_t_item* tmp = NULL;
+        float* tmp_prob = NULL;
+         
+         
         float* beta;
         float alpha;
         float gamma;
@@ -434,12 +471,12 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         ASSERT(ihmm != NULL, "No model");
         ASSERT(ft != NULL, "No ft.");
         /* Sorting is only strictly necessary if this is called after another function re-sorted it */
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
          
         rndstate = ihmm->rndstate;
         
         
-        list_index = ft->num_items;
+        //list_index = ft->num_items;
         
         /* First add empty space to host the newstate -> old state transitions. */
         //if(list_index + ft->last_state + ft->last_state + 1 >= ft->alloc_num_states){
@@ -451,7 +488,9 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         RUN(resize_ihmm_model(ihmm, ihmm->num_states + 1));
 
         ihmm->num_states = ihmm->num_states + 1;
-        RUN(expand_emission_if_necessary(ft, ihmm->num_states));
+        RUN(expand_ft_if_necessary(ft, ihmm->num_states));
+
+        MMALLOC(tmp_prob, sizeof(float) *(ihmm->num_states));
         
         beta = ihmm->beta;
         alpha = ihmm->alpha;
@@ -459,13 +498,36 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         
         new_k = ft->last_state;
+        infinity = ft->infinity;
         //fprintf(stdout,"LAST: %d\n",new_k);
+        /* fill out transition FROM new state  */
+        sum = 0.0f;
+        for(i = 0;i <= new_k;i++){
+                tmp_prob[i] =  rk_gamma(&rndstate, beta[i] * alpha, 1.0);
+                if(i == IHMM_START_STATE){
+                        tmp_prob[i] = 0.0f;
+                }
+                sum += tmp_prob[i];
+        }
+        for(i = 0;i < new_k;i++){
+
+                tmp = NULL;
+                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp->from = new_k;
+                tmp->to = i;
+                tmp->t = tmp_prob[i] / sum;
+                ft->root->tree_insert(ft->root,tmp);
+                ft->transition[new_k][i] = tmp->t;
+        }
+        infinity[new_k]->from = new_k;
+        infinity[new_k]->to = new_k;
+        infinity[new_k]->t = tmp_prob[new_k] / sum;
+        ft->transition[new_k][new_k] = infinity[new_k]->t;
         
-        list = ft->list;
+        /*list = ft->list;
         list_index = ft->num_items;
         sum = 0.0;
         for(i = 0;i <= ft->last_state;i++){
-                
                 list[list_index]->from = new_k;
                 list[list_index]->to = i;
                 if(i!= IHMM_START_STATE){
@@ -484,22 +546,22 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         for(i = ft->num_items;i < list_index;i++){
                 list[i]->t /= sum;
         }
-        ft->num_items = list_index;
+        ft->num_items = list_index;*/
     
         
         
         //first get beta for new column
-        be = beta[ft->last_state];
+        be = beta[new_k];
         bg = rk_beta(&rndstate, 1.0,gamma );
 	
-        beta[ft->last_state] = bg*be;
-        beta[ft->last_state+1] = (1.0 - bg) *be;
+        beta[new_k] = bg*be;
+        beta[new_k+1] = (1.0 - bg) *be;
         
         ihmm->beta = beta;
         //now split prob in last columns...
-        a = alpha * beta[ft->last_state];
+        a = alpha * beta[new_k];
         b = 0.0;
-        for(i = 0; i <= ft->last_state;i++){
+        for(i = 0; i <= new_k;i++){
                 
                 b += beta[i];
         }
@@ -533,8 +595,37 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 fprintf(stdout,"from:%d pg:%f\n",i,tmp_pg[i]);
         }
         */
-        
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
+
+        // split last column - i.e. play with infinity.
+
+        for(i = 0 ; i <= new_k;i++){
+                if(a < 1e-2 || b < 1e-2){     // % This is an approximation when a or b are really small.
+                        pg = rk_binomial(&rndstate, 1.0, a / (a+b));
+                }else{
+                        pg = rk_beta(&rndstate, a, b);
+                }
+                pe = infinity[i]->t;
+
+                //transition to state just instantiated will go into the RB tree.
+                tmp = NULL;
+                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp->from = i;
+                tmp->to = new_k;
+                tmp->t = pg * pe;
+                ft->root->tree_insert(ft->root,tmp);
+                ft->transition[i][new_k] = tmp->t;
+
+                //transition into infinity will remain in the infinity array...
+                infinity[i]->from = i;
+                infinity[i]->to = new_k+1;
+                infinity[i]->t = (1.0-pg) * pe;
+                ft->transition[i][new_k+1] = infinity[i]->t;
+                
+                
+                
+        }
+                
+        /*qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
 
         
         l = fast_hmm_param_binarySearch_to_lower_bound(ft,ft->last_state);
@@ -561,7 +652,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                         RUN(expand_transition_if_necessary(ft));
                         list = ft->list;
                 }
-        }
+        }*/
 
 
         /* add emission  */
@@ -576,14 +667,18 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         
         //MFREE(tmp_pg);
-        ft->num_items = list_index;
+        //ft->num_items = list_index;
         ft->last_state = new_k+1;
         ihmm->rndstate = rndstate;
+        MFREE(tmp_prob);
         return OK;
 ERROR:
         //if(tmp_pg){
         //        MFREE(tmp_pg);
         // }
+        if(tmp_prob){
+                MFREE(tmp_prob);
+        }
         return FAIL;
 }
 
@@ -638,12 +733,14 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
         //print_fast_hmm_params(ft);
+
         
         /* super important to make sure transitions are index-able!! */
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
         
         //just to make sure!
-        RUN(check_if_ft_is_indexable(ft,ft->last_state));
+        //RUN(check_if_ft_is_indexable(ft,ft->last_state));
+        //exit;
         
         /* Threading setup...  */
         need_local_pool = 0;
@@ -674,6 +771,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
                         
                 }
+                RUN(make_flat_param_list(ft));
                 //print_fast_hmm_params(ft);
                 //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
 
@@ -682,7 +780,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 
                 //dyn prog + labelling
                 //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
-                qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
+                //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
 
                 for(i = 0; i < num_threads;i++){
 
@@ -863,7 +961,7 @@ void* do_dynamic_programming(void *threadarg)
         int i;
         int num_threads;
         int thread_id;
-        data = (struct thread_data *) threadarg;
+        data = (struct beam_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID; 

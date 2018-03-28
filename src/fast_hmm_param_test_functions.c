@@ -8,15 +8,15 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
         float** m = NULL;
 
         float sum = 0.0;
-        RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
-        fprintf(stdout,"Transitions:\n");
-        for(i = 0; i < ft->num_items;i++){
-                //fprintf(stdout, "%d) %d -> %d = %f\n", i,ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
-                if(ft->list[i]->t != -1){
-                        m[ft->list[i]->from][ft->list[i]->to] = ft->list[i]->t;
-                }
-        }
 
+  
+                
+
+        
+        //RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
+        fprintf(stdout,"Transitions:\n");
+        
+        m = ft->transition;
         for(i = 0; i< ft->last_state+1;i++){
                 fprintf(stdout,"S%d",i);
                 sum = 0.0;
@@ -43,7 +43,6 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
 
         
         
-        free_2d((void**)m);
         return OK;
 ERROR:
         return FAIL;
@@ -52,13 +51,16 @@ ERROR:
 int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
 {
         struct fast_t_item** list = NULL;
+
+        struct fast_t_item* tmp = NULL;
         int i,j;
         int num;
         float sum = 0;
+        float* tmp_probs = NULL;
         ASSERT(ft != NULL, "No ft.");
-
+        MMALLOC(tmp_probs, sizeof(float) * k);
         
-        RUN(expand_emission_if_necessary(ft, k));
+        RUN(expand_ft_if_necessary(ft, k));
         
         
         num = ft->num_items;
@@ -67,21 +69,27 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
         for(i = 0;i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < k;j++){
-                        list[num]->from = i;
-                        list[num]->to = j;
-                        list[num]->t = random_float_zero_to_x(1.0);
-                        sum+=list[num]->t;
-                        num++;
-                        if(num == ft->alloc_items){
-                                RUN(expand_transition_if_necessary(ft));
-                        }
+  
+                        tmp_probs[j] = random_float_zero_to_x(1.0);
+                       
+                                
+                        sum+=tmp_probs[j];
+
                 }
                 for(j = 0;j < k;j++){
-                        list[num-k+j]->t /= sum;
+                        tmp_probs[j] /= sum;
+                        tmp = NULL;
+                        MMALLOC(tmp, sizeof(struct fast_t_item));
+                        tmp->from = i;
+                        tmp->to = j;
+                        tmp->t = tmp_probs[j];
+
+                        ft->root->tree_insert(ft->root,tmp);
+                        ft->transition[i][j] = tmp_probs[j];
                 }
         }
-        ft->num_items = num;
         ft->last_state = k-1;
+        MFREE(tmp_probs);
         return OK;
 ERROR:
         return FAIL;

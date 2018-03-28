@@ -17,10 +17,68 @@
 /* - sort */
 /* - bin_search upper lower */
 
+// auxiliary functions for RB tree...
+
+static void* get_transition(void* ptr)
+{
+	struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
+	return &tmp->t;
+}
+
+static int resolve_default(void* ptr_a,void* ptr_b)
+{
+        return 1;
+}
+
+long int compare_transition(void* keyA, void* keyB)
+{
+        float* num1 = (float*)keyA;
+        float* num2 = (float*)keyB;
+	
+        if(*num1 == *num2){
+                return 0;
+        }
+        if(*num1 > *num2){
+                return 1;
+        }else{
+                return -1;
+        }
+}
+
+
+void print_fast_t_item_struct(void* ptr,FILE* out_ptr)
+{
+        struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
+        fprintf(out_ptr,"%d\t%d\t%f\n",tmp->from , tmp->to,tmp->t);
+}
+
+void free_fast_t_item_struct(void* ptr)
+{
+        struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
+        if(ptr){
+                MFREE(ptr);
+        }
+        
+}
+
+/* Goal: efficient datastructure for double indexing transition: */
+/* 1) by from and to */
+/* 2) by accessing a list sorted by transition probability  */
+/* Plan: have rb tree for sorted list (i.e. insert then 'flatten' tree)  */
+/* AND a normal transition matrix. */
+/* For efficiency, let's add a vector of transitin structs to avoid millions of malloc calls */
+/* Actually let's not as nodes in RB-tree are allocated anyhow.. */
+
 struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 {
         struct fast_hmm_param* ft = NULL;
         int i;
+        /* function pointers for left leaning RB tree..  */
+        void*  (*fp_get)(void* ptr) = NULL;
+        long int (*fp_cmp)(void* keyA, void* keyB)= NULL;
+        int (*fp_cmp_same)(void* ptr_a,void* ptr_b);
+        void (*fp_print)(void* ptr,FILE* out_ptr) = NULL;
+        void (*fp_free)(void* ptr) = NULL;
         
         ASSERT(L > 1, "Need more than one letter");
         MMALLOC(ft, sizeof(struct fast_hmm_param));
@@ -28,23 +86,35 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->alloc_items = 1024 ;
         ft->last_state = 0;
         ft->list = NULL;
+        ft->infinity = NULL;
         ft->num_items = 0;
         ft->emission = NULL;    /* This will be indexed by letter i.e. e['A']['numstate'] */
+        ft->transition = NULL;
         ft->L = L;
 
-        RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
-
-      
+        ft->root = NULL;
 
         
-        MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
+        
+        RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
+        RUNP(ft->transition = malloc_2d_float(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
 
-        for(i = 0; i < ft->alloc_items;i++){
-                ft->list[i] = NULL;
-                MMALLOC(ft->list[i], sizeof(struct fast_t_item));
-                ft->list[i]->from = -1;
-                ft->list[i]->to = -1;
-                ft->list[i]->t = 0.0f;
+        fp_get = &get_transition;
+        fp_cmp = &compare_transition;
+        fp_print = &print_fast_t_item_struct;
+        fp_cmp_same = &resolve_default;
+        fp_free = &free_fast_t_item_struct;
+	
+        ft->root = init_tree(fp_get,fp_cmp,fp_cmp_same,fp_print,fp_free);
+                
+        MMALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
+
+        for(i = 0; i < ft->alloc_num_states;i++){
+                ft->infinity[i] = NULL;
+                MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
+                ft->infinity[i]->from = -1;
+                ft->infinity[i]->to = -1;
+                ft->infinity[i]->t = 0.0f;
         }        
         return ft;
 ERROR:
@@ -52,17 +122,32 @@ ERROR:
         return NULL;
 }
 
-int expand_emission_if_necessary(struct fast_hmm_param* ft, int new_num_states)
+int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 {
+        int i, num_old_item;
         ASSERT(ft != NULL, "No ft struct!");
         ASSERT(new_num_states >2,"No states requested");
-
+        
         if(new_num_states > ft->alloc_num_states){
+                num_old_item = ft->alloc_num_states;
                 while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
                         
                 }
                 RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
+                RUNP(ft->transition = malloc_2d_float(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
+
+                MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
+                for(i = num_old_item; i < ft->alloc_num_states;i++){
+                        ft->infinity[i] = NULL;
+                        MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
+                        ft->infinity[i]->from = -1;
+                        ft->infinity[i]->to = -1;
+                        ft->infinity[i]->t = 0.0f;
+                }      
+
+
+                
         }
         return OK;
 ERROR:
@@ -70,49 +155,69 @@ ERROR:
         return FAIL;
 }
 
-int expand_transition_if_necessary(struct fast_hmm_param* ft)
+/*int expand_transition_if_necessary(struct fast_hmm_param* ft)
 {
         int i, num_old_item;
         ASSERT(ft != NULL, "No ft struct!");
         num_old_item = ft->alloc_items;
         ft->alloc_items += 1024;
         LOG_MSG("expanding from: %d to %d",num_old_item, ft->alloc_items);
-        MREALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_items);
+        MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_items);
         for(i = num_old_item; i < ft->alloc_items;i++){
-                ft->list[i] = NULL;
-                MMALLOC(ft->list[i], sizeof(struct fast_t_item));
-                ft->list[i]->from = -1;
-                ft->list[i]->to = -1;
-                ft->list[i]->t = 0.0f;
+                ft->infinity[i] = NULL;
+                MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
+                ft->infinity[i]->from = -1;
+                ft->infinity[i]->to = -1;
+                ft->infinity[i]->t = 0.0f;
         }      
         
         return OK;        
 ERROR:
         free_fast_hmm_param(ft);
         return FAIL;
-}
+        }*/
 
 void free_fast_hmm_param(struct fast_hmm_param* ft)
 {
         int i;
         if(ft){
-                if(ft->list){
-                        for(i = 0; i < ft->alloc_items;i++){
-                                MFREE(ft->list[i]);
+                if(ft->root){
+                        ft->root->free_tree(ft->root);
+                }
+                if(ft->infinity){
+                        for(i = 0; i < ft->alloc_num_states;i++){
+                                MFREE(ft->infinity[i]);
                         }
-                        MFREE(ft->list);
+                        MFREE(ft->infinity);
                 }
                 if(ft->emission){
                         free_2d((void**) ft->emission);
+                }
+
+                if(ft->transition){
+                        free_2d((void**) ft->transition);
                 }
                 MFREE(ft);
         }
 }
 
 
+int make_flat_param_list(struct fast_hmm_param* ft)
+{
+        ASSERT(ft != NULL, "No parameters");
+        if(ft->root->data_nodes){
+                MFREE(ft->root->data_nodes);
+                ft->root->data_nodes = NULL;
+                ft->root->cur_data_nodes = 0;
+        }
+        RUN(ft->root->flatten_tree(ft->root));
 
-
-
+        ft->num_items = ft->root->num_entries;
+        ft->list = (struct fast_t_item**) ft->root->data_nodes;
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int fast_hmm_param_cmp_by_t_desc(const void *a, const void *b) 
 { 
@@ -307,113 +412,67 @@ int fast_hmm_param_binarySearch_from_upper_bound(struct fast_hmm_param* ft, int 
 
 int main(const int argc,const char * argv[])
 {
-        fprintf(stdout,"Hello world\n");
+        
         struct fast_hmm_param* ft = NULL;
-        int i;
+        struct fast_t_item* tmp = NULL;
+        int i,j;
         int res = 0;
         float x;
 
         RUN(print_program_header((char * const*)argv,"Fast HMM param test"));
 
-        RUNP(ft = alloc_fast_hmm_param(4,4));
+        LOG_MSG("Allocating fast transition data structure.");
+        RUNP(ft = alloc_fast_hmm_param(2,4));
 
-        RUN(fill_with_random_transitions(ft, 8));
+        LOG_MSG("Fill with random transition (this will also expand the data structure if there isn't enough space..)");
+        RUN(fill_with_random_transitions(ft, 4));
+
+        
         RUN(print_fast_hmm_params(ft));
-        fprintf(stdout,"%d items\n",ft->num_items);
+        
+        RUN(make_flat_param_list(ft) );
+        
+        //ft->root->flatten_tree(ft->root);
+                
+        //ft->root->print_tree(ft->root,NULL);
+        LOG_MSG("Sorted by RB tree.");
+        fprintf(stdout,"%d items\n",ft->root->num_entries);
+        for(i = 0; i < ft->root->num_entries;i++){
+                tmp = (struct fast_t_item*) ft->root->data_nodes[i];
+                fprintf(stdout,"%d %f\n",i , tmp->t);
+        }
+        LOG_MSG("Sorted by sort function.");
+        ft->num_items = ft->root->num_entries;
+        ft->list = (struct fast_t_item**) ft->root->data_nodes;
         qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
         for(i = 0; i < ft->num_items;i++){
                 fprintf(stdout,"%d %f\n",i , ft->list[i]->t);
         }
+        
         RUN(print_fast_hmm_params(ft));
+        
         for(i =0; i < 10;i++){
                 x = random_float_zero_to_x(1.0);
                 
                 res = fast_hmm_param_binarySearch_t(ft, x);
                 fprintf(stdout,"search for %f: %d  \n",x, res);
+                for(j = 0; j < res;j++){
+                        ASSERT(ft->list[j]->t >= x,"Warning - binary search seems to have failed");
+                }
         }
         x = ft->list[3]->t;
-
+    
         res = fast_hmm_param_binarySearch_t(ft,x);
         fprintf(stdout,"search for %f: %d   \n",x, res);
-
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
-        RUN(print_fast_hmm_params(ft));
-
-
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
-        RUN(print_fast_hmm_params(ft));
-        for(i =0; i < 4;i++){
-                fprintf(stdout,"%d: %d -> %d\n",i, fast_hmm_param_binarySearch_to_lower_bound(ft,i), fast_hmm_param_binarySearch_to_upper_bound(ft,i));
+        for(j = 0; j < res;j++){
+                ASSERT(ft->list[j]->t >= x,"Warning - binary search seems to have failed");
         }
-        
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_from_asc);
         RUN(print_fast_hmm_params(ft));
-        for(i =0; i < 4;i++){
-                fprintf(stdout,"%d: %d -> %d\n",i, fast_hmm_param_binarySearch_from_lower_bound(ft,i), fast_hmm_param_binarySearch_from_upper_bound(ft,i));
-        }
-
-        
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_to_from_asc);
-        RUN(print_fast_hmm_params(ft));
-        
-
-         
-        //RUN(expand_fast_hmm_param_if_necessary(ft, 4,521));
-        RUN(expand_emission_if_necessary(ft, 12));
-
-        RUN(expand_transition_if_necessary(ft));
-        
-
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_to_from_asc);
-        
-       
-
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_to_from_asc);
-        RUN(print_fast_hmm_params(ft));
-        
-        float* beta = NULL;
-        float gamma = 6;
-        //float alpha = 1000.2;
-        float sum;
-        rk_state rndstate;
-                
-        rk_randomseed(&rndstate);
-        MMALLOC(beta, sizeof(float) * 64);
-        
-        sum = 0.0;
-        beta[0] = 0;
-        for(i = 1; i <  ft->last_state;i++){
-                beta[i] = rk_gamma(&rndstate, (float)i*10, 1.0);
-                sum += beta[i];
-        }
-	
-        beta[ft->last_state] =  rk_gamma(&rndstate, gamma, 1.0);
-        //fprintf(stdout,"BETA inf:%f\n",model->beta[model->infinityghost]  );
-        sum += beta[ft->last_state] ;
-        for(i = 0; i <= ft->last_state;i++){
-		
-                beta[i] /= sum;
-                //fprintf(stdout,"BETA: %d %f\n",i,beta[i] );
-        }
-        for(i = 0;i < 4;i++){
-                //RUN(add_state_from_fast_hmm_param(rndstate,ft,  beta, alpha, gamma));
-        }
-        for(i = 0; i <= ft->last_state;i++){
-		
-              
-                fprintf(stdout,"BETA: %d %f  AFTER\n",i,beta[i] );
-                }
-        
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_to_from_asc);
-        RUN(print_fast_hmm_params(ft));
-
-        
-        MFREE(beta);
-               
         
         free_fast_hmm_param(ft);
         return EXIT_SUCCESS;
 ERROR:
+        
         free_fast_hmm_param(ft);
         return EXIT_FAILURE;
 }

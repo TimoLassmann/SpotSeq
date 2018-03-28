@@ -8,6 +8,7 @@
 
 #include "global.h"
 #include "tldevel.h"
+#include "rbtree.h"
 #include "distributions.h"
 #include <math.h>
 #include <float.h>
@@ -22,6 +23,9 @@ struct fast_t_item{
 
 struct fast_hmm_param{
         struct fast_t_item** list;
+        struct fast_t_item** infinity;
+        struct rbtree_root* root;
+        float** transition; 
         float** emission;
         uint16_t last_state; 
         uint32_t alloc_items;
@@ -35,12 +39,15 @@ struct fast_hmm_param{
 extern struct fast_hmm_param* alloc_fast_hmm_param(int k,int L);
 //extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int new_num_states,int new_items);
 
-extern int expand_emission_if_necessary(struct fast_hmm_param* ft, int new_num_states);
-extern int expand_transition_if_necessary(struct fast_hmm_param* ft);
+extern int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states);
+//extern int expand_emission_if_necessary(struct fast_hmm_param* ft, int new_num_states);
+//extern int expand_transition_if_necessary(struct fast_hmm_param* ft);
 
 extern void free_fast_hmm_param(struct fast_hmm_param* ft);
 
 
+/* turn RB tree into a flat indexable structure...  */
+extern int make_flat_param_list(struct fast_hmm_param* ft);
 
 /* Sorting and binary search  */
 

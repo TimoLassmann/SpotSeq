@@ -49,9 +49,9 @@ int main(const int argc,const char * argv[])
 
         LOG_MSG("DONE shrink / grow test");
 
-        //LOG_MSG("START run full test");
-        //RUN(full_run_test());
-        //LOG_MSG("DONE run full test");
+        LOG_MSG("START run full test");
+        RUN(full_run_test());
+        LOG_MSG("DONE run full test");
         
         return EXIT_SUCCESS;
 ERROR:
@@ -172,6 +172,15 @@ static int shrink_grow_integration_test(void)
        }
        RUN(print_model_parameters(model));
        RUN(print_fast_hmm_params(ft));
+       
+       LOG_MSG("Fill transitions 4");
+       RUN(random_label_ihmm_sequences(iseq, 2));
+       RUN(fill_counts(model,iseq));
+       RUN(print_counts(model));
+       RUN(fill_fast_transitions(model,ft));
+       RUN(print_fast_hmm_params(ft));
+       
+       
        RUN(make_flat_param_list(ft));
        for(i = 0; i< 10;i++){
                fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
@@ -187,6 +196,7 @@ static int shrink_grow_integration_test(void)
        RUN(fill_counts(model,iseq));
        RUN(print_counts(model));
        RUN(iHmmHyperSample(model, 10));
+       
        RUN(print_model_parameters(model));
 
         
@@ -1135,13 +1145,14 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         int i,j,c;
         float* u = 0;
         int* label =0;
+        float x; 
         int len;
         int last_state = 0;
         
         float local_min_u = 1.0;
         ASSERT(sb != NULL, "No sequences.");
         ASSERT(model != NULL, "No model.");
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
         last_state = ft->last_state;
         
         for(i = 0; i < sb->num_seq;i++){
@@ -1149,28 +1160,30 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 label = sb->sequences[i]->label;
                 u = sb->sequences[i]->u;
                 len = sb->sequences[i]->seq_len;
-                c = IHMM_START_STATE * last_state + label[0];
+                x = ft->transition[IHMM_START_STATE][label[0]]; 
+                //c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
-                u[0] =  rk_double(&model->rndstate) *(ft->list[c]->t);
-                ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
+                u[0] =  rk_double(&model->rndstate) *x;
+                //ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
                 
                 local_min_u = MACRO_MIN(local_min_u, u[0]);
                 for (j = 1; j < len;j++){
                         c = label[j-1] * last_state + label[j];
-                        u[j] =  rk_double(&model->rndstate) *(ft->list[c]->t);//rk_double(&model->rndstate) *
+                        x = ft->transition[label[j-1]][label[j]]; 
+                        u[j] =  rk_double(&model->rndstate) * x;//rk_double(&model->rndstate) *
                         //if(!i && j < 5){
                         //       fprintf(stdout,"%d->%d %f\n",label[j-1],label[j],ft->list[c]->t );
                         //}
                         //fprintf(stdout,"%d %d  ;; %d %d\n",label[j-1],label[j],ft->list[c]->from ,ft->list[c]->to);
                         local_min_u = MACRO_MIN(local_min_u, u[j]);
-                        ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
+                        //ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
 
                         
                 }
-
-                c = label[len-1] * last_state + IHMM_END_STATE;
-                u[len] =  rk_double(&model->rndstate) *(ft->list[c]->t);
-                                 ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
+                x = ft->transition[label[len-1]][IHMM_END_STATE]; 
+        
+                u[len] =  rk_double(&model->rndstate) * x;//(ft->list[c]->t);
+                //ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
                                  //fprintf(stdout,"%d %d -> %d: %f  \n",label[len-1],ft->list[c]->from ,ft->list[c]->to, ft->list[c]->t );
                 local_min_u = MACRO_MIN(local_min_u, u[len]);
                 
@@ -1190,17 +1203,15 @@ int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
         float local_max;
         struct fast_t_item** list  = NULL;
         ASSERT(ft != NULL, "No fast hmm parameters.");
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
 
-        list = ft->list;
-        
-        l = fast_hmm_param_binarySearch_to_lower_bound(ft,ft->last_state);
-        r = fast_hmm_param_binarySearch_to_upper_bound(ft,ft->last_state);
         local_max = -1.0f;
-        for(i = l;i < r;i++){
-                if(list[i]->t > local_max){
-                        local_max = list[i]->t;
+        
+
+        for(i = 0; i< ft->last_state;i++){
+                if(ft->infinity[i]->t > local_max){
+                         local_max = ft->infinity[i]->t;
                 }
+                //fprintf(stdout,"%d->%d %f\n", ft->infinity[j]->from, ft->infinity[j]->to, ft->infinity[j]->t);
         }
         *max = local_max;
         return OK;

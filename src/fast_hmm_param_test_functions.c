@@ -39,10 +39,11 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
                 }
                 fprintf(stdout,"\ts:%f\n",sum);
         }
-    
-
-        
-        
+        LOG_MSG("Print infinity transitions.");
+        for(j = 0; j< ft->last_state+1;j++){
+                fprintf(stdout,"%d->%d %f\n", ft->infinity[j]->from, ft->infinity[j]->to, ft->infinity[j]->t);
+        }
+        LOG_MSG("Done.");
         return OK;
 ERROR:
         return FAIL;

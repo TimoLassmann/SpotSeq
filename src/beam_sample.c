@@ -98,7 +98,7 @@ int full_run_test(void)
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
 
         RUN(fill_background_emission(ft, sb));
-        
+        RUN(inititalize_model(model,sb,0));
         RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
 
         
@@ -164,6 +164,7 @@ int full_run_test_protein(void)
 
         RUN(fill_background_emission(ft, sb));
         
+        RUN(inititalize_model(model,sb,0));
         RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
 
         
@@ -763,9 +764,7 @@ ERROR:
 
 int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft,struct thr_pool* pool, int iterations, int num_threads)
 {
-        int i,j;
-        
-        int K;
+        int i;
         int iter;
         float min_u;
         float max;
@@ -782,42 +781,16 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         ASSERT(iterations > 1, "No iterations");
         ASSERT(num_threads > 0, "No threads");
 
-        /* First guess initial number of states. For now I simply pick K = average seq len  */
-        
-        K = 0;
-        for(i = 0; i < sb->num_seq;i++){
-                K += sb->sequences[i]->seq_len;
-        }
-        
-        K = K / sb->num_seq;
-        LOG_MSG("Will start with %d states",K);
-        //K = 10;
-        RUN(random_label_ihmm_sequences(sb, K));
-        RUN(fill_counts(model,sb));
-        /* I am doing this as a pre-caution. I don't want the inital model
-         * contain states that are not visited.. */
-        RUN(remove_unused_states_labels(model, sb));
-        RUN(fill_counts(model,sb));
+       
         
         
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
-                
-                //RUN(print_model_parameters(model));
-                for(j = 0; j < model->num_states;j++){
-                        model->beta[j] = 1.0 / (float)(model->num_states);
-                }
         }
         
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
-        //print_fast_hmm_params(ft);
-        /* super important to make sure transitions are index-able!! */
-        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
         
-        //just to make sure!
-        //RUN(check_if_ft_is_indexable(ft,ft->last_state));
-        //exit;
         
         /* Threading setup...  */
         need_local_pool = 0;

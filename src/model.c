@@ -2,6 +2,32 @@
 #include "model.h"
 #include "ihmm_seq.h"
 
+
+int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
+{
+        int i;
+        if(K == 0){
+                K = 0;
+                for(i = 0; i < sb->num_seq;i++){
+                        K += sb->sequences[i]->seq_len;
+                }
+        
+                K = K / sb->num_seq;
+        }
+        LOG_MSG("Will start with %d states",K);
+        //K = 10;
+        RUN(random_label_ihmm_sequences(sb, K));
+        RUN(fill_counts(model,sb));
+        /* I am doing this as a pre-caution. I don't want the inital model
+         * contain states that are not visited.. */
+        RUN(remove_unused_states_labels(model, sb));
+        RUN(fill_counts(model,sb));
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
 int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
 {
         int i,j;

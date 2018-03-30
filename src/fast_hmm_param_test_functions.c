@@ -30,10 +30,10 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
 
         fprintf(stdout,"Emission:\n");
 
-      
-        for(j = 0; j< ft->last_state+1;j++){
+      for(i = 0; i < ft->L;i++){
+        
                 sum = 0.0;
-                for(i = 0; i < 4;i++){
+                for(j = 0; j< ft->last_state+1;j++){
                         fprintf(stdout," %0.3f",ft->emission[i][j]);
                         sum += ft->emission[i][j];
                 }

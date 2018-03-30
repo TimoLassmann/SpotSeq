@@ -37,7 +37,11 @@ BEAMSOURCE = beam_sample.h beam_sample.c
 
 
 
-bin_PROGRAMS = build_ihmm sim_seq build_model 
+bin_PROGRAMS = build_ihmm sim_seq build_model plot_model
+
+plot_model_SOURCES = \
+plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
+plot_model_LDADD = ${MYLIBDIRS}
 
 build_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 

@@ -2,7 +2,7 @@
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
 
-CLEANFILES = ihmm_seq_itest_read_test.fa
+CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt
 # top_builddir = @top_builddir@
 
 
@@ -85,7 +85,7 @@ fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTFASTPARAM
 fast_hmm_param_ITEST_LDADD = $(MYLIBDIRS)
 
 
-MODELSOURCE = model.h model.c 
+MODELSOURCE = model.h model.c model_io.c
 
 model_ITEST_SOURCES =  $(MODELSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES) global.h 
 model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTMODEL

@@ -169,8 +169,6 @@ ERROR:
         return FAIL;
 }
 
-
-
 int iHmmHyperSample(struct ihmm_model* model, int iterations)
 {
         int i,j,c;
@@ -216,15 +214,12 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                         model->beta[i] = 1.0 / (float)(model->num_states);
                 }
                 /* Ok all set to re-estimate hyper parameters..  */
-                
         }
 
         alpha = model->alpha;
         gamma = model->gamma;
         
-        //WAS here - need to alloc auxillary arrays for calculations below! 
-        
-        
+        //WAS here - need to alloc auxillary arrays for calculations below!         
         transition_counts = model->transition_counts;
         sum_M = supp[0];
         sum_N = supp[1]; 
@@ -406,6 +401,18 @@ int print_counts(struct ihmm_model* ihmm)
                 fprintf(stdout,"\n");
         }
         fprintf(stdout,"\n");
+        fprintf(stdout,"Emission counts\n");
+
+        for(i = 0; i < ihmm->L;i++){
+                fprintf(stdout,"s%3d", i ); 
+                for(j = 0; j < ihmm->num_states;j++){
+                         fprintf(stdout," %0.0f", ihmm->emission_counts[i][j]); 
+                }
+                fprintf(stdout,"\n");
+        }
+        fprintf(stdout,"\n");
+
+        
         return OK;
 }
 
@@ -456,6 +463,8 @@ int main(const int argc,const char * argv[])
          * initialized. */  
         RUN(fill_counts(ihmm,iseq));
         RUN(print_counts(ihmm));
+
+       
         
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
@@ -488,8 +497,17 @@ int main(const int argc,const char * argv[])
                 RUN(iHmmHyperSample(ihmm, 10));
                 RUN(print_model_parameters(ihmm));
         }
-
+        RUN(print_counts(ihmm));
+        RUN(write_model(ihmm, "test_model_file.txt"));
         free_ihmm_model(ihmm);
+
+        RUNP(ihmm = read_model("test_model_file.txt"));
+        LOG_MSG("After reading:");
+        RUN(print_model_parameters(ihmm));
+        RUN(print_counts(ihmm));
+        
+        free_ihmm_model(ihmm);
+        free_ihmm_sequences(iseq);
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;

@@ -54,7 +54,7 @@ void print_fast_t_item_struct(void* ptr,FILE* out_ptr)
 
 void free_fast_t_item_struct(void* ptr)
 {
-        struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
+        //struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
         if(ptr){
                 MFREE(ptr);
         }
@@ -91,10 +91,14 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->emission = NULL;    /* This will be indexed by letter i.e. e['A']['numstate'] */
         ft->transition = NULL;
         ft->L = L;
+        ft->background_emission = NULL;
 
         ft->root = NULL;
 
-        
+        MMALLOC(ft->background_emission, sizeof(float) * L  );
+        for(i = 0; i < L; i++){
+                ft->background_emission[i] = 0.0f;
+        }
         
         RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
         RUNP(ft->transition = malloc_2d_float(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
@@ -196,6 +200,9 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
 
                 if(ft->transition){
                         free_2d((void**) ft->transition);
+                }
+                if(ft->background_emission){
+                        MFREE(ft->background_emission);
                 }
                 MFREE(ft);
         }

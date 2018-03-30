@@ -21,7 +21,7 @@ void* do_dynamic_programming(void *threadarg);
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
 static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u);
 static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max);
-static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
+//static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
 
 static int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq);
@@ -32,7 +32,7 @@ static int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct 
 static int add_state_integration_test(void);
 static int shrink_grow_integration_test(void);
 static int full_run_test(void);
-
+static int full_run_test_protein(void);
 
 
 
@@ -50,9 +50,12 @@ int main(const int argc,const char * argv[])
         LOG_MSG("DONE shrink / grow test");
 
         LOG_MSG("START run full test");
-        RUN(full_run_test());
+        //RUN(full_run_test());
         LOG_MSG("DONE run full test");
-        
+
+        LOG_MSG("START run full test (protein)");
+        RUN(full_run_test_protein());
+        LOG_MSG("DONE run full test");
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;
@@ -82,7 +85,7 @@ int full_run_test(void)
 
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
 
-        RUNP(model = alloc_ihmm_model(initial_states, 4));
+        RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         /* Initial guess... */
         model->alpha0_a = 6.0f;
         model->alpha0_b = 15.0f;
@@ -92,9 +95,11 @@ int full_run_test(void)
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 
         
-        RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
+        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
 
-        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
+        RUN(fill_background_emission(ft, sb));
+        
+        RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
 
         
         //sb, num thread, guess for aplha and gamma.. iterations. 
@@ -111,6 +116,70 @@ ERROR:
         return FAIL; 
 }
 
+int full_run_test_protein(void)
+{
+   
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        struct seq_buffer* sb = NULL;
+        char *tmp_seq[18] = {
+"RRRAHTQAEQKRRDAIKRGYDDLQTIVPTCQQQDFSIGSQKLSKAIVLQKTIDYIQFLH",
+"RREAHTQAEQKRRDAIKKGYDSLQELVPRCQPNDSSGYKLSKALILQKSIEYIGYL",
+"RRITHISAEQKRRFNIKLGFDTLHGLVSTLSAQPSLKVSKATTLQKTAEYILMLQ",
+"RRAGHIHAEQKRRYNIKNGFDTLHALIPQLQQNPNAKLSKAAMLQKGADHIKQLR",
+"KRILHLHAEQNRRSALKDGFDQLMDIIPDLYSGGVKPTNAVVLAKSADHIRRLQ",
+"KKATHLRCERQRREAINSGYSDLKDLIPQTTTSLGCKTTNAAILFRACDFMSQLK",
+"LRTSHKLAERKRRKEIKELFDDLKDALPLDKSTKSSKWGLLTRAIQYIEQLK",
+"YRRTHTANERRRRGEMRDLFEKLKITLGLLHSSKVSKSLILTRAFSEIQGLT",
+"TRKSVSERKRRDEINELLENLKTIVQNPSDSNEKISHETILFRVFERVSGVD",
+"GHRSETEKQRRDDTNDLLNEFKKIVQKSESEKLSKEEVLFRIVKLLSGIQ",
+"KRAHHNALERKRRDHIKDSFHSLRDSVPSLQGEKASRAQILDKATEYIQYMR",
+"RRAHHNELERRRRDHIKDHFTILKDAIPLLDGEKSSRALILKRAVEFIHVMQ",
+"KRAHHNALERRRRDHIKESFTNLREAVPTLKGEKASRAQILKKTTECIQTMR",
+"GRHVHNELEKRRRAQLKRCLEQLRQQMPLGVDHTRYTTLSLLRGARMHIQKLE",
+"NRSSHNELEKHRRAKLRLYLEQLKQLVPLGPDSTRHTTLSLLKRAKVHIKKLE",
+"SRSTHNEMEKNRRAHLRLCLEKLKGLVPLGPESSRHTTLSLLTKAKLHIKKLE",
+"NRTSHNELEKNRRAHLRNCLDGLKAIVPLNQDATRHTTLGLLTQARALIENLK",
+"NRSTHNELEKNRRAHLRLCLERLKVLIPLGPDCTRHTTLGLLNKAKAHIKKLE"};
+
+        int numseq = 18;
+        int initial_states = 8;
+        
+           
+        /* First initialize beam param struct.  */
+
+        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
+
+        RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+        /* Initial guess... */
+        model->alpha0_a = 6.0f;
+        model->alpha0_b = 15.0f;
+        model->gamma_a = 16.0f;
+        model->gamma_b = 4.0f;
+        model->alpha = IHMM_PARAM_PLACEHOLDER;
+        model->gamma = IHMM_PARAM_PLACEHOLDER;
+
+        
+        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
+
+        RUN(fill_background_emission(ft, sb));
+        
+        RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
+
+        
+        //sb, num thread, guess for aplha and gamma.. iterations. 
+
+                
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return FAIL; 
+}
 
 
 static int shrink_grow_integration_test(void)
@@ -296,8 +365,8 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         struct fast_t_item** infinity = NULL;
         float* tmp_prob = NULL;
         int i,j;
-        int list_index;
-        int last_index; 
+        //int list_index;
+        //int last_index; 
         int last_state; 
         float sum;
         ASSERT(model != NULL, "No model");
@@ -401,7 +470,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         
         for(i = 2; i < last_state;i++){
                 /* Remeber where I started filling...  */
-                last_index = list_index; 
+                //last_index = list_index; 
                 sum = 0.0;
                 
                 for(j = 1; j < last_state;j++){
@@ -471,8 +540,8 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         rk_state rndstate;
         
         float sum,be,bg,pe,pg, a,b;
-        int i,new_k,list_index;
-        int l,r;
+        int i,new_k;//,list_index;
+        //int l,r;
         
         //int pg_hack;            /* I don't want add states that are not reachable. */
         //float* tmp_pg = NULL;
@@ -743,8 +812,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
         //print_fast_hmm_params(ft);
-
-        
         /* super important to make sure transitions are index-able!! */
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
         
@@ -758,13 +825,11 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 local_pool = pool;
         }else{
                 if((local_pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
-                need_local_pool  =1;
+                need_local_pool =1;
         }
         
         RUNP(td = create_beam_thread_data(&num_threads,(sb->max_len+1)  , ft->last_state));
         LOG_MSG("Will use %d threads.", num_threads);
-
-
         
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
@@ -775,7 +840,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
                 while(max > min_u && model->num_states < sb->max_len){
-                        fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f\n",iter , max, min_u);
+                        //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f\n",iter , max, min_u);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
@@ -784,16 +849,13 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 RUN(make_flat_param_list(ft));
                 //print_fast_hmm_params(ft);
                 //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-
                 RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+1)  , ft->last_state));
                 
                 
                 //dyn prog + labelling
                 //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
                 //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
-
                 for(i = 0; i < num_threads;i++){
-
                         td[i]->ft = ft;
                         td[i]->sb = sb;
                         if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
@@ -837,7 +899,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
                         RUN(remove_unused_states_labels(model, sb));
-                        LOG_MSG("%d states", model->num_states);
+                        //LOG_MSG("%d states", model->num_states);
              
                         //print_labelled_ihmm_seq(sb->sequences[0]);
                         //remove unwantrd.
@@ -850,11 +912,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         // print_fast_hmm_params(ft);
                 }
         }
-        
-        for(i = 0; i < sb->num_seq;i++){
-                print_labelled_ihmm_seq(sb->sequences[i]);
-        }
 
+        RUN(print_labelled_ihmm_buffer(sb));
+        
         if(need_local_pool){
                  thr_pool_destroy(local_pool);
         }
@@ -978,7 +1038,7 @@ void* do_dynamic_programming(void *threadarg)
 
         for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
-                        LOG_MSG("Thread %d running sequence %d",thread_id, i);
+                        //               LOG_MSG("Thread %d running sequence %d",thread_id, i);
                         RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
                 }
         }
@@ -1142,18 +1202,17 @@ ERROR:
 
 int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u)
 {
-        int i,j,c;
+        int i,j;
         float* u = 0;
         int* label =0;
         float x; 
         int len;
-        int last_state = 0;
         
         float local_min_u = 1.0;
         ASSERT(sb != NULL, "No sequences.");
         ASSERT(model != NULL, "No model.");
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
-        last_state = ft->last_state;
+        //last_state = ft->last_state;
         
         for(i = 0; i < sb->num_seq;i++){
                 
@@ -1168,7 +1227,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 
                 local_min_u = MACRO_MIN(local_min_u, u[0]);
                 for (j = 1; j < len;j++){
-                        c = label[j-1] * last_state + label[j];
+                        //c = label[j-1] * last_state + label[j];
                         x = ft->transition[label[j-1]][label[j]]; 
                         u[j] =  rk_double(&model->rndstate) * x;//rk_double(&model->rndstate) *
                         //if(!i && j < 5){
@@ -1192,16 +1251,15 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         *min_u = local_min_u;
         return OK;
 ERROR:
-        print_labelled_ihmm_seq(sb->sequences[i]);
         return FAIL;
 }
 
 int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
 {
 
-        int i,l,r;
+        int i;
         float local_max;
-        struct fast_t_item** list  = NULL;
+        
         ASSERT(ft != NULL, "No fast hmm parameters.");
 
         local_max = -1.0f;
@@ -1219,35 +1277,30 @@ ERROR:
         return FAIL;
 }
 
-
-/* Purpose is to check if can random access a particular transition.. */
-int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states)
+int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
 {
-       
-        int i,a,b,c;
-        ASSERT(ft != NULL, "No fast hmm parameters");       
 
-        for(i = 0; i < 1000;i++){
+        int i,j;
+        float sum = 0.0f;
 
-                /* NOTE: below has to be -1 because a) the random function
-                 * returns values including the last number. */
+        ASSERT(ft != NULL, "No parameters");
+        ASSERT(sb != NULL, "No sequences");
 
-
-                /* NOTE: transitions from any state to the start state do not
-                 * appear in FT; */
-                /* NOTE: transitions from the end state do not appear in FT; */
-                a = IHMM_END_STATE;
-                b = IHMM_START_STATE;
-                while(a == IHMM_END_STATE || b == IHMM_START_STATE){
-                        a = random_int_zero_to_x(num_states-1);
-                        b = random_int_zero_to_x(num_states-1);
-                }
-                
-                c = a* (num_states) + b;
-                //fprintf(stdout," %d -> %d ;; %d ->%d\n", a,b,ft->list[c]->from ,ft->list[c]->to);
-                ASSERT(a == ft->list[c]->from,"ft is not index-able. Did you sort based on from then to?");
-                ASSERT(b == ft->list[c]->to,"ft is not index-able. Did you sort based on from then to?");
+        for(i = 0; i < ft->L;i++){
+                ft->background_emission[i] = 0.0f;     
         }
+      
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0;j < sb->sequences[i]->seq_len;j++){
+                        ft->background_emission[sb->sequences[i]->seq[j]]++;
+                        sum++;
+                }
+        }
+        ASSERT(sum != 0.0f,"No sequence counts found");
+        for(i = 0; i < ft->L;i++){
+                ft->background_emission[i] /= sum;     
+        }
+                    
         return OK;
 ERROR:
         return FAIL;

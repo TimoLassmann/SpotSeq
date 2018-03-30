@@ -11,7 +11,7 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
 
   
                 
-
+        ASSERT(ft != NULL, "No param");
         
         //RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
         fprintf(stdout,"Transitions:\n");
@@ -51,11 +51,11 @@ ERROR:
 
 int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
 {
-        struct fast_t_item** list = NULL;
+        //struct fast_t_item** list = NULL;
 
         struct fast_t_item* tmp = NULL;
         int i,j;
-        int num;
+        //int num;
         float sum = 0;
         float* tmp_probs = NULL;
         ASSERT(ft != NULL, "No ft.");
@@ -64,8 +64,8 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
         RUN(expand_ft_if_necessary(ft, k));
         
         
-        num = ft->num_items;
-        list = ft->list;
+        //num = ft->num_items;
+        //list = ft->list;
  
         for(i = 0;i < k;i++){
                 sum = 0.0;

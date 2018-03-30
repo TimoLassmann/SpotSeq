@@ -27,6 +27,7 @@ struct fast_hmm_param{
         struct rbtree_root* root;
         float** transition; 
         float** emission;
+        float* background_emission;
         uint16_t last_state; 
         uint32_t alloc_items;
         uint32_t num_items;

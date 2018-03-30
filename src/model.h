@@ -39,8 +39,9 @@ extern struct ihmm_model* alloc_ihmm_model(int K, int L);
 extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 
-
-
+/* Model IO */
+extern int write_model(struct ihmm_model* model, char* filename);
+extern struct ihmm_model* read_model( char* filename);
 
 /* Fill counts from sequences  */
 extern int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb);

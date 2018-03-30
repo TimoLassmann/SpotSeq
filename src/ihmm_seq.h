@@ -11,6 +11,11 @@
 #include <stdint.h>
 #include <ctype.h>
 
+
+#define ALPHABET_DNA 5
+#define ALPHABET_APPROXDNA 16
+#define ALPHABET_PROTEIN 20
+
 struct ihmm_sequence{
         uint8_t* seq;
         float* u;
@@ -25,6 +30,7 @@ struct seq_buffer{
         int malloc_num;
         int num_seq;
         int max_len;
+        int L;
 };
 
 
@@ -35,7 +41,8 @@ extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);
 
-extern int print_labelled_ihmm_seq(struct ihmm_sequence* sequence);
+extern int print_labelled_ihmm_buffer(struct seq_buffer* sb);
+
 extern void free_ihmm_sequences(struct seq_buffer* sb);
 
 

@@ -110,7 +110,6 @@ int make_dot_from_matrix(char* in_matrix, char* out_dot)
                                                fprintf(stdout,"\t%f\n",tmp_sum[j]);
                 }
                 
-
                 
                 fprintf(f_ptr,"%s [label=<\n", matrix->col_names[i]);
                 fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");

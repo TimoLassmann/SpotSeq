@@ -50,7 +50,7 @@ int main(const int argc,const char * argv[])
         LOG_MSG("DONE shrink / grow test");
 
         LOG_MSG("START run full test");
-        //RUN(full_run_test());
+        RUN(full_run_test());
         LOG_MSG("DONE run full test");
 
         LOG_MSG("START run full test (protein)");
@@ -803,7 +803,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
                 
-                RUN(print_model_parameters(model));
+                //RUN(print_model_parameters(model));
                 for(j = 0; j < model->num_states;j++){
                         model->beta[j] = 1.0 / (float)(model->num_states);
                 }
@@ -833,7 +833,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
-                //LOG_MSG("Iteration %d", iter);
+               
                 RUN(set_u(sb,model,ft, &min_u));
                 //fprintf(stdout,"MIN_U:%f\n",min_u);
                 //print_fast_hmm_params(ft);
@@ -847,6 +847,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         
                 }
                 RUN(make_flat_param_list(ft));
+                 LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
                 //print_fast_hmm_params(ft);
                 //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+1)  , ft->last_state));

@@ -24,7 +24,24 @@ AM_CPPFLAGS=${MYINCDIRS}
 
 
 
-bin_PROGRAMS = build_ihmm sim_seq
+ISEQSOURCE = ihmm_seq.h ihmm_seq.c
+
+
+FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
+fast_hmm_param_test_functions.h \
+fast_hmm_param_test_functions.c
+
+MODELSOURCE = model.h model.c model_io.c global.h  
+
+BEAMSOURCE = beam_sample.h beam_sample.c 
+
+
+
+bin_PROGRAMS = build_ihmm sim_seq build_model 
+
+build_model_SOURCES = \
+build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
+build_model_LDADD = ${MYLIBDIRS}
 
 sim_seq_SOURCES = \
 outdir.h \
@@ -70,29 +87,23 @@ libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
 iseq_ITEST_SOURCES = $(ISEQSOURCE)
 iseq_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTSEQ
 iseq_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
-fast_hmm_param_test_functions.h \
-fast_hmm_param_test_functions.c
 
-fast_hmm_param_ITEST_SOURCES = $(FASTHMMSOURCE) $(RANDOMKIT_FILES) global.h 
+fast_hmm_param_ITEST_SOURCES = $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
 fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTFASTPARAM
 fast_hmm_param_ITEST_LDADD = $(MYLIBDIRS)
 
 
-MODELSOURCE = model.h model.c model_io.c
-
-model_ITEST_SOURCES =  $(MODELSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES) global.h 
+model_ITEST_SOURCES =  $(MODELSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES) 
 model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTMODEL
 model_ITEST_LDADD = $(libihmm_a_LIBADD)
 
-BEAMSOURCE = beam_sample.h beam_sample.c 
-beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) global.h
+
+beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
 beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTBEAM
 beam_ITEST_LDADD = $(libihmm_a_LIBADD)
 

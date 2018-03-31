@@ -29,5 +29,5 @@ extern int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param*
 extern int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
 
 extern int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb);
-
+extern int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model);
 #endif

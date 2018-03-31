@@ -1251,6 +1251,35 @@ ERROR:
         return FAIL;
 }
 
+int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model)
+{
+
+
+        int i,j;
+        float sum = 0.0f;
+        ASSERT(ft != NULL, "No parameters");
+        ASSERT(model != NULL, "No model ");
+        for(i = 0; i < ft->L;i++){
+                ft->background_emission[i] = 0.0f;     
+        }
+
+        for(i = 0; i < model->L;i++){
+                for(j = 0 ; j < model->num_states;j++){
+                        ft->background_emission[i] += model->emission_counts[i][j];
+                        sum +=  model->emission_counts[i][j];
+                }
+        }
+                                            
+        ASSERT(sum != 0.0f,"No sequence counts found");
+        for(i = 0; i < ft->L;i++){
+                ft->background_emission[i] /= sum;     
+        }
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
 {
 

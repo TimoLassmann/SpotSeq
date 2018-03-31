@@ -121,7 +121,8 @@ int run_plot_ihmm(struct parameters* param)
         print_model_parameters(model);
         print_counts(model);
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
-        //RUN(fill_background_emission(ft, sb));
+        RUN(fill_background_emission_from_model(ft,model));
+
         RUN(fill_fast_transitions(model,ft));
         RUN(print_fast_hmm_params(ft));
 

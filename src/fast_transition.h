@@ -19,7 +19,8 @@ struct fast_t_item{
         uint16_t to;
 };
 
-struct fast_hmm_param{
+struct 
+fast_hmm_param{
         struct fast_t_item** list;
         float** emission;
         int8_t* active_states;

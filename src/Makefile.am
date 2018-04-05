@@ -2,7 +2,7 @@
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
 
-CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt
+CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa
 # top_builddir = @top_builddir@
 
 

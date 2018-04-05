@@ -99,7 +99,7 @@ int full_run_test(void)
 
         RUN(fill_background_emission(ft, sb));
         RUN(inititalize_model(model,sb,0));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
 
         
         //sb, num thread, guess for aplha and gamma.. iterations. 
@@ -165,7 +165,7 @@ int full_run_test_protein(void)
         RUN(fill_background_emission(ft, sb));
         
         RUN(inititalize_model(model,sb,0));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
 
         
         //sb, num thread, guess for aplha and gamma.. iterations. 

@@ -16,6 +16,8 @@
 #define ALPHABET_APPROXDNA 16
 #define ALPHABET_PROTEIN 20
 
+#define BLOCK_LEN 70
+
 struct ihmm_sequence{
         uint8_t* seq;
         float* u;
@@ -45,6 +47,6 @@ extern int print_labelled_ihmm_buffer(struct seq_buffer* sb);
 
 extern void free_ihmm_sequences(struct seq_buffer* sb);
 
-
-
+extern int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment);
+struct seq_buffer* load_ihmm_sequences(char* in_filename);
 #endif

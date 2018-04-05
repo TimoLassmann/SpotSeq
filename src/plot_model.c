@@ -112,7 +112,7 @@ int run_plot_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
-        int i;
+        
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
         
@@ -139,8 +139,6 @@ ERROR:
 
 int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param)
 {
-
-        struct double_matrix* matrix = NULL;
         FILE* f_ptr = NULL;
 
         float* tmp_sum = NULL;
@@ -150,7 +148,6 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         double max_IC;
         double tmp_prob;
         double sum_usage; 
-        int ncol;
         int i,j;
 
         int max_stack_height = 128;
@@ -306,7 +303,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         
         return OK;
 ERROR:
-        if(tmp_prob){
+        if(tmp_sum){
                 MFREE(tmp_sum);
         }
         return FAIL;

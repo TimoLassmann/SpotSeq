@@ -86,6 +86,10 @@ int full_run_test(void)
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
 
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
         /* Initial guess... */
         model->alpha0_a = 6.0f;
         model->alpha0_b = 15.0f;
@@ -813,7 +817,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
                 while(max > min_u && model->num_states < sb->max_len){
-                        //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f\n",iter , max, min_u);
+                        //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);

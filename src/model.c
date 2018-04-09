@@ -16,7 +16,10 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         }
         LOG_MSG("Will start with %d states",K);
         //K = 10;
-        RUN(random_label_ihmm_sequences(sb, K));
+        //RUN(random_label_ihmm_sequences(sb, K));
+        RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.03));
+
+       
         RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
@@ -248,7 +251,7 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         //WAS here - need to alloc auxillary arrays for calculations below!         
         transition_counts = model->transition_counts;
         sum_M = supp[0];
-        sum_N = supp[1]; 
+        sum_N = supp[1];
         
         total_M = 0.0f;
         for(i = 0; i < last_state;i++){
@@ -464,10 +467,10 @@ int main(const int argc,const char * argv[])
         struct seq_buffer* iseq = NULL;
         int i;
         char *tmp_seq[4] = {
-                "ACGT",
-                "ACGT",
-                "ACGT",
-                "ACGT"};
+                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
+                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
+                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
+                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"};
 
         
         
@@ -534,6 +537,33 @@ int main(const int argc,const char * argv[])
         
         free_ihmm_model(ihmm);
         free_ihmm_sequences(iseq);
+
+        
+
+        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
+        RUNP(ihmm = alloc_ihmm_model(20, 4+3));
+        LOG_MSG("Alpha = 100");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,100));
+        RUN(fill_counts(ihmm,iseq));
+        RUN(print_counts(ihmm));
+
+        LOG_MSG("Alpha = 1.0");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,1.0));
+        RUN(fill_counts(ihmm,iseq));
+        RUN(print_counts(ihmm));
+
+        LOG_MSG("Alpha = 0.3");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,0.3));
+        RUN(fill_counts(ihmm,iseq));
+        RUN(print_counts(ihmm));
+
+        
+        free_ihmm_model(ihmm);
+        free_ihmm_sequences(iseq);
+
+
+
+        
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;

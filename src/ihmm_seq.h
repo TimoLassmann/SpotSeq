@@ -8,6 +8,10 @@
 #endif
 
 #include "tldevel.h"
+
+
+#include "distributions.h"
+
 #include <stdint.h>
 #include <ctype.h>
 
@@ -39,6 +43,9 @@ struct seq_buffer{
 
 
 extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k);
+
+extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha);
+
 
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);

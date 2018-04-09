@@ -156,14 +156,14 @@ int run_build_ihmm(struct parameters* param)
                 model->gamma_b = 6.0f;
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
                 model->gamma = IHMM_PARAM_PLACEHOLDER;        
-                RUN(inititalize_model(model, sb, 0) );
+                RUN(inititalize_model(model, sb, initial_states) );
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
         RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
 
         RUN(write_model(model, param->output));
-        
+        RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations. 
 
                 

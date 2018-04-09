@@ -29,6 +29,7 @@ static int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, st
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
+int get_color(char* color, float x, float min_x, float max_x);
 
 int main (int argc, char *argv[]) 
 {		
@@ -144,6 +145,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         float* tmp_sum = NULL;
 
         float* background;
+        char color_buffer[BUFFER_LEN];
         double IC;
         double max_IC;
         double tmp_prob;
@@ -285,15 +287,16 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         for(i = 0;i < ft->last_state;i++){
                 for(j = 0;j < ft->last_state;j++){
                         if(ft->transition[i][j] >= 1e-5){
-                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\"];\n",i,j, ft->transition[i][j]);
+                                RUN(get_color(color_buffer,ft->transition[i][j], 0.0f,1.0f ));
+                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j, ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
                         }
                        
                 }
         }
         
         /* print end of dot file  */
-
         fprintf(f_ptr,"}\n");
+
 
 
         fclose(f_ptr);
@@ -306,6 +309,77 @@ ERROR:
         if(tmp_sum){
                 MFREE(tmp_sum);
         }
+        return FAIL;
+}
+
+
+int get_color(char* color, float x, float min_x, float max_x)
+{
+        float range = 0;
+        float r,g,b;
+        
+        ASSERT(color != NULL, "No colour buffer.");
+
+        ASSERT(max_x >= min_x, "Max smaller than min.");
+
+        /* Sanity */
+        if(x < min_x){
+                x = min_x;
+        }
+        if(x > max_x){
+                x = max_x;
+        }
+        range = max_x - min_x;
+        r = 1.0;
+        g = 1.0;
+        b = 1.0;
+        
+        if (x < (min_x + 0.25 * range)) {
+                r = 0;
+                g = 4.0f * (x - min_x) / range;
+        } else if (x < (min_x + 0.5 * range)) {
+                r = 0.0f;
+                b = 1.0f + 4.0f * (min_x + 0.25f * range - x) / range;
+        } else if (x < (min_x + 0.75 * range)) {
+                r = 4.0f * (x - min_x - 0.5f * range) / range;
+                b = 0;
+        } else {
+                g = 1.0f + 4.0f * (min_x + 0.75f * range - x) / range;
+                b = 0;
+        }
+
+        /* Second go (from kalignvu 2002 code.. ) */
+        //	( *  255 (* -1 (  log (* 2 0.6))))
+        r = 0.0f;
+        g = 0.0f;
+        b = 0.0f;
+        
+        if(((x - min_x) / range) < 0.5){
+                b = -1 * log(2.0*((x - min_x) / range)  );
+                
+        }else{
+                r += log(2.0*((x - min_x) / range)  );
+        }
+        if(b > 1.0){
+                b = 1.0;
+        }
+        if(r > 1.0){
+                r = 1.0;
+        }
+
+        /*if(x < 0.5){
+                b = 255;
+        }else if(x < 1.0){
+                b = (int)(-log(x)  * 255.0);
+        }else if(x < 2.0){
+                r = (int)(log(x) * 255.0);
+        }else{
+                r = 255;
+                }*/
+        snprintf(color, BUFFER_LEN,"#%02x%02x%02x",(unsigned int) (r * 255.0f), (unsigned int) (g * 255.0f),(unsigned int) (b * 255.0f));
+                
+        return OK;
+ERROR:
         return FAIL;
 }
 

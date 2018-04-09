@@ -80,21 +80,25 @@ libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST
+TESTS = fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST 
+check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST
 
 libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 
-iseq_ITEST_SOURCES = $(ISEQSOURCE)
+iseq_ITEST_SOURCES = $(ISEQSOURCE) $(RANDOMKIT_FILES) 
 iseq_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTSEQ
 iseq_ITEST_LDADD = $(libihmm_a_LIBADD)
+
+dtest_ITEST_SOURCES  = dtest.c $(RANDOMKIT_FILES) 
+dtest_ITEST_CPPFLAGS = $(AM_CPPFLAGS) 
+dtest_ITEST_LDADD = $(MYLIBDIRS)
 
 
 fast_hmm_param_ITEST_SOURCES = $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 

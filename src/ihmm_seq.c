@@ -17,6 +17,78 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb);
 int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 
 
+
+/* The idea here is to assume that there are K states with emission
+ * probabilities samples from a dirichlet distribution. Labels will be chiosen
+ * by sampling from the distributions samples by the dirichlets. */
+
+int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha)
+{
+        float** emission = NULL;
+        int i,j,c;
+        uint8_t* seq;
+        int* label;
+        int len;
+        rk_state rndstate;
+        float sum = 0;
+
+        float r;
+
+
+        
+
+        ASSERT(sb != NULL, "No sequence buffer");
+
+        rk_randomseed(&rndstate);
+
+
+        //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
+
+        RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
+
+        for(i = 0; i < k;i++){
+                sum = 0.0;
+                for(j = 0;j < sb->L;j++){
+                        emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
+                        sum += emission[i][j];
+                }
+                for(j = 0;j < sb->L;j++){
+                        emission[i][j] /= sum;
+                        emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
+                }
+                
+        }
+       
+        for(i = 0;i< sb->num_seq;i++){
+
+                label = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                seq = sb->sequences[i]->seq;
+                
+                for(j = 0;j < len;j++){
+                        r = random_float_zero_to_x(emission[k][seq[j]]);
+                        for(c = 0; c < k;c++){
+                                r -= emission[c][seq[j]];
+                                if(r <= 0.0f){
+                                        label[j] = c+2;
+                                        break;
+                                }
+                                                 
+                        }
+                }
+        }
+
+        free_2d((void**) emission);
+        
+        return OK;
+ERROR:
+        if(emission){
+                free_2d((void**) emission);
+        }
+        return FAIL;
+}
+
+
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k)
 {
         int* label;
@@ -236,7 +308,7 @@ ERROR:
 
 int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
 {
-        FILE* f_ptr;
+        FILE* f_ptr = NULL;
         int i,j,c;
         int has_names;
         int max_label;
@@ -417,6 +489,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
 
         label_pos = 0;
         old_label_pos = 0;
+        digit = 0;
                
         MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
@@ -593,7 +666,7 @@ int detect_alphabet(struct seq_buffer* sb)
                 }
         }
 
-
+        c = -1;
         min = 2147483647;
         for(i = 0; i < 2;i++){
                 if(diff[i] < min){
@@ -609,6 +682,8 @@ int detect_alphabet(struct seq_buffer* sb)
                 LOG_MSG("Detected protein sequences.");
                 sb->L = ALPHABET_PROTEIN;
                 RUN(translate_PROTEIN_to_internal(sb));
+        }else{
+                ERROR_MSG("Alphabet not recognized.");
         }
         return OK;
 ERROR:
@@ -1108,6 +1183,26 @@ int main(const int argc,const char * argv[])
         RUN(print_labelled_ihmm_buffer(iseq));
         free_ihmm_sequences(iseq);
         free_ihmm_sequences(iseq_b);
+
+        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,18));
+        LOG_MSG("alpha:100");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 2, 100));
+        RUN(print_labelled_ihmm_buffer(iseq));
+
+        
+
+        LOG_MSG("alpha: 0.3");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 2, 0.3));
+        RUN(print_labelled_ihmm_buffer(iseq));
+
+        LOG_MSG("alpha: 0.05");
+        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 2, 0.05));
+        RUN(print_labelled_ihmm_buffer(iseq));
+        
+
+
+        free_ihmm_sequences(iseq);
+                
         return EXIT_SUCCESS;
 ERROR:
         free_ihmm_sequences(iseq);

@@ -21,6 +21,7 @@ struct parameters{
         char* output;
         char* in_model;
         int num_threads;
+        int num_start_states;
 };
 
 
@@ -42,18 +43,21 @@ int main (int argc, char *argv[])
         param->output = NULL;
         param->in_model = NULL;
         param->num_threads = 8;
+        param->num_start_states = 10;
                 
         while (1){	
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
+                        {"states",required_argument,0,'s'},
+                        
                         {"nthreads",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:n:m:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hi:o:n:m:s:",long_options, &option_index);
 		
                 if (c == -1){
                         break;
@@ -68,6 +72,10 @@ int main (int argc, char *argv[])
                         break;
                 case 'm':
                         param->in_model = optarg;
+                        break;
+
+                case 's':
+                        param->num_start_states = atoi(optarg);
                         break;
                 case 'n':
                         param->num_threads = atoi(optarg);
@@ -131,10 +139,10 @@ int run_build_ihmm(struct parameters* param)
         struct ihmm_model* model = NULL;
         struct seq_buffer* sb = NULL;
         int i;
-        int initial_states = 10;
+        int initial_states = 400;
         ASSERT(param!= NULL, "No parameters found.");
         
-      
+        initial_states = param->num_start_states;
         
         /* Step one read in sequences */
         LOG_MSG("Loading sequences.");
@@ -144,7 +152,7 @@ int run_build_ihmm(struct parameters* param)
 
         
         LOG_MSG("Read %d sequences.",sb->num_seq);
-
+       
         if(param->in_model){
                 RUNP(model = read_model(param->in_model));
         }else{
@@ -156,13 +164,14 @@ int run_build_ihmm(struct parameters* param)
                 model->gamma_b = 6.0f;
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
                 model->gamma = IHMM_PARAM_PLACEHOLDER;        
-                RUN(inititalize_model(model, sb, initial_states) );
+                RUN(inititalize_model(model, sb,initial_states));// initial_states) );
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
         RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
 
         RUN(write_model(model, param->output));
+        RUN(print_states_per_sequence(sb));
         RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations. 
 
@@ -198,6 +207,7 @@ int print_help(char **argv)
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );
         //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );
 //      	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthread","Number of threads." ,"[8]"  );
 //      	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--output","Output file name." ,"[?]"  );

@@ -17,9 +17,9 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         LOG_MSG("Will start with %d states",K);
         //K = 10;
         //RUN(random_label_ihmm_sequences(sb, K));
-        RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.03));
-
-       
+        //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
+        RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
+      
         RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */

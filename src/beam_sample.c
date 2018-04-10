@@ -20,6 +20,9 @@ void* do_dynamic_programming(void *threadarg);
 
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
 static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u);
+static int unset_u(struct seq_buffer* sb);
+
+
 static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max);
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
@@ -807,11 +810,21 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         RUNP(td = create_beam_thread_data(&num_threads,(sb->max_len+1)  , ft->last_state));
         LOG_MSG("Will use %d threads.", num_threads);
+
+        
         
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
-               
-                RUN(set_u(sb,model,ft, &min_u));
+                if(iter < -100){
+                                no_path = sb->num_seq;
+                                sb->num_seq = 1;
+                                
+                                sb->num_seq = no_path;
+                                RUN(set_u(sb,model,ft, &min_u));
+                                sb->num_seq = no_path;
+                }else{
+                        RUN(set_u(sb,model,ft, &min_u));
+                }
                 //fprintf(stdout,"MIN_U:%f\n",min_u);
                 //print_fast_hmm_params(ft);
                 RUN(get_max_to_last_state_transition(ft, &max));
@@ -823,8 +836,12 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
                         
                 }
+
+                //if(iter < 100){
+                //        RUN(unset_u(sb));
+                //}
                 RUN(make_flat_param_list(ft));
-                 LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
+                LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
                 //print_fast_hmm_params(ft);
                 //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+1)  , ft->last_state));
@@ -847,11 +864,19 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         
                 //}
                 thr_pool_wait(local_pool);
-
                 no_path =0;
-                for(i = 0; i < sb->num_seq;i++){
-                        if(sb->sequences[i]->u[0] == -1){
+                if(iter < -100){
+                        no_path =0;
+                        if(sb->sequences[0]->u[0] == -1){
                                 no_path = 1;
+                        }
+                }else{
+                        no_path =0;
+                        for(i = 0; i < sb->num_seq;i++){
+                                if(sb->sequences[i]->u[0] == -1){
+                                        no_path = 1;
+                                        LOG_MSG("weird split must have happened in seq %d",i);
+                                }
                         }
                 }
                 //print_labelled_ihmm_seq(sb->sequences[0]);
@@ -860,8 +885,17 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         LOG_MSG("weird split must have happened. %d",iter);
                         //print_fast_hmm_params(ft);
                         //RUN(print_counts(model));
-                        RUN(remove_unused_states_labels(model, sb));
-                        RUN(fill_counts(model,sb));
+                        if(iter < -100){
+                                no_path = sb->num_seq;
+                                sb->num_seq = 1;
+                                RUN(remove_unused_states_labels(model, sb));
+                                RUN(fill_counts(model,sb));
+                                sb->num_seq = no_path;
+                        }else{
+                                RUN(remove_unused_states_labels(model, sb));
+                                RUN(fill_counts(model,sb));
+                        }
+                        
                         //RUN(print_counts(model));
                         RUN(fill_fast_transitions(model,ft));
                         /*for(i = 0; i < sb->num_seq;i++){
@@ -876,12 +910,21 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
-                        RUN(remove_unused_states_labels(model, sb));
+                        //RUN(remove_unused_states_labels(model, sb));
                         //LOG_MSG("%d states", model->num_states);
              
                         //print_labelled_ihmm_seq(sb->sequences[0]);
                         //remove unwantrd.
-                        RUN(fill_counts(model,sb));
+                        if(iter < -100){
+                                no_path = sb->num_seq;
+                                sb->num_seq = 1;
+                                RUN(remove_unused_states_labels(model, sb));
+                                RUN(fill_counts(model,sb));
+                                sb->num_seq = no_path;
+                        }else{
+                                RUN(remove_unused_states_labels(model, sb));
+                                RUN(fill_counts(model,sb));
+                        }
                         //hyper
                         RUN(iHmmHyperSample(model, 20));
                         // fill fast...
@@ -1227,6 +1270,30 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         }
         
         *min_u = local_min_u;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int unset_u(struct seq_buffer* sb)
+{
+        int i,j;
+        float* u = 0;
+        int len;
+        
+        ASSERT(sb != NULL, "No sequences.");
+        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+        //last_state = ft->last_state;
+        
+        for(i = 0; i < sb->num_seq;i++){
+                u = sb->sequences[i]->u;
+                len = sb->sequences[i]->seq_len;
+                for (j = 0; j < len;j++){
+                        
+                        u[j] = 0.0f;
+                }
+                
+        }
         return OK;
 ERROR:
         return FAIL;

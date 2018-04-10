@@ -89,6 +89,128 @@ ERROR:
 }
 
 
+int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha)
+{
+        float** transition = NULL;
+        float** emission = NULL;
+        float* tmp = NULL;
+        int i,j,c;
+        uint8_t* seq;
+        int* label;
+        int len;
+        rk_state rndstate;
+        float sum = 0;
+        float sanity; 
+
+        float r;
+        int n;
+        int cur_state;
+        
+
+        ASSERT(sb != NULL, "No sequence buffer");
+
+        n = sb->L;
+        if(sb->L == ALPHABET_DNA){
+                n = 4;
+        }
+        rk_randomseed(&rndstate);
+
+
+        //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
+
+        RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
+        RUNP(transition = malloc_2d_float(transition, k+1,  k , 0.0f));
+
+        MMALLOC(tmp, sizeof(float) * k);
+        //fprintf(stdout,"Emission\n");
+        for(i = 0; i < k;i++){
+                sum = 0.0;
+                for(j = 0;j < n;j++){
+                        emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
+                        sum += emission[i][j];
+                }
+                sanity = 0.0f;
+                for(j = 0;j < n;j++){
+                        emission[i][j] /= sum;
+                        emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
+                        sanity += emission[i][j];
+                        // fprintf(stdout,"%f ",emission[i][j]);
+                }
+                //fprintf(stdout,"sum: %f\n",sanity); 
+        }
+        //fprintf(stdout,"Transition\n");
+        for(i = 0; i < k;i++){
+                sum = 0.0;
+                for(j = 0; j < k;j++){
+                       
+                        transition[i][j] = rk_gamma(&rndstate,alpha , 1.0);
+                        
+                        sum += transition[i][j];
+                }
+                sanity = 0.0f;
+                for(j = 0; j < k;j++){
+                        transition[i][j] /= sum;
+                        transition[k][j] += transition[i][j];
+                        sanity += transition[i][j];
+                        //fprintf(stdout,"%f ",transition[i][j]);
+                }
+                //fprintf(stdout,"sum: %f\n", sanity); 
+        }
+        //exit(0);
+        
+        for(i = 0;i< sb->num_seq;i++){
+
+                label = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                seq = sb->sequences[i]->seq;
+                r = random_float_zero_to_x(emission[k][seq[0]]);
+                for(c = 0; c < k;c++){
+                        r -= emission[c][seq[0]];
+                        if(r <= 0.0f){
+                                label[0] = c+2;
+                                cur_state = c;
+                                break;
+                        }
+                                                 
+                }
+                
+                for(j = 1;j < len;j++){
+                        sum = 0.0f;
+                        for(c = 0; c < k;c++){
+                                tmp[c] = transition[cur_state][c] * emission[c][seq[j]];
+                                sum += tmp[c];
+                        }
+                        r = random_float_zero_to_x(sum);
+                        for(c = 0; c < k;c++){
+                                r -= tmp[c];
+                                if(r <= 0.0f){
+                                        label[j] = c+2;
+                                        cur_state = c;
+                                        break;
+                                }
+                                                 
+                        }
+                }
+        }
+        free_2d((void**) emission);
+        free_2d((void**) transition );
+        MFREE(tmp);
+        return OK;
+ERROR:
+        if(emission){
+                free_2d((void**) emission);
+        }
+
+        if(transition){
+                free_2d((void**) transition);
+        }
+        if(tmp){
+                MFREE(tmp);
+        }
+        return FAIL;
+}
+
+
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k)
 {
         int* label;
@@ -615,6 +737,56 @@ ERROR:
         return NULL;
 }
 
+int print_states_per_sequence(struct seq_buffer* sb)
+{
+
+        float* counts = NULL;
+        int num_states;
+        float sum;
+        int i,j;
+        ASSERT(sb != NULL, "No sequence buffer");
+        num_states = 0;
+        for(i =0; i < sb->num_seq;i++){
+                for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        if(sb->sequences[i]->label[j] > num_states){
+                                num_states = sb->sequences[i]->label[j];
+                        }
+                }
+        }
+        ASSERT(num_states != 0,"No states found");
+
+        num_states++;
+
+        MMALLOC(counts, sizeof(float) * num_states);
+        for(i =0; i < sb->num_seq;i++){
+                sum = 0;
+                for(j = 0; j < num_states;j++){
+                        counts[j] = 0;
+                }
+                for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        counts[sb->sequences[i]->label[j]]++;
+                }
+                fprintf(stdout,"Seq %d\t",i);
+                for(j = 0; j < num_states;j++){
+                        sum += counts[j];
+                   
+                }
+                for(j = 0; j < num_states;j++){
+                        fprintf(stdout,"%4.1f ",counts[j] / sum * 100.0f);
+                        
+                }
+                fprintf(stdout,"\n");
+                
+        }
+        MFREE(counts);
+        return OK;
+ERROR:
+        if(counts){
+             MFREE(counts);   
+        }
+        
+        return FAIL;
+}
 
 
 /* The purpose is to automatically detect whether the sequences are DNA /

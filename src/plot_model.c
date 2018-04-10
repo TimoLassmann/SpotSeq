@@ -143,6 +143,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         FILE* f_ptr = NULL;
 
         float* tmp_sum = NULL;
+        int* total_counts = NULL;
 
         float* background;
         char color_buffer[BUFFER_LEN];
@@ -157,6 +158,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         ASSERT(ft != NULL, "No input matrix.");
      
         MMALLOC(tmp_sum, sizeof(float) * ft->L);
+        MMALLOC(total_counts, sizeof(int) * model->num_states);
         background = ft->background_emission;
      
         
@@ -196,17 +198,20 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         /* I think here I try to figure out which state is used most -> has the
          * highest number of emissions. */
         sum_usage = 0;
-
+        for(i = 0; i < model->num_states;i++){
+                total_counts[i] = 0;
+        }
         
-        for(i = 1; i < model->L;i++){
+        for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
-                        model->emission_counts[0][j] += model->emission_counts[i][j];
+                        total_counts[j] += model->emission_counts[i][j];
                 }
         }
         for(j = 2; j < model->num_states;j++){
-                if(model->emission_counts[0][j] >  sum_usage){
-                        sum_usage = model->emission_counts[0][j];
+                if(total_counts[j] >  sum_usage){
+                        sum_usage = total_counts[j];
                 }
+                fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
         }
         fprintf(stdout,"%f\n",sum_usage);
 
@@ -223,7 +228,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                 }
 //                fprintf(stdout,"%f\n",IC);
                 /* scale total bar height by information content */
-                tmp_prob =  (double) max_stack_height;// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
+                tmp_prob =  (double) max_stack_height * ((double) total_counts[i] / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
 
                 /* Further scale bar height by usage of state.  */
                 //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;
@@ -241,18 +246,24 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                         //       fprintf(stdout,"\t%f afa\n",tmp_sum[j]);
                 }
                 fprintf(f_ptr,"State%d [label=<\n",i);
+                
                 fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
 
+                fprintf(f_ptr,"<TR>\n");
+                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d</FONT></TD>\n",12,total_counts[i]);
+                                fprintf(f_ptr,"</TR>\n");
+
+                
                 if(ft->L == ALPHABET_DNA){
                         for(j = 0; j < ft->L;j++){
                                 fprintf(f_ptr,"<TR>\n");
-                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",(int)tmp_sum[j],"ACGTN"[j]);
+                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX( (int)tmp_sum[j],1),"ACGTN"[j]);
                                 fprintf(f_ptr,"</TR>\n");
                         }
                 }else if(ft->L == ALPHABET_PROTEIN ){
                         for(j = 0; j < ft->L;j++){
                                 fprintf(f_ptr,"<TR>\n");
-                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",(int)tmp_sum[j],"ACDEFGHIKLMNPQRSTVWY"[j]);
+                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX ((int)tmp_sum[j],1),"ACDEFGHIKLMNPQRSTVWY"[j]);
                                 fprintf(f_ptr,"</TR>\n");
                         }
                 }
@@ -303,11 +314,14 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
         LOG_MSG("To visualize: dot  -Tpdf  <.dot file>  -o  <blah.pdf>.");
         MFREE(tmp_sum);
-        
+        MFREE(total_counts);
         return OK;
 ERROR:
         if(tmp_sum){
                 MFREE(tmp_sum);
+        }
+        if(total_counts){
+                MFREE(total_counts);
         }
         return FAIL;
 }

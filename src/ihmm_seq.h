@@ -45,8 +45,9 @@ struct seq_buffer{
 extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k);
 
 extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha);
+extern int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha);
 
-
+extern int print_states_per_sequence(struct seq_buffer* sb);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);
 

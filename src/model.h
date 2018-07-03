@@ -28,6 +28,7 @@ struct ihmm_model{
         float alpha0_b;
         float gamma_a;
         float gamma_b;
+        float log_likelihood;
         int num_states;         /* this excludes the start and stop states (0,1) */
         int alloc_num_states;
         int L;
@@ -36,6 +37,7 @@ struct ihmm_model{
 /* Housekeeping */
 
 extern struct ihmm_model* alloc_ihmm_model(int K, int L);
+extern int clear_counts(struct ihmm_model* ihmm);
 extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 

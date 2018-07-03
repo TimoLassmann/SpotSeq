@@ -3,6 +3,8 @@
 #include "ihmm_seq.h"
 
 
+int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID);
+
 int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 {
         int i;
@@ -29,6 +31,131 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 ERROR:
         return FAIL;
 
+}
+
+
+int esl_stats_LogGamma(double x, double *ret_answer)
+{
+        int i;
+        double xx, tx;
+        double tmp, value;
+        static double cof[11] = {
+                4.694580336184385e+04,
+                -1.560605207784446e+05,
+                2.065049568014106e+05,
+                -1.388934775095388e+05,
+                5.031796415085709e+04,
+                -9.601592329182778e+03,
+                8.785855930895250e+02,
+                -3.155153906098611e+01,
+                2.908143421162229e-01,
+                -2.319827630494973e-04,
+                1.251639670050933e-10
+        };
+  
+        /* Protect against invalid x<=0  */
+        //if (x <= 0.0)  ESL_EXCEPTION(eslERANGE, "invalid x <= 0 in esl_stats_LogGamma()");
+
+        xx       = x - 1.0;
+        tx = tmp = xx + 11.0;
+        value    = 1.0;
+        for (i = 10; i >= 0; i--)	/* sum least significant terms first */
+        {
+                value += cof[i] / tmp;
+                tmp   -= 1.0;
+        }
+        value  = log(value);
+        tx    += 0.5;
+        value += 0.918938533 + (xx+0.5)*log(tx) - tx;
+        *ret_answer = value;
+        return OK;
+}
+
+int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
+{
+
+        int i,j;
+        float l;
+        float* tmp = NULL;
+        float sum = 0;
+        double r = 0;
+        ASSERT(model != NULL, "No model.");
+        ASSERT(sb != NULL, "No sequences");
+
+
+
+        
+
+        for(i = 0; i < sb->num_seq;i++){
+                RUN(clear_counts(model));
+                RUN(fill_counts_i(model, sb, i));
+                
+        }
+        RUN(fill_counts(model,sb));
+
+        MMALLOC(tmp, sizeof(float) * model->num_states);
+        l = 0;
+        for(i = 0; i < model->num_states;i++){
+                sum = 0.0;
+                
+                for(j = 0; j < model->num_states;j++){
+                        tmp[j] = model->transition_counts[i][j] + model->beta[j] * model->alpha;
+                        sum += tmp[j];
+                             
+
+                             
+                }
+                // + gammaln(alpha0) ...
+                RUN(esl_stats_LogGamma(model->alpha,&r  ));
+                l += r;                
+                
+                // - gammaln(sum([N(k,:) 0]) + alpha0) ...
+
+                RUN(esl_stats_LogGamma(sum+model->alpha,&r  ));
+
+                //+ sum(gammaln( R(nzind)  )) ...
+                l -= r;
+                sum = 0.0;
+                for(j = 0; j < model->num_states;j++){
+                        
+                        if(tmp[j]){
+                                RUN(esl_stats_LogGamma(tmp[j],&r  ));
+                                sum += r;
+                        }
+                       
+                }
+                l += r;
+
+                //- sum(gammaln( ab(nzind) ));
+                sum = 0.0;
+                for(j = 0; j < model->num_states;j++){
+                        if(model->beta[j] * model->alpha){
+                                RUN(esl_stats_LogGamma(model->beta[j] * model->alpha,&r  ));
+                                sum += r;
+                        }
+                }
+                l -= r;
+          
+//- sum(gammaln( ab(nzind) ));
+
+//this is simpkly looking at observation  (P(i ,j ,c)) based on counts + hyper d
+
+                //model->alpha
+                //model->alpha;
+
+
+                
+                
+                
+        }
+        // for(i = 0; )
+        // //  tmp_prob[j] = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
+        //
+
+        return OK;
+ERROR:
+        return FAIL;
+        
 }
 
 int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
@@ -94,6 +221,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
         //       ihmm->beta[i] = 0;
         //}
         ihmm->num_states = j+1; /* need to add one for the infinite stuff */
+          
         RUN(resize_ihmm_model(ihmm, j+1));
         //fprintf(stdout,"CUR beta \n");
         sum = 0.0f;
@@ -102,7 +230,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
                 sum+= ihmm->beta[i];
         }
         
-        //fprintf(stdout,"\tsum: %f\n",sum);
+        //fprintf(stdout,"\tsum: %f\n",sum); 
         
         
         for(i = 0; i < sb->num_seq;i++){
@@ -127,9 +255,9 @@ ERROR:
 int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
 {
         int i,j;
-        int* label = NULL;
+        int* label = NULL;  
         uint8_t* seq;
-        float** p = NULL;
+        //float** p = NULL;
         int max_state_ID;
         int len;
         ASSERT(ihmm != NULL,"No model.");
@@ -154,21 +282,25 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         ASSERT(max_state_ID > 2, "Not enough states found");
 
         RUN(resize_ihmm_model(ihmm, max_state_ID));
-        ihmm->num_states = max_state_ID; 
-        
-        p = ihmm->transition_counts;
+        ihmm->num_states = max_state_ID;
+
         /* clear transition counts */
-        for(i = 0; i < ihmm->num_states ;i++){
-                for(j = 0; j < ihmm->num_states ;j++){
-                        p[i][j] = 0.0f;
-                }
+        /* clear emission counts */
+        RUN(clear_counts(ihmm));
+
+        for(i = 0; i < sb->num_seq;i++){
+                RUN(fill_counts_i(ihmm, sb, i));
         }
-        /* get transition counts */
+        
+        /* p = ihmm->transition_counts;
+        
+        
+         get transition counts 
         for(i = 0; i < sb->num_seq;i++){
                 label = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
                 
-                 p[IHMM_START_STATE][label[0]] += 1;
+                p[IHMM_START_STATE][label[0]] += 1;
                 for(j = 1; j < len;j++){
                         p[label[j-1]][label[j]]++;
                 }
@@ -177,14 +309,9 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         }
 
         
-        /* clear emission counts */
+        
         p = ihmm->emission_counts;
-        for(i = 0; i < ihmm->L ;i++){
-                for(j = 0; j < ihmm->num_states ;j++){
-                        p[i][j] = 0.0;
-                }
-        }
-        /* get emission counts */
+         get emission counts 
         for(i = 0; i < sb->num_seq; i++){
                 label = sb->sequences[i]->label;
                 seq = sb->sequences[i]->seq;
@@ -193,10 +320,45 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
                         p[(int)seq[j]][label[j]]++;
                 }
         }
+        */
         return OK;
 ERROR:
         return FAIL;
 }
+
+
+int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
+{
+        int* label = NULL;
+        uint8_t* seq = NULL;
+        float** e = NULL;
+        float** m = NULL;
+        int len;
+        int i;
+
+        ASSERT(ihmm != NULL,"no model");
+        
+        label = sb->sequences[seq_ID]->label;
+        seq = sb->sequences[seq_ID]->seq;
+        len = sb->sequences[seq_ID]->seq_len;
+        e = ihmm->emission_counts;
+        m = ihmm->transition_counts;
+
+
+        m[IHMM_START_STATE][label[0]] += 1;
+        e[(int)seq[0]][label[0]]++;
+        for(i = 1; i < len;i++){
+                m[label[i-1]][label[i]]++;
+                e[(int)seq[i]][label[i]]++;
+                 
+        }
+        m[label[len-1]][IHMM_END_STATE] += 1;
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 
 int iHmmHyperSample(struct ihmm_model* model, int iterations)
 {
@@ -400,6 +562,29 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
         return OK;
 ERROR:
         free_ihmm_model(ihmm);
+        return FAIL;
+}
+
+
+int clear_counts(struct ihmm_model* ihmm)
+{
+        int i,j;
+
+        ASSERT(ihmm != NULL, "No model");
+        for(i = 0;i < ihmm->num_states;i++){
+                for(j = 0; j < ihmm->num_states;j++){
+                        ihmm->transition_counts[i][j] = 0;
+                }
+        }
+        for(i = 0;i < ihmm->L ;i++){
+                for(j = 0; j < ihmm->num_states;j++){
+                        ihmm->emission_counts[i][j] = 0;
+                }
+        }
+
+        
+        return OK;
+ERROR:
         return FAIL;
 }
 

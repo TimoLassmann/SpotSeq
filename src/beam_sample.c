@@ -815,11 +815,11 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
-                if(iter < -100){
+                if(iter < 100){
                                 no_path = sb->num_seq;
                                 sb->num_seq = 1;
                                 
-                                sb->num_seq = no_path;
+                                //sb->num_seq = no_path;
                                 RUN(set_u(sb,model,ft, &min_u));
                                 sb->num_seq = no_path;
                 }else{
@@ -865,7 +865,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 //}
                 thr_pool_wait(local_pool);
                 no_path =0;
-                if(iter < -100){
+                if(iter < 100){
                         no_path =0;
                         if(sb->sequences[0]->u[0] == -1){
                                 no_path = 1;
@@ -885,7 +885,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         LOG_MSG("weird split must have happened. %d",iter);
                         //print_fast_hmm_params(ft);
                         //RUN(print_counts(model));
-                        if(iter < -100){
+                        if(iter < 100){
                                 no_path = sb->num_seq;
                                 sb->num_seq = 1;
                                 RUN(remove_unused_states_labels(model, sb));
@@ -915,7 +915,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
              
                         //print_labelled_ihmm_seq(sb->sequences[0]);
                         //remove unwantrd.
-                        if(iter < -100){
+                        if(iter < 100){
                                 no_path = sb->num_seq;
                                 sb->num_seq = 1;
                                 RUN(remove_unused_states_labels(model, sb));

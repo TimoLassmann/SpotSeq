@@ -383,6 +383,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         // delete old tree...
 
         if(ft->root){
+
                 free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
@@ -502,7 +503,6 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 infinity[i]->t = tmp_prob[last_state] / sum;
                 ft->transition[i][last_state] = infinity[i]->t;
         }
-
         /* init emission probabilities.  */
         /*  model->emission[i][j]  = rk_gamma(&model->rndstate, model->emission[i][j]+ EMISSION_H, 1.0);
                         //model->emission[i][j]  =  model->emission[i][j]+ EMISSION_H;
@@ -786,10 +786,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         ASSERT(sb->num_seq > 0, "No sequences");
         ASSERT(ft != NULL, "No transition struct");
         ASSERT(iterations > 1, "No iterations");
-        ASSERT(num_threads > 0, "No threads");
-
-       
-        
+        ASSERT(num_threads > 0, "No threads");    
         
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
@@ -1379,3 +1376,4 @@ int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
 ERROR:
         return FAIL;
 }
+> 

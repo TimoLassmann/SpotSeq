@@ -8,19 +8,24 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID);
 int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 {
         int i;
-        if(K == 0){
-                K = 0;
-                for(i = 0; i < sb->num_seq;i++){
-                        K += sb->sequences[i]->seq_len;
-                }
+        int average_input_seq_len = 0;
+        for(i = 0; i < sb->num_seq;i++){
+                average_input_seq_len += sb->sequences[i]->seq_len;
+        }
+        average_input_seq_len /= sb->num_seq;
         
-                K = K / sb->num_seq;
+        if(K == 0){
+                K = average_input_seq_len;
         }
         LOG_MSG("Will start with %d states",K);
-        //K = 10;
-        //RUN(random_label_ihmm_sequences(sb, K));
+        LOG_MSG("Local? %d" ,model->target_len );
+        if(model->target_len){
+                model->target_len = average_input_seq_len;
+        }
+        RUN(random_label_ihmm_sequences(sb, K));
         //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
-        RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
+        
+        //RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
       
         RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
@@ -187,6 +192,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
                 }
         }
 
+
         
         //fprintf(stdout,"ORG beta \n");
         //for(i = 0; i < ihmm->num_states;i++){
@@ -270,12 +276,14 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         for(i = 0; i < sb->num_seq;i++){
                 label = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
-                //fprintf(stdout,"%d len%d\n",i,len);
+              
                 for(j = 0; j < len;j++){
+                        //                       fprintf(stdout,"%d ",label[j]);
                         if(label[j] > max_state_ID){
                                 max_state_ID = label[j];
                         }
                 }
+//                fprintf(stdout,"\n");
         }
         max_state_ID += 1; // for the infinity possibility; not observed in the current labeling
         max_state_ID += 1; // so I can use the < syntax rather than <= 
@@ -400,7 +408,9 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 
                 model->alpha = rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
                 model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
                 /* Note this also initializes the last (to infinity state) */
+               
                 for(i = 0; i < model->num_states;i++){
                         model->beta[i] = 1.0 / (float)(model->num_states);
                 }
@@ -518,6 +528,7 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         ihmm->gamma = IHMM_PARAM_PLACEHOLDER;
         ihmm->gamma_a = IHMM_PARAM_PLACEHOLDER;
         ihmm->gamma_b = IHMM_PARAM_PLACEHOLDER;
+        ihmm->target_len = 0;
 
         while(K > ihmm->alloc_num_states){
                 ihmm->alloc_num_states = ihmm->alloc_num_states << 1;

@@ -134,7 +134,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         emission[i][j] /= sum;
                         emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
                         sanity += emission[i][j];
-                        // fprintf(stdout,"%f ",emission[i][j]);
+                        //fprintf(stdout,"%f ",emission[i][j]);
                 }
                 //fprintf(stdout,"sum: %f\n",sanity); 
         }
@@ -152,9 +152,9 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         transition[i][j] /= sum;
                         transition[k][j] += transition[i][j];
                         sanity += transition[i][j];
-                        //fprintf(stdout,"%f ",transition[i][j]);
+                        // fprintf(stdout,"%f ",transition[i][j]);
                 }
-                //fprintf(stdout,"sum: %f\n", sanity); 
+                // fprintf(stdout,"sum: %f\n", sanity); 
         }
         //exit(0);
         
@@ -190,6 +190,17 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                                 }
                                                  
                         }
+                }
+        }
+        for(i = 0;i< sb->num_seq;i++){
+                label = sb->sequences[i]->label;
+                len = sb->sequences[i]->seq_len;
+                seq = sb->sequences[i]->seq;
+                for(j = 0; j < 5;j++){
+                        label[j] = 3;
+                }
+                 for(j = len; j != len-5;j--){
+                        label[j] = 3;
                 }
         }
         free_2d((void**) emission);
@@ -1066,6 +1077,50 @@ int realloc_ihmm_seq(struct ihmm_sequence* sequence)
         return OK;
 ERROR:
         return FAIL;
+}
+
+struct ihmm_sequence* add_spacer_ihmm_seq(struct ihmm_sequence* sequence, int space_len, int L)
+{
+        int i;
+        
+        struct ihmm_sequence* tmp = NULL;
+        ASSERT(sequence != NULL, "No Sequence.");
+        RUNP(tmp = alloc_ihmm_seq());
+        if(sequence->seq_len+10 == sequence->malloc_len){
+                RUN(realloc_ihmm_seq(tmp));
+        }
+        /* First X spacer letters  */
+        for(i = 0; i < space_len;i++){
+                tmp->seq[sequence->seq_len] = L;
+                tmp->u[sequence->seq_len] = 1.0f;
+                tmp->label[sequence->seq_len] = 2;
+                tmp->seq_len++;    
+
+        }
+        /* copy sequence  */
+        for(i = 0 ; i < sequence->seq_len;i++){
+                tmp->seq[sequence->seq_len] = sequence->seq[i]; 
+                tmp->u[sequence->seq_len] = 1.0f;
+                tmp->label[sequence->seq_len] = 2;
+                tmp->seq_len++;    
+        }
+        /* Last X spacer letters  */
+        for(i = 0; i < space_len;i++){
+ 
+                tmp->seq[sequence->seq_len] = L;
+                tmp->u[sequence->seq_len] = 1.0f;
+                tmp->label[sequence->seq_len] = 2;
+                tmp->seq_len++;    
+
+        }
+        free_ihmm_sequence(sequence);
+        
+        return tmp;
+ERROR:
+        if(tmp){
+                free_ihmm_sequence(tmp);
+        }
+        return NULL;
 }
 
 int print_labelled_ihmm_buffer(struct seq_buffer* sb)

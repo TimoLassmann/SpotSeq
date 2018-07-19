@@ -12,6 +12,7 @@ int write_model(struct ihmm_model* model, char* filename)
         RUNP(f_ptr = fopen(filename, "w"));
         fprintf(f_ptr,"Number of states: %d\n", model->num_states);
         fprintf(f_ptr,"Number of letters: %d\n", model->L);
+        fprintf(f_ptr,"Target length: %d\n", model->target_len);
         
         fprintf(f_ptr,"Gamma: %f\n", model->gamma);
         fprintf(f_ptr,"gamma_a: %f\n", model->gamma_a);
@@ -65,6 +66,7 @@ struct ihmm_model* read_model(char* filename)
      
         RUNP(model = alloc_ihmm_model(a, b));
         model->num_states = a;
+        fscanf(f_ptr,"Target length: %d\n", &model->target_len);
         fscanf(f_ptr,"Gamma: %f\n", &model->gamma);
         fscanf(f_ptr,"gamma_a: %f\n", &model->gamma_a);
         fscanf(f_ptr,"gamma_b: %f\n", &model->gamma_b);

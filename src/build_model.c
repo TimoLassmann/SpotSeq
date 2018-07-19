@@ -22,6 +22,7 @@ struct parameters{
         char* input;
         char* output;
         char* in_model;
+        int local;
         int num_threads;
         int num_start_states;
 };
@@ -92,25 +93,29 @@ int main (int argc, char *argv[])
         param->in_model = NULL;
         param->num_threads = 8;
         param->num_start_states = 10;
+        param->local = 0;
                 
         while (1){	
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
                         {"states",required_argument,0,'s'},
-                        
+                        {"local",no_argument,0,'l'},
                         {"nthreads",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:n:m:s:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hi:o:n:m:s:l",long_options, &option_index);
 		
                 if (c == -1){
                         break;
                 }
                 switch(c) {
+                case 'l':
+                        param->local = 1;
+                        break;
                 case 'i':
                         param->input = optarg;
                         break;
@@ -120,7 +125,7 @@ int main (int argc, char *argv[])
                         break;
                 case 'm':
                         param->in_model = optarg;
-                        break;
+                       break;
 
                 case 's':
                         param->num_start_states = atoi(optarg);
@@ -186,7 +191,7 @@ int run_build_ihmm(struct parameters* param)
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
         struct seq_buffer* sb = NULL;
-        int i;
+        
         int initial_states = 400;
         ASSERT(param!= NULL, "No parameters found.");
         
@@ -206,17 +211,19 @@ int run_build_ihmm(struct parameters* param)
         }else{
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 /* Initial guess... */
-                model->alpha0_a = 4.0f;
-                model->alpha0_b = 2.0f;
-                model->gamma_a = 3.0f;
-                model->gamma_b = 6.0f;
+                model->alpha0_a = 3.0f;
+                model->alpha0_b = 6.0f;
+                model->gamma_a = 4.0f;
+                model->gamma_b = 2.0f;
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
-                model->gamma = IHMM_PARAM_PLACEHOLDER;        
+                model->gamma = IHMM_PARAM_PLACEHOLDER;
+                model->target_len = param->local;
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+                
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 1000, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 10000, 10));
 
         RUN(write_model(model, param->output));
         RUN(print_states_per_sequence(sb));

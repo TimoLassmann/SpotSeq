@@ -61,7 +61,10 @@ struct hmm{
 static int run_sim_seq(struct parameters* param);
 
 
-int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb, float mainres_emission); 
+int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission,float self_transition);
+
+int ACGT_embedded_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission);
+
 int two_state_example(struct parameters* param, struct seq_buffer* sb);
 
 static int print_help(char **argv);
@@ -192,11 +195,19 @@ int run_sim_seq(struct parameters* param)
         RUN(reset_sb(sb));
        
 
-        for(i = 50;i <= 100;i+=5){
-                RUN(ACGT_concat_example(param,sb, (float) i / 100.0));
-                RUN(reset_sb(sb));
+        for(i = 25;i <= 100;i+=5){
+                for(j = 0;j < 50;j+=5){
+                        RUN(ACGT_concat_example(param,sb, (float) i / 100.0,(float) j / 100.0));
+                        RUN(reset_sb(sb));
+                }
         }
-        
+
+        for(i = 100;i <= 100;i+=5){
+              
+                RUN(ACGT_embedded_example(param,sb, (float) i / 100.0));
+                RUN(reset_sb(sb));
+                
+        }
         
         
         free_sb(sb);
@@ -208,7 +219,7 @@ ERROR:
         return FAIL;
 }
 
-int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission)
+int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission,float self_transition)
 {
         char buffer[BUFFER_LEN];
         struct hmm* hmm = NULL;
@@ -223,9 +234,11 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         ASSERT(sb->seqs[0]->seq_len == 0,"Need to reset seq buffer");
         
         ASSERT(mainres_emission <= 1.0,"Main emission has to be smaller than 1.0.");
-
-
         ASSERT(mainres_emission >= 0.0,"Main emission has to be greater than 0.0.");
+
+        ASSERT(self_transition <= 1.0,"Main emission has to be smaller than 1.0.");
+        ASSERT(self_transition >= 0.0,"Main emission has to be greater than 0.0.");
+        
 
         RUNP(hmm = malloc_hmm(4,4,expected_length));
 
@@ -246,28 +259,28 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         hmm->transitions[STARTSTATE][5] = 0.25f;
 
       
-        hmm->transitions[2][2] = (1.0-leave) * 0.0; /* self transition */
-        hmm->transitions[2][3] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[2][2] = (1.0-leave) * self_transition; /* self transition */
+        hmm->transitions[2][3] = (1.0-leave) * (1.0- self_transition); /* to other state */
         hmm->transitions[2][4] = (1.0-leave) * 0.0; /* to other state */
         hmm->transitions[2][5] = (1.0-leave) * 0.0; /* to other state */
         hmm->transitions[2][ENDSTATE]  = leave;
 
         hmm->transitions[3][2] = (1.0-leave) * 0.0; /* self transition */
-        hmm->transitions[3][3] = (1.0-leave) * 0.0; /* to other state */
-        hmm->transitions[3][4] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[3][3] = (1.0-leave) * self_transition; /* to other state */
+        hmm->transitions[3][4] = (1.0-leave) * (1.0- self_transition); /* to other state */
         hmm->transitions[3][5] = (1.0-leave) * 0.0; /* to other state */
         hmm->transitions[3][ENDSTATE]  = leave;
 
         hmm->transitions[4][2] = (1.0-leave) * 0.0; /* self transition */
         hmm->transitions[4][3] = (1.0-leave) * 0.0; /* to other state */
-        hmm->transitions[4][4] = (1.0-leave) * 0.0; /* to other state */
-        hmm->transitions[4][5] = (1.0-leave) * 1.0; /* to other state */
+        hmm->transitions[4][4] = (1.0-leave) * self_transition; /* to other state */
+        hmm->transitions[4][5] = (1.0-leave) * (1.0 - self_transition); /* to other state */
         hmm->transitions[4][ENDSTATE]  = leave;
 
-        hmm->transitions[5][2] = (1.0-leave) * 1.0; /* self transition */
+        hmm->transitions[5][2] = (1.0-leave) * (1.0- self_transition); /* self transition */
         hmm->transitions[5][3] = (1.0-leave) * 0.0; /* to other state */
         hmm->transitions[5][4] = (1.0-leave) * 0.0; /* to other state */
-        hmm->transitions[5][5] = (1.0-leave) * 0.0; /* to other state */
+        hmm->transitions[5][5] = (1.0-leave) * self_transition; /* to other state */
         hmm->transitions[5][ENDSTATE]  = leave;
 
 
@@ -296,7 +309,7 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         LOG_MSG("%f leave.",leave);
 
         /* write sequence  */
-        snprintf(buffer, BUFFER_LEN, "%s/%s%0.2f.fa",param->outdir,"ACGT_states_RES",mainres_emission);
+        snprintf(buffer, BUFFER_LEN, "%s/%s%0.2f_%s%0.2f.fa",param->outdir,"ACGT_states_RES",mainres_emission,"self",self_transition);
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_sequences_to_file(sb,buffer));
         
@@ -307,6 +320,139 @@ ERROR:
         return FAIL;
         
 }
+
+int ACGT_embedded_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission)
+{
+        char buffer[BUFFER_LEN];
+        struct hmm* hmm = NULL;
+        float leave;
+        float sum;
+        int i,j;
+        int expected_length = 50;
+
+
+        ASSERT(sb != NULL,"No seq buffer");
+
+        ASSERT(sb->seqs[0]->seq_len == 0,"Need to reset seq buffer");
+        
+        ASSERT(mainres_emission <= 1.0,"Main emission has to be smaller than 1.0.");
+        ASSERT(mainres_emission >= 0.0,"Main emission has to be greater than 0.0.");
+
+
+        RUNP(hmm = malloc_hmm(6,4,expected_length));
+
+        /*
+          NOTE This should be:
+          leave = 1.0 - (float) ((expected_length) /(float)(1+   expected_length));
+          BUT:
+          I will substract one from the expected length because I co not allow a transition from start to stop (i.e. a zero length sequence
+        */
+        
+        leave = 1.0 - (float) ((expected_length) /((float) expected_length+2.0));
+
+        /* set transition to end to 1/ expected lengeth  */
+
+        hmm->transitions[STARTSTATE][2] = 0.0f;
+        hmm->transitions[STARTSTATE][3] = 0.0f;
+        hmm->transitions[STARTSTATE][4] = 0.0f;
+        hmm->transitions[STARTSTATE][5] = 0.0f;
+        hmm->transitions[STARTSTATE][6] = 1.0f;
+        hmm->transitions[STARTSTATE][7] = 0.0f;
+
+
+      
+        hmm->transitions[2][2] = 0.0; /* self transition */
+        hmm->transitions[2][3] = 1.0; /* to other state */
+        hmm->transitions[2][4] = 0.0; /* to other state */
+        hmm->transitions[2][5] = 0.0; /* to other state */
+        hmm->transitions[2][6] = 0.0; /* to other state */
+        hmm->transitions[2][7] = 0.0;
+        hmm->transitions[2][ENDSTATE]  = 0.0;
+
+        hmm->transitions[3][2] = 0.0; /* self transition */
+        hmm->transitions[3][3] = 0.0; /* to other state */
+        hmm->transitions[3][4] = 1.0; /* to other state */
+        hmm->transitions[3][5] = 0.0; /* to other state */
+        hmm->transitions[3][6] = 0.0; /* to other state */
+        hmm->transitions[3][7] = 0.0;
+        hmm->transitions[3][ENDSTATE]  = 0.0;
+
+        hmm->transitions[4][2] = 0.0; /* self transition */
+        hmm->transitions[4][3] = 0.0; /* to other state */
+        hmm->transitions[4][4] = 0.0; /* to other state */
+        hmm->transitions[4][5] = 1.0; /* to other state */
+        hmm->transitions[4][6] = 0.0; /* to other state */
+        hmm->transitions[4][7] = 0.0;
+        hmm->transitions[4][ENDSTATE]  = 0.0;
+
+        hmm->transitions[5][2] = 0.0; /* self transition */
+        hmm->transitions[5][3] = 0.0; /* to other state */
+        hmm->transitions[5][4] = 0.0; /* to other state */
+        hmm->transitions[5][5] = 0.0; /* to other state */
+        hmm->transitions[5][6] = 0.0; /* to other state */
+        hmm->transitions[5][7]  = 1.0;
+        hmm->transitions[5][ENDSTATE]  = 0.0;
+
+        hmm->transitions[6][2] = leave; /* self transition */
+        hmm->transitions[6][3] = 0.0; /* to other state */
+        hmm->transitions[6][4] = 0.0; /* to other state */
+        hmm->transitions[6][5] = 0.0; /* to other state */
+        hmm->transitions[6][6] = 1.0 - leave; /* to other state */
+        hmm->transitions[6][7] = 0.0; /* to other state */
+        hmm->transitions[6][ENDSTATE]  = 0.0;
+
+        hmm->transitions[7][2] = 0.0; /* self transition */
+        hmm->transitions[7][3] = 0.0; /* to other state */
+        hmm->transitions[7][4] = 0.0; /* to other state */
+        hmm->transitions[7][5] = 0.0; /* to other state */
+        hmm->transitions[7][6] = (1.0 - leave)  * 0.0f; /* to other 5' loop state */
+        hmm->transitions[7][7] = (1.0 - leave)  * 1.0f; /* to other state */
+        hmm->transitions[7][ENDSTATE]  = leave;
+
+        for(i = 0; i < 4;i++){
+                hmm->emissions[6][i] = 0.25;
+                hmm->emissions[7][i] = 0.25;
+        }
+
+
+        for(i = 0; i < 4;i++){
+                for(j = 0; j < 4;j++){
+                        if(i ==j){
+                                hmm->emissions[i+2][j] = mainres_emission;
+                        }else{
+                                hmm->emissions[i+2][j] = (1.0 - mainres_emission) / 3.0;
+                        }
+                        fprintf(stdout,"%f ",hmm->emissions[i+2][j]);
+                }
+                fprintf(stdout,"\n");
+        }
+        
+        RUN(sanity_check_hmm(hmm));
+        RUN(cumsum_hmm(hmm));
+
+        sum =0.0;
+        for(i =0; i < sb->malloc_num;i++){
+                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
+                sb->num_seq++;
+        }
+        LOG_MSG("Simulated %d seq of length %f\n",sb->malloc_num,sum / (float)sb->malloc_num);
+        LOG_MSG("%f leave.",leave);
+
+        /* write sequence  */
+        snprintf(buffer, BUFFER_LEN, "%s/%s%0.2f.fa",param->outdir,"ACGT_embedded_RES",mainres_emission);
+        LOG_MSG("Writing to: %s.",buffer);
+        RUN(write_sequences_to_file(sb,buffer));
+        
+        free_hmm(hmm);
+        return OK;
+ERROR:
+        free_hmm(hmm);
+        return FAIL;
+        
+}
+
+
 
 int two_state_example(struct parameters* param,  struct seq_buffer* sb)
 {

@@ -328,7 +328,7 @@ int ACGT_embedded_example(struct parameters* param, struct seq_buffer* sb,float 
         float leave;
         float sum;
         int i,j;
-        int expected_length = 50;
+        int expected_length = 500;
 
 
         ASSERT(sb != NULL,"No seq buffer");

@@ -228,7 +228,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                 }
 //                fprintf(stdout,"%f\n",IC);
                 /* scale total bar height by information content */
-                tmp_prob =  (double) max_stack_height * ((double) total_counts[i] / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
+                tmp_prob =  (double) max_stack_height;// * ((double) total_counts[i]) / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
 
                 /* Further scale bar height by usage of state.  */
                 //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;

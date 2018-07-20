@@ -32,11 +32,11 @@ MODELSOURCE = model.h model.c model_io.c global.h
 
 BEAMSOURCE = beam_sample.h beam_sample.c 
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_model
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot
 
-spotseq_model_SOURCES = \
+spotseq_plot_SOURCES = \
 plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
-spotseq_model_LDADD = ${MYLIBDIRS}
+spotseq_plot_LDADD = ${MYLIBDIRS}
 
 spotseq_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 

@@ -101,7 +101,7 @@ int main (int argc, char *argv[])
                         {"out",required_argument,0,'o'},
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
-                        {"nthreads",required_argument,0,'n'},
+                        {"nthreads",repquired_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
@@ -241,8 +241,6 @@ ERROR:
         free_ihmm_sequences(sb);
         return FAIL;
 }
-
-
 
 int free_parameters(struct parameters* param)
 {

@@ -22,10 +22,7 @@ randomkit.c
 
 AM_CPPFLAGS=${MYINCDIRS} 
 
-
-
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
-
 
 FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
@@ -35,17 +32,15 @@ MODELSOURCE = model.h model.c model_io.c global.h
 
 BEAMSOURCE = beam_sample.h beam_sample.c 
 
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_model
 
-
-bin_PROGRAMS = build_ihmm sim_seq build_model plot_model
-
-plot_model_SOURCES = \
+spotseq_model_SOURCES = \
 plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
-plot_model_LDADD = ${MYLIBDIRS}
+spotseq_model_LDADD = ${MYLIBDIRS}
 
-build_model_SOURCES = \
+spotseq_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
-build_model_LDADD = ${MYLIBDIRS}
+spotseq_model_LDADD = ${MYLIBDIRS}
 
 sim_seq_SOURCES = \
 outdir.h \
@@ -55,7 +50,6 @@ matrix_io.c \
 sim_seq.c
 
 sim_seq_LDADD =  ${MYLIBDIRS} 
-
 
 build_ihmm_SOURCES = \
 model_nuc_seq.c \

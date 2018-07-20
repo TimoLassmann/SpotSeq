@@ -905,7 +905,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(remove_unused_states_labels(model, sb));
                         RUN(fill_counts(model,sb));
                        
-                        RUN(print_counts(model));
+                        //RUN(print_counts(model));
                         //hyper
                         //RUN(iHmmHyperSample(model, 20));
                         //fprintf(stdout,"%f %f\n",model->alpha,model->gamma );

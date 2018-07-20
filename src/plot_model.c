@@ -412,7 +412,7 @@ ERROR:
 
 int print_help(char **argv)
 {
-        const char usage[] = " -in <fasta> -out <outfile>";
+        const char usage[] = " -i <input model> -o <output dot file>";
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
         fprintf(stdout,"Options:\n\n");
 

@@ -26,6 +26,8 @@ static int run_plot_ihmm(struct parameters* param);
 
 static int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param);
 
+static int plot_model_entropy(struct parameters* param);
+
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -99,6 +101,10 @@ int main (int argc, char *argv[])
         
         RUN(run_plot_ihmm(param));
 
+        RUN(plot_model_entropy(param));
+
+        
+
         //RUN(seed_controller_thread(param));
         
         RUN(free_parameters(param));
@@ -117,18 +123,17 @@ int run_plot_ihmm(struct parameters* param)
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
         
-
-        
         RUNP(model = read_model(param->input));
         print_model_parameters(model);
         print_counts(model);
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
         RUN(fill_background_emission_from_model(ft,model));
 
-        RUN(fill_fast_transitions(model,ft));
+        RUN(fill_fast_transitions_only_matrices(model,ft));
         //RUN(print_fast_hmm_params(ft));
         RUN(make_dot_file( ft, model, param));
-                
+
+       
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         return OK;
@@ -137,6 +142,65 @@ ERROR:
         free_ihmm_model(model);
         return FAIL;
 }
+
+int plot_model_entropy(struct parameters* param)
+{
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        
+        int initial_states = 10;
+        int iter;
+        int i,j,c;
+        float r;
+        float*** sampled_counts = NULL;
+        int* tmp =NULL;
+        
+        ASSERT(param!= NULL, "No parameters found.");
+        
+        RUNP(model = read_model(param->input));
+        RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+
+        /* first index is state * letter ; second is sample (max = 100) */
+        sampled_counts = malloc_3d_float(model->num_states, model->L, 100+1, 0.0f);
+        MMALLOC(tmp, sizeof(int)* model->L);
+        
+        for(iter=  0;iter < 100000;iter++){
+                RUN(fill_fast_transitions_only_matrices(model,ft));
+                
+                for(i = 0;i < model->num_states;i++){
+                        for(j = 0; j < model->L;j++){
+                                tmp[j] = 0.0f;
+                        }
+                        for(j = 0; j < 100;j++){
+                                 r = random_float_zero_to_x(1.0);
+                                 for(c = 0; c < model->L;c++){
+                                         if(r <= ft->emission[i][c]){
+                                                 tmp[c]++;
+                                         }
+                                 }
+                                
+                        }
+                        for(j = 0; j < model->L;j++){
+                                sampled_counts[i][j][tmp[j]]++;
+                        }
+                }
+        }
+
+        free_3d((void***) sampled_counts);
+   
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return OK;
+ERROR:
+        if(sampled_counts){
+                free_3d((void***) sampled_counts);
+        }
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return FAIL;
+}
+
+
 
 int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param)
 {

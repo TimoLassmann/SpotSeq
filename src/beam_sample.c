@@ -367,6 +367,135 @@ ERROR:
 
 #endif
 
+int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
+{
+        float* tmp_prob = NULL;
+        int i,j;
+        //int list_index;
+        //int last_index; 
+        int last_state; 
+        float sum;
+
+        ASSERT(model != NULL, "No model");
+        ASSERT(ft != NULL,"No fast_hmm_param structure");
+
+        // delete old tree...
+
+        if(ft->root){
+
+                free_rbtree(ft->root->node,ft->root->fp_free);
+                ft->root->node = NULL;
+                ft->root->num_entries = 0;
+                ft->root->cur_data_nodes = 0;
+                if(ft->root->data_nodes){
+                        MFREE(ft->root->data_nodes);
+                }
+               
+        }
+
+        
+        MMALLOC(tmp_prob, sizeof(float) *(model->num_states));
+        
+        last_state = model->num_states -1;
+        //fprintf(stdout,"%d last state\n",last_state);
+        /* check if there is enough space to hold new transitions... */
+        /* This is slightly to generous as I am allocating memory for the
+         * infinity state as well */
+
+        RUN(expand_ft_if_necessary(ft, model->num_states));
+        //RUN(expand_fast_hmm_param_if_necessary(ft, model->num_states *model->num_states  ));
+        /* Empty previous transitions by setting the index to zero  */
+        /* Perhaps clear RBtree...  */
+
+        /* Let's start with the transitions from the start state!  */
+        //last_index = list_index;
+        sum = 0.0;
+        
+        /* Disallow Start to start transitions */
+        ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0;
+        
+        
+        /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
+        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0f;
+        /* Now to the remaining existing transitions... */
+        for(i = 2; i < last_state;i++){
+                tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
+                sum += tmp_prob[i];
+        }
+        /* the last to infinity transition (this is just used in stick breaking
+         * when adding states ). here there should be no counts as this
+         * possibility was not observed in the last transition. */
+        tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+        sum += tmp_prob[last_state];
+
+        /* Normalize!  */
+        for(i = 2; i < last_state;i++){
+                ft->transition[IHMM_START_STATE][i] =  tmp_prob[i] / sum;
+        }
+        ft->transition[IHMM_START_STATE][last_state] = tmp_prob[last_state] / sum;
+                
+
+        /* And now the stop state...  */
+        /* There is no possibility escape the end state - all transitions from
+         * end are zero. I am not sure if this matters in my dyn prig. code but
+         * why not! */
+        for(i = 0; i < last_state;i++){
+                ft->transition[IHMM_END_STATE][i] = 0.0f;
+        }
+        ft->transition[IHMM_END_STATE][last_state] = 0.0f;
+
+        
+        for(i = 2; i < last_state;i++){
+                /* Remeber where I started filling...  */
+                //last_index = list_index; 
+                sum = 0.0;
+                
+                for(j = 1; j < last_state;j++){
+                        tmp_prob[j] = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
+                        sum += tmp_prob[j];
+                }
+                tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+                sum += tmp_prob[last_state];
+               
+                for(j = 1; j < last_state;j++){
+                        ft->transition[i][j] = tmp_prob[j] / sum;
+                }
+                ft->transition[i][last_state] = tmp_prob[last_state] / sum;
+        }
+        /* init emission probabilities.  */
+        /*  model->emission[i][j]  = rk_gamma(&model->rndstate, model->emission[i][j]+ EMISSION_H, 1.0);
+                        //model->emission[i][j]  =  model->emission[i][j]+ EMISSION_H;
+                        sum +=model->emission[i][j];
+                }
+                for(j = 0;j <model->L;j++){
+                        model->emission[i][j] /= sum;*/
+        for(i = 0; i < model->L;i++){
+                for(j = 0; j < last_state;j++){
+                        ft->emission[i][j] = rk_gamma(&model->rndstate, model->emission_counts[i][j] + EMISSION_H, 1.0);
+                }
+        }
+        
+                
+        for(j = 0; j < last_state;j++){
+                sum = 0.0f;
+                for(i = 0; i < model->L;i++){
+                        sum += ft->emission[i][j];
+                }
+                for(i = 0; i < model->L;i++){
+                        ft->emission[i][j] /= sum;
+                }
+        }
+
+        /* kind of important... */
+        ft->last_state = last_state;
+        MFREE(tmp_prob);
+        return OK;
+ERROR:
+        return FAIL;
+}
+        
+        
+
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         struct fast_t_item* tmp = NULL;

@@ -22,6 +22,7 @@
 struct parameters{       
         char* input;
         char* outdir;
+        int len;
         int num_seq;
 };
 
@@ -94,17 +95,19 @@ int main (int argc, char *argv[])
         
         MMALLOC(param, sizeof(struct parameters));
         param->num_seq = 1000;
+        param->len = 1000;
         param->outdir = NULL;
                 
         while (1){	
                 static struct option long_options[] ={
                         {"num",required_argument,0,'n'},
+                        {"len",required_argument,0,'l'},
                         {"out",required_argument,0,'o'},			       
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hn:o:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hn:l:o:",long_options, &option_index);
 		
                 if (c == -1){
                         break;
@@ -113,7 +116,10 @@ int main (int argc, char *argv[])
                 case 'n':
                         param->num_seq = atoi(optarg);
                         break;
-                                 
+
+                case 'l':
+                        param->len = atoi(optarg);
+                        break;
                 case 'o':
                         param->outdir = optarg;
                         break;
@@ -141,6 +147,8 @@ int main (int argc, char *argv[])
                 ERROR_MSG("No output file! use -o <blah.fa>");
                 
         }
+
+        ASSERT(param->len > 10, "Simulated sequence length has to be > 10");
         RUN(run_sim_seq(param));
         //RUN(run_build_ihmm(param));
 
@@ -226,8 +234,8 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         float leave;
         float sum;
         int i,j;
-        int expected_length = 1000;
-
+        int expected_length = param->len;
+        
 
         ASSERT(sb != NULL,"No seq buffer");
 
@@ -249,7 +257,7 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
           I will substract one from the expected length because I co not allow a transition from start to stop (i.e. a zero length sequence
         */
         
-        leave = 1.0 - (float) ((expected_length-1) /(float)(   expected_length));
+        leave = 1.0 - (float) ((expected_length) /(float)(   expected_length+1));
 
         /* set transition to end to 1/ expected lengeth  */
 
@@ -299,9 +307,13 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         RUN(sanity_check_hmm(hmm));
         RUN(cumsum_hmm(hmm));
 
+        
         sum =0.0;
         for(i =0; i < sb->malloc_num;i++){
-                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                while(sb->seqs[sb->num_seq]->seq_len > expected_length + 50 ||sb->seqs[sb->num_seq]->seq_len <  expected_length - 50 ){
+                        RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                        //fprintf(stdout,"len: %d expected: %d\n", sb->seqs[sb->num_seq]->seq_len, expected_length );
+                }
                 sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
                 sb->num_seq++;
         }
@@ -532,9 +544,10 @@ int emit_sequence(struct hmm* hmm, struct sequence* sequence)
 
         int state;
         float r;
-        int sum = 0;
+        //int sum = 0;
         int i;
-
+        ASSERT(sequence != NULL, "No sequence");
+        sequence->seq_len = 0;
         state = STARTSTATE;
         while(state != ENDSTATE){
                 /* transition */
@@ -764,6 +777,7 @@ int print_help(char **argv)
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--num","Number of sequences." ,"[1000]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--len","Average length of sequences." ,"[1000]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--out","Output directory path." ,"[1000]"  );
         return OK;
 }

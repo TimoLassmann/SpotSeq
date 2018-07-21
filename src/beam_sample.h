@@ -26,6 +26,7 @@
 int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft, struct thr_pool* pool, int iterations, int num_threads); 
 /* key Operations  */
 extern int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft);
+extern int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft);
 extern int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
 
 extern int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb);

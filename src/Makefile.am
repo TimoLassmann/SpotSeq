@@ -3,7 +3,8 @@ LIB_TLDEVELDIR = @LIB_TLDEVELDIR@
 
 hdf5_flags = @HDF5_CFLAGS@ @HDF5_LDFLAGS@
 
-CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa
+CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa  libhdf5gluetest_exp.h5 libhdf5gluetest.h5
+
 # top_builddir = @top_builddir@
 
 

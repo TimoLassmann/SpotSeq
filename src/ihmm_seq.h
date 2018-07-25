@@ -42,7 +42,7 @@ struct seq_buffer{
 
 
 
-extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k);
+extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha);
 
 extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha);
 extern int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha);

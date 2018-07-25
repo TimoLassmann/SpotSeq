@@ -1,4 +1,5 @@
 #include "model.h"
+#include "hdf5.h"
 
 /* Function to write and read  a model (hyperparameters and counts) */
 int write_model(struct ihmm_model* model, char* filename)

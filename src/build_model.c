@@ -211,10 +211,10 @@ int run_build_ihmm(struct parameters* param)
         }else{
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 /* Initial guess... */
-                model->alpha0_a = 3.0f;
-                model->alpha0_b = 6.0f;
-                model->gamma_a = 4.0f;
-                model->gamma_b = 2.0f;
+                model->alpha0_a = 6.0f;
+                model->alpha0_b = 15.0f;
+                model->gamma_a = 16.0f;
+                model->gamma_b = 4.0f;
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
                 model->gamma = IHMM_PARAM_PLACEHOLDER;
                 model->target_len = param->local;
@@ -230,7 +230,6 @@ int run_build_ihmm(struct parameters* param)
         RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations. 
 
-                
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         free_ihmm_sequences(sb);

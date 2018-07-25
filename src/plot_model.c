@@ -151,9 +151,10 @@ int plot_model_entropy(struct parameters* param)
         int initial_states = 10;
         int iter;
         int i,j,c;
-        float r;
-        float*** sampled_counts = NULL;
-        int* tmp =NULL;
+        float** s1 = NULL;
+        float** s2 = NULL;
+
+        int iterations = 1000;
         
         ASSERT(param!= NULL, "No parameters found.");
         
@@ -161,40 +162,38 @@ int plot_model_entropy(struct parameters* param)
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
         /* first index is state * letter ; second is sample (max = 100) */
-        sampled_counts = malloc_3d_float(model->num_states, model->L, 100+1, 0.0f);
-        MMALLOC(tmp, sizeof(int)* model->L);
+
+        s1 = malloc_2d_float(s1, model->num_states, model->L, 0.0);
+        s2 = malloc_2d_float(s2, model->num_states, model->L, 0.0);
+
         
-        for(iter=  0;iter < 100000;iter++){
+        for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
                 
                 for(i = 0;i < model->num_states;i++){
-                        for(j = 0; j < model->L;j++){
-                                tmp[j] = 0.0f;
+                        for(c = 0; c < model->L;c++){
+                                s1[i][c] += ft->emission[c][i];
+                                s2[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
                         }
-                        for(j = 0; j < 100;j++){
-                                 r = random_float_zero_to_x(1.0);
-                                 for(c = 0; c < model->L;c++){
-                                         if(r <= ft->emission[i][c]){
-                                                 tmp[c]++;
-                                         }
-                                 }
-                                
-                        }
-                        for(j = 0; j < model->L;j++){
-                                sampled_counts[i][j][tmp[j]]++;
-                        }
+                        
                 }
         }
+        for(i = 0; i < model->num_states;i++){
+                for(j = 0; j < model->L;j++){
+                        s2[i][j] = sqrt(  ((double) iterations * s2[i][j] - s1[i][j] * s1[i][j])/ ((double) iterations * ((double) iterations -1.0)));
+                        s1[i][j] = s1[i][j] / (double) iterations;
+                        fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1[i][j], s2[i][j]);
+                }
+                
+        }
+        free_2d((void**) s1);
+        free_2d((void**) s2);
 
-        free_3d((void***) sampled_counts);
    
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         return OK;
 ERROR:
-        if(sampled_counts){
-                free_3d((void***) sampled_counts);
-        }
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         return FAIL;
@@ -292,7 +291,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                 }
 //                fprintf(stdout,"%f\n",IC);
                 /* scale total bar height by information content */
-                tmp_prob =  (double) max_stack_height;// * ((double) total_counts[i]) / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
+                tmp_prob =  (double) max_stack_height;// * (((double) total_counts[i]) / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
 
                 /* Further scale bar height by usage of state.  */
                 //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;
@@ -314,7 +313,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                 fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
 
                 fprintf(f_ptr,"<TR>\n");
-                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d</FONT></TD>\n",12,total_counts[i]);
+                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
                                 fprintf(f_ptr,"</TR>\n");
 
                 

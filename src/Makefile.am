@@ -1,6 +1,7 @@
 # Build the library in the hand subdirectory first.
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
+hdf5_flags = @HDF5_CFLAGS@ @HDF5_LDFLAGS@
 
 CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa
 # top_builddir = @top_builddir@
@@ -33,6 +34,14 @@ MODELSOURCE = model.h model.c model_io.c global.h
 BEAMSOURCE = beam_sample.h beam_sample.c 
 
 bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot
+
+
+HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
+
+
+
+
+
 
 spotseq_plot_SOURCES = \
 plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
@@ -74,12 +83,12 @@ libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST
+TESTS = fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST
+check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
 
 libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -100,6 +109,11 @@ fast_hmm_param_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTFASTPARAM
 fast_hmm_param_ITEST_LDADD = $(MYLIBDIRS)
 
 
+hdf5glue_ITEST_SOURCES = $(HDF5GLUESOURCE)
+hdf5glue_ITEST_CPPFLAGS  = $(AM_CPPFLAGS) $(HDF5_CPPFLAGS)  -DITEST
+hdf5glue_ITEST_LDADD  = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+
 model_ITEST_SOURCES =  $(MODELSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES) 
 model_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTMODEL
 model_ITEST_LDADD = $(libihmm_a_LIBADD)
@@ -107,5 +121,6 @@ model_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
 beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTBEAM
-beam_ITEST_LDADD = $(libihmm_a_LIBADD)
+beam_ITEST_LDADD = $(libihmm_a_LIBADD) 
+
 

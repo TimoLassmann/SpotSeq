@@ -61,6 +61,10 @@ struct hmm{
 
 static int run_sim_seq(struct parameters* param);
 
+int embedded(struct parameters* param, struct seq_buffer*sb);
+int init_random(struct parameters* param, struct seq_buffer*sb );
+int add_motif(struct seq_buffer*sb, char* motif);
+
 
 int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission,float self_transition);
 
@@ -216,9 +220,9 @@ int run_sim_seq(struct parameters* param)
                 RUN(reset_sb(sb));
                 
         }
-        
-        
-        free_sb(sb);
+        RUN(reset_sb(sb));
+        RUN(embedded(param,sb));
+            free_sb(sb);
         //DESTROY_CHK(MAIN_CHECK);
         
         return OK;
@@ -226,6 +230,103 @@ ERROR:
         free_sb(sb);
         return FAIL;
 }
+
+
+int embedded(struct parameters* param, struct seq_buffer*sb)
+{
+        char buffer[BUFFER_LEN];
+        char motif[BUFFER_LEN];
+        
+        ASSERT(sb != NULL,"No seq buffer");
+        ASSERT(param != NULL,"No seq buffer");
+
+         snprintf(buffer, BUFFER_LEN, "%s/%s.fa",param->outdir,"RANDOM");
+        LOG_MSG("Writing to: %s.",buffer);
+        
+        RUN(reset_sb(sb));
+        RUN(init_random(param,sb));
+        RUN(write_sequences_to_file(sb,buffer));
+
+        snprintf(motif, BUFFER_LEN, "%s","GCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC");
+        RUN(add_motif(sb,motif));
+        snprintf(buffer, BUFFER_LEN, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
+        LOG_MSG("Writing to: %s.",buffer);
+        RUN(write_sequences_to_file(sb,buffer));
+
+
+        snprintf(motif, BUFFER_LEN, "%s","TGCATGCATGCA");
+        RUN(add_motif(sb,motif));
+        snprintf(buffer, BUFFER_LEN, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
+        LOG_MSG("Writing to: %s.",buffer);
+        RUN(write_sequences_to_file(sb,buffer));
+
+    
+        
+        return OK;
+ERROR:
+        return FAIL;
+        
+}
+
+int init_random(struct parameters* param, struct seq_buffer*sb )
+{
+        struct sequence* sequence = NULL;
+        int expected_length = param->len;
+        int i,j,c;
+        
+        ASSERT(sb != NULL,"No seq buffer");
+
+        ASSERT(sb->seqs[0]->seq_len == 0,"Need to reset seq buffer");
+
+        
+        for(i = 0; i < sb->malloc_num;i++){
+                sequence = sb->seqs[i];
+                sequence->seq_len = 0;
+                for(j = 0; j < expected_length;j++){
+                        c = random_int_zero_to_x(3);
+                        sequence->seq[sequence->seq_len] = "ACGT"[c];
+                        sequence->seq_len++;
+                        if(sequence->seq_len == sequence->malloc_len){
+                                sequence->malloc_len = sequence->malloc_len << 1;
+                                MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
+                        }
+                }
+                sequence->seq[sequence->seq_len] = 0;
+                sequence->seq_len++;
+                sb->num_seq++;
+        }
+        return OK;
+ERROR:
+        return FAIL;       
+}
+
+int add_motif(struct seq_buffer*sb, char* motif)
+{
+        struct sequence* sequence = NULL;
+        int motif_len = 0;
+        int i,j,c;
+        ASSERT(sb != NULL,"No seq buffer");
+        ASSERT(motif  != NULL,"No seq buffer");
+
+        motif_len = strlen(motif);
+        
+        for(i = 0; i < sb->num_seq;i++){
+                if(random_float_zero_to_x(1.0) < 1.0){
+                        sequence = sb->seqs[i];
+                        ASSERT(sequence->seq_len > motif_len,"Motif is longer than sequence");
+                        c = random_int_zero_to_x(sequence->seq_len - (motif_len + 1));
+                        for(j = 0; j < motif_len;j++){
+                                sequence->seq[j+c] = motif[j];
+                        }
+                }
+        }
+        
+        return OK;
+ERROR:
+        return FAIL;       
+}
+
+
 
 int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission,float self_transition)
 {
@@ -310,10 +411,10 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         
         sum =0.0;
         for(i =0; i < sb->malloc_num;i++){
-                while(sb->seqs[sb->num_seq]->seq_len > expected_length + 50 ||sb->seqs[sb->num_seq]->seq_len <  expected_length - 50 ){
+                //while(sb->seqs[sb->num_seq]->seq_len > expected_length + 50 ||sb->seqs[sb->num_seq]->seq_len <  expected_length - 50 ){
                         RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
                         //fprintf(stdout,"len: %d expected: %d\n", sb->seqs[sb->num_seq]->seq_len, expected_length );
-                }
+                        //}
                 sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
                 sb->num_seq++;
         }
@@ -463,6 +564,7 @@ ERROR:
         return FAIL;
         
 }
+
 
 
 

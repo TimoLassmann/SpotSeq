@@ -22,7 +22,13 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         if(model->target_len){
                 model->target_len = average_input_seq_len;
         }
-        RUN(random_label_ihmm_sequences(sb, K));
+        RUN(random_label_ihmm_sequences(sb, K, 0.3));
+        //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
+
+        //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
+
+  
+        // emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
         //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
         
         //RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
@@ -675,7 +681,7 @@ int main(const int argc,const char * argv[])
         
         
         RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUN(random_label_ihmm_sequences(iseq, 10));
+        RUN(random_label_ihmm_sequences(iseq, 10, 0.3));
 
         
         RUNP(ihmm = alloc_ihmm_model(20, 4+3));

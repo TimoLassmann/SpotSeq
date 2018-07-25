@@ -1408,8 +1408,7 @@ int iHmmHyperSample(struct iHMM_model* model, int iterations)
                         ialpha0 = rk_gamma(&model->rndstate, model->alpha0_a + (float) totalM - sum_s, 1.0 / (model->alpha0_b -sum_w));
                 }
                 model->alpha0 = ialpha0;
-        }
-	
+        }	
         float mu = 0.0;
         float pi_mu;
 	
@@ -1425,13 +1424,8 @@ int iHmmHyperSample(struct iHMM_model* model, int iterations)
                 }
                 model->gamma = igamma;
         }
-	
-	
         return OK;
 }
-
-
-
 
 int print_hyper_parameters(struct iHMM_model* model)
 {

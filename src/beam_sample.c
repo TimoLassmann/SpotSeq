@@ -209,7 +209,7 @@ static int shrink_grow_integration_test(void)
 
        RUNP(model = alloc_ihmm_model(initial_states, 4));
        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-       RUN(random_label_ihmm_sequences(iseq, initial_states * 10));
+       RUN(random_label_ihmm_sequences(iseq, initial_states * 10,0.3));
        RUN(fill_counts(model,iseq));
        /* I am doing this as a pre-caution. I don't want the inital model
         * contain states that are not visited.. */
@@ -226,7 +226,7 @@ static int shrink_grow_integration_test(void)
        RUN(iHmmHyperSample(model, 10));
        RUN(print_model_parameters(model));
        
-       RUN(random_label_ihmm_sequences(iseq, 2));
+       RUN(random_label_ihmm_sequences(iseq, 2,0.3));
        RUN(fill_counts(model,iseq));
        RUN(print_counts(model));
        
@@ -251,7 +251,7 @@ static int shrink_grow_integration_test(void)
        RUN(print_fast_hmm_params(ft));
        
        LOG_MSG("Fill transitions 4");
-       RUN(random_label_ihmm_sequences(iseq, 2));
+       RUN(random_label_ihmm_sequences(iseq, 2,0.3));
        RUN(fill_counts(model,iseq));
        RUN(print_counts(model));
        RUN(fill_fast_transitions(model,ft));
@@ -269,7 +269,7 @@ static int shrink_grow_integration_test(void)
                fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
        }
 
-       RUN(random_label_ihmm_sequences(iseq, 6));
+       RUN(random_label_ihmm_sequences(iseq, 6,0.3));
        RUN(fill_counts(model,iseq));
        RUN(print_counts(model));
        RUN(iHmmHyperSample(model, 10));
@@ -311,7 +311,7 @@ static int add_state_integration_test(void)
 
         RUNP(model = alloc_ihmm_model(initial_states, 4));
         RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUN(random_label_ihmm_sequences(iseq, initial_states));
+        RUN(random_label_ihmm_sequences(iseq, initial_states,0.3));
       
 
         RUN(fill_counts(model,iseq));
@@ -926,9 +926,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         
         for(i = 0;i < 10;i++){
                 RUN(iHmmHyperSample(model, 20));
-                fprintf(stdout,"%f %f\n",model->alpha,model->gamma );
-                model->alpha = 1.0;
-                model->gamma = 1.0;
+                //fprintf(stdout,"%f %f\n",model->alpha,model->gamma );
+                //model->alpha = 1.0;
+                //model->gamma = 1.0;
         }
         
         /* sample transitions / emission */
@@ -958,7 +958,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 //print_fast_hmm_params(ft);
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
-                while(max > min_u && model->num_states < sb->max_len){
+                while(max > min_u && model->num_states < 300){//}sb->max_len){
                         //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
@@ -979,6 +979,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft = ft;
+
+
+                        
                         td[i]->sb = sb;
                         if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
                                 fprintf(stderr,"Adding job to queue failed.");
@@ -1038,15 +1041,30 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         //hyper
                         //RUN(iHmmHyperSample(model, 20));
                         //fprintf(stdout,"%f %f\n",model->alpha,model->gamma );
-                        if(iter < 1500){
-                                model->alpha = 1.0;
+                        if(iter < 100){
+                                /*      model->alpha = 1.0;
                                 model->gamma = 1.0;
                                 for(i = 0; i < model->num_states;i++){
-                                        model->beta[i] = 1.0 / (float)(model->num_states);
+                                        model->beta[i] = 2.0;//1.0 / (float)(model->num_states);
                                 }
 
+                                float sum = 0.0;
+                                model->beta[0] = 0;
+                                for(i = 1; i < model->num_states-1;i++){
+                                        model->beta[i] = rk_gamma(&model->rndstate, 1.0, 1.0);
+                                        sum += model->beta[i];
+                                }
+	
+                                model->beta[model->num_states-1] =  rk_gamma(&model->rndstate, model->gamma, 1.0);
+                                sum += model->beta[model->num_states-1] ;
+                                for(i = 0; i < model->num_states;i++){
+                                        model->beta[i] /= sum;
+                                        }*/
+                                
+                                
+
                         }else{
-                                RUN(iHmmHyperSample(model, 20));
+                                RUN(iHmmHyperSample(model, 1));
                         }
                         // fill fast...
                         RUN(fill_fast_transitions(model,ft));

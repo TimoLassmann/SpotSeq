@@ -6,7 +6,7 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 AM_SILENT_RULES([no])
 
-
+m4_include([m4/ax_lib_hdf5.m4])
 
 tldevel_check_f=$ac_abs_confdir/tldevel/README
 
@@ -92,6 +92,23 @@ VALGRIND=
 fi
 AC_MSG_CHECKING([whether self tests are run under valgrind])
 AC_MSG_RESULT($opt_valgrind_tests)
+
+
+AX_LIB_HDF5([serial])
+if test "$with_hdf5" = "yes"; then
+CC="$HDF5_CC"
+else
+AC_MSG_ERROR([
+
+Unable to find HDF5, we need parallel HDF5.
+Install on fedora:
+sudo dnf install hdf5 hdf5-devel
+
+])
+fi
+AC_MSG_RESULT($with_hdf5)
+
+ echo "HDF5 support:  $with_hdf5"
 
 ac_configure_args="$ac_configure_args PACKAGE_VERSION=$PACKAGE_VERSION   PACKAGE_NAME=$PACKAGE_NAME"
 

@@ -22,6 +22,7 @@ struct parameters{
         char* input;
         char* output;
         char* in_model;
+        char* cmd_line;
         int local;
         int num_threads;
         int num_start_states;
@@ -29,6 +30,8 @@ struct parameters{
 
 
 static int run_build_ihmm(struct parameters* param);
+static int run_build_fhmm(struct parameters* param);
+
 
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
@@ -91,9 +94,11 @@ int main (int argc, char *argv[])
         param->input = NULL;
         param->output = NULL;
         param->in_model = NULL;
+        param->cmd_line = NULL;
         param->num_threads = 8;
         param->num_start_states = 10;
         param->local = 0;
+
                 
         while (1){	
                 static struct option long_options[] ={
@@ -146,7 +151,7 @@ int main (int argc, char *argv[])
         }
         	
         LOG_MSG("Starting run");
-
+        
         if(!param->input){
                 RUN(print_help(argv));
                 ERROR_MSG("No input file! use --in <blah.fa>");
@@ -173,9 +178,11 @@ int main (int argc, char *argv[])
                         ERROR_MSG("The file <%s> does not exist.",param->in_model); 
                 }
         }
-        
+        RUNP(param->cmd_line = make_cmd_line(argc,argv));
+
         RUN(run_build_ihmm(param));
 
+        RUN(run_build_fhmm(param));
         //RUN(seed_controller_thread(param));
         
         RUN(free_parameters(param));
@@ -185,6 +192,105 @@ ERROR:
         free_parameters(param);
         return EXIT_FAILURE;
 }
+
+int run_build_fhmm(struct parameters* param)
+{
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        
+        int initial_states = 10;
+        int iter;
+        int i,j,c;
+        float** s1_e = NULL;
+        float** s2_e = NULL;
+
+        float** s1_t = NULL;
+        float** s2_t = NULL;
+        float sum;
+        int iterations = 1000;
+        
+        ASSERT(param!= NULL, "No parameters found.");
+        
+   
+        RUNP(model = read_model_hdf5(param->output));
+        RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+
+        /* first index is state * letter ; second is sample (max = 100) */
+
+        s1_e = malloc_2d_float(s1_e, model->num_states, model->L, 0.0);
+        s2_e = malloc_2d_float(s2_e, model->num_states, model->L, 0.0);
+
+        s1_t = malloc_2d_float(s1_t, model->num_states, model->num_states, 0.0);
+        s2_t = malloc_2d_float(s2_t, model->num_states, model->num_states, 0.0);
+
+        
+        for( iter=  0;iter < iterations;iter++){
+                RUN(fill_fast_transitions_only_matrices(model,ft));
+                for(i = 0;i < model->num_states;i++){
+                        for(c = 0; c < model->L;c++){
+                                s1_e[i][c] += ft->emission[c][i];
+                                s2_e[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
+                        }
+                }
+                for(i = 0;i < model->num_states;i++){
+                        for(c = 0;c < model->num_states;c++){
+                                s1_t[i][c] += ft->transition[i][c];
+                                s2_t[i][c] += (ft->transition[i][c] * ft->transition[i][c]);
+                        }
+                }
+                
+        }
+        
+        for(i = 0; i < model->num_states;i++){
+                sum = 0.0;
+                for(j = 0; j < model->L;j++){
+                        s2_e[i][j] = sqrt(  ((double) iterations * s2_e[i][j] - s1_e[i][j] * s1_e[i][j])/ ((double) iterations * ((double) iterations -1.0)));
+                        s1_e[i][j] = s1_e[i][j] / (double) iterations;
+                        sum+= s1_e[i][j];
+                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
+                }
+                if(sum){
+                        fprintf(stdout,"Emission:%d\n",i);
+                        for(j = 0; j < model->L;j++){
+                                s1_e[i][j] /= sum;
+                                fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
+                        }
+                }
+
+                sum = 0;
+                for(j = 0;j < model->num_states;j++){
+                        s2_t[i][j] = sqrt(  ((double) iterations * s2_t[i][j] - s1_t[i][j] * s1_t[i][j])/ ((double) iterations * ((double) iterations -1.0)));
+                        s1_t[i][j] = s1_t[i][j] / (double) iterations;
+                        sum+= s1_t[i][j];
+                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
+                }
+                if(sum){
+                        fprintf(stdout,"transition:%d\n",i);
+                        for(j = 0;j < model->num_states;j++){
+                                s1_t[i][j] /= sum;
+                                fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
+                        }
+                }
+                
+        }
+
+        RUN(add_fhmm(param->output,s1_t,s1_e, model->num_states, model->L  ));
+        
+        free_2d((void**) s1_e);
+        free_2d((void**) s2_e);
+
+        free_2d((void**) s1_t);
+        free_2d((void**) s2_t);
+   
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return FAIL;
+}
+
 
 int run_build_ihmm(struct parameters* param)
 {
@@ -223,9 +329,13 @@ int run_build_ihmm(struct parameters* param)
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 10000, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 4, 10));
 
-        RUN(write_model(model, param->output));
+        //RUN(write_model(model, param->output));
+        RUN(write_model_hdf5(model, param->output));
+//        RUN(add_annotation)
+        RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
+
         RUN(print_states_per_sequence(sb));
         RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations. 
@@ -244,7 +354,9 @@ ERROR:
 int free_parameters(struct parameters* param)
 {
         ASSERT(param != NULL, " No param found - free'd already???");
-
+        if(param->cmd_line){
+                MFREE(param->cmd_line);
+        }
         MFREE(param);
         return OK;
 ERROR:

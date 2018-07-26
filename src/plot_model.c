@@ -98,7 +98,7 @@ int main (int argc, char *argv[])
                 }   
         }
 
-        
+       
         RUN(run_plot_ihmm(param));
 
         RUN(plot_model_entropy(param));
@@ -115,6 +115,17 @@ ERROR:
         return EXIT_FAILURE;
 }
 
+int hdf5_testing(struct parameters* param)
+{
+        int i,j;
+
+        ASSERT(param != NULL, "No parameters");
+        RUN(write_model_hdf5(NULL,"TEST.h5"));
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int run_plot_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
@@ -123,9 +134,11 @@ int run_plot_ihmm(struct parameters* param)
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
         
-        RUNP(model = read_model(param->input));
+        RUNP(model = read_model_hdf5(param->input));
         print_model_parameters(model);
         print_counts(model);
+        
+         
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
         RUN(fill_background_emission_from_model(ft,model));
 
@@ -158,7 +171,8 @@ int plot_model_entropy(struct parameters* param)
         
         ASSERT(param!= NULL, "No parameters found.");
         
-        RUNP(model = read_model(param->input));
+   
+        RUNP(model = read_model_hdf5(param->input));
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
         /* first index is state * letter ; second is sample (max = 100) */
@@ -169,15 +183,14 @@ int plot_model_entropy(struct parameters* param)
         
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
-                
                 for(i = 0;i < model->num_states;i++){
                         for(c = 0; c < model->L;c++){
                                 s1[i][c] += ft->emission[c][i];
                                 s2[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
                         }
-                        
                 }
         }
+        
         for(i = 0; i < model->num_states;i++){
                 for(j = 0; j < model->L;j++){
                         s2[i][j] = sqrt(  ((double) iterations * s2[i][j] - s1[i][j] * s1[i][j])/ ((double) iterations * ((double) iterations -1.0)));
@@ -198,8 +211,6 @@ ERROR:
         free_ihmm_model(model);
         return FAIL;
 }
-
-
 
 int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param)
 {

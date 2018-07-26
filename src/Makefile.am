@@ -39,18 +39,14 @@ bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
 
-
-
-
-
-
 spotseq_plot_SOURCES = \
-plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
-spotseq_plot_LDADD = ${MYLIBDIRS}
+plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
+spotseq_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_model_SOURCES = \
-build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) 
-spotseq_model_LDADD = ${MYLIBDIRS}
+build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
+spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
 
 sim_seq_SOURCES = \
 outdir.h \

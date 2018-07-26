@@ -18,49 +18,49 @@
 
 
 struct hdf5_attribute{
-	char attr_name[HDF5GLUE_MAX_NAME_LEN];
-	char string[HDF5GLUE_MAX_CONTENT_LEN];
-	int int_val;
-	float float_val;
-	int type;
+        char attr_name[HDF5GLUE_MAX_NAME_LEN];
+        char string[HDF5GLUE_MAX_CONTENT_LEN];
+        int int_val;
+        float float_val;
+        int type;
 };
 
 struct hdf5_group_names{
-	char** names;
-	int num_names;
-	int name_length;
-	int num_names_mem;
+        char** names;
+        int num_names;
+        int name_length;
+        int num_names_mem;
 };
 
 struct hdf5_data{
-	char dataset_name[HDF5GLUE_MAX_NAME_LEN];
-	char group_name[HDF5GLUE_MAX_NAME_LEN];
-	char file_name[HDF5GLUE_MAX_NAME_LEN];
-	char tmp_name[HDF5GLUE_MAX_NAME_LEN];
+        char dataset_name[HDF5GLUE_MAX_NAME_LEN];
+        char group_name[HDF5GLUE_MAX_NAME_LEN];
+        char file_name[HDF5GLUE_MAX_NAME_LEN];
+        char tmp_name[HDF5GLUE_MAX_NAME_LEN];
 	
-	hsize_t dim[HDF5GLUE_MAX_DIM];
-	hsize_t chunk_dim[HDF5GLUE_MAX_DIM];
-	struct hdf5_group_names* grp_names;
-	struct hdf5_attribute** attr;
-	void* data;
-	int num_attr;
-	int num_attr_mem;
-	int rank;
+        hsize_t dim[HDF5GLUE_MAX_DIM];
+        hsize_t chunk_dim[HDF5GLUE_MAX_DIM];
+        struct hdf5_group_names* grp_names;
+        struct hdf5_attribute** attr;
+        void* data;
+        int num_attr;
+        int num_attr_mem;
+        int rank;
 	
-	hid_t fapl;
-	hid_t	 file;
-	hid_t group;
+        hid_t fapl;
+        hid_t	 file;
+        hid_t group;
 	
-	hid_t plist;
-	hid_t dataset;
+        hid_t plist;
+        hid_t dataset;
 	
-	hid_t attribute_id;
-	hid_t attr_dataspace_id;
+        hid_t attribute_id;
+        hid_t attr_dataspace_id;
 	
-	hid_t datatype;
-	hid_t dataspace;
+        hid_t datatype;
+        hid_t dataspace;
 	
-	herr_t status;
+        herr_t status;
 };
 
 
@@ -78,6 +78,9 @@ extern int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char*
 
 extern int hdf5_write_attributes(struct hdf5_data* hdf5_data,hid_t target);
 extern int hdf5_read_attributes(struct hdf5_data* hdf5_data,hid_t target);
+
+
+extern int print_attributes(struct hdf5_data* hdf5_data);
 
 
 extern int hdf5_write_1D_char(char* dataset_name, char* data,struct hdf5_data* hdf5_data);
@@ -119,18 +122,18 @@ extern int hdf5_write_1D_ushortint_expandable(char* dataset_name,unsigned short 
 #define AT __FILE__ " line " TOSTRING(__LINE__)
 #endif
 
-#define RUN_HDF5(EXP) do { \
-if((EXP) < 0){\
-ERROR_MSG_HDF5(TOSTRING(EXP),"failed.");\
-}\
-}while (0)
+#define RUN_HDF5(EXP) do {                                        \
+                if((EXP) < 0){                                    \
+                        ERROR_MSG_HDF5(TOSTRING(EXP),"failed.");  \
+                }                                                 \
+        }while (0)
 
 
 
-#define ERROR_MSG_HDF5(...) do {	\
-error(AT, __VA_ARGS__ );\
-H5Eprint2(H5E_DEFAULT, stdout);\
-goto ERROR;\
-}while (0)
+#define ERROR_MSG_HDF5(...) do {                \
+                error(AT, __VA_ARGS__ );        \
+                H5Eprint2(H5E_DEFAULT, stdout); \
+                goto ERROR;                     \
+        }while (0)
 
 #endif

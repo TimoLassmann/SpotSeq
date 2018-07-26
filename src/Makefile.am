@@ -1,7 +1,6 @@
 # Build the library in the hand subdirectory first.
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
-hdf5_flags = @HDF5_CFLAGS@ @HDF5_LDFLAGS@
 
 CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa  libhdf5gluetest_exp.h5 libhdf5gluetest.h5
 
@@ -17,12 +16,15 @@ MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
 
 LIBS = -lm -lpthread 
 
+
+AM_CPPFLAGS=${MYINCDIRS} 
+
+
 RANDOMKIT_FILES = distributions.h \
 distributions.c \
 randomkit.h \
 randomkit.c
 
-AM_CPPFLAGS=${MYINCDIRS} 
 
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
@@ -32,12 +34,17 @@ fast_hmm_param_test_functions.c
 
 MODELSOURCE = model.h model.c model_io.c global.h  
 
-BEAMSOURCE = beam_sample.h beam_sample.c 
-
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot
-
+BEAMSOURCE = beam_sample.h beam_sample.c
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
+
+
+
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score
+
+
+
+
 
 spotseq_plot_SOURCES = \
 plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
@@ -47,6 +54,9 @@ spotseq_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
 spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
+spotseq_score_SOURCES = \
+score_sequences.c $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)
+spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 sim_seq_SOURCES = \
 outdir.h \

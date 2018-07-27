@@ -55,7 +55,7 @@ build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RAND
 spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_score_SOURCES = \
-score_sequences.c $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)
+score_sequences.c hmm_score.c hmm_score.h  $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)
 spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 sim_seq_SOURCES = \

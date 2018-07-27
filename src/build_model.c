@@ -329,7 +329,7 @@ int run_build_ihmm(struct parameters* param)
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 4, 10));
+        RUN(run_beam_sampling( model, sb, ft,NULL, 10000, 10));
 
         //RUN(write_model(model, param->output));
         RUN(write_model_hdf5(model, param->output));

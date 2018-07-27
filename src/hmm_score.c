@@ -2,6 +2,7 @@
 #include "hmm_score.h"
 
 static struct fhmm* alloc_fhmm(void);
+static int setup_model(struct fhmm* fhmm);
 static int alloc_dyn_matrices(struct fhmm* fhmm);
 static int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);
 static int read_hmm_parameters(struct fhmm* fhmm, char* filename);
@@ -24,7 +25,7 @@ struct fhmm* init_fhmm(char* filename)
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
-        
+        RUN(setup_model(fhmm));
         return fhmm;
 ERROR:
         free_fhmm(fhmm);
@@ -33,7 +34,7 @@ ERROR:
 
 int setup_model(struct fhmm* fhmm)
 {
-        int i,j;
+        int i,j,c;
 
         ASSERT(fhmm != NULL, "no model");
         /* I need to allocate tindex & convert probs to log space */
@@ -53,11 +54,27 @@ int setup_model(struct fhmm* fhmm)
                 }
                
         }
-        
+
+         for(i = 0; i < fhmm->K;i++){
+                c = 0;
+                for(j = 0; j < fhmm->K;j++){
+                        if(fhmm->t[i][j]  != -INFINITY){
+                                fhmm->tindex[i][c+1] = j;
+                                c++;
+                        }
+
+                }
+                fhmm->tindex[i][0] = c+1;
+         }
         return OK;
 ERROR:
         return FAIL;
 }
+
+
+
+
+
 
 int alloc_dyn_matrices(struct fhmm* fhmm)
 {

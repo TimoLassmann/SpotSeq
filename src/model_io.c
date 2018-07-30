@@ -6,7 +6,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         struct ihmm_model* model = NULL;
         struct hdf5_data* hdf5_data = NULL;
         int a,b;
-        int i,j;
+        int i;
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
@@ -99,17 +99,13 @@ int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
         struct hdf5_data* hdf5_data = NULL;
         RUNP(hdf5_data = hdf5_create());
 
-        LOG_MSG("got here ");
-       
         hdf5_open_file(filename,hdf5_data);
-         LOG_MSG("got hedasdare ");
-
+         
         hdf5_create_group("fmodel",hdf5_data);
-  
         
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = N;
-        hdf5_data->dim[1] = L;
+        hdf5_data->dim[1] = L; 
         hdf5_data->chunk_dim[0] = N;
         hdf5_data->chunk_dim[1] = L;
         hdf5_write_2D_float("emission",emission, hdf5_data);
@@ -126,6 +122,35 @@ int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
         hdf5_free(hdf5_data);
         return OK;
 
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+int add_background_emission(char* filename,float* background,int L)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        RUNP(hdf5_data = hdf5_create());
+       
+        hdf5_open_file(filename,hdf5_data);
+        
+        hdf5_create_group("SequenceInformation",hdf5_data);
+        
+        hdf5_data->rank = 1;
+        hdf5_data->dim[0] = L;
+        hdf5_data->dim[1] = -1;
+        hdf5_data->chunk_dim[0] = L;
+        hdf5_data->chunk_dim[1] = -1;
+        hdf5_write_1D_float("background",background, hdf5_data);
+
+
+        hdf5_close_group(hdf5_data);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
 ERROR:
         if(hdf5_data){
                 hdf5_close_file(hdf5_data);
@@ -155,9 +180,8 @@ ERROR:
 int write_model_hdf5(struct ihmm_model* model, char* filename)
 {
         char buffer[BUFFER_LEN];
-        FILE* f_ptr = NULL;
-        int i,j;
         struct hdf5_data* hdf5_data = NULL;
+
         RUNP(hdf5_data = hdf5_create());
         snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
         hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
@@ -208,6 +232,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
 	
         hdf5_write_2D_float("emission_counts",model->emission_counts, hdf5_data);
 
+    
+        
         /*
         fprintf(f_ptr,"Beta:\n");
         for(i = 0; i < model->num_states;i++){

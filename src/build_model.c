@@ -23,6 +23,7 @@ struct parameters{
         char* output;
         char* in_model;
         char* cmd_line;
+        int num_iter;
         int local;
         int num_threads;
         int num_start_states;
@@ -98,7 +99,7 @@ int main (int argc, char *argv[])
         param->num_threads = 8;
         param->num_start_states = 10;
         param->local = 0;
-
+        param->num_iter = 1000;
                 
         while (1){	
                 static struct option long_options[] ={
@@ -106,13 +107,14 @@ int main (int argc, char *argv[])
                         {"out",required_argument,0,'o'},
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
-                        {"nthreads",required_argument,0,'n'},
+                        {"nthreads",required_argument,0,'t'},
+                        {"niter",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:n:m:s:l",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:l",long_options, &option_index);
 		
                 if (c == -1){
                         break;
@@ -136,6 +138,9 @@ int main (int argc, char *argv[])
                         param->num_start_states = atoi(optarg);
                         break;
                 case 'n':
+                        param->num_iter = atoi(optarg);
+                        break;
+                case 't':
                         param->num_threads = atoi(optarg);
                         break;
                                           
@@ -191,6 +196,68 @@ ERROR:
         fprintf(stdout,"\n  Try run with  --help.\n\n");
         free_parameters(param);
         return EXIT_FAILURE;
+}
+
+
+
+int run_build_ihmm(struct parameters* param)
+{
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        struct seq_buffer* sb = NULL;
+        
+        int initial_states = 400;
+        ASSERT(param!= NULL, "No parameters found.");
+        
+        initial_states = param->num_start_states;
+        
+        /* Step one read in sequences */
+        LOG_MSG("Loading sequences.");
+
+
+        RUNP(sb = load_sequences(param->input));
+
+        
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+       
+        if(param->in_model){
+                RUNP(model = read_model(param->in_model));
+        }else{
+                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+                /* Initial guess... */
+                model->alpha0_a = 6.0f;
+                model->alpha0_b = 15.0f;
+                model->gamma_a = 16.0f;
+                model->gamma_b = 4.0f;
+                model->alpha = IHMM_PARAM_PLACEHOLDER;
+                model->gamma = IHMM_PARAM_PLACEHOLDER;
+                model->target_len = param->local;
+                RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+                
+        }
+        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
+        RUN(fill_background_emission(ft, sb));
+        RUN(run_beam_sampling( model, sb, ft,NULL,  param->num_iter,  param->num_threads));
+
+        //RUN(write_model(model, param->output));
+        RUN(write_model_hdf5(model, param->output));
+//        RUN(add_annotation)
+        RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
+        RUN(add_background_emission(param->output,ft->background_emission,ft->L));
+
+        RUN(print_states_per_sequence(sb));
+        RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
+        //sb, num thread, guess for aplha and gamma.. iterations. 
+
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return FAIL;
 }
 
 int run_build_fhmm(struct parameters* param)
@@ -291,65 +358,6 @@ ERROR:
         return FAIL;
 }
 
-
-int run_build_ihmm(struct parameters* param)
-{
-        struct fast_hmm_param* ft = NULL;
-        struct ihmm_model* model = NULL;
-        struct seq_buffer* sb = NULL;
-        
-        int initial_states = 400;
-        ASSERT(param!= NULL, "No parameters found.");
-        
-        initial_states = param->num_start_states;
-        
-        /* Step one read in sequences */
-        LOG_MSG("Loading sequences.");
-
-
-        RUNP(sb = load_sequences(param->input));
-
-        
-        LOG_MSG("Read %d sequences.",sb->num_seq);
-       
-        if(param->in_model){
-                RUNP(model = read_model(param->in_model));
-        }else{
-                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
-                /* Initial guess... */
-                model->alpha0_a = 6.0f;
-                model->alpha0_b = 15.0f;
-                model->gamma_a = 16.0f;
-                model->gamma_b = 4.0f;
-                model->alpha = IHMM_PARAM_PLACEHOLDER;
-                model->gamma = IHMM_PARAM_PLACEHOLDER;
-                model->target_len = param->local;
-                RUN(inititalize_model(model, sb,initial_states));// initial_states) );
-                
-        }
-        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-        RUN(fill_background_emission(ft, sb));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 10000, 10));
-
-        //RUN(write_model(model, param->output));
-        RUN(write_model_hdf5(model, param->output));
-//        RUN(add_annotation)
-        RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
-
-        RUN(print_states_per_sequence(sb));
-        RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
-        //sb, num thread, guess for aplha and gamma.. iterations. 
-
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(sb);
-        return OK;
-ERROR:
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(sb);
-        return FAIL;
-}
 
 int free_parameters(struct parameters* param)
 {

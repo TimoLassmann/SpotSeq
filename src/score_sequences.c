@@ -18,6 +18,7 @@
 struct parameters{       
         char* in_model;
         char* in_sequences;
+        char* output;
 };
 
 
@@ -36,11 +37,13 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
         param->in_sequences = NULL;
-                
+        param->output = NULL;
+        
         while (1){	
                 static struct option long_options[] ={
                         {"model",required_argument,0,'m'},
                         {"in",required_argument,0,'i'},
+                        {"out",required_argument,0,'o'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
@@ -53,6 +56,9 @@ int main (int argc, char *argv[])
                 switch(c) {
                 case 'i':
                         param->in_sequences = optarg;
+                        break;
+                case 'o':
+                        param->output = optarg;
                         break;
                                  
                 case 'm':
@@ -81,7 +87,7 @@ int main (int argc, char *argv[])
                         ERROR_MSG("The file <%s> does not exist.",param->in_sequences);               
                 }           
         }
-
+        
         if(!param->in_model){
                 RUN(print_help(argv));
                 ERROR_MSG("No model file! use -m  <blah.h5>");
@@ -89,6 +95,16 @@ int main (int argc, char *argv[])
                 if(!my_file_exists(param->in_model)){
                         RUN(print_help(argv));
                         ERROR_MSG("The file <%s> does not exist.",param->in_model);                
+                }   
+        }
+
+        if(!param->output){
+                RUN(print_help(argv));
+                ERROR_MSG("No model file! use -m  <blah.h5>");
+        }else{
+                if(my_file_exists(param->output)){
+                        RUN(print_help(argv));
+                        ERROR_MSG("The file <%s> does exists.",param->output);                
                 }   
         }
 
@@ -105,13 +121,49 @@ ERROR:
 int run_score_sequences(struct parameters* param)
 {
         struct fhmm* fhmm = NULL;
-
-
+        struct seq_buffer* sb = NULL;
+        int i;
+        int expected_len;
+        FILE* fptr = NULL;
+        
         ASSERT(param != NULL, "no parameters");
+        
+        /* get model set up  */
         RUNP(fhmm = init_fhmm(param->in_model));
+
+        /* load sequences.  */
+        LOG_MSG("Loading sequences.");
+        RUNP(sb = load_sequences(param->in_sequences));
+
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+        
+        /* allocate dyn programming matrices.  */
+        RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
+
+        /* calculate average length */
+        expected_len = 0;
+        for(i = 0; i < sb->num_seq;i++){
+                expected_len += sb->sequences[i]->seq_len;
+        }
+        expected_len = expected_len / sb->num_seq;
+        LOG_MSG("Average sequence length: %d",expected_len);
+        /* score sequences  */
+        RUNP(fptr = fopen(param->output, "w"));
+        fprintf(fptr, "Name,Score\n");
+        for(i = 0; i < sb->num_seq;i++){
+                fprintf(stdout,"Running %d (len: %d) %d%d%d\n",i,sb->sequences[i]->seq_len,sb->sequences[i]->seq[0],sb->sequences[i]->seq[1],sb->sequences[i]->seq[2]);
+                RUN(forward(fhmm, sb->sequences[i]->seq, sb->sequences[i]->seq_len));
+                RUN(random_model_score(fhmm, sb->sequences[i]->seq, sb->sequences[i]->seq_len, expected_len));
+                fprintf(stdout,"%d f:%f  r:%f\tlog-odds:%f\tP(M):%f\n",  i, fhmm->f_score, fhmm->r_score, fhmm->f_score - fhmm->r_score, expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
+                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
+        }
+
+        fclose(fptr);
+        free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return OK;
 ERROR:
+        free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return FAIL; 
 }

@@ -21,14 +21,17 @@ struct fhmm{
         float* background;
         float f_score;
         float b_score;
+        float r_score;
         int alloc_matrix_len;
         int K;
         int L;
 };
 
-
+extern int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len);
+extern int forward(struct fhmm* fhmm, uint8_t* a, int len);
 
 extern struct fhmm* init_fhmm(char* filename);
+extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);
 extern void free_fhmm(struct fhmm* fhmm);
 #endif
 

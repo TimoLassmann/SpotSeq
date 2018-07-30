@@ -44,6 +44,7 @@ extern void free_ihmm_model(struct ihmm_model* ihmm);
 
 /* Model IO */
 extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
+extern int add_background_emission(char* filename,float* background,int L);
 extern int add_annotation( char* filename, char* name, char* value);
 extern int write_model_hdf5(struct ihmm_model* model, char* filename);
 struct ihmm_model* read_model_hdf5(char* filename);

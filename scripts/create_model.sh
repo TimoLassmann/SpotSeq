@@ -70,6 +70,12 @@ spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
 
 
+for file in model_at_*.h5 ; do
+    echo $file;
+    OUTSCORES=$file".scores.csv"
+    spotseq_score  -m $file  -i $INPUT  -o $OUTSCORES 
+done
+
 
 
 

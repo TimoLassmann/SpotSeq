@@ -103,8 +103,8 @@ int main (int argc, char *argv[])
                 ERROR_MSG("No model file! use -m  <blah.h5>");
         }else{
                 if(my_file_exists(param->output)){
-                        RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does exists.",param->output);                
+                        //RUN(print_help(argv));
+                       WARNING_MSG("The file %s will be over-written.",param->output);                
                 }   
         }
 
@@ -149,7 +149,7 @@ int run_score_sequences(struct parameters* param)
         LOG_MSG("Average sequence length: %d",expected_len);
         /* score sequences  */
         RUNP(fptr = fopen(param->output, "w"));
-        fprintf(fptr, "Name,Score\n");
+        fprintf(fptr, "Name,Score_%s\n",  param->in_model);
         for(i = 0; i < sb->num_seq;i++){
                 fprintf(stdout,"Running %d (len: %d) %d%d%d\n",i,sb->sequences[i]->seq_len,sb->sequences[i]->seq[0],sb->sequences[i]->seq[1],sb->sequences[i]->seq[2]);
                 RUN(forward(fhmm, sb->sequences[i]->seq, sb->sequences[i]->seq_len));
@@ -175,7 +175,6 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-        
         return FAIL;
                 
 }

@@ -31,4 +31,9 @@ extern int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm
 
 extern int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb);
 extern int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model);
+
+
+extern int run_build_fhmm(char* h5file);
+
+
 #endif

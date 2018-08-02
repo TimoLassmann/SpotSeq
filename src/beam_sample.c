@@ -7,6 +7,10 @@ struct beam_thread_data{
         struct fast_hmm_param* ft;
         struct seq_buffer* sb;
         float** dyn;
+        float** F_matrix;
+        float** B_matrix;
+        float** t;
+        float** e;
         int thread_ID;
         int num_threads;
 };
@@ -28,6 +32,9 @@ static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
 
 
 static int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq);
+
+static int forward(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq);
+static int backward(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq);
 
 #ifdef ITESTBEAM
 /* These are test funtions. */
@@ -1037,7 +1044,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(remove_unused_states_labels(model, sb));
                         RUN(fill_counts(model,sb));
                        
-                        //RUN(print_counts(model));
+                        RUN(print_counts(model));
                         //hyper
                         //RUN(iHmmHyperSample(model, 20));
                         //fprintf(stdout,"%f %f\n",model->alpha,model->gamma );
@@ -1127,8 +1134,19 @@ struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len,
                 td[i] = NULL;
                 MMALLOC(td[i], sizeof(struct beam_thread_data));
                 td[i]->dyn = NULL;
+                td[i]->F_matrix = NULL;
+                td[i]->B_matrix = NULL;
+                td[i]->t = NULL;
+                td[i]->e = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
+                RUNP(td[i]->F_matrix = malloc_2d_float(td[i]->F_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->B_matrix = malloc_2d_float(td[i]->B_matrix, max_len, K, 0.0f));
+
+                RUNP(td[i]->t = malloc_2d_float(td[i]->t, K,K, -INFINITY));
+                RUNP(td[i]->e = malloc_2d_float(td[i]->e, 30,K,-INFINITY));
+                     
+                
                 td[i]->ft = NULL;
                 td[i]->sb = NULL;
                 td[i]->thread_ID = i;
@@ -1211,12 +1229,189 @@ void* do_dynamic_programming(void *threadarg)
                 if( i% num_threads == thread_id){
                         //               LOG_MSG("Thread %d running sequence %d",thread_id, i);
                         RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
+                        RUN(forward(data->dyn,data->ft, data->sb->sequences[i]));
+                        RUN(backward(data->dyn,data->ft, data->sb->sequences[i]));
+                        exit(0);
                 }
         }
         return NULL;
 ERROR:
         return NULL;
 }
+
+
+int forward(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq)
+{
+        struct fast_t_item** list = NULL;
+        float* u = NULL;
+        uint8_t* seq = NULL;
+        float* emission = NULL;
+        float* cur = NULL;
+        float* last = NULL;
+        
+        float score;
+        
+        int i,j,len,boundary;
+        int l;
+        int a,b; 
+        
+        ASSERT(ft!= NULL, "no parameters");
+        ASSERT(matrix != NULL,"No dyn matrix");
+        
+        u = ihmm_seq->u;
+        len = ihmm_seq->seq_len;
+        seq = ihmm_seq->seq;
+        
+        list = ft->list;
+        
+        cur = matrix[0];
+        l = ft->last_state;
+        
+        for(i = 0; i < l;i++){
+                cur[i]  = -INFINITY;
+        }
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
+        //fill first row.
+        for(j = 0; j < boundary;j++){
+                if(list[j]->from == IHMM_START_STATE){
+                        cur[list[j]->to] = logsum(cur[list[j]->to], prob2scaledprob( list[j]->t));
+                }
+        }
+        emission = ft->emission[seq[0]];
+        
+        for(i = 0; i < l;i++){
+                cur[i] += prob2scaledprob(emission[i]);
+        }
+        
+        for(i = 1; i < len;i++){
+                last = cur;
+                cur = matrix[i];
+                for(j = 0; j < l;j++){
+                        cur[j] = -INFINITY;
+                }
+                
+                boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
+               
+                for(j = 0; j < boundary;j++){
+                        a = list[j]->from;
+                        b = list[j]->to;
+                        cur[b] = logsum(cur[b],last[a] + prob2scaledprob(list[j]->t));
+                        
+                }
+                emission = ft->emission[seq[i]];
+                for(j = 0; j < l;j++){
+                        cur[j] += prob2scaledprob(emission[j]);
+                }
+        }
+        
+
+        /* First let's check if there is a path! i.e. end is reachable.  */
+
+        score = prob2scaledprob(0.0f);
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
+        for(j = 0; j < boundary;j++){
+                a = list[j]->from;
+                b = list[j]->to;
+                if(b == IHMM_END_STATE){
+                             score = logsum(score, matrix[len-1][a] + prob2scaledprob(list[j]->t));
+                }
+        }
+        fprintf(stdout,"SCORE: %f\t(%f)\n",score,u[len]);
+        
+        
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int backward(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq)
+{
+        struct fast_t_item** list = NULL;
+        float* u = NULL;
+        uint8_t* seq = NULL;
+        float* emission = NULL;
+        float* cur = NULL;
+        float* next = NULL;
+
+        float score;
+        
+        int i,j,len,boundary;
+        int l;
+        int a,b; 
+        
+        
+        ASSERT(ft!= NULL, "no parameters");
+        ASSERT(matrix != NULL,"No dyn matrix");
+
+        u = ihmm_seq->u;
+        len = ihmm_seq->seq_len;
+        seq = ihmm_seq->seq;
+
+        list = ft->list;
+        
+        cur = matrix[len-1];
+        l = ft->last_state;
+
+        for(i = 0; i < l;i++){
+                cur[i]  = -INFINITY;
+        }
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
+        //fill first row.
+        for(j = 0; j < boundary;j++){
+                if(list[j]->to  == IHMM_END_STATE){
+                       cur[list[j]->from] = logsum(cur[list[j]->from], prob2scaledprob( list[j]->t));
+                }
+        }
+        emission = ft->emission[seq[len-1]];
+        for(i = 0; i < l;i++){
+                cur[i] += prob2scaledprob(emission[i]);
+        }   
+        for(i = len -2; i >= 0;i--){
+                next = cur;
+                cur = matrix[i];
+                for(j = 0; j < l;j++){
+                        cur[j] = -INFINITY;
+                }
+
+                boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
+               
+                for(j = 0; j < boundary;j++){
+                        a = list[j]->from;
+                        b = list[j]->to;
+                        cur[a] = logsum(cur[a], next[b] + prob2scaledprob(list[j]->t));
+                }
+                emission = ft->emission[seq[i]];
+ 
+               
+                for(j = 0; j < l;j++){
+                        cur[j] += prob2scaledprob(emission[j]);
+                }
+        }
+
+
+        /* First let's check if there is a path! i.e. end is reachable.  */
+
+        score = prob2scaledprob(0.0f);
+        
+        boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
+        for(j = 0; j < boundary;j++){
+                a = list[j]->from;
+                b = list[j]->to;
+                if(a == IHMM_START_STATE){
+                        score = logsum(score, matrix[0][b]+ prob2scaledprob(list[j]->t));
+                }
+        }
+        fprintf(stdout,"SCORE: %f\t(%f)\n",score,u[0]);
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
 
 int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq)
 {
@@ -1229,7 +1424,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         float* emission; 
         float* tmp_row;
         float r;
-        int last_pick;
+        int l;
         struct fast_t_item** list = NULL;
         ASSERT(ft!= NULL, "no parameters");
         ASSERT(matrix != NULL,"No dyn matrix");
@@ -1240,12 +1435,13 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         label = ihmm_seq->label;
 
         list = ft->list;
-        emission = ft->emission[0];
+        //emission = ft->emission[0];
         tmp_row = matrix[len];
         
+        l = ft->last_state;
         
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
-        for(i = 0; i < ft->last_state;i++){
+        for(i = 0; i < l;i++){
                 matrix[0][i] = 0.0f;
         }
         //fill first row.
@@ -1256,13 +1452,13 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         }
         sum = 0;
         emission = ft->emission[seq[0]];
-        for(i = 0; i < ft->last_state;i++){
+        for(i = 0; i < l;i++){
                 
                 matrix[0][i] *=  emission[i];
 
                 sum += matrix[0][i];
         }
-        for(i = 0; i < ft->last_state;i++){
+        for(i = 0; i < l;i++){
                 matrix[0][i] /= sum;
         }
         /*sum = 0.0;
@@ -1289,12 +1485,12 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                 }
                 sum = 0.0;
                 
-                for(j = 0; j < ft->last_state;j++){
+                for(j = 0; j < l;j++){
                         matrix[i][j] *=  emission[j];
                         sum += matrix[i][j];
                         
                 }
-                for(j = 0; j < ft->last_state;j++){
+                for(j = 0; j < l;j++){
                         matrix[i][j] /= sum;
                 }
                 /*sum = 0.0;              
@@ -1309,7 +1505,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         /* Pick last label based on probabilities in last row. Then look for
          * transitions to that label with a prob > min_u and select ancestor
          * based on probs in previous row */
-        last_pick = IHMM_END_STATE;
+        l = IHMM_END_STATE;
         /* First let's check if there is a path! i.e. end is reachable.  */
 
         sum = 0.0f;
@@ -1318,15 +1514,15 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
                 b = list[j]->to;
-                if(list[j]->to == last_pick){
+                if(b == l){
                         sum += matrix[len-1][a];
                 }
         }
         
         if(sum != 0.0 && !isnan(sum)){
-                last_pick = IHMM_END_STATE;
+                l = IHMM_END_STATE;
                 for(i = len-1; i >= 0; i--){
-                        //fprintf(stdout,"pick: %d %d\n",i,last_pick);
+                        //fprintf(stdout,"pick: %d %d\n",i,l);
                         for(j = 0; j < ft->last_state;j++){
                                 tmp_row[j] = -1.0;
                         }
@@ -1335,7 +1531,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                         for(j = 0; j < boundary;j++){
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(list[j]->to == last_pick){
+                                if(b == l){
                                         tmp_row[a] = matrix[i][a];
                                         sum += matrix[i][a];
                                 }
@@ -1345,17 +1541,17 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                                 
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(list[j]->to == last_pick){
+                                if(list[j]->to == l){
      
                                         r -= tmp_row[a];
                                         if(r <= 0.0f){
-                                                last_pick = a;
+                                                l = a;
                                         
                                                 break;
                                         }
                                 }
                         }
-                        label[i] = last_pick;   
+                        label[i] = l;   
                 }
 
         }else{

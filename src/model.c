@@ -347,6 +347,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         uint8_t* seq = NULL;
         float** e = NULL;
         float** m = NULL;
+        //float r;
         int len;
         int i;
 
@@ -364,9 +365,15 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         for(i = 1; i < len;i++){
                 m[label[i-1]][label[i]]++;
                 e[(int)seq[i]][label[i]]++;
+                //r = rk_double(&ihmm->rndstate);
+                //m[label[i-1]][label[i]] += (r - 0.5f);
+                //r = rk_double(&ihmm->rndstate);
+                //e[(int)seq[i]][label[i]]+=  (r - 0.5f);//r / 1.0;
                  
         }
         m[label[len-1]][IHMM_END_STATE] += 1;
+        // r = rk_double(&ihmm->rndstate);
+        // m[label[len-1]][IHMM_END_STATE] += (r*2 - 1.0f);// r / 1.0;
         
         return OK;
 ERROR:
@@ -627,7 +634,7 @@ int print_counts(struct ihmm_model* ihmm)
         for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout,"s%3d", i ); 
                 for(j = 0; j < ihmm->num_states;j++){
-                         fprintf(stdout," %0.0f", ihmm->transition_counts[i][j]); 
+                         fprintf(stdout," %0.2f", ihmm->transition_counts[i][j]); 
                 }
                 fprintf(stdout,"\n");
         }
@@ -637,7 +644,7 @@ int print_counts(struct ihmm_model* ihmm)
         for(i = 0; i < ihmm->L;i++){
                 fprintf(stdout,"s%3d", i ); 
                 for(j = 0; j < ihmm->num_states;j++){
-                         fprintf(stdout," %0.0f", ihmm->emission_counts[i][j]); 
+                         fprintf(stdout," %0.2f", ihmm->emission_counts[i][j]); 
                 }
                 fprintf(stdout,"\n");
         }

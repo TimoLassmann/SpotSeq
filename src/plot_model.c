@@ -117,7 +117,6 @@ ERROR:
 
 int hdf5_testing(struct parameters* param)
 {
-        int i,j;
 
         ASSERT(param != NULL, "No parameters");
         RUN(write_model_hdf5(NULL,"TEST.h5"));

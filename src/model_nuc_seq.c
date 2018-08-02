@@ -120,8 +120,6 @@ int main (int argc, char *argv[])
 
         RUN(run_build_ihmm(param));
 
-        //RUN(seed_controller_thread(param));
-        
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
 ERROR:

@@ -184,11 +184,10 @@ int main (int argc, char *argv[])
                 }
         }
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
-
+        
         RUN(run_build_ihmm(param));
-
+        
         RUN(run_build_fhmm(param->output));
-        //RUN(seed_controller_thread(param));
         
         RUN(free_parameters(param));
         return EXIT_SUCCESS;

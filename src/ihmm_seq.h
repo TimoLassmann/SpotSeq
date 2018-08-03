@@ -16,7 +16,7 @@
 #include <ctype.h>
 
 
-#define ALPHABET_DNA 5
+#define ALPHABET_DNA 4
 #define ALPHABET_APPROXDNA 16
 #define ALPHABET_PROTEIN 20
 

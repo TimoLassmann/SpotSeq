@@ -644,7 +644,7 @@ int print_counts(struct ihmm_model* ihmm)
         for(i = 0; i < ihmm->L;i++){
                 fprintf(stdout,"s%3d", i ); 
                 for(j = 0; j < ihmm->num_states;j++){
-                         fprintf(stdout," %0.2f", ihmm->emission_counts[i][j]); 
+                         fprintf(stdout," %0.5f", ihmm->emission_counts[i][j]); 
                 }
                 fprintf(stdout,"\n");
         }

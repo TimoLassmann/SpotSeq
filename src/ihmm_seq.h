@@ -27,6 +27,7 @@ struct ihmm_sequence{
         float* u;
         int* label; 
         char* name;
+        float score;
         int malloc_len;
         int seq_len;
 };

@@ -1552,6 +1552,8 @@ int fill_counts(struct ihmm_sequences* iseq,struct iHMM_model* model)
         int** p = NULL;
 	
         int** labels = iseq->labels;
+
+        float* u = iseq->u;
 	
         // get prior
         //for(i = 0; i < iseq->num_seq;i++){

@@ -347,15 +347,18 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         uint8_t* seq = NULL;
         float** e = NULL;
         float** m = NULL;
+        float* u = NULL;
         //float r;
         int len;
         int i;
 
+        
         ASSERT(ihmm != NULL,"no model");
         
         label = sb->sequences[seq_ID]->label;
         seq = sb->sequences[seq_ID]->seq;
         len = sb->sequences[seq_ID]->seq_len;
+        u = sb->sequences[seq_ID]->u;
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
 
@@ -365,6 +368,10 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         for(i = 1; i < len;i++){
                 m[label[i-1]][label[i]]++;
                 e[(int)seq[i]][label[i]]++;
+
+                //e[(int)seq[i]][label[i]] += scaledprob2prob(u[i]);
+
+                
                 //r = rk_double(&ihmm->rndstate);
                 //m[label[i-1]][label[i]] += (r - 0.5f);
                 //r = rk_double(&ihmm->rndstate);

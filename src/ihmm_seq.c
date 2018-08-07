@@ -1082,6 +1082,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->name = NULL;
         sequence->malloc_len = 128;
         sequence->seq_len = 0;
+        sequence->score = -INFINITY;
         MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
         MMALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
@@ -1165,14 +1166,20 @@ int print_labelled_ihmm_buffer(struct seq_buffer* sb)
         for(i = 0; i < sb->num_seq;i++){
                 sequence = sb->sequences[i];
                 for(j = 0; j < sequence->seq_len;j++){
-                        fprintf(stdout,"%3c",sequence->seq[j]);
+                        fprintf(stdout,"%4c",sequence->seq[j]);
                 }
                 fprintf(stdout,"\n");
                 for(j = 0; j < sequence->seq_len;j++){
-                        fprintf(stdout,"%3d",sequence->label[j]);
+                        fprintf(stdout,"%4d",sequence->label[j]);
                 }
                 fprintf(stdout,"\n");
+                for(j = 0; j < sequence->seq_len;j++){
+                        fprintf(stdout,"%4.0f",scaledprob2prob(sequence->u[j])*100.0f);
+                }
+                fprintf(stdout,"\n");
+    
         }
+        
         if(sb->L == ALPHABET_DNA){
                 RUN(translate_DNA_to_internal(sb));                
         }

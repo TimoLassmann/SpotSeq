@@ -1,5 +1,5 @@
 
-#include "hmm_score.h"
+#include "finite_hmm.h"
 
 static struct fhmm* alloc_fhmm(void);
 static int setup_model(struct fhmm* fhmm);
@@ -33,28 +33,28 @@ int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len)
                 score += b[a[i]];
                 score += r;
         }
-        score += e; 
+        score += e;
 
 
         fhmm->r_score = score;
-        
-        
+
+
         return OK;
 ERROR:
         return FAIL;
-                
+
 }
 
 
 int forward(struct fhmm* fhmm, uint8_t* a, int len)
 {
         int i,j,c,f;
-	
+
         float** matrix = NULL;
         float* last= 0;
         float* cur = 0;
         const float* trans = 0;
-	
+
         float tmp = 0;
 
         ASSERT(fhmm != NULL, "No model");
@@ -64,12 +64,12 @@ int forward(struct fhmm* fhmm, uint8_t* a, int len)
 
         matrix = fhmm->F_matrix;
         cur = matrix[0];
-	
+
         for(j = 0; j < fhmm->K;j++){
                 cur[j]  = -INFINITY;
         }
         cur[IHMM_START_STATE] = 0.0f;
-	
+
         for(i = 1; i < len+1;i++){
                 last = cur;
                 cur = matrix[i];
@@ -91,13 +91,13 @@ int forward(struct fhmm* fhmm, uint8_t* a, int len)
         //All goes to 1.
         last = cur;//matrix[len];
         cur = matrix[len+1];
-	
-	
+
+
         for(j = 0; j < fhmm->K;j++){
                 cur[j] = -INFINITY;// prob2scaledprob(0.0);
         }
-	
-	
+
+
         for(j = 2; j < fhmm->K;j++){
                 cur[IHMM_END_STATE] = logsum(cur[IHMM_END_STATE],last[j] + fhmm->t[j][IHMM_END_STATE]);
         }
@@ -113,7 +113,7 @@ struct fhmm* init_fhmm(char* filename)
         struct fhmm* fhmm = NULL;
         ASSERT(filename!= NULL, "No filename");
 
-        
+
 
         RUNP(fhmm = alloc_fhmm());
 
@@ -126,7 +126,7 @@ struct fhmm* init_fhmm(char* filename)
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
-        
+
         return fhmm;
 ERROR:
         free_fhmm(fhmm);
@@ -153,7 +153,7 @@ int setup_model(struct fhmm* fhmm)
                 for(j = 0; j < fhmm->K;j++){
                         fhmm->t[i][j] = prob2scaledprob(fhmm->t[i][j]);
                 }
-               
+
         }
 
         for(i = 0; i < fhmm->K;i++){
@@ -173,7 +173,7 @@ int setup_model(struct fhmm* fhmm)
         for(i = 0; i < fhmm->L;i++){
                 fhmm->background[i] = prob2scaledprob(fhmm->background[i]);
         }
-        
+
         return OK;
 ERROR:
         return FAIL;
@@ -220,19 +220,19 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
 
         float sum;
         int i,j;
-        
+
         ASSERT(fhmm!= NULL, "No model");
-        ASSERT(filename != NULL, "No filename")
+        ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
 
-     
+
         /* read in hdf5 file and get emission and transition matrix */
 
 
 
         hdf5_data = hdf5_create();
-	
+
         hdf5_open_file(filename,hdf5_data);
 
         hdf5_read_attributes(hdf5_data,hdf5_data->file);
@@ -243,7 +243,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         for(i = 0; i < hdf5_data->grp_names->num_names;i++){
                 fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
         }
-        
+
         hdf5_open_group("imodel",hdf5_data);
         hdf5_read_attributes(hdf5_data,hdf5_data->group);
         ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
@@ -256,7 +256,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
                 if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
                         fhmm->L = hdf5_data->attr[i]->int_val;
                 }
-                
+
         }
         hdf5_close_group(hdf5_data);
 
@@ -267,14 +267,14 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         fhmm->background = (float*) hdf5_data->data;
         hdf5_close_group(hdf5_data);
 
-        
+
         hdf5_open_group("fmodel",hdf5_data);
 
         hdf5_read_dataset("emission",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         fhmm->e = (float**) hdf5_data->data;
 
-        
+
         hdf5_read_dataset("transition",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         fhmm->t = (float**) hdf5_data->data;
@@ -299,17 +299,17 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
                 sum = 0.0;
                 for(j =0; j < fhmm->K;j++){
                         fprintf(stdout,"%f ",fhmm->t[i][j]);
-                         sum += fhmm->t[i][j];
+                        sum += fhmm->t[i][j];
                 }
                 fprintf(stdout,"sum:%f\n",sum);
         }
 
-        
-        
+
+
         return OK;
 ERROR:
         return FAIL;
-        
+
 }
 
 
@@ -332,7 +332,7 @@ struct fhmm* alloc_fhmm(void)
 
         fhmm->alloc_matrix_len = 0;
 
-        
+
         return fhmm;
 ERROR:
         free_fhmm(fhmm);
@@ -347,7 +347,7 @@ void free_fhmm(struct fhmm* fhmm)
                 }
                 if(fhmm->B_matrix){
                         free_2d((void**) fhmm->B_matrix);
-                } 
+                }
 
                 if(fhmm->e){
                         free_2d((void**) fhmm->e);

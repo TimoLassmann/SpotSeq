@@ -13,9 +13,9 @@
 
 #include "ihmm_seq.h"
 
-#include "hmm_score.h"
+#include "finite_hmm.h"
 
-struct parameters{       
+struct parameters{
         char* in_model;
         char* in_sequences;
         char* output;
@@ -27,19 +27,19 @@ static int free_parameters(struct parameters* param);
 
 static int run_score_sequences(struct parameters* param);
 
-int main (int argc, char *argv[]) 
-{		
+int main (int argc, char *argv[])
+{
         struct parameters* param = NULL;
         int c;
-        
+
         tlog.echo_build_config();
-        
+
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
         param->in_sequences = NULL;
         param->output = NULL;
-        
-        while (1){	
+
+        while (1){
                 static struct option long_options[] ={
                         {"model",required_argument,0,'m'},
                         {"in",required_argument,0,'i'},
@@ -49,7 +49,7 @@ int main (int argc, char *argv[])
                 };
                 int option_index = 0;
                 c = getopt_long_only (argc, argv,"hm:i:",long_options, &option_index);
-		
+
                 if (c == -1){
                         break;
                 }
@@ -60,10 +60,10 @@ int main (int argc, char *argv[])
                 case 'o':
                         param->output = optarg;
                         break;
-                                 
+
                 case 'm':
                         param->in_model = optarg;
-                        break;  
+                        break;
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);
@@ -74,28 +74,28 @@ int main (int argc, char *argv[])
                         break;
                 }
         }
-        	
+
         LOG_MSG("Starting run");
 
         if(!param->in_sequences){
                 RUN(print_help(argv));
                 ERROR_MSG("No input sequences! use -i <blah.fa>");
-                
+
         }else{
                 if(!my_file_exists(param->in_sequences)){
                         RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->in_sequences);               
-                }           
+                        ERROR_MSG("The file <%s> does not exist.",param->in_sequences);
+                }
         }
-        
+
         if(!param->in_model){
                 RUN(print_help(argv));
                 ERROR_MSG("No model file! use -m  <blah.h5>");
         }else{
                 if(!my_file_exists(param->in_model)){
                         RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->in_model);                
-                }   
+                        ERROR_MSG("The file <%s> does not exist.",param->in_model);
+                }
         }
 
         if(!param->output){
@@ -104,12 +104,12 @@ int main (int argc, char *argv[])
         }else{
                 if(my_file_exists(param->output)){
                         //RUN(print_help(argv));
-                       WARNING_MSG("The file %s will be over-written.",param->output);                
-                }   
+                       WARNING_MSG("The file %s will be over-written.",param->output);
+                }
         }
 
         RUN(run_score_sequences(param));
-        
+
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
 ERROR:
@@ -125,9 +125,9 @@ int run_score_sequences(struct parameters* param)
         int i;
         int expected_len;
         FILE* fptr = NULL;
-        
+
         ASSERT(param != NULL, "no parameters");
-        
+
         /* get model set up  */
         RUNP(fhmm = init_fhmm(param->in_model));
 
@@ -136,7 +136,7 @@ int run_score_sequences(struct parameters* param)
         RUNP(sb = load_sequences(param->in_sequences));
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
-        
+
         /* allocate dyn programming matrices.  */
         RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
 
@@ -165,9 +165,9 @@ int run_score_sequences(struct parameters* param)
 ERROR:
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
-        return FAIL; 
+        return FAIL;
 }
-        
+
 int free_parameters(struct parameters* param)
 {
         ASSERT(param != NULL, " No param found - free'd already???");
@@ -176,13 +176,13 @@ int free_parameters(struct parameters* param)
         return OK;
 ERROR:
         return FAIL;
-                
+
 }
 
 int print_help(char **argv)
 {
         const char usage[] = " -m <model.h5> -i <input sequences> ";
-        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 
         //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );

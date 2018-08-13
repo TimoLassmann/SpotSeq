@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --nodes=1 
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=16
 
 export PATH=~/code/SpotSeq/src:$PATH
@@ -31,15 +31,15 @@ done
 if [ "${INPUT}" = "" ]; then usage; fi
 
 #
-#   Sanity check 
+#   Sanity check
 #
 
-programs=(spotseq_model spotseq_plot dot spotseq_score) 
+programs=(spotseq_model spotseq_plot dot spotseq_score)
 
 printf "Running Sanity checks:\n";
 
 for item in ${programs[*]}
-do   
+do
     if which $item >/dev/null; then
         printf "%15s found...\n"  $item;
     else
@@ -66,20 +66,13 @@ echo "Running: dot -Tpdf $OUTDOT -o $OUTPDF"
 dot -Tpdf $OUTDOT -o $OUTPDF
 
 echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
-spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES 
+spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
 
 
 for file in model_at_*.h5 ; do
     echo $file;
     OUTSCORES=$file".scores.csv"
-    spotseq_score  -m $file  -i $INPUT  -o $OUTSCORES 
+    spotseq_score  -m $file  -i $INPUT  -o $OUTSCORES
 done
-
-
-
-
-
-
-
 

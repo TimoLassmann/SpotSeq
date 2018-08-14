@@ -15,10 +15,11 @@
 
 #include "beam_sample.h"
 
+#include "finite_hmm.h"
 
 #include "distributions.h"
 
-struct parameters{       
+struct parameters{
         char* input;
         char* output;
         char* in_model;
@@ -79,11 +80,11 @@ double loggam(double x)
     return gl;
 }
 
-int main (int argc, char *argv[]) 
-{		
+int main (int argc, char *argv[])
+{
         struct parameters* param = NULL;
         int c;
-        
+
         tlog.echo_build_config();
         /*int i;
         for(i = 0 ; i < 100;i++){
@@ -100,8 +101,8 @@ int main (int argc, char *argv[])
         param->num_start_states = 10;
         param->local = 0;
         param->num_iter = 1000;
-                
-        while (1){	
+
+        while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
@@ -115,7 +116,7 @@ int main (int argc, char *argv[])
                 };
                 int option_index = 0;
                 c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:l",long_options, &option_index);
-		
+
                 if (c == -1){
                         break;
                 }
@@ -126,7 +127,7 @@ int main (int argc, char *argv[])
                 case 'i':
                         param->input = optarg;
                         break;
-                                 
+
                 case 'o':
                         param->output = optarg;
                         break;
@@ -143,7 +144,7 @@ int main (int argc, char *argv[])
                 case 't':
                         param->num_threads = atoi(optarg);
                         break;
-                                          
+
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);
@@ -154,18 +155,18 @@ int main (int argc, char *argv[])
                         break;
                 }
         }
-        	
+
         LOG_MSG("Starting run");
-        
+
         if(!param->input){
                 RUN(print_help(argv));
                 ERROR_MSG("No input file! use --in <blah.fa>");
-                
+
         }else{
                 if(!my_file_exists(param->input)){
                         RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->input);               
-                }           
+                        ERROR_MSG("The file <%s> does not exist.",param->input);
+                }
         }
 
         if(!param->output){
@@ -173,22 +174,22 @@ int main (int argc, char *argv[])
                 ERROR_MSG("No output file! use --in <blah.fa>");
         }else{
                 if(my_file_exists(param->output)){
-                        WARNING_MSG("Will overwrite: %s.",param->output);          
-                }   
+                        WARNING_MSG("Will overwrite: %s.",param->output);
+                }
         }
 
         if(param->in_model){
                 if(!my_file_exists(param->in_model)){
                         RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->in_model); 
+                        ERROR_MSG("The file <%s> does not exist.",param->in_model);
                 }
         }
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
-        
+
         RUN(run_build_ihmm(param));
-        
-        RUN(run_build_fhmm(param->output));
-        
+
+        RUN(run_build_fhmm_file(param->output));
+
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
 ERROR:
@@ -204,21 +205,21 @@ int run_build_ihmm(struct parameters* param)
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
         struct seq_buffer* sb = NULL;
-        
+
         int initial_states = 400;
         ASSERT(param!= NULL, "No parameters found.");
-        
+
         initial_states = param->num_start_states;
-        
+
         /* Step one read in sequences */
         LOG_MSG("Loading sequences.");
 
 
         RUNP(sb = load_sequences(param->input));
 
-        
+
         LOG_MSG("Read %d sequences.",sb->num_seq);
-       
+
         if(param->in_model){
                 RUNP(model = read_model(param->in_model));
         }else{
@@ -232,7 +233,7 @@ int run_build_ihmm(struct parameters* param)
                 model->gamma = IHMM_PARAM_PLACEHOLDER;
                 model->target_len = param->local;
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
-                
+
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
@@ -246,7 +247,7 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(print_states_per_sequence(sb));
         RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
-        //sb, num thread, guess for aplha and gamma.. iterations. 
+        //sb, num thread, guess for aplha and gamma.. iterations.
 
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
@@ -269,15 +270,15 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-        
+
         return FAIL;
-                
+
 }
 
 int print_help(char **argv)
 {
         const char usage[] = " -in <fasta> -out <outfile>";
-        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );

@@ -30,7 +30,9 @@ struct fhmm{
 extern int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len);
 extern int forward(struct fhmm* fhmm, uint8_t* a, int len);
 
+extern struct fhmm* alloc_fhmm(void);
 extern struct fhmm* init_fhmm(char* filename);
+extern int alloc_dyn_matrices(struct fhmm* fhmm);
 extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);
 extern void free_fhmm(struct fhmm* fhmm);
 #endif

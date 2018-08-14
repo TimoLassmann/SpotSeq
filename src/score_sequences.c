@@ -171,7 +171,6 @@ ERROR:
 int free_parameters(struct parameters* param)
 {
         ASSERT(param != NULL, " No param found - free'd already???");
-
         MFREE(param);
         return OK;
 ERROR:

@@ -34,7 +34,7 @@ long int compare_transition(void* keyA, void* keyB)
 {
         float* num1 = (float*)keyA;
         float* num2 = (float*)keyB;
-	
+
         if(*num1 == *num2){
                 return 0;
         }
@@ -58,7 +58,6 @@ void free_fast_t_item_struct(void* ptr)
         if(ptr){
                 MFREE(ptr);
         }
-        
 }
 
 /* Goal: efficient datastructure for double indexing transition: */
@@ -79,7 +78,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         int (*fp_cmp_same)(void* ptr_a,void* ptr_b);
         void (*fp_print)(void* ptr,FILE* out_ptr) = NULL;
         void (*fp_free)(void* ptr) = NULL;
-        
+
         ASSERT(L > 1, "Need more than one letter");
         MMALLOC(ft, sizeof(struct fast_hmm_param));
         ft->alloc_num_states = k;
@@ -96,10 +95,11 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->root = NULL;
 
         MMALLOC(ft->background_emission, sizeof(float) * L  );
+
         for(i = 0; i < L; i++){
                 ft->background_emission[i] = 0.0f;
         }
-        
+
         RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
         RUNP(ft->transition = malloc_2d_float(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
 
@@ -108,9 +108,9 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         fp_print = &print_fast_t_item_struct;
         fp_cmp_same = &resolve_default;
         fp_free = &free_fast_t_item_struct;
-	
+
         ft->root = init_tree(fp_get,fp_cmp,fp_cmp_same,fp_print,fp_free);
-                
+
         MMALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
 
         for(i = 0; i < ft->alloc_num_states;i++){
@@ -119,7 +119,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
                 ft->infinity[i]->from = -1;
                 ft->infinity[i]->to = -1;
                 ft->infinity[i]->t = 0.0f;
-        }        
+        }
         return ft;
 ERROR:
         free_fast_hmm_param(ft);
@@ -131,12 +131,11 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
         int i, num_old_item;
         ASSERT(ft != NULL, "No ft struct!");
         ASSERT(new_num_states >2,"No states requested");
-        
+
         if(new_num_states > ft->alloc_num_states){
                 num_old_item = ft->alloc_num_states;
                 while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
-                        
                 }
                 RUNP(ft->emission = malloc_2d_float(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
                 RUNP(ft->transition = malloc_2d_float(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
@@ -148,10 +147,7 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
                         ft->infinity[i]->from = -1;
                         ft->infinity[i]->to = -1;
                         ft->infinity[i]->t = 0.0f;
-                }      
-
-
-                
+                }
         }
         return OK;
 ERROR:
@@ -173,9 +169,8 @@ ERROR:
                 ft->infinity[i]->from = -1;
                 ft->infinity[i]->to = -1;
                 ft->infinity[i]->t = 0.0f;
-        }      
-        
-        return OK;        
+        }
+        return OK;
 ERROR:
         free_fast_hmm_param(ft);
         return FAIL;

@@ -14,10 +14,10 @@ MYLIBDIRS = ../tldevel/libthrpool.a \
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
             -I${top_srcdir}/${LIB_TLDEVELDIR}
 
-LIBS = -lm -lpthread 
+LIBS = -lm -lpthread
 
 
-AM_CPPFLAGS=${MYINCDIRS} 
+AM_CPPFLAGS=${MYINCDIRS}
 
 
 RANDOMKIT_FILES = distributions.h \
@@ -32,30 +32,30 @@ FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
 fast_hmm_param_test_functions.c
 
-MODELSOURCE = model.h model.c model_io.c global.h  
+MODELSOURCE = model.h model.c model_io.c global.h
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
 
+CONVERSION = hmm_conversion_h hmm_conversion.c
 
+FINITEHMM = finite_hmm.c finite_hmm.h
 
 bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score
 
 
 
-
-
 spotseq_plot_SOURCES = \
-plot_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
+plot_model.c $(BEAMSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 spotseq_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_model_SOURCES = \
-build_model.c $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
+build_model.c $(BEAMSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
 spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_score_SOURCES = \
-score_sequences.c finite_hmm.c finite_hmm.h  $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)
+score_sequences.c          $(CONVERSION)  $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
 spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 sim_seq_SOURCES = \
@@ -65,7 +65,7 @@ matrix_io.h \
 matrix_io.c \
 sim_seq.c
 
-sim_seq_LDADD =  ${MYLIBDIRS} 
+sim_seq_LDADD =  ${MYLIBDIRS}
 
 build_ihmm_SOURCES = \
 model_nuc_seq.c \

@@ -1,9 +1,9 @@
 
 #include "finite_hmm.h"
 
-static struct fhmm* alloc_fhmm(void);
+
+
 static int setup_model(struct fhmm* fhmm);
-static int alloc_dyn_matrices(struct fhmm* fhmm);
 static int read_hmm_parameters(struct fhmm* fhmm, char* filename);
 
 

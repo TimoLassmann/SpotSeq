@@ -12,7 +12,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
 
 
         hdf5_data = hdf5_create();
-	
+
         hdf5_open_file(filename,hdf5_data);
         hdf5_read_attributes(hdf5_data,hdf5_data->file);
         print_attributes(hdf5_data);
@@ -35,7 +35,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
                 if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
                         b = hdf5_data->attr[i]->int_val;
                 }
-                
+
         }
         ASSERT(a!=0, "No states???");
         ASSERT(b!=0, "No letters???");
@@ -48,7 +48,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
                         model->num_states = hdf5_data->attr[i]->int_val;}
                 if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
                         model->L = hdf5_data->attr[i]->int_val;}
-                
+
                 if(!strncmp("Gamma", hdf5_data->attr[i]->attr_name, 5)){
                         model->gamma = hdf5_data->attr[i]->float_val;
                 }
@@ -74,7 +74,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read beta");
         model->beta = (float*)hdf5_data->data;
 
-                
+
         hdf5_read_dataset("transition_counts",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         model->transition_counts = (float**)hdf5_data->data;
@@ -82,7 +82,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         hdf5_read_dataset("emission_counts",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
         model->emission_counts = (float**)hdf5_data->data;
-     
+
         hdf5_close_group(hdf5_data);
 
         hdf5_close_file(hdf5_data);
@@ -100,12 +100,12 @@ int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
         RUNP(hdf5_data = hdf5_create());
 
         hdf5_open_file(filename,hdf5_data);
-         
+
         hdf5_create_group("fmodel",hdf5_data);
-        
+
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = N;
-        hdf5_data->dim[1] = L; 
+        hdf5_data->dim[1] = L;
         hdf5_data->chunk_dim[0] = N;
         hdf5_data->chunk_dim[1] = L;
         hdf5_write_2D_float("emission",emission, hdf5_data);
@@ -134,11 +134,11 @@ int add_background_emission(char* filename,float* background,int L)
 {
         struct hdf5_data* hdf5_data = NULL;
         RUNP(hdf5_data = hdf5_create());
-       
+
         hdf5_open_file(filename,hdf5_data);
-        
+
         hdf5_create_group("SequenceInformation",hdf5_data);
-        
+
         hdf5_data->rank = 1;
         hdf5_data->dim[0] = L;
         hdf5_data->dim[1] = -1;
@@ -190,38 +190,38 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
 
 
         hdf5_create_file(filename,hdf5_data);
-        
+
         hdf5_write_attributes(hdf5_data, hdf5_data->file);
-        
+
         hdf5_data->num_attr = 0;
-        
+
         hdf5_add_attribute(hdf5_data, "Number of states", "", model->num_states, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "Number of letters", "", model->L, 0.0f, HDF5GLUE_INT);
-        
+
         hdf5_add_attribute(hdf5_data, "Gamma", "", 0, model->gamma, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "gamma_a","",0, model->gamma_a, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "gamma_b","",0, model->gamma_b, HDF5GLUE_FLOAT);
-        
+
         hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha0_a, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha0_b, HDF5GLUE_FLOAT);
-        
+
         hdf5_create_group("imodel",hdf5_data);
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
-        
+
         hdf5_data->rank = 1;
         hdf5_data->dim[0] = model->alloc_num_states;
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = model->alloc_num_states;
         hdf5_data->chunk_dim[1] = -1;
         hdf5_write_1D_float("Beta",model->beta, hdf5_data);
-        
+
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = model->alloc_num_states;
         hdf5_data->dim[1] = model->alloc_num_states;
         hdf5_data->chunk_dim[0] = model->alloc_num_states;
         hdf5_data->chunk_dim[1] = model->alloc_num_states;
-        
+
         hdf5_write_2D_float("transition_counts",model->transition_counts, hdf5_data);
 
         hdf5_data->rank = 2;
@@ -229,11 +229,11 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_data->dim[1] = model->alloc_num_states;
         hdf5_data->chunk_dim[0] = model->L;
         hdf5_data->chunk_dim[1] = model->alloc_num_states;
-	
+
         hdf5_write_2D_float("emission_counts",model->emission_counts, hdf5_data);
 
-    
-        
+
+
         /*
         fprintf(f_ptr,"Beta:\n");
         for(i = 0; i < model->num_states;i++){
@@ -271,24 +271,24 @@ int write_model(struct ihmm_model* model, char* filename)
 {
         FILE* f_ptr = NULL;
         int i,j;
-        
-        
+
+
         ASSERT(model != NULL, "No model.");
 
         RUNP(f_ptr = fopen(filename, "w"));
         fprintf(f_ptr,"Number of states: %d\n", model->num_states);
         fprintf(f_ptr,"Number of letters: %d\n", model->L);
         fprintf(f_ptr,"Target length: %d\n", model->target_len);
-        
+
         fprintf(f_ptr,"Gamma: %f\n", model->gamma);
         fprintf(f_ptr,"gamma_a: %f\n", model->gamma_a);
         fprintf(f_ptr,"gamma_b: %f\n", model->gamma_b);
-        
+
         fprintf(f_ptr,"alpha: %f\n", model->alpha);
         fprintf(f_ptr,"alpha0_a: %f\n", model->alpha0_a);
         fprintf(f_ptr,"alpha0_b: %f\n", model->alpha0_b);
 
-        
+
         fprintf(f_ptr,"Beta:\n");
         for(i = 0; i < model->num_states;i++){
                 fprintf(f_ptr,"%f\n", model->beta[i]);
@@ -305,7 +305,7 @@ int write_model(struct ihmm_model* model, char* filename)
                         fprintf(f_ptr,"%f\n", model->emission_counts[i][j]);
                 }
         }
-        
+
         fclose(f_ptr);
         return OK;
 ERROR:
@@ -327,21 +327,21 @@ struct ihmm_model* read_model(char* filename)
         fscanf(f_ptr,"Number of states: %d\n",&a);
         fscanf(f_ptr,"Number of letters: %d\n", &b);
         fprintf(stdout,"Number of states after reading! : %d\n",a);
-        
 
-     
+
+
         RUNP(model = alloc_ihmm_model(a, b));
         model->num_states = a;
         fscanf(f_ptr,"Target length: %d\n", &model->target_len);
         fscanf(f_ptr,"Gamma: %f\n", &model->gamma);
         fscanf(f_ptr,"gamma_a: %f\n", &model->gamma_a);
         fscanf(f_ptr,"gamma_b: %f\n", &model->gamma_b);
-        
+
         fscanf(f_ptr,"alpha: %f\n", &model->alpha);
         fscanf(f_ptr,"alpha0_a: %f\n", &model->alpha0_a);
         fscanf(f_ptr,"alpha0_b: %f\n", &model->alpha0_b);
 
-        
+
         fscanf(f_ptr, "%*[^\n]\n");
         for(i = 0; i < model->num_states;i++){
                 fscanf(f_ptr,"%f\n", &model->beta[i]);

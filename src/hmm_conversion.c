@@ -309,11 +309,23 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         RUNP(fhmm = alloc_fhmm());
 
-        RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
-        /* Set alphabet and number of states. */
+
         fhmm->K = model->num_states;
         fhmm->L = model->L;
+
+        RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+
+        RUN(fill_background_emission_from_model(ft,model));
+
+        /* copy background probabilitys into fhmm */
+
+        MMALLOC(fhmm->background, sizeof(float) * fhmm->L);
+        for (i = 0; i < fhmm->L; i++){
+                fhmm->background[i] = ft->background_emission[i];
+        }
+
+        /* Set alphabet and number of states. */
 
         s1_e = malloc_2d_float(s1_e, model->num_states, model->L, 0.0);
         s2_e = malloc_2d_float(s2_e, model->num_states, model->L, 0.0);
@@ -321,7 +333,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         s1_t = malloc_2d_float(s1_t, model->num_states, model->num_states, 0.0);
         s2_t = malloc_2d_float(s2_t, model->num_states, model->num_states, 0.0);
 
-        for( iter=  0;iter < iterations;iter++){
+        for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
                 for(i = 0;i < model->num_states;i++){
                         for(c = 0; c < model->L;c++){
@@ -371,21 +383,17 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         fhmm->e = s1_e;
         fhmm->t = s1_t;
-        /* get HMM parameters  */
-        //RUN(read_hmm_parameters(fhmm,filename));
-
         /* alloc dyn matrices (now that I know how many states there are) */
-        //RUN(alloc_dyn_matrices(fhmm));
+        RUN(alloc_dyn_matrices(fhmm));
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
-        //RUN(setup_model(fhmm));
+        RUN(setup_model(fhmm));
 
         free_2d((void**) s2_e);
 
         free_2d((void**) s2_t);
         free_fast_hmm_param(ft);
-        free_ihmm_model(model);
         return fhmm;
 ERROR:
         free_2d((void**) s1_e);
@@ -394,7 +402,6 @@ ERROR:
         free_2d((void**) s1_t);
         free_2d((void**) s2_t);
         free_fast_hmm_param(ft);
-        free_ihmm_model(model);
 
         return NULL;
 }
@@ -420,6 +427,7 @@ int run_build_fhmm_file(char* h5file)
 
         RUNP(model = read_model_hdf5(h5file));
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+
 
         /* first index is state * letter ; second is sample (max = 100) */
 

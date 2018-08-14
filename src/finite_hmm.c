@@ -3,11 +3,11 @@
 
 
 
-static int setup_model(struct fhmm* fhmm);
+
 static int read_hmm_parameters(struct fhmm* fhmm, char* filename);
 
 
-int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len)
+int random_model_score(struct fhmm* fhmm,float* ret_score,  uint8_t* a, int len, int expected_len)
 {
         int i;
 
@@ -35,8 +35,7 @@ int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len)
         }
         score += e;
 
-
-        fhmm->r_score = score;
+        *ret_score = score;
 
 
         return OK;
@@ -45,12 +44,11 @@ ERROR:
 
 }
 
-
-int forward(struct fhmm* fhmm, uint8_t* a, int len)
+int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
 
-        float** matrix = NULL;
+
         float* last= 0;
         float* cur = 0;
         const float* trans = 0;
@@ -58,11 +56,11 @@ int forward(struct fhmm* fhmm, uint8_t* a, int len)
         float tmp = 0;
 
         ASSERT(fhmm != NULL, "No model");
+        ASSERT(matrix != NULL, "No dyn programming  matrix");
         ASSERT(a != NULL, "No sequence");
 
         ASSERT(len > 0, "Seq is of length 0");
 
-        matrix = fhmm->F_matrix;
         cur = matrix[0];
 
         for(j = 0; j < fhmm->K;j++){
@@ -74,6 +72,7 @@ int forward(struct fhmm* fhmm, uint8_t* a, int len)
                 last = cur;
                 cur = matrix[i];
                 for(j = 0; j < fhmm->K;j++){
+                        //LOG_MSG("writing to state: %d",j);
                         cur[j] = -INFINITY;
                 }
                 for(j = 0; j < fhmm->K;j++){
@@ -101,7 +100,9 @@ int forward(struct fhmm* fhmm, uint8_t* a, int len)
         for(j = 2; j < fhmm->K;j++){
                 cur[IHMM_END_STATE] = logsum(cur[IHMM_END_STATE],last[j] + fhmm->t[j][IHMM_END_STATE]);
         }
-        fhmm->f_score = cur[IHMM_END_STATE];// matrix[ENDSTATE][i];
+        *ret_score = cur[IHMM_END_STATE];
+
+        //fhmm->f_score = cur[IHMM_END_STATE];// matrix[ENDSTATE][i];
         return OK;
 ERROR:
         return FAIL;

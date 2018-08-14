@@ -27,10 +27,11 @@ struct fhmm{
         int L;
 };
 
-extern int random_model_score(struct fhmm* fhmm, uint8_t* a, int len, int expected_len);
-extern int forward(struct fhmm* fhmm, uint8_t* a, int len);
+extern int random_model_score(struct fhmm* fhmm, float* ret_score, uint8_t* a, int len, int expected_len);
+extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a, int len);
 
 extern struct fhmm* alloc_fhmm(void);
+extern int setup_model(struct fhmm* fhmm);
 extern struct fhmm* init_fhmm(char* filename);
 extern int alloc_dyn_matrices(struct fhmm* fhmm);
 extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);

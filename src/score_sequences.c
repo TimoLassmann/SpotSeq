@@ -103,7 +103,6 @@ int main (int argc, char *argv[])
                 ERROR_MSG("No output file! use -o   <blah.csv>");
         }else{
                 if(my_file_exists(param->output)){
-                        //RUN(print_help(argv));
                        WARNING_MSG("The file %s will be over-written.",param->output);
                 }
         }
@@ -147,15 +146,17 @@ int run_score_sequences(struct parameters* param)
         }
         expected_len = expected_len / sb->num_seq;
         LOG_MSG("Average sequence length: %d",expected_len);
+
         /* score sequences  */
         RUNP(fptr = fopen(param->output, "w"));
         fprintf(fptr, "Name,Score_%s\n",  param->in_model);
         for(i = 0; i < sb->num_seq;i++){
                 //fprintf(stdout,"Running %d (len: %d) %d%d%d\n",i,sb->sequences[i]->seq_len,sb->sequences[i]->seq[0],sb->sequences[i]->seq[1],sb->sequences[i]->seq[2]);
                 RUN(forward(fhmm, fhmm->F_matrix, &fhmm->f_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len));
-                RUN(random_model_score(fhmm, &fhmm->r_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len, expected_len));
+                RUN(random_model_score(fhmm->background  , &fhmm->r_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len, expected_len));
                 //fprintf(stdout,"%d f:%f  r:%f\tlog-odds:%f\tP(M):%f\n",  i, fhmm->f_score, fhmm->r_score, fhmm->f_score - fhmm->r_score, expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
-                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
+                //fprintf(stdout,"%f %f\n",fhmm->f_score,fhmm->r_score );
+                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  LOGISTIC_FLT(fhmm->f_score - fhmm->r_score ));// /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
         }
 
         fclose(fptr);

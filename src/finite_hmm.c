@@ -1,25 +1,21 @@
 
 #include "finite_hmm.h"
 
-
-
-
 static int read_hmm_parameters(struct fhmm* fhmm, char* filename);
 
-
-int random_model_score(struct fhmm* fhmm,float* ret_score,  uint8_t* a, int len, int expected_len)
+int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int expected_len)
 {
         int i;
 
         float score;
         float r;                /* self transition */
         float e;                /* 1- r (exit) */
-        float* b;
-        ASSERT(fhmm != NULL, "No model");
+
+        ASSERT(b != NULL, "No background probabilities");
         ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
-        b = fhmm->background;
+
         /* initialise transitions  */
         r = (double)expected_len / ((double) expected_len + 1.0);
         e = 1.0 -r;

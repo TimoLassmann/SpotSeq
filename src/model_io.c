@@ -15,17 +15,17 @@ struct ihmm_model* read_model_hdf5(char* filename)
 
         hdf5_open_file(filename,hdf5_data);
         hdf5_read_attributes(hdf5_data,hdf5_data->file);
-        print_attributes(hdf5_data);
+        //print_attributes(hdf5_data);
         get_group_names(hdf5_data);
-        fprintf(stdout,"Groups:\n");
-        for(i = 0; i < hdf5_data->grp_names->num_names;i++){
-                fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
-        }
+        //fprintf(stdout,"Groups:\n");
+        //for(i = 0; i < hdf5_data->grp_names->num_names;i++){
+        //        fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
+        //}
 
         hdf5_open_group("imodel",hdf5_data);
         hdf5_read_attributes(hdf5_data, hdf5_data->group);
         ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        print_attributes(hdf5_data);
+        //print_attributes(hdf5_data);
         a = 0;
         b = 0;
         for(i = 0; i < hdf5_data->num_attr;i++){
@@ -189,7 +189,7 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_add_attribute(hdf5_data, "Version", buffer, 0, 0.0f, HDF5GLUE_CHAR);
 
 
-        hdf5_create_file(filename,hdf5_data);
+        RUN(hdf5_create_file(filename,hdf5_data));
 
         hdf5_write_attributes(hdf5_data, hdf5_data->file);
 

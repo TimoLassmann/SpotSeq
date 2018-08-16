@@ -207,6 +207,7 @@ int run_build_ihmm(struct parameters* param)
         struct seq_buffer* sb = NULL;
 
         int initial_states = 400;
+        int i;
         ASSERT(param!= NULL, "No parameters found.");
 
         initial_states = param->num_start_states;
@@ -217,11 +218,12 @@ int run_build_ihmm(struct parameters* param)
 
         RUNP(sb = load_sequences(param->input));
 
-
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
         if(param->in_model){
-                RUNP(model = read_model(param->in_model));
+                RUNP(model = read_model_hdf5(param->in_model));
+
+                make sure sequences are labelled ! required for setting U
         }else{
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 /* Initial guess... */
@@ -233,10 +235,13 @@ int run_build_ihmm(struct parameters* param)
                 model->gamma = IHMM_PARAM_PLACEHOLDER;
                 model->target_len = param->local;
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
-
+                for(i = 0;i < 10;i++){
+                        RUN(iHmmHyperSample(model, 20));
+                }
         }
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
+
         RUN(run_beam_sampling( model, sb, ft,NULL,  param->num_iter,  param->num_threads));
 
         //RUN(write_model(model, param->output));
@@ -245,7 +250,7 @@ int run_build_ihmm(struct parameters* param)
         RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
         RUN(add_background_emission(param->output,ft->background_emission,ft->L));
 
-        RUN(print_states_per_sequence(sb));
+        //RUN(print_states_per_sequence(sb));
         RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
 

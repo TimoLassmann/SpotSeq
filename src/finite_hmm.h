@@ -27,7 +27,7 @@ struct fhmm{
         int L;
 };
 
-extern int random_model_score(struct fhmm* fhmm, float* ret_score, uint8_t* a, int len, int expected_len);
+extern int random_model_score(float* b, float* ret_score, uint8_t* a, int len, int expected_len);
 extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a, int len);
 
 extern struct fhmm* alloc_fhmm(void);

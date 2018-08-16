@@ -50,11 +50,46 @@ done
 
 echo "All dependencies found."
 
-OUTMODEL=$INPUT$RUNNAME".model"
+OUTMODEL=$INPUT$RUNNAME".h5"
 OUTDOT=$INPUT$RUNNAME".dot"
 OUTPDF=$INPUT$RUNNAME".pdf"
 OUTSCORES=$INPUT$RUNNAME".scores.csv"
 
+
+
+
+
+LOCALITER=$(($NUMITER / 100))
+foo=$(printf "%05d" $((0* $LOCALITER)))
+LOCALNAME=$INPUT$RUNNAME"_"$foo".h5"
+echo $LOCALNAME
+echo "Running:spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER"
+spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER
+for i in `seq 1 99`;
+do
+    OLDLOCALNAME=$LOCALNAME
+     foo=$(printf "%05d" $((i* $LOCALITER)))
+
+    LOCALNAME=$INPUT$RUNNAME"_"$foo".h5"
+    SCORENAME=$INPUT$RUNNAME"_"$foo".scores.csv"
+    echo "Running: spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $LOCALNAME -niter $LOCALITER"
+    spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $LOCALNAME -niter $LOCALITER
+    echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
+    spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
+    #spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME-out $LOCALNAME -niter $NUMITER
+    #LOCALNAME=$INPUT$RUNNAME"_"$((i* $LOCALITER))".h5"
+    #echo $LOCALNAME
+done
+echo "Running:spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $OUTMODEL -niter $LOCALITER"
+spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $OUTMODEL -niter $LOCALITER
+
+echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
+spotseq_plot -in $OUTMODEL  -out $OUTDOT
+
+echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
+spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
+
+exit
 
 echo "Running: spotseq_model -in $INPUT --states 100 -out $OUTMODEL"
 spotseq_model -in $INPUT --states $NUMSTATES -out $OUTMODEL -niter $NUMITER
@@ -68,7 +103,7 @@ dot -Tpdf $OUTDOT -o $OUTPDF
 echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
 spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
-
+exit
 
 for file in model_at_*.h5 ; do
     echo $file;
@@ -76,3 +111,4 @@ for file in model_at_*.h5 ; do
     spotseq_score  -m $file  -i $INPUT  -o $OUTSCORES
 done
 
+exit

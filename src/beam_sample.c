@@ -67,12 +67,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         ASSERT(num_threads > 0, "No threads");
 
         init_logsum();
-        for(i = 0;i < 10;i++){
-                RUN(iHmmHyperSample(model, 20));
-                //fprintf(stdout,"%f %f\n",model->alpha,model->gamma );
-                //model->alpha = 1.0;
-                //model->gamma = 1.0;
-        }
+        //for(i = 0;i < 10;i++){
+        //        RUN(iHmmHyperSample(model, 20));
+        //}
 
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
@@ -91,11 +88,8 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
 
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
-
                 RUN(set_u(sb,model,ft, &min_u));
 
-                //fprintf(stdout,"MIN_U:%f\n",min_u);
-                //print_fast_hmm_params(ft);
                 RUN(get_max_to_last_state_transition(ft, &max));
                 //fprintf(stdout,"MAX:%f\n", max);
                 while(max > min_u && model->num_states < 300){//}sb->max_len){
@@ -103,37 +97,30 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
-
                 }
-
 
                 RUN(make_flat_param_list(ft));
                 LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
-                //print_fast_hmm_params(ft);
-                //RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
+
                 RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
 
-
                 //dyn prog + labelling
-                //LOG_MSG(" %d * %d = %d ",sb->max_len+1, ft->last_state, sizeof(float)*(sb->max_len+1) * ft->last_state );
-                //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft = ft;
                         td[i]->sb = sb;
-                        //if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
-                        //fprintf(stderr,"Adding job to queue failed.");
-                        //}
+                        if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
+                                fprintf(stderr,"Adding job to queue failed.");
+                        }
                         /* if(thr_pool_queue(local_pool,do_forward_backward,td[i]) == -1){ */
                         /*         fprintf(stderr,"Adding job to queue failed."); */
                         /* } */
-                        if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){
-                                fprintf(stderr,"Adding job to queue failed.");
-                        }
-
+                        /* if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){ */
+                        /*         fprintf(stderr,"Adding job to queue failed."); */
+                        /* } */
                 }
                 thr_pool_wait(local_pool);
 
-                 struct fhmm* fhmm = NULL;
+                /*struct fhmm* fhmm = NULL;
                 RUNP(fhmm = build_finite_hmm_from_infinite_hmm(model));
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft = ft;
@@ -142,11 +129,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         if(thr_pool_queue(local_pool, do_score_sequences,td[i]) == -1){
                                 fprintf(stderr,"Adding job to queue failed.");
                         }
-
                 }
                 thr_pool_wait(local_pool);
-                free_fhmm(fhmm);
-                //print_labelled_ihmm_buffer(sb);
+                free_fhmm(fhmm);*/
                 no_path =0;
                 for(i = 0; i < sb->num_seq;i++){
                         if(sb->sequences[i]->u[0] == -1){
@@ -154,8 +139,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                                 LOG_MSG("weird split must have happened in seq %d",i);
                         }
                 }
-                //print_labelled_ihmm_seq(sb->sequences[0]);
-                //exit(0);
+
                 if(no_path){
                         LOG_MSG("weird split must have happened. %d",iter);
                         RUN(fill_fast_transitions(model,ft));
@@ -163,24 +147,20 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 }else{
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
-                        //RUN(remove_unused_states_labels(model, sb));
-                        //LOG_MSG("%d states", model->num_states);
-
                         RUN(remove_unused_states_labels(model, sb));
                         RUN(fill_counts(model,sb));
                         RUN(iHmmHyperSample(model, 1));
                         RUN(fill_fast_transitions(model,ft));
                 }
                 /* print out model - used for plotting  */
-                if((iter+1) % 10 == 0){
-                        LOG_MSG("print %d\n",iter);
+                /*if((iter+1) % 10 == 0){
+                        //LOG_MSG("print %d\n",iter);
                         char tmp_buffer[BUFFER_LEN];
                         snprintf(tmp_buffer,BUFFER_LEN,"model_at_%07d.h5",iter+1);
                         RUN(write_model_hdf5(model,tmp_buffer));
                         RUN(add_background_emission(tmp_buffer,ft->background_emission,ft->L));
                         RUN(run_build_fhmm_file(tmp_buffer));
-                }
-
+                        }*/
         }
 
         RUN(print_labelled_ihmm_buffer(sb));
@@ -188,7 +168,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         if(need_local_pool){
                 thr_pool_destroy(local_pool);
         }
-
         free_beam_thread_data(td, num_threads);
         return OK;
 ERROR:
@@ -224,12 +203,11 @@ void* do_forward_backward(void *threadarg)
         }
         for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
-                        //               LOG_MSG("Thread %d running sequence %d",thread_id, i);
+                        // LOG_MSG("Thread %d running sequence %d",thread_id, i);
                         RUN(forward_slice(data->F_matrix,data->ft, data->sb->sequences[i],&f_score));
                         if(f_score == -INFINITY){
                                 data->sb->sequences[i]->u[0] = -1;
                         }else{
-
                                 RUN(backward_slice(data->B_matrix,data->ft, data->sb->sequences[i],&b_score));
                                 //fprintf(stdout,"%f (f)\n%f (b)\n", f_score,b_score);
                                 RUN(collect_slice(data, data->sb->sequences[i], f_score));
@@ -269,8 +247,8 @@ void* do_score_sequences(void* threadarg)
                 if( i% num_threads == thread_id){
                         seq = data->sb->sequences[i];
                         RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
-                        RUN(random_model_score(fhmm, &r_score, seq->seq, seq->seq_len,expected_len));
-                        fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, expf(f_score - r_score ) /  (1.0 + expf(f_score - r_score)));
+                        RUN(random_model_score(fhmm->background, &r_score, seq->seq, seq->seq_len,expected_len));
+                        fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, LOGISTIC_FLT(f_score - r_score));
                 }
         }
         return NULL;
@@ -287,6 +265,7 @@ void* do_sample_path_and_posterior(void* threadarg)
         int thread_id;
         float f_score;
         float b_score;
+        float r_score;
 
         data = (struct beam_thread_data *) threadarg;
 
@@ -302,13 +281,15 @@ void* do_sample_path_and_posterior(void* threadarg)
                         if(seq->u[0] != -1){
                                 RUN(forward_slice(data->F_matrix, data->ft, seq, &f_score));
                                 RUN(backward_slice(data->B_matrix, data->ft, seq, &b_score));
+                                RUN(random_model_score(data->ft->background_emission, &r_score, seq->seq, seq->seq_len,seq->seq_len));
                                 if(!approximatelyEqual(f_score, b_score, 10e-5)){
                                         fprintf(stdout,"%f %f %d (%0.8f)\n", f_score,b_score, approximatelyEqual(f_score, b_score, 10e-5), 10e-5);
                                 }
-                                fprintf(stdout,"p:%f f:%f diff:%f  percentage:%f \n",seq->score, f_score, seq->score - f_score, 100.0f* scaledprob2prob(seq->score - f_score));
+                                fprintf(stdout,"seq: %d\tp:%f f:%f r:%f diff:%f  %f\t%f \n",i,seq->score, f_score,r_score, seq->score - f_score,f_score-r_score, LOGISTIC_FLT(f_score-r_score));
                                 seq->score = f_score;
 
                                 RUN(assign_posterior_probabilities_to_sampled_path(data->F_matrix,data->B_matrix,data->ft->emission, seq));
+
                         }
                 }
         }
@@ -349,7 +330,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         struct fast_t_item* tmp = NULL;
         float* tmp_prob = NULL;
 
-
         float* beta;
         float alpha;
         float gamma;
@@ -357,7 +337,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         float sum,be,bg,pe,pg, a,b;
         int i,new_k;//,list_index;
-        //int l,r;
+        //intl,r;
 
         //int pg_hack;            /* I don't want add states that are not reachable. */
         //float* tmp_pg = NULL;
@@ -367,6 +347,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         ASSERT(ft != NULL, "No ft.");
         /* Sorting is only strictly necessary if this is called after another function re-sorted it */
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
+
 
         rndstate = ihmm->rndstate;
 
@@ -391,7 +372,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         alpha = ihmm->alpha;
         gamma = ihmm->gamma;
 
-
         new_k = ft->last_state;
         infinity = ft->infinity;
         //fprintf(stdout,"LAST: %d\n",new_k);
@@ -405,7 +385,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 sum += tmp_prob[i];
         }
         for(i = 0;i < new_k;i++){
-
                 tmp = NULL;
                 MMALLOC(tmp, sizeof(struct fast_t_item));
                 tmp->from = new_k;
@@ -442,9 +421,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
           list[i]->t /= sum;
           }
           ft->num_items = list_index;*/
-
-
-
         //first get beta for new column
         be = beta[new_k];
         bg = rk_beta(&rndstate, 1.0,gamma );
@@ -774,7 +750,7 @@ int resize_beam_thread_data(struct beam_thread_data** td,int* num_threads, int m
                 MFREE(td[i]);
         }
 
-        LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
+        //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
         for(i = 0; i < local_num_treads;i++){
                 RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
 
@@ -1455,7 +1431,7 @@ int full_run_test_protein(void)
                 "RREAHTQAEQKRRDAIKKGYDSLQELVPRCQPNDSSGYKLSKALILQKSIEYIGYL",
                 "RRITHISAEQKRRFNIKLGFDTLHGLVSTLSAQPSLKVSKATTLQKTAEYILMLQ",
                 "RRAGHIHAEQKRRYNIKNGFDTLHALIPQLQQNPNAKLSKAAMLQKGADHIKQLR",
-                "KRILHLHAEQNRRSALKDGFDQLMDIIPDLYSGGVKPTNAVVLAKSADHIRRLQ",
+p                "KRILHLHAEQNRRSALKDGFDQLMDIIPDLYSGGVKPTNAVVLAKSADHIRRLQ",
                 "KKATHLRCERQRREAINSGYSDLKDLIPQTTTSLGCKTTNAAILFRACDFMSQLK",
                 "LRTSHKLAERKRRKEIKELFDDLKDALPLDKSTKSSKWGLLTRAIQYIEQLK",
                 "YRRTHTANERRRRGEMRDLFEKLKITLGLLHSSKVSKSLILTRAFSEIQGLT",
@@ -1473,12 +1449,13 @@ int full_run_test_protein(void)
         int numseq = 18;
         int initial_states = 8;
 
-
-        /* First initialize beam param struct.  */
-
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
 
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
+        rk_randomseed(&model->rndstate);
         /* Initial guess... */
         model->alpha0_a = 6.0f;
         model->alpha0_b = 15.0f;
@@ -1491,7 +1468,6 @@ int full_run_test_protein(void)
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
 
         RUN(fill_background_emission(ft, sb));
-
         RUN(inititalize_model(model,sb,0));
         RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
 
@@ -1502,6 +1478,7 @@ int full_run_test_protein(void)
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         free_ihmm_sequences(sb);
+
         return OK;
 ERROR:
         free_fast_hmm_param(ft);

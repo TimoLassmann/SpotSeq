@@ -8,4 +8,9 @@
 
 #define GB 1073741824LL
 
+#include <float.h>
+/* safe logistic function  */
+#define LOGISTIC_FLT(x) ((x)) >= log(FLT_MAX) ? 1.0f : (expf((x)) /(1.0f + expf((x))))
+
+
 #endif

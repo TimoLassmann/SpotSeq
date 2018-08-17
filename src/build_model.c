@@ -223,7 +223,7 @@ int run_build_ihmm(struct parameters* param)
         if(param->in_model){
                 RUNP(model = read_model_hdf5(param->in_model));
 
-                make sure sequences are labelled ! required for setting U
+                //make sure sequences are labelled ! required for setting U
         }else{
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 /* Initial guess... */

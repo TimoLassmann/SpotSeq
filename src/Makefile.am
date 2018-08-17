@@ -90,7 +90,7 @@ libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+# TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)

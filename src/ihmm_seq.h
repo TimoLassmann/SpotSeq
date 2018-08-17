@@ -25,13 +25,13 @@
 struct ihmm_sequence{
         uint8_t* seq;
         float* u;
-        int* label; 
+        int* label;
         char* name;
         float score;
         int malloc_len;
         int seq_len;
 };
- 
+
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         int malloc_num;

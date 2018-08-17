@@ -1243,6 +1243,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 label = sb->sequences[i]->label;
                 u = sb->sequences[i]->u;
                 len = sb->sequences[i]->seq_len;
+
                 x = ft->transition[IHMM_START_STATE][label[0]];
                 //c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
@@ -1431,7 +1432,7 @@ int full_run_test_protein(void)
                 "RREAHTQAEQKRRDAIKKGYDSLQELVPRCQPNDSSGYKLSKALILQKSIEYIGYL",
                 "RRITHISAEQKRRFNIKLGFDTLHGLVSTLSAQPSLKVSKATTLQKTAEYILMLQ",
                 "RRAGHIHAEQKRRYNIKNGFDTLHALIPQLQQNPNAKLSKAAMLQKGADHIKQLR",
-p                "KRILHLHAEQNRRSALKDGFDQLMDIIPDLYSGGVKPTNAVVLAKSADHIRRLQ",
+                "KRILHLHAEQNRRSALKDGFDQLMDIIPDLYSGGVKPTNAVVLAKSADHIRRLQ",
                 "KKATHLRCERQRREAINSGYSDLKDLIPQTTTSLGCKTTNAAILFRACDFMSQLK",
                 "LRTSHKLAERKRRKEIKELFDDLKDALPLDKSTKSSKWGLLTRAIQYIEQLK",
                 "YRRTHTANERRRRGEMRDLFEKLKITLGLLHSSKVSKSLILTRAFSEIQGLT",

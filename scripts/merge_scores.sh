@@ -12,8 +12,8 @@ summarize_cell_counts <- function(pattern){
 dat = summarize_cell_counts(pattern = "*scores.csv")
 
 
-colnames(dat) = gsub("Score_model_at_","",colnames(dat))
-colnames(dat) = gsub(".h5","",colnames(dat))
+colnames(dat) = gsub("Score_.home.user.tmp.ACGT_states_RES0.75_self0.25.fartest_","",colnames(dat))
+colnames(dat) = gsub("*.h5","",colnames(dat))
 
 
 

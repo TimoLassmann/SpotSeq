@@ -57,6 +57,19 @@ OUTSCORES=$INPUT$RUNNAME".scores.csv"
 
 
 
+echo "Running: spotseq_model -in $INPUT --states 100 -out $OUTMODEL"
+spotseq_model -in $INPUT --states $NUMSTATES -out $OUTMODEL -niter $NUMITER
+
+echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
+spotseq_plot -in $OUTMODEL  -out $OUTDOT
+
+echo "Running: dot -Tpdf $OUTDOT -o $OUTPDF"
+dot -Tpdf $OUTDOT -o $OUTPDF
+
+echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
+spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
+
+exit
 
 
 LOCALITER=$(($NUMITER / 100))
@@ -91,19 +104,6 @@ spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
 exit
 
-echo "Running: spotseq_model -in $INPUT --states 100 -out $OUTMODEL"
-spotseq_model -in $INPUT --states $NUMSTATES -out $OUTMODEL -niter $NUMITER
-
-echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
-spotseq_plot -in $OUTMODEL  -out $OUTDOT
-
-echo "Running: dot -Tpdf $OUTDOT -o $OUTPDF"
-dot -Tpdf $OUTDOT -o $OUTPDF
-
-echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
-spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
-
-exit
 
 for file in model_at_*.h5 ; do
     echo $file;

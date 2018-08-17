@@ -37,7 +37,7 @@ struct hdf5_data{
         char group_name[HDF5GLUE_MAX_NAME_LEN];
         char file_name[HDF5GLUE_MAX_NAME_LEN];
         char tmp_name[HDF5GLUE_MAX_NAME_LEN];
-	
+
         hsize_t dim[HDF5GLUE_MAX_DIM];
         hsize_t chunk_dim[HDF5GLUE_MAX_DIM];
         struct hdf5_group_names* grp_names;
@@ -46,20 +46,22 @@ struct hdf5_data{
         int num_attr;
         int num_attr_mem;
         int rank;
-	
+
         hid_t fapl;
-        hid_t	 file;
+        hid_t	file;
         hid_t group;
-	
+
         hid_t plist;
         hid_t dataset;
-	
+
         hid_t attribute_id;
         hid_t attr_dataspace_id;
-	
+
         hid_t datatype;
         hid_t dataspace;
-	
+
+        hid_t native_type;
+
         herr_t status;
 };
 
@@ -82,21 +84,7 @@ extern int hdf5_read_attributes(struct hdf5_data* hdf5_data,hid_t target);
 
 extern int print_attributes(struct hdf5_data* hdf5_data);
 
-
-extern int hdf5_write_1D_char(char* dataset_name, char* data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_1D_int(char* dataset_name, int* data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_1D_ushortint(char* dataset_name,unsigned short int* data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_1D_float(char* dataset_name, float* data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_1D_double(char* dataset_name, double* data,struct hdf5_data* hdf5_data);
-
-extern int hdf5_write_2D_char(char* dataset_name, char** data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_2D_int(char* dataset_name,int** data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_2D_float(char* dataset_name,float** data,struct hdf5_data* hdf5_data);
-extern int hdf5_write_2D_double(char* dataset_name, double** data,struct hdf5_data* hdf5_data);
-
-extern int hdf5_write_3D_float(char* dataset_name,float*** data,struct hdf5_data* hdf5_data);
-
-extern int hdf5_write_4D_float(char* dataset_name,float**** data,struct hdf5_data* hdf5_data);
+extern int hdf5_write(char* dataset_name,void* data,struct hdf5_data* hdf5_data);
 
 extern int hdf5_open_file(char* filename,struct hdf5_data* hdf5_data);
 extern int hdf5_open_group(char* groupname,struct hdf5_data* hdf5_data);

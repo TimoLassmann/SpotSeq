@@ -108,14 +108,16 @@ int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
         hdf5_data->dim[1] = L;
         hdf5_data->chunk_dim[0] = N;
         hdf5_data->chunk_dim[1] = L;
-        hdf5_write_2D_float("emission",emission, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("emission",&emission[0][0], hdf5_data);
 
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = N;
         hdf5_data->dim[1] = N;
         hdf5_data->chunk_dim[0] = N;
         hdf5_data->chunk_dim[1] = N;
-        hdf5_write_2D_float("transition", transition, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("transition",&transition[0][0], hdf5_data);
 
         hdf5_close_group(hdf5_data);
         hdf5_close_file(hdf5_data);
@@ -144,7 +146,8 @@ int add_background_emission(char* filename,float* background,int L)
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = L;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_write_1D_float("background",background, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("background",&background[0], hdf5_data);
 
 
         hdf5_close_group(hdf5_data);
@@ -214,23 +217,24 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = model->alloc_num_states;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_write_1D_float("Beta",model->beta, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("Beta",&model->beta[0], hdf5_data);
 
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = model->alloc_num_states;
         hdf5_data->dim[1] = model->alloc_num_states;
         hdf5_data->chunk_dim[0] = model->alloc_num_states;
         hdf5_data->chunk_dim[1] = model->alloc_num_states;
-
-        hdf5_write_2D_float("transition_counts",model->transition_counts, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("transition_counts",&model->transition_counts[0][0], hdf5_data);
 
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = model->L;
         hdf5_data->dim[1] = model->alloc_num_states;
         hdf5_data->chunk_dim[0] = model->L;
         hdf5_data->chunk_dim[1] = model->alloc_num_states;
-
-        hdf5_write_2D_float("emission_counts",model->emission_counts, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("emission_counts",&model->emission_counts[0][0], hdf5_data);
 
 
 

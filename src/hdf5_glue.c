@@ -732,68 +732,14 @@ ERROR:
 }
 
 
-int hdf5_write_1D_char(char* dataset_name, char* data,struct hdf5_data* hdf5_data)
+
+int hdf5_write(char* dataset_name,void* data,struct hdf5_data* hdf5_data)
 {
-        hid_t native_type =H5T_NATIVE_CHAR;
-
-        long int size = 1 *hdf5_data->dim[0];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
 
 
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
+        RUN(hdf5_create_dataset_chunked(dataset_name,hdf5_data, hdf5_data->native_type));
 
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0])) < 0) ERROR_MSG("H5Dwrite failed");
-
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_1D_int(char* dataset_name, int* data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_INT;
-        long int size = 4 *hdf5_data->dim[0];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0])) < 0) ERROR_MSG("H5Dwrite failed");
-
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_1D_ushortint(char* dataset_name,unsigned short int* data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_USHORT;
-
-
-
-        long int size = 4 *hdf5_data->dim[0];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0])) < 0) ERROR_MSG("H5Dwrite failed");
+        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,hdf5_data->native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, data)) < 0) ERROR_MSG("H5Dwrite failed");
 
         hdf5_close_dataset(hdf5_data);
         return OK;
@@ -895,184 +841,6 @@ ERROR:
 
 
 
-int hdf5_write_1D_float(char* dataset_name, float* data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type = H5T_NATIVE_FLOAT;
-
-        long int size = 4 *hdf5_data->dim[0];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0])) < 0) ERROR_MSG("H5Dwrite failed");
-
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_1D_double(char* dataset_name, double* data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_DOUBLE;
-
-
-        long int size = 8 *hdf5_data->dim[0];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0])) < 0) ERROR_MSG("H5Dwrite failed");
-
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-
-int hdf5_write_2D_char(char* dataset_name, char** data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_CHAR;
-
-        long int size = 1 *hdf5_data->dim[0]*hdf5_data->dim[1];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_2D_int(char* dataset_name,int** data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_INT;
-
-        long int size = 4 *hdf5_data->dim[0]*hdf5_data->dim[1];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset, native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_2D_float(char* dataset_name,float** data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type =H5T_NATIVE_FLOAT;
-
-        long int size = 4 *hdf5_data->dim[0]*hdf5_data->dim[1];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_3D_float(char* dataset_name,float*** data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type = H5T_NATIVE_FLOAT;
-        long int size = 4 *hdf5_data->dim[0]*hdf5_data->dim[1]*hdf5_data->dim[2];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_4D_float(char* dataset_name,float**** data,struct hdf5_data* hdf5_data)
-{
-        hid_t native_type = H5T_NATIVE_FLOAT;
-
-        long int size = 4 *hdf5_data->dim[0]*hdf5_data->dim[1]*hdf5_data->dim[2]*hdf5_data->dim[3];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-
-        DPRINTF3("Dataset is : %d",hdf5_data->dataset  );
-
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0][0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-        DPRINTF3("Dataset is : %d",hdf5_data->dataset );
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int hdf5_write_2D_double(char* dataset_name, double** data,struct hdf5_data* hdf5_data)
-{
-
-
-
-        hid_t native_type =H5T_NATIVE_DOUBLE;
-
-        long int size = 8 *hdf5_data->dim[0]*hdf5_data->dim[1];
-
-        if(size > 65520){
-                hdf5_create_dataset_chunked(dataset_name,hdf5_data, native_type);
-        }else{
-                hdf5_create_dataset_compact(dataset_name,hdf5_data, native_type);
-        }
-
-        //hdf5_create_dataset(dataset_name,hdf5_data, native_type);
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data[0][0])) < 0) ERROR_MSG("H5Dwrite failed");
-        hdf5_close_dataset(hdf5_data);
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 //attribute_id = H5Acreate2 (dataset_id, "Units", H5T_STD_I32BE, dataspace_id,   H5P_DEFAULT, H5P_DEFAULT);
 
@@ -1236,8 +1004,9 @@ int main (int argc,char * argv[])
         hdf5_data->chunk_dim[0] = 3;
         hdf5_data->chunk_dim[1] = 15;
 
-
-        hdf5_write_2D_char("char2D",m2d_char, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_CHAR;
+        hdf5_write("char2D",&m2d_char[0][0], hdf5_data);
+        //hdf5_write_2D_char("char2D",m2d_char, hdf5_data);
         DPRINTF1("Write 2D int array");
 
         hdf5_data->rank = 2;
@@ -1245,8 +1014,8 @@ int main (int argc,char * argv[])
         hdf5_data->dim[1] = 10;
         hdf5_data->chunk_dim[0] = 10;
         hdf5_data->chunk_dim[1] = 10;
-
-        hdf5_write_2D_int("int2D",m2d_int, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_INT;
+        hdf5_write("int2D",&m2d_int[0][0], hdf5_data);
 
 
         hdf5_close_group(hdf5_data);
@@ -1259,16 +1028,16 @@ int main (int argc,char * argv[])
         hdf5_data->dim[1] = 5;
         hdf5_data->chunk_dim[0] = 5;
         hdf5_data->chunk_dim[1] = 5;
-
-        hdf5_write_2D_float("float2d",m2d_float, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("float2d",&m2d_float[0][0], hdf5_data);
 
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = 5;
         hdf5_data->dim[1] = 5;
         hdf5_data->chunk_dim[0] = 5;
         hdf5_data->chunk_dim[1] = 5;
-
-        hdf5_write_2D_double("double2D",m2d_double, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE ;
+        hdf5_write("double2D",&m2d_double[0][0], hdf5_data);
         hdf5_close_group(hdf5_data);
 
 
@@ -1285,7 +1054,8 @@ int main (int argc,char * argv[])
         hdf5_data->chunk_dim[0] = 3;
         hdf5_data->chunk_dim[1] = 5;
         hdf5_data->chunk_dim[2] = 5;
-        hdf5_write_3D_float("float3d",m3d_float, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("float3d",&m3d_float[0][0][0], hdf5_data);
         hdf5_close_group(hdf5_data);
 
 
@@ -1305,8 +1075,8 @@ int main (int argc,char * argv[])
         hdf5_data->chunk_dim[1] = 1;
         hdf5_data->chunk_dim[2] = 1;
         hdf5_data->chunk_dim[3] = 1;
-        hdf5_write_4D_float("float4d",m4d_float, hdf5_data);
-
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("float4d",&m4d_float[0][0][0][0], hdf5_data);
 
         hdf5_close_group(hdf5_data);
 
@@ -1324,7 +1094,9 @@ int main (int argc,char * argv[])
         hdf5_data->chunk_dim[1] = 1;
         hdf5_data->chunk_dim[2] = 1;
         hdf5_data->chunk_dim[3] = 1;
-        hdf5_write_4D_float("float4d_no2",m4d_float, hdf5_data);
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+
+        hdf5_write("float4d_no2",&m4d_float[0][0][0][0], hdf5_data);
 
 
         hdf5_close_group(hdf5_data);

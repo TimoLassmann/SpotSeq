@@ -1561,9 +1561,9 @@ static int shrink_grow_integration_test(void)
 
 
         RUN(make_flat_param_list(ft));
-        for(i = 0; i< 10;i++){
-                fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
-        }
+        //for(i = 0; i< 10;i++){
+        //       fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
+        // }
 
         int test = fast_hmm_param_binarySearch_t(ft, ft->list[3]->t);
         fprintf(stdout,"Selected for > %f\n",ft->list[3]->t);

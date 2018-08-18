@@ -38,7 +38,7 @@ BEAMSOURCE = beam_sample.h beam_sample.c
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
 
-CONVERSION = hmm_conversion_h hmm_conversion.c
+CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 

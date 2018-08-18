@@ -12,12 +12,18 @@ MYLIBDIRS = ../tldevel/libthrpool.a \
 
 
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
-            -I${top_srcdir}/${LIB_TLDEVELDIR}
+            -I${top_srcdir}/${LIB_TLDEVELDIR} 
+ 
 
 LIBS = -lm -lpthread
 
 
-AM_CPPFLAGS=${MYINCDIRS}
+#     AC_SUBST(HDF5_CFLAGS)
+#     AC_SUBST(HDF5_CPPFLAGS)
+#     AC_SUBST(HDF5_LDFLAGS)
+#     AC_SUBST(HDF5_LIBS)
+
+AM_CPPFLAGS=${MYINCDIRS} ${HDF5_CPPFLAGS}
 
 
 RANDOMKIT_FILES = distributions.h \
@@ -35,6 +41,7 @@ fast_hmm_param_test_functions.c
 MODELSOURCE = model.h model.c model_io.c global.h
 
 BEAMSOURCE = beam_sample.h beam_sample.c
+
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
 

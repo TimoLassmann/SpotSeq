@@ -129,14 +129,12 @@ int run_plot_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
+        struct seq_buffer* sb = NULL;
 
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
 
         RUNP(model = read_model_hdf5(param->input));
-        print_model_parameters(model);
-        print_counts(model);
-
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
         RUN(fill_background_emission_from_model(ft,model));
@@ -194,7 +192,7 @@ int plot_model_entropy(struct parameters* param)
                 for(j = 0; j < model->L;j++){
                         s2[i][j] = sqrt(  ((double) iterations * s2[i][j] - s1[i][j] * s1[i][j])/ ((double) iterations * ((double) iterations -1.0)));
                         s1[i][j] = s1[i][j] / (double) iterations;
-                        fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1[i][j], s2[i][j]);
+                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1[i][j], s2[i][j]);
                 }
 
         }

@@ -18,10 +18,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
                 K = average_input_seq_len;
         }
         LOG_MSG("Will start with %d states",K);
-        LOG_MSG("Local? %d" ,model->target_len );
-        if(model->target_len){
-                model->target_len = average_input_seq_len;
-        }
+
         RUN(random_label_ihmm_sequences(sb, K, 0.3));
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
@@ -547,7 +544,6 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         ihmm->gamma = IHMM_PARAM_PLACEHOLDER;
         ihmm->gamma_a = IHMM_PARAM_PLACEHOLDER;
         ihmm->gamma_b = IHMM_PARAM_PLACEHOLDER;
-        ihmm->target_len = 0;
 
         while(K > ihmm->alloc_num_states){
                 ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
@@ -665,7 +661,7 @@ int print_model_parameters(struct ihmm_model* ihmm)
         int i;
         float sum = 0.0;
         fprintf(stdout,"NUMBER of STATES: %d\n", ihmm->num_states);
-        fprintf(stdout,"%3.3f alpha\t%3.3f gamma",ihmm->alpha , ihmm->gamma);
+        fprintf(stdout,"%3.3f alpha\t%3.3f beta",ihmm->alpha , ihmm->gamma);
         for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout," %3.3f",ihmm->beta[i]);
                 sum += ihmm->beta[i];

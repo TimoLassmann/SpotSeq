@@ -212,19 +212,21 @@ int run_build_ihmm(struct parameters* param)
 
         initial_states = param->num_start_states;
 
-        /* Step one read in sequences */
-        LOG_MSG("Loading sequences.");
-
-
-        RUNP(sb = load_sequences(param->input));
-
-        LOG_MSG("Read %d sequences.",sb->num_seq);
-
         if(param->in_model){
                 RUNP(model = read_model_hdf5(param->in_model));
+                // print_model_parameters(model);
+                // print_counts(model);
+                RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
 
-                //make sure sequences are labelled ! required for setting U
+                //RUN(fill_counts(model, sb));
+
         }else{
+                /* Step one read in sequences */
+                LOG_MSG("Loading sequences.");
+
+
+                RUNP(sb = load_sequences(param->input));
+
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 /* Initial guess... */
                 model->alpha0_a = 6.0f;
@@ -233,12 +235,13 @@ int run_build_ihmm(struct parameters* param)
                 model->gamma_b = 4.0f;
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
                 model->gamma = IHMM_PARAM_PLACEHOLDER;
-                model->target_len = param->local;
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));
                 }
         }
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         RUN(fill_background_emission(ft, sb));
 
@@ -249,9 +252,9 @@ int run_build_ihmm(struct parameters* param)
 //        RUN(add_annotation)
         RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
         RUN(add_background_emission(param->output,ft->background_emission,ft->L));
-
+        RUN(add_sequences_to_hdf5_model(param->output, sb));
         //RUN(print_states_per_sequence(sb));
-        RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
+        //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
 
         free_fast_hmm_param(ft);
@@ -287,9 +290,8 @@ int print_help(char **argv)
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );
-        //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );
-//      	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthread","Number of threads." ,"[8]"  );
-//      	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--output","Output file name." ,"[?]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--model","Continue training model <>." ,"[]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--niter","Number of iterations." ,"[1000]"  );
         return OK;
 }
 

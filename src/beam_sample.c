@@ -73,6 +73,10 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
 
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
+        //RUN(print_fast_hmm_params(ft));
+
+        //LOG_MSG("LASTSTATE in FT: %d", ft->last_state);
+        //exit(0);
 
         /* Threading setup...  */
         need_local_pool = 0;
@@ -97,6 +101,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
                         //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
+                        //exit(0);
                 }
 
                 RUN(make_flat_param_list(ft));
@@ -162,8 +167,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(run_build_fhmm_file(tmp_buffer));
                         }*/
         }
-
-        RUN(print_labelled_ihmm_buffer(sb));
 
         if(need_local_pool){
                 thr_pool_destroy(local_pool);
@@ -1318,7 +1321,7 @@ int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
                 if(ft->infinity[i]->t > local_max){
                         local_max = ft->infinity[i]->t;
                 }
-                //fprintf(stdout,"%d->%d %f\n", ft->infinity[j]->from, ft->infinity[j]->to, ft->infinity[j]->t);
+                //fprintf(stdout,"%d->%d %f\n", ft->infinity[i]->from, ft->infinity[i]->to, ft->infinity[i]->t);
         }
         *max = local_max;
         return OK;
@@ -1380,6 +1383,7 @@ int full_run_test(void)
 
         int numseq = 8;
         int initial_states = 8;
+        int i;
 
 
         /* First initialize beam param struct.  */
@@ -1388,10 +1392,7 @@ int full_run_test(void)
 
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        /* Initial guess... */
+
         model->alpha0_a = 6.0f;
         model->alpha0_b = 15.0f;
         model->gamma_a = 16.0f;
@@ -1399,12 +1400,15 @@ int full_run_test(void)
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 
+        RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+        for(i = 0;i < 10;i++){
+                RUN(iHmmHyperSample(model, 20));
+        }
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-
         RUN(fill_background_emission(ft, sb));
-        RUN(inititalize_model(model,sb,0));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
+
+        RUN(run_beam_sampling( model, sb, ft,NULL, 10, 2));
 
 
         //sb, num thread, guess for aplha and gamma.. iterations.
@@ -1449,15 +1453,13 @@ int full_run_test_protein(void)
 
         int numseq = 18;
         int initial_states = 8;
+        int i;
 
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
 
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        rk_randomseed(&model->rndstate);
-        /* Initial guess... */
+
         model->alpha0_a = 6.0f;
         model->alpha0_b = 15.0f;
         model->gamma_a = 16.0f;
@@ -1465,14 +1467,15 @@ int full_run_test_protein(void)
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 
+        RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+        for(i = 0;i < 10;i++){
+                RUN(iHmmHyperSample(model, 20));
+        }
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-
         RUN(fill_background_emission(ft, sb));
-        RUN(inititalize_model(model,sb,0));
-        RUN(run_beam_sampling( model, sb, ft,NULL, 100, 10));
 
-
+        RUN(run_beam_sampling( model, sb, ft,NULL,  10,2));
         //sb, num thread, guess for aplha and gamma.. iterations.
 
 

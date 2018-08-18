@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <ctype.h>
-
+#include "hdf5_glue.h"
 
 #define ALPHABET_DNA 4
 #define ALPHABET_APPROXDNA 16
@@ -40,8 +40,8 @@ struct seq_buffer{
         int L;
 };
 
-
-
+extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename);
+extern int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb);
 
 extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha);
 

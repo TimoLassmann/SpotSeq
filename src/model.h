@@ -29,7 +29,6 @@ struct ihmm_model{
         float gamma_a;
         float gamma_b;
         float log_likelihood;
-        int target_len;
         int num_states;         /* this excludes the start and stop states (0,1) */
         int alloc_num_states;
         int L;

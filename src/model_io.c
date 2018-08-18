@@ -70,10 +70,8 @@ struct ihmm_model* read_model_hdf5(char* filename)
         }
 
         hdf5_read_dataset("Beta",hdf5_data);
-
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read beta");
         model->beta = (float*)hdf5_data->data;
-
 
         hdf5_read_dataset("transition_counts",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
@@ -87,7 +85,12 @@ struct ihmm_model* read_model_hdf5(char* filename)
 
         hdf5_close_file(hdf5_data);
         hdf5_free(hdf5_data);
+        /* stretch matrices... */
+        model->alloc_num_states = model->num_states;
+        RUN(resize_ihmm_model(model, model->num_states+1));
 
+
+        fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
         rk_randomseed(&model->rndstate);
         return model;
 ERROR:
@@ -184,6 +187,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
 {
         char buffer[BUFFER_LEN];
         struct hdf5_data* hdf5_data = NULL;
+        float** tmp = NULL;
+        int i,j;
 
         RUNP(hdf5_data = hdf5_create());
         snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
@@ -213,29 +218,45 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
 
         hdf5_data->rank = 1;
-        hdf5_data->dim[0] = model->alloc_num_states;
+        hdf5_data->dim[0] = model->num_states;
         hdf5_data->dim[1] = -1;
-        hdf5_data->chunk_dim[0] = model->alloc_num_states;
+        hdf5_data->chunk_dim[0] = model->num_states;
         hdf5_data->chunk_dim[1] = -1;
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
         hdf5_write("Beta",&model->beta[0], hdf5_data);
 
+        RUNP(tmp = malloc_2d_float(tmp,  model->num_states,  model->num_states, 0.0));
+        for(i = 0; i < model->num_states;i++){
+                for(j = 0; j < model->num_states;j++){
+                        tmp[i][j] = model->transition_counts[i][j];
+                }
+        }
         hdf5_data->rank = 2;
-        hdf5_data->dim[0] = model->alloc_num_states;
-        hdf5_data->dim[1] = model->alloc_num_states;
-        hdf5_data->chunk_dim[0] = model->alloc_num_states;
-        hdf5_data->chunk_dim[1] = model->alloc_num_states;
+        hdf5_data->dim[0] = model->num_states;
+        hdf5_data->dim[1] = model->num_states;
+        hdf5_data->chunk_dim[0] = model->num_states;
+        hdf5_data->chunk_dim[1] = model->num_states;
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
-        hdf5_write("transition_counts",&model->transition_counts[0][0], hdf5_data);
+        hdf5_write("transition_counts",&tmp[0][0], hdf5_data);
 
+        free_2d((void**) tmp);
+        tmp= NULL;
+
+        RUNP(tmp = malloc_2d_float(tmp,  model->L ,  model->num_states, 0.0));
+        for(i = 0; i < model->L;i++){
+                for(j = 0; j < model->num_states;j++){
+                        tmp[i][j] = model->emission_counts[i][j];
+                }
+        }
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = model->L;
-        hdf5_data->dim[1] = model->alloc_num_states;
+        hdf5_data->dim[1] = model->num_states;
         hdf5_data->chunk_dim[0] = model->L;
-        hdf5_data->chunk_dim[1] = model->alloc_num_states;
+        hdf5_data->chunk_dim[1] = model->num_states;
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
-        hdf5_write("emission_counts",&model->emission_counts[0][0], hdf5_data);
-
+        hdf5_write("emission_counts",&tmp[0][0], hdf5_data);
+        free_2d((void**) tmp);
+        tmp= NULL;
 
 
         /*
@@ -282,7 +303,6 @@ int write_model(struct ihmm_model* model, char* filename)
         RUNP(f_ptr = fopen(filename, "w"));
         fprintf(f_ptr,"Number of states: %d\n", model->num_states);
         fprintf(f_ptr,"Number of letters: %d\n", model->L);
-        fprintf(f_ptr,"Target length: %d\n", model->target_len);
 
         fprintf(f_ptr,"Gamma: %f\n", model->gamma);
         fprintf(f_ptr,"gamma_a: %f\n", model->gamma_a);
@@ -336,7 +356,7 @@ struct ihmm_model* read_model(char* filename)
 
         RUNP(model = alloc_ihmm_model(a, b));
         model->num_states = a;
-        fscanf(f_ptr,"Target length: %d\n", &model->target_len);
+
         fscanf(f_ptr,"Gamma: %f\n", &model->gamma);
         fscanf(f_ptr,"gamma_a: %f\n", &model->gamma_a);
         fscanf(f_ptr,"gamma_b: %f\n", &model->gamma_b);

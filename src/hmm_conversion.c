@@ -410,6 +410,7 @@ int run_build_fhmm_file(char* h5file)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
+        struct seq_buffer* sb = NULL;
 
         int initial_states = 10;
         int iter;
@@ -422,10 +423,12 @@ int run_build_fhmm_file(char* h5file)
         float sum;
         int iterations = 1000;
 
+
         ASSERT(h5file != NULL, "No parameters found.");
 
 
         RUNP(model = read_model_hdf5(h5file));
+
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
 
@@ -467,7 +470,7 @@ int run_build_fhmm_file(char* h5file)
                         //fprintf(stdout,"Emission:%d\n",i);
                         for(j = 0; j < model->L;j++){
                                 s1_e[i][j] /= sum;
-                                //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
+                                //        fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
                         }
                 }
 

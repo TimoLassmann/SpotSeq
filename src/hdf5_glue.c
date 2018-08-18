@@ -370,13 +370,6 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
         hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
         hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
 
-        //DPRINTF3( "rank %d", hdf5_data->rank);
-        //fprintf(stdout,"rank %d\n", hdf5_data->rank);
-        //for(i = 0; i < hdf5_data->rank;i++){
-        //	DPRINTF3("dim%d = %lu",i,(unsigned long)(hdf5_data->dim[i]));
-        //	fprintf(stdout,"dim%d = %lu\n",i,(unsigned long)(hdf5_data->dim[i]));
-        //}
-
         hdf5_data->data = NULL;
 
 
@@ -992,8 +985,8 @@ int main (int argc,char * argv[])
         hdf5_add_attribute(hdf5_data, "DonkeyDATA_ATTRIBUTE2", "", 4, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "DonkeyDATA_ATTRIBUTE3", "", 4, 1.0f, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "DonkeyDATA_ATTRIBUTE4", "", 4, 42.355, HDF5GLUE_FLOAT);
-
-        hdf5_write_1D_char("DonkeyDATA",string,hdf5_data );
+        hdf5_data->native_type = H5T_NATIVE_CHAR;
+        hdf5_write("DonkeyDATA",&string[0],hdf5_data );
 
 
 

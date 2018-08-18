@@ -18,6 +18,294 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 
 
 
+struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        struct seq_buffer* sb = NULL;
+        char** name = NULL;
+        char** seq = NULL;
+        int** label = NULL;
+
+        int num_seq;
+        int max_len;
+        int max_name_len;
+        int local_L;
+        int i,j;
+
+        ASSERT(filename != NULL, "No filename");
+        ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
+
+        hdf5_data = hdf5_create();
+
+        hdf5_open_file(filename,hdf5_data);
+        hdf5_read_attributes(hdf5_data,hdf5_data->file);
+        //print_attributes(hdf5_data);
+        get_group_names(hdf5_data);
+        //fprintf(stdout,"Groups:\n");
+        //for(i = 0; i < hdf5_data->grp_names->num_names;i++){
+        //        fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
+        //}
+
+        hdf5_open_group("imodel",hdf5_data);
+        hdf5_read_attributes(hdf5_data, hdf5_data->group);
+        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
+        //print_attributes(hdf5_data);
+        local_L = 0;
+        for(i = 0; i < hdf5_data->num_attr;i++){
+                if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
+                        local_L = hdf5_data->attr[i]->int_val;
+                }
+
+        }
+        ASSERT(local_L!=0, "No letters???");
+        hdf5_close_group(hdf5_data);
+
+
+        hdf5_open_group("SequenceInformation",hdf5_data);
+        hdf5_read_attributes(hdf5_data, hdf5_data->group);
+        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
+        //print_attributes(hdf5_data);
+
+        num_seq = -1;
+        max_len = -1;
+        max_name_len = -1;
+        for(i = 0; i < hdf5_data->num_attr;i++){
+                if(!strncmp("NumSeq", hdf5_data->attr[i]->attr_name, 6)){
+                        num_seq = hdf5_data->attr[i]->int_val;
+                }
+
+                if(!strncmp("MaxLen", hdf5_data->attr[i]->attr_name, 6)){
+                        max_len = hdf5_data->attr[i]->int_val;
+                }
+
+                if(!strncmp("MaxNameLen", hdf5_data->attr[i]->attr_name, 10)){
+                        max_name_len = hdf5_data->attr[i]->int_val;
+                }
+        }
+
+        ASSERT(num_seq != -1, "No numseq");
+        ASSERT(max_len != -1, "No maxlen");
+        ASSERT(max_name_len != -1, "No maxnamelen");
+
+        hdf5_read_dataset("Names",hdf5_data);
+
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read beta");
+        name = (char**)hdf5_data->data;
+
+
+        hdf5_read_dataset("Sequences",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
+        seq = (char**)hdf5_data->data;
+
+        hdf5_read_dataset("Labels",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
+        label = (int**)hdf5_data->data;
+        hdf5_close_group(hdf5_data);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+
+
+        MMALLOC(sb,sizeof(struct seq_buffer));
+        sb->malloc_num = num_seq ;
+        sb->num_seq = num_seq;
+        sb->sequences = NULL;
+        sb->max_len = max_len;
+        sb->L = local_L;
+
+        MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
+        for(i = 0; i < sb->num_seq;i++){
+                sb->sequences[i] = NULL;
+                RUNP(sb->sequences[i] = alloc_ihmm_seq());
+                while(sb->sequences[i]->malloc_len <= sb->max_len){
+                        RUN(realloc_ihmm_seq(sb->sequences[i]));
+                }
+        }
+
+        /* copy stuff over */
+        for(i = 0; i < sb->num_seq;i++){
+                for (j = 0; j < max_name_len;j++){
+                        if(!name[i][j]){
+                                sb->sequences[i]->name[j] = 0;
+                                break;
+                        }
+                        sb->sequences[i]->name[j] = name[i][j];
+                }
+        }
+
+        /* make sequence matrix */
+        for(i = 0; i < sb->num_seq;i++){
+                for (j = 0; j < sb->max_len;j++){
+                        if(seq[i][j] == -1){
+                                break;
+                        }
+                        sb->sequences[i]->seq[j] = seq[i][j];
+                        sb->sequences[i]->label[j] = label[i][j];
+                }
+                sb->sequences[i]->seq_len = j;
+        }
+
+        free_2d((void**)   label);
+        free_2d((void**)   name);
+        free_2d((void**)   seq);
+
+        return sb;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        if(label){
+                free_2d((void**)   label);
+        }
+        if(name){
+                free_2d((void**)   name);
+        }
+        if(seq){
+                free_2d((void**)   seq);
+        }
+
+
+        return NULL;
+}
+
+/* I want to save the labelled sequences in the hdf5model file to be able to resume jobs.  */
+int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
+{
+
+        struct hdf5_data* hdf5_data = NULL;
+        int i,j,len;
+
+        char** name = NULL;
+        char** seq = NULL;
+        int** label = NULL;
+
+        int max_name_len;
+        int has_seq_info;
+
+
+        ASSERT(sb!=NULL, "No sequence buffer");
+
+        /* make sequence name matrix */
+        max_name_len = -1;
+        for(i = 0; i < sb->num_seq;i++){
+                len = strlen(sb->sequences[i]->name);
+                if(len > max_name_len){
+                        max_name_len = len;
+                }
+        }
+        max_name_len+=1;
+
+        RUNP(name = malloc_2d_char(name, sb->num_seq, max_name_len, 0));
+        for(i = 0; i < sb->num_seq;i++){
+                len = strlen(sb->sequences[i]->name);
+                for (j = 0; j < len;j++){
+                        name[i][j] = sb->sequences[i]->name[j];
+                }
+        }
+
+        /* make sequence matrix */
+
+        RUNP(seq = malloc_2d_char(seq, sb->num_seq, sb->max_len, -1));
+        for(i = 0; i < sb->num_seq;i++){
+                len = sb->sequences[i]->seq_len;
+                for (j = 0; j < len;j++){
+                        seq[i][j] = sb->sequences[i]->seq[j];
+                }
+        }
+
+        /* make  label matrix */
+
+        label = malloc_2d_int(label, sb->num_seq, sb->max_len, -1);
+        for(i = 0; i < sb->num_seq;i++){
+                len = sb->sequences[i]->seq_len;
+                for (j = 0; j < len;j++){
+                        label[i][j] = sb->sequences[i]->label[j];
+                }
+        }
+
+        // RUNP(name = alloc_2)
+
+        RUNP(hdf5_data = hdf5_create());
+
+        hdf5_open_file(filename,hdf5_data);
+
+        get_group_names(hdf5_data);
+
+        has_seq_info = 0;
+        fprintf(stdout,"Groups:\n");
+        for(i = 0; i < hdf5_data->grp_names->num_names;i++){
+                if(strncmp("SequenceInformation", hdf5_data->grp_names->names[i],19) == 0){
+                        has_seq_info = 1;
+                }
+                fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
+        }
+        if(!has_seq_info ){
+                hdf5_create_group("SequenceInformation",hdf5_data);
+        }else{
+                hdf5_open_group("SequenceInformation",hdf5_data);
+        }
+
+        hdf5_data->num_attr = 0;
+
+        hdf5_add_attribute(hdf5_data, "NumSeq",     "", sb->num_seq , 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "MaxLen",     "", sb->max_len , 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "MaxNameLen", "", max_name_len, 0.0f, HDF5GLUE_INT);
+
+        hdf5_write_attributes(hdf5_data, hdf5_data->group);
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = sb->num_seq;
+        hdf5_data->dim[1] = max_name_len;
+        hdf5_data->chunk_dim[0] = sb->num_seq;
+        hdf5_data->chunk_dim[1] =max_name_len;
+        hdf5_data->native_type = H5T_NATIVE_CHAR;
+        hdf5_write("Names",&name[0][0], hdf5_data);
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = sb->num_seq;
+        hdf5_data->dim[1] = sb->max_len;
+        hdf5_data->chunk_dim[0] = sb->num_seq;
+        hdf5_data->chunk_dim[1] = sb->max_len;
+        hdf5_data->native_type = H5T_NATIVE_CHAR;
+        hdf5_write("Sequences",&seq[0][0], hdf5_data);
+
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = sb->num_seq;
+        hdf5_data->dim[1] = sb->max_len;
+        hdf5_data->chunk_dim[0] = sb->num_seq;
+        hdf5_data->chunk_dim[1] = sb->max_len;
+        hdf5_data->native_type = H5T_NATIVE_INT;
+        hdf5_write("Labels",&label[0][0], hdf5_data);
+
+
+        hdf5_close_group(hdf5_data);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+
+        free_2d((void**)   label);
+        free_2d((void**)   name);
+        free_2d((void**)   seq);
+
+        return OK;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        if(label){
+                free_2d((void**)   label);
+        }
+        if(name){
+                free_2d((void**)   name);
+        }
+        if(seq){
+                free_2d((void**)   seq);
+        }
+        return FAIL;
+}
+
+
 /* The idea here is to assume that there are K states with emission
  * probabilities samples from a dirichlet distribution. Labels will be chiosen
  * by sampling from the distributions samples by the dirichlets. */
@@ -153,7 +441,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                 // fprintf(stdout,"sum: %f\n", sanity);
         }
         //exit(0);
-
+        cur_state = -1;
         for(i = 0;i< sb->num_seq;i++){
 
                 label = sb->sequences[i]->label;
@@ -487,6 +775,7 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
                 DPRINTF1("PROT");
         }
         DPRINTF1("L: %d",sb->L);
+        DPRINTF1("numseq: %d",sb->num_seq );
 
         /* Check if sequence names are present.. */
         has_names = 0;
@@ -513,6 +802,7 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
         max_label = 0;
         for (i = 0;i < sb->num_seq;i++){
                 for(j = 0; j < sb->sequences[i]->seq_len; j++){
+                        fprintf(stdout,"%d %d %d\n",i,j,sb->sequences[i]->label[j]);
                         if(sb->sequences[i]->label[j] > max_label){
                                 max_label = sb->sequences[i]->label[j];
                         }
@@ -1149,8 +1439,6 @@ ERROR:
 
 int print_labelled_ihmm_buffer(struct seq_buffer* sb)
 {
-        struct ihmm_sequence* sequence = NULL;
-        int i,j;
         ASSERT(sb != NULL, "No sequence buffer");
         if(sb->L == ALPHABET_DNA){
                 RUN(translate_internal_to_DNA(sb));

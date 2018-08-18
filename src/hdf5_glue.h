@@ -14,7 +14,7 @@
 #define HDF5GLUE_FLOAT 4
 #define HDF5GLUE_DOUBLE 5
 
-#include "hdf5.h"
+#include <hdf5.h>
 
 
 struct hdf5_attribute{

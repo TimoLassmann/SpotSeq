@@ -140,9 +140,15 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 no_path =0;
                 for(i = 0; i < sb->num_seq;i++){
                         if(sb->sequences[i]->u[0] == -1){
-                                no_path = 1;
-                                LOG_MSG("weird split must have happened in seq %d",i);
+                                no_path = no_path + 1;
+                                //LOG_MSG("weird split must have happened in seq %d",i);
                         }
+                }
+                /* if more than 1% of sequences don't have a path redo */
+                if((double) no_path / (double) sb->num_seq >= 0.01){
+                        no_path = 1;
+                }else{
+                        no_path = 0;
                 }
 
                 if(no_path){

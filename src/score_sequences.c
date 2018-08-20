@@ -156,7 +156,7 @@ int run_score_sequences(struct parameters* param)
                 RUN(random_model_score(fhmm->background  , &fhmm->r_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len, expected_len));
                 //fprintf(stdout,"%d f:%f  r:%f\tlog-odds:%f\tP(M):%f\n",  i, fhmm->f_score, fhmm->r_score, fhmm->f_score - fhmm->r_score, expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
                 //fprintf(stdout,"%f %f\n",fhmm->f_score,fhmm->r_score );
-                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  LOGISTIC_FLT(fhmm->f_score - fhmm->r_score ));// /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
+                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  fhmm->f_score - fhmm->r_score);// /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
         }
 
         fclose(fptr);

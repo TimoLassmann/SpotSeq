@@ -19,6 +19,8 @@
 struct parameters{
         char* input;
         char* output;
+        float edge_threshold;
+        int node_count_cutoff;
 };
 
 
@@ -43,25 +45,33 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
         param->output = NULL;
-
+        param->edge_threshold = 0.5f;
+        param->node_count_cutoff = 0;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
+                        {"ethres",required_argument,0,'e'},
+                        {"nthres",required_argument,0,'n'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hi:o:e:n:",long_options, &option_index);
 
                 if (c == -1){
                         break;
                 }
                 switch(c) {
+                case 'n':
+                        param->node_count_cutoff = atoi(optarg);
+                        break;
+                case 'e':
+                        param->edge_threshold = atof(optarg);
+                        break;
                 case 'i':
                         param->input = optarg;
                         break;
-
                 case 'o':
                         param->output = optarg;
                         break;
@@ -290,88 +300,93 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
         /* print nodes...  */
         for(i = 2; i < model->num_states;i++){
-                IC = 0.0;
+                if(total_counts[i] >= param->node_count_cutoff){
+                        IC = 0.0;
 
-                for(j = 0; j < ft->L;j++){
-                        IC += ft->emission[j][i] * log2(ft->emission[j][i] / background[j]);
+                        for(j = 0; j < ft->L;j++){
+                                IC += ft->emission[j][i] * log2(ft->emission[j][i] / background[j]);
 
-                        //                    fprintf(stdout,"%f\t%f\t%f\n", matrix->matrix[j][i],  background[j],log2( matrix->matrix[j][i] / background[j]));
-                }
+                                //                    fprintf(stdout,"%f\t%f\t%f\n", matrix->matrix[j][i],  background[j],log2( matrix->matrix[j][i] / background[j]));
+                        }
 //                fprintf(stdout,"%f\n",IC);
-                /* scale total bar height by information content */
-                tmp_prob =  (double) max_stack_height;// * (((double) total_counts[i]) / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
+                        /* scale total bar height by information content */
+                        tmp_prob =  (double) max_stack_height;// * (((double) total_counts[i]) / (double)sum_usage);// / model->emission_counts[0][i];// *((double) model->emission_counts[0][i]  /sum_usage);// max_IC *IC      ;
 
-                /* Further scale bar height by usage of state.  */
-                //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;
-                fprintf(stdout,"%d %f %f\n",i,tmp_prob ,(double) model->emission_counts[0][i] / sum_usage);
-                LOG_MSG("Len:%d %d",ft->L,model->num_states);
+                        /* Further scale bar height by usage of state.  */
+                        //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;
+                        fprintf(stdout,"%d %f %f\n",i,tmp_prob ,(double) model->emission_counts[0][i] / sum_usage);
+                        LOG_MSG("Len:%d %d",ft->L,model->num_states);
 
-                //ncol =0;
-                for(j = 0; j < ft->L;j++){
-
-                        tmp_sum[j] =  ft->emission[j][i] * tmp_prob  ;
-                        fprintf(stdout,"%d %c %f\n", i,"ACDEFGHIKLMNPQRSTVWY"[j],ft->emission[j][i]  );
-                        //LOG_MSG("i:%d j:%d  %d  (wetfg%d)",i,j,ft->L, ncol);
-                        //ncol++;
-
-                        //       fprintf(stdout,"\t%f afa\n",tmp_sum[j]);
-                }
-                fprintf(f_ptr,"State%d [label=<\n",i);
-
-                fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
-
-                fprintf(f_ptr,"<TR>\n");
-                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
-                                fprintf(f_ptr,"</TR>\n");
-
-
-                if(ft->L == ALPHABET_DNA){
+                        //ncol =0;
                         for(j = 0; j < ft->L;j++){
-                                fprintf(f_ptr,"<TR>\n");
-                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX( (int)tmp_sum[j],1),"ACGTN"[j]);
-                                fprintf(f_ptr,"</TR>\n");
+
+                                tmp_sum[j] =  ft->emission[j][i] * tmp_prob  ;
+                                fprintf(stdout,"%d %c %f\n", i,"ACDEFGHIKLMNPQRSTVWY"[j],ft->emission[j][i]  );
+                                //LOG_MSG("i:%d j:%d  %d  (wetfg%d)",i,j,ft->L, ncol);
+                                //ncol++;
+
+                                //       fprintf(stdout,"\t%f afa\n",tmp_sum[j]);
                         }
-                }else if(ft->L == ALPHABET_PROTEIN ){
-                        for(j = 0; j < ft->L;j++){
-                                fprintf(f_ptr,"<TR>\n");
-                                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX ((int)tmp_sum[j],1),"ACDEFGHIKLMNPQRSTVWY"[j]);
-                                fprintf(f_ptr,"</TR>\n");
+                        fprintf(f_ptr,"State%d [label=<\n",i);
+
+                        fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
+
+                        fprintf(f_ptr,"<TR>\n");
+                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
+                        fprintf(f_ptr,"</TR>\n");
+
+
+                        if(ft->L == ALPHABET_DNA){
+                                for(j = 0; j < ft->L;j++){
+                                        fprintf(f_ptr,"<TR>\n");
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX( (int)tmp_sum[j],1),"ACGTN"[j]);
+                                        fprintf(f_ptr,"</TR>\n");
+                                }
+                        }else if(ft->L == ALPHABET_PROTEIN ){
+                                for(j = 0; j < ft->L;j++){
+                                        fprintf(f_ptr,"<TR>\n");
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX ((int)tmp_sum[j],1),"ACDEFGHIKLMNPQRSTVWY"[j]);
+                                        fprintf(f_ptr,"</TR>\n");
+                                }
                         }
+
+
+
+                        /*
+
+
+                          fprintf(f_ptr,"<TR>\n");
+                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\"  COLOR=\"#f4a460\">C</FONT></TD>\n",(int)tmp_sum[1]);
+                          fprintf(f_ptr,"</TR>\n");
+
+                          fprintf(f_ptr,"<TR>\n");
+                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#f08080\">G</FONT></TD>\n",(int)tmp_sum[2]);
+                          fprintf(f_ptr,"</TR>\n");
+
+                          fprintf(f_ptr,"<TR>\n");
+                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#90ee90\">T</FONT></TD>\n",(int)tmp_sum[3]);
+                          fprintf(f_ptr,"</TR>\n");
+                        */
+
+                        fprintf(f_ptr,"</TABLE>>];\n");
+                        LOG_MSG("i:%d",i);
                 }
-
-
-
-                /*
-
-
-                fprintf(f_ptr,"<TR>\n");
-                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\"  COLOR=\"#f4a460\">C</FONT></TD>\n",(int)tmp_sum[1]);
-                fprintf(f_ptr,"</TR>\n");
-
-                fprintf(f_ptr,"<TR>\n");
-                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#f08080\">G</FONT></TD>\n",(int)tmp_sum[2]);
-                fprintf(f_ptr,"</TR>\n");
-
-                fprintf(f_ptr,"<TR>\n");
-                fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#90ee90\">T</FONT></TD>\n",(int)tmp_sum[3]);
-                fprintf(f_ptr,"</TR>\n");
-                */
-
-                fprintf(f_ptr,"</TABLE>>];\n");
-                LOG_MSG("i:%d",i);
-
-
         }
         fprintf(f_ptr,"\n\n");
         /* print edges */
 
 
         for(i = 0;i < ft->last_state;i++){
+                if(total_counts[i] >= param->node_count_cutoff){
                 for(j = 0;j < ft->last_state;j++){
-                        if(ft->transition[i][j] >= 1e-5){
+                          if(total_counts[j] >= param->node_count_cutoff){
+                        if(ft->transition[i][j] >= param->edge_threshold ){
                                 RUN(get_color(color_buffer,ft->transition[i][j], 0.0f,1.0f ));
-                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j, ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
+                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
                         }
+                          }
+
+                }
 
                 }
         }

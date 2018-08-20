@@ -1,0 +1,92 @@
+#+TITLE:  testing 
+#+AUTHOR: Timo Lassmann
+#+EMAIL:  timo.lassmann@telethonkids.org.au
+#+DATE:   2018-08-20
+#+LATEX_CLASS: report
+#+OPTIONS:  toc:nil
+#+OPTIONS: H:4
+#+LATEX_CMD: xelatex
+
+* Introduction 
+  
+
+#+BEGIN_SRC R :session one :results none
+library(reshape2)
+library(ggplot2)
+dat = read.csv("../test.csv",header= TRUE, row.names= 1)
+
+
+#+END_SRC
+
+#+BEGIN_SRC R :session one :output graphics :file hist.jpg
+sum = colSums(dat);
+
+plot(sum)
+
+#+END_SRC
+
+#+RESULTS:
+[[file:hist.jpg]]
+
+Melt and plot
+
+#+BEGIN_SRC R :session one 
+
+max_count = max(dat)
+min_count = min(dat)
+x = melt(t(dat[,sum > 500]))
+head(x)
+
+#+END_SRC
+
+#+RESULTS:
+| State   | 0 |   1 |
+| State.1 | 0 |  30 |
+| State.2 | 0 |  58 |
+| State.3 | 0 | 103 |
+| State.4 | 0 |   5 |
+| State.5 | 0 |   0 |
+
+#+BEGIN_SRC R :session one
+
+  cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
+            colorRampPalette(c("yellow", "red"))(30))
+
+  ggplot(x, aes(y=Var1, x=Var2, fill=value)) + 
+    geom_tile(colour="white", linewidth=2, 
+              width=.9, height=.9) + theme_minimal() +
+      scale_fill_gradientn(colours=cols, limits=c(min_count, max_count),
+                          breaks=seq(min_count, max_count, by=1), 
+                          na.value=rgb(246, 246, 246, max=255),
+                          guide=guide_colourbar(ticks=T, nbin=10,
+                                 barheight=2, label=T, 
+                                 barwidth=2)) 
+#+END_SRC  
+
+#+RESULTS:
+
++
+    labs(x="", y="", fill="") +
+    ggtitle("Measles") +
+    theme(legend.position=c(.5, -.13),
+          legend.direction="horizontal",
+          legend.text=element_text(colour="grey20"),
+          plot.margin=grid::unit(c(.5,.5,1.5,.5), "cm"),
+          axis.text.y=element_text(size=6, family="Helvetica", 
+                                   hjust=1),
+          axis.text.x=element_text(size=8),
+          axis.ticks.y=element_blank(),
+          panel.grid=element_blank(),
+          title=element_text(hjust=-.07, face="bold", vjust=1, 
+                             family="Helvetica"),
+          text=element_text(family="URWHelvetica")) +
+    annotate("text", label="Vaccine introduced", x=1963, y=53, 
+             vjust=1, hjust=0, size=I(3), family="Helvetica")
+
+#+RESULTS:
+
+* Meeting Notes
+
+
+
+

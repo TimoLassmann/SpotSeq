@@ -25,7 +25,7 @@ struct parameters{
 
 
 static int run_plot_ihmm(struct parameters* param);
-
+static int run_plot_positional_state_distribution(struct parameters* param);
 static int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param);
 
 static int plot_model_entropy(struct parameters* param);
@@ -113,7 +113,7 @@ int main (int argc, char *argv[])
 
         RUN(plot_model_entropy(param));
 
-
+        RUN(run_plot_positional_state_distribution(param));
 
         //RUN(seed_controller_thread(param));
 
@@ -159,6 +159,60 @@ int run_plot_ihmm(struct parameters* param)
         return OK;
 ERROR:
         free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return FAIL;
+}
+
+int run_plot_positional_state_distribution(struct parameters* param)
+{
+        struct seq_buffer* sb = NULL;
+        struct ihmm_model* model = NULL;
+        float** matrix = NULL;
+        int i,j,c,index;
+        float l;
+
+        FILE* fptr = NULL;
+        ASSERT(param != NULL, "no parameters");
+        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        RUNP(model = read_model_hdf5(param->input));
+        
+                
+        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 101, 0.0f));
+
+        for(i = 0; i < sb->num_seq;i++){
+                l = (float) sb->sequences[i]->seq_len;
+                for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        c = (float) sb->sequences[i]->label[j];
+                        index = roundf(100.0f * ((float) j / l));
+                        matrix[c][index] += 1.0f;
+                }
+        }
+        /* First two states are START/ STOP */
+        
+        RUNP(fptr = fopen("test.csv", "w"));
+        fprintf(fptr, "Pos");
+        for(i = 2; i < model->num_states;i++){
+                fprintf(fptr,",State",i);
+                }
+                fprintf(fptr,"\n");
+        for(j = 0; j < 100;j++){
+                fprintf(fptr, "%d",j);
+                for(i = 2; i < model->num_states;i++){
+                        fprintf(fptr,",%d",(int)matrix[i][j]);
+                }
+                fprintf(fptr,"\n");
+        }
+        fclose(fptr);
+
+        free_2d((void**) matrix);
+        free_ihmm_model(model);
+        free_ihmm_sequences(sb);
+        return OK;
+ERROR:
+        if(sb){
+                free_ihmm_sequences(sb);
+        }
+        free_2d((void**) matrix);
         free_ihmm_model(model);
         return FAIL;
 }

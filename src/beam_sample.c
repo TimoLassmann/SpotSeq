@@ -89,22 +89,24 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
 
         RUNP(td = create_beam_thread_data(&num_threads,(sb->max_len+2)  , ft->last_state));
         LOG_MSG("Will use %d threads.", num_threads);
-
+        no_path = 0;
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
                 RUN(set_u(sb,model,ft, &min_u));
 
-                RUN(get_max_to_last_state_transition(ft, &max));
-                //fprintf(stdout,"MAX:%f\n", max);
-                while(max > min_u && model->num_states < 300){//}sb->max_len){
-                        //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
-                        RUN(add_state_from_fast_hmm_param(model,ft));
+                /* I only want to add states if the last iteration was successful */
+                if(!no_path){
                         RUN(get_max_to_last_state_transition(ft, &max));
-                        //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
-                        //exit(0);
+                        //fprintf(stdout,"MAX:%f\n", max);
+                        while(max > min_u && model->num_states < 300){//}sb->max_len){
+                                //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
+                                RUN(add_state_from_fast_hmm_param(model,ft));
+                                RUN(get_max_to_last_state_transition(ft, &max));
+                                //fprintf(stdout,"MAX:%f min_U:%f\n", max, min_u);
+                                //exit(0);
+                        }
                 }
-
-                RUN(make_flat_param_list(ft));
+                 RUN(make_flat_param_list(ft));
                 LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
 
                 RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
@@ -142,6 +144,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         if(sb->sequences[i]->u[0] == -1){
                                 no_path = no_path + 1;
                                 //LOG_MSG("weird split must have happened in seq %d",i);
+                        }
+                        if(i < 5){
+                                LOG_MSG("seq:%d had score of %f", i, sb->sequences[i]->score);
                         }
                 }
                 /* if more than 1% of sequences don't have a path redo */
@@ -1101,7 +1106,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
         label = ihmm_seq->label;
 
         list = ft->list;
-        //emission = ft->emission[0];
+
         tmp_row = matrix[len];
 
         l = ft->last_state;
@@ -1222,12 +1227,16 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                         score = score + prob2scaledprob( ft->emission[seq[i]][l]);
                         label[i] = l;
                 }
+                /* go from start to first state used in path... */
+                score = score + prob2scaledprob(  ft->transition[IHMM_START_STATE][l]);
+                ihmm_seq->score = score;
 
         }else{
                 u[0] = -1.0f;
+                ihmm_seq->score = -INFINITY;
                 //LOG_MSG("No PATH!: %f",sum);
         }
-        ihmm_seq->score = score;
+        //ihmm_seq->score = score;
         return OK;
 ERROR:
         return FAIL;

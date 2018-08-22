@@ -97,12 +97,12 @@ libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
 libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+#TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = pst_ITEST libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
 
 libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -137,4 +137,7 @@ beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURC
 beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTBEAM
 beam_ITEST_LDADD = $(libihmm_a_LIBADD) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
+pst_ITEST_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)   pst.c pst.h 
+pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTPST
+pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 

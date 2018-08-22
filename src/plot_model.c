@@ -168,6 +168,8 @@ int run_plot_positional_state_distribution(struct parameters* param)
         struct seq_buffer* sb = NULL;
         struct ihmm_model* model = NULL;
         float** matrix = NULL;
+        float* state_sums = NULL;
+
         int i,j,c,index;
         float l;
 
@@ -175,40 +177,52 @@ int run_plot_positional_state_distribution(struct parameters* param)
         ASSERT(param != NULL, "no parameters");
         RUNP(sb = get_sequences_from_hdf5_model(param->input));
         RUNP(model = read_model_hdf5(param->input));
-        
-                
-        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 101, 0.0f));
+
+
+        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 1001, 0.0f));
+        MMALLOC(state_sums, sizeof(float) *  model->num_states);
+        for(i = 0; i < model->num_states;i++){
+                state_sums[i] = 0.0f;
+        }
 
         for(i = 0; i < sb->num_seq;i++){
                 l = (float) sb->sequences[i]->seq_len;
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
                         c = (float) sb->sequences[i]->label[j];
-                        index = roundf(100.0f * ((float) j / l));
+                        index = roundf(1000.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
+                        state_sums[c] += 1.0f;
                 }
         }
         /* First two states are START/ STOP */
-        
+
         RUNP(fptr = fopen("test.csv", "w"));
         fprintf(fptr, "Pos");
         for(i = 2; i < model->num_states;i++){
-                fprintf(fptr,",State",i);
+                if(state_sums[i]){
+                        fprintf(fptr,",State%d",i);
                 }
-                fprintf(fptr,"\n");
-        for(j = 0; j < 100;j++){
+        }
+        fprintf(fptr,"\n");
+        for(j = 0; j < 1000;j++){
                 fprintf(fptr, "%d",j);
                 for(i = 2; i < model->num_states;i++){
-                        fprintf(fptr,",%d",(int)matrix[i][j]);
+                        if(state_sums[i]){
+                                fprintf(fptr,",%0.6f",matrix[i][j]);
+                        }
                 }
                 fprintf(fptr,"\n");
         }
         fclose(fptr);
-
+        MFREE(state_sums);
         free_2d((void**) matrix);
         free_ihmm_model(model);
         free_ihmm_sequences(sb);
         return OK;
 ERROR:
+        if(state_sums){
+                MFREE(state_sums);
+        }
         if(sb){
                 free_ihmm_sequences(sb);
         }
@@ -256,9 +270,7 @@ int plot_model_entropy(struct parameters* param)
                 for(j = 0; j < model->L;j++){
                         s2[i][j] = sqrt(  ((double) iterations * s2[i][j] - s1[i][j] * s1[i][j])/ ((double) iterations * ((double) iterations -1.0)));
                         s1[i][j] = s1[i][j] / (double) iterations;
-                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1[i][j], s2[i][j]);
                 }
-
         }
         free_2d((void**) s1);
         free_2d((void**) s2);

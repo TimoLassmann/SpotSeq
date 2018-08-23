@@ -89,6 +89,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->num_items = 0;
         ft->emission = NULL;    /* This will be indexed by letter i.e. e['A']['numstate'] */
         ft->transition = NULL;
+
         ft->L = L;
         ft->background_emission = NULL;
 

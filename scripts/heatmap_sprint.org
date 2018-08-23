@@ -56,7 +56,7 @@ head(x)
     geom_tile(colour="white", linewidth=2, 
               width=.9, height=.9) + theme_minimal() +
       scale_fill_gradientn(colours=cols, limits=c(min_count, max_count),
-                          breaks=seq(min_count, max_count, by=1), 
+                          breaks=seq(min_count, maxcount, by=1), 
                           na.value=rgb(246, 246, 246, max=255),
                           guide=guide_colourbar(ticks=T, nbin=10,
                                  barheight=2, label=T, 
@@ -65,6 +65,24 @@ head(x)
 
 #+RESULTS:
 
+
+
+* plotting LOGOs 
+
+#+BEGIN_SRC R :session one 
+library(ggplot2)
+library(gglogo)
+library(gridextra)
+data(sequences)
+ggplot(data = ggfortify(sequences, "peptide")) +      
+  geom_logo(aes(x=position, y=bits, group=element, 
+     label=element, fill=interaction(Polarity, Water)),
+     alpha = 0.6)  +
+  scale_fill_brewer(palette="Paired") +
+  theme(legend.position = "bottom")
+#+END_SRC
+
+#+RESULTS:
 
 * Meeting Notes
 

@@ -25,10 +25,10 @@ struct fast_hmm_param{
         struct fast_t_item** list;
         struct fast_t_item** infinity;
         struct rbtree_root* root;
-        float** transition; 
+        float** transition;
         float** emission;
         float* background_emission;
-        uint16_t last_state; 
+        uint16_t last_state;
         uint32_t alloc_items;
         uint32_t num_items;
         uint32_t alloc_num_states;
@@ -63,7 +63,7 @@ extern int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, float x);
 
 /* These functions return the first and last+1 entry in list that has value of x */
 extern int fast_hmm_param_binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x);
-extern int fast_hmm_param_binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x);      
+extern int fast_hmm_param_binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x);
 extern int fast_hmm_param_binarySearch_from_lower_bound(struct fast_hmm_param* ft, int x);
 extern int fast_hmm_param_binarySearch_from_upper_bound(struct fast_hmm_param* ft, int x);
 

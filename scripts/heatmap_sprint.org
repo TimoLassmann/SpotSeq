@@ -84,6 +84,26 @@ ggplot(data = ggfortify(sequences, "peptide")) +
 
 #+RESULTS:
 
+* Testing rhdf5 
+
+#+BEGIN_SRC R :session one
+
+library("rhdf5")
+
+h5ls("../upstream1000_selection.fa.h5")
+
+#+END_SRC
+
+#+RESULTS:
+| rhdf5     |
+| stats     |
+| graphics  |
+| grDevices |
+| utils     |
+| datasets  |
+| methods   |
+| base      |
+
 * Meeting Notes
 
 

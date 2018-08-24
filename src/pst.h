@@ -35,10 +35,14 @@ struct lcs_count{
 
 struct motif_struct{
         int* state_list;
+        int* occ;
+        float mean_rel_entropy;
+        int n_occur;
         int len;
         int start_in_sa;
         int end_in_sa;
 };
-extern void free_sa(struct sa* sa);
+
+extern int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float min_seq_occur, int pos_resolution);
 
 #endif

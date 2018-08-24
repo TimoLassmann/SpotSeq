@@ -1,7 +1,7 @@
 
 #include "finite_hmm.h"
 
-static int read_hmm_parameters(struct fhmm* fhmm, char* filename);
+
 
 int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int expected_len)
 {
@@ -234,17 +234,17 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
 
         hdf5_read_attributes(hdf5_data,hdf5_data->file);
         ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        print_attributes(hdf5_data);
+        //print_attributes(hdf5_data);
         get_group_names(hdf5_data);
-        fprintf(stdout,"Groups:\n");
+        /*fprintf(stdout,"Groups:\n");
         for(i = 0; i < hdf5_data->grp_names->num_names;i++){
                 fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
-        }
+                }*/
 
         hdf5_open_group("imodel",hdf5_data);
         hdf5_read_attributes(hdf5_data,hdf5_data->group);
         ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        print_attributes(hdf5_data);
+        //print_attributes(hdf5_data);
         for(i = 0; i < hdf5_data->num_attr;i++){
                 if(!strncmp("Number of states", hdf5_data->attr[i]->attr_name, 16)){
                         fhmm->K = hdf5_data->attr[i]->int_val;
@@ -282,7 +282,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         hdf5_free(hdf5_data);
 
 
-        for(i = 0; i < fhmm->K;i++){
+        /*for(i = 0; i < fhmm->K;i++){
                 sum = 0.0;
                 for(j =0; j < fhmm->L;j++){
                         fprintf(stdout,"%f ",fhmm->e[i][j]);
@@ -299,7 +299,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
                         sum += fhmm->t[i][j];
                 }
                 fprintf(stdout,"sum:%f\n",sum);
-        }
+                }*/
 
 
 

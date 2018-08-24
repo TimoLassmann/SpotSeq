@@ -30,6 +30,9 @@ struct fhmm{
 extern int random_model_score(float* b, float* ret_score, uint8_t* a, int len, int expected_len);
 extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a, int len);
 
+extern int read_hmm_parameters(struct fhmm* fhmm, char* filename);
+
+
 extern struct fhmm* alloc_fhmm(void);
 extern int setup_model(struct fhmm* fhmm);
 extern struct fhmm* init_fhmm(char* filename);

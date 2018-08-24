@@ -1,15 +1,19 @@
 
 #include "pst.h"
 #include "ihmm_seq.h"
+#include "finite_hmm.h"
 
+//static int analyze_label_sequences_with_pst(struct seq_buffer* sb);
+static struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq);
 
-static int analyze_label_sequences_with_pst(struct seq_buffer* sb);
+static int calculate_relative_entropy(struct rbtree_root* root, struct fhmm* fhmm);
+static int add_positional_distribution(struct rbtree_root* root, struct sa* sa,struct seq_buffer* sb, int pos_resolution);
 
-int qsort_lcs_cmp(const void *a, const void *b);
-
-int count_int_string(int*p,int** suffix,int h,int len);
-int binsearch_down(int*p,int** suffix,int h,int len);
-int binsearch_up(int*p,int** suffix,int h,int len);
+static int qsort_lcs_cmp(const void *a, const void *b);
+static int qsort_motif_struct(const void *a, const void *b);
+int count_int_string(int*p, struct lcs** lcs,int h,int len);
+int binsearch_down(int*p,struct lcs** lcs,int h,int len);
+int binsearch_up(int*p,struct lcs** lcs,int h,int len);
 
 int cmp_int_array(int* a, int*b, int len);
 
@@ -25,24 +29,142 @@ static void print_motif_struct(void* ptr,FILE* out_ptr);
 static void free_motif_struct(void* ptr);
 
 
+
 static struct sa* build_sa(struct seq_buffer* sb);
-/*
- fp_get = &get_transition;
-        fp_cmp = &compare_transition;
-        fp_print = &print_fast_t_item_struct;
-        fp_cmp_same = &resolve_default;
-        fp_free = &free_fast_t_item_struct;
+static void free_sa(struct sa* sa);
 
-        ft->root = init_tree(fp_get,fp_cmp,fp_cmp_same,fp_print,fp_free);
-*/
-
-int analyze_label_sequences_with_pst(struct seq_buffer* sb)
+int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float min_seq_occur, int pos_resolution)
 {
+        struct seq_buffer* sb = NULL;
         struct sa* sa = NULL;
+
+        struct rbtree_root* root = NULL;
+        struct fhmm* fhmm = NULL;
+
+
+        /* first challenge: build suffix array from labels  */
+        RUNP(sb = get_sequences_from_hdf5_model(filename));
+
+        ASSERT(sb != NULL, "No sequence Buffer");
+        sa = build_sa(sb);
+
+        RUNP(root = find_lcs(sa, sb->num_seq,  min_pattern_len, min_seq_occur));
+        RUNP(fhmm = alloc_fhmm());
+        /* get HMM parameters  */
+        RUN(read_hmm_parameters(fhmm,filename));
+
+        RUN(calculate_relative_entropy(root,fhmm));
+
+        qsort(root->data_nodes, root->num_entries, sizeof(struct motif_struct*), qsort_motif_struct);
+
+        RUN(add_positional_distribution( root, sa, sb, pos_resolution));
+
+        /*int i;
+         for(i = 0; i < root->num_entries;i++){
+                print_motif_struct(root->data_nodes[i], stdout);
+                }*/
+        free_fhmm(fhmm);
+//        root->print_tree(root,stdout);
+        root->free_tree(root);
+        free_sa(sa);
+        free_ihmm_sequences(sb);
+
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
+//int write_lcs_motif_data_for_plotting(struct)
+
+int add_positional_distribution(struct rbtree_root* root, struct sa* sa, struct seq_buffer*sb, int pos_resolution)
+{
+        struct motif_struct* m = NULL;
+        struct lcs* g = NULL;
+        //int* tmp = NULL;
+        int i,j,c;
+        int index;
+        int l;
+        for(i = 0; i < root->num_entries;i++){
+                m = root->data_nodes[i];
+                print_motif_struct(m, stdout);
+                MMALLOC(m->occ, sizeof(int) * (pos_resolution+1));
+                for(j = 0; j <  pos_resolution+1;j++){
+                        m->occ[j] = 0;
+                }
+                for(j = m->start_in_sa; j < m->end_in_sa;j++){
+                        g = sa->lcs[j];
+                        l = sb->sequences[ g->seq_num]->seq_len;
+                        index =roundf((float)pos_resolution * ((float) g->pos / l));
+                        m->occ[index]++;
+                        /*tmp= g->str;
+                        fprintf(stdout,"i:%d %d s:%d p:%d\t",i ,g->lcp,g->seq_num, g->pos);
+                        for(c = 0; c < m->len+2;c++){
+                                fprintf(stdout," %2d", tmp[c]);
+                                if(tmp[c] == -1){
+                                        break;
+                                }
+                        }
+                        fprintf(stdout,"\n");*/
+
+                }
+                c = 0;
+                for(j = 0; j <  pos_resolution+1;j++){
+                        c+= m->occ[j];
+                        fprintf(stdout,"%4d",m->occ[j]);
+                }
+                fprintf(stdout," TOTAL:%d\n",c);
+
+                /*c = (float) sb->sequences[i]->label[j];
+                  index = roundf(1000.0f * ((float) j / l));
+                  matrix[c][index] += 1.0f;
+                  state_sums[c] += 1.0f;*/
+
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int calculate_relative_entropy(struct rbtree_root* root, struct fhmm* fhmm)
+{
+        int i,j,c,s;
+        struct motif_struct* m = NULL;
+        float* background = NULL;
+        float x;
+
+        ASSERT(root!= NULL, "No rbtree");
+        ASSERT(fhmm != NULL, "No fhmm");
+
+        background = fhmm->background;
+        for(i = 0; i < root->num_entries;i++){
+                m = root->data_nodes[i];
+                x = 0.0f;
+                for(j = 0; j < m->len;j++){
+                        s = m->state_list[j];
+
+                        for(c = 0; c < fhmm->L;c++){
+                                if(fhmm->e[s][c] > 0.0f){
+                                        x += fhmm->e[s][c] * log2f(fhmm->e[s][c] / background[c]);
+                                }
+                        }
+                }
+                x = x / (float) m->len;
+                m->mean_rel_entropy = x;
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq)
+{
         struct lcs_count* lcs_count = NULL;
 
         struct rbtree_root* root = NULL;
         struct motif_struct* motif = NULL;
+
 
         int i,c;
         int lower, upper;
@@ -55,11 +177,9 @@ int analyze_label_sequences_with_pst(struct seq_buffer* sb)
         int (*fp_cmp_same)(void* ptr_a,void* ptr_b);
         void (*fp_print)(void* ptr,FILE* out_ptr) = NULL;
         void (*fp_free)(void* ptr) = NULL;
-        /* first challenge: build suffix array from labels  */
 
-        ASSERT(sb != NULL, "No sequence Buffer");
-        sa = build_sa(sb);
-
+        ASSERT(sa != NULL, "No suffix array!");
+        ASSERT(min_seq < total_sequences, "too many minseq");
 
         fp_get = &get_state_path;
         fp_cmp = &compare_state_path;
@@ -72,7 +192,7 @@ int analyze_label_sequences_with_pst(struct seq_buffer* sb)
         MMALLOC(lcs_count, sizeof(struct lcs_count));
         lcs_count->counts = NULL;
         lcs_count->unique = 0;
-        lcs_count->len = sb->num_seq;
+        lcs_count->len = total_sequences;
         lcs_count->cur_longest = 0;
 
         MMALLOC(lcs_count->counts, sizeof(int) * lcs_count->len);
@@ -84,9 +204,12 @@ int analyze_label_sequences_with_pst(struct seq_buffer* sb)
         for(i= 0 ; i < lcs_count->len;i++){
                 lcs_count->counts[i] = 0;
         }
+        if(min_seq < 1.0){
+                min_seq = (int) (min_seq * (float) total_sequences);
+        }
         lcs_count->unique = 0;
-        lcs_count->cur_longest = 6;
-        lcs_count->min_seq = 10; /* Look forstrings in at least 4 sequences. */
+        lcs_count->cur_longest = min_len;
+        lcs_count->min_seq = min_seq; /* Look forstrings in at least 4 sequences. */
 
 
         /* sliding window to find lcs */
@@ -179,16 +302,28 @@ int analyze_label_sequences_with_pst(struct seq_buffer* sb)
 
         }
 
-
-        root->print_tree(root,stdout);
-        root->free_tree(root);
-        free_sa(sa);
         MFREE(lcs_count->counts);
         MFREE(lcs_count);
 
-        return OK;
+        /* flatten tree  */
+        root->flatten_tree(root);
+
+/* count number of occurances...  */
+        for(i = 0; i < root->num_entries;i++){
+                motif = root->data_nodes[i];
+
+                motif->start_in_sa = binsearch_down(motif->state_list, sa->lcs, sa->len-1, motif->len);
+                motif->end_in_sa =   binsearch_up  (motif->state_list,sa->lcs,sa->len-1, motif->len);
+
+                motif->n_occur =  motif->end_in_sa - motif->start_in_sa;
+                //print_motif_struct(root->data_nodes[i], stdout);
+        }
+        /* calculate KL divergence  */
+        /* sort based on length; then KL */
+        return root;
 ERROR:
-        return FAIL;
+        return NULL;
+
 }
 
 struct sa* build_sa(struct seq_buffer* sb)
@@ -323,9 +458,9 @@ void print_motif_struct(void* ptr,FILE* out_ptr)
 {
         struct motif_struct* tmp = (struct motif_struct*)  ptr;
         int i;
-        fprintf(out_ptr,"node %d %d %d \n", tmp->len, tmp->start_in_sa,tmp->end_in_sa);
+        fprintf(out_ptr,"node %d %d %d KL:%f (%d)\n", tmp->len, tmp->start_in_sa,tmp->end_in_sa, tmp->mean_rel_entropy,  tmp->n_occur);
         for(i = 0; i < tmp->len;i++){
-                fprintf(out_ptr,"%3d", tmp->state_list[i]);
+                fprintf(out_ptr,"%4d", tmp->state_list[i]);
         }
         fprintf(out_ptr,"\n");
 }
@@ -340,6 +475,10 @@ struct motif_struct* alloc_motif(int len)
         motif->start_in_sa = 0;
         motif->end_in_sa = 0;
         motif->len = len;
+        motif->mean_rel_entropy = 0.0;
+        motif->n_occur = 0;
+        motif->occ = NULL;
+
         motif->state_list = NULL;
         MMALLOC(motif->state_list, sizeof(int) * len);
         return motif;
@@ -351,37 +490,41 @@ void free_motif_struct(void* ptr)
 {
         struct motif_struct* tmp = (struct motif_struct*)  ptr;
         if(tmp){
+                if(tmp->occ){
+                        MFREE(tmp->occ);
+                }
                 MFREE(tmp->state_list);
                 MFREE(tmp);
         }
 }
 
-int count_int_string( int*p, int** suffix,int h,int len)
+int count_int_string( int*p, struct lcs** lcs,int h,int len)
 {
         int a,b;
+
         //for(i = 0; i < 1000000;i++){
-        a = binsearch_down(p,suffix,h,len);
-        b = binsearch_up(p,suffix,h,len);
+        a = binsearch_down(p,lcs,h,len);
+        b = binsearch_up(p,lcs,h,len);
         if(b == h && a != h){
                 b++;
         }
         return b-a;
 }
 
-int binsearch_down( int*p, int** suffix,int h,int len)
+int binsearch_down( int*p, struct lcs** lcs,int h,int len)
 {
         int m = 0;
         int l = 0;
         /*if (t_long_strncmp(p,text+suffix[l],len)<= 0){
           l = l;
           }else */
-        if(cmp_int_array(p,suffix[h],len) >  0){
+        if(cmp_int_array(p,lcs[h]->str  ,len) >  0){
                 return h;
         }else{
                 while(h-l > 1){
                         //m = (l+h)/2;
                         m = (l + h) >> 1;
-                        if(cmp_int_array(p,suffix[m],len) <= 0){
+                        if(cmp_int_array(p,lcs[m]->str,len) <= 0){
                                 h = m;
                         }else{
                                 l = m;
@@ -391,20 +534,20 @@ int binsearch_down( int*p, int** suffix,int h,int len)
         return l+1;
 }
 
-int binsearch_up( int*p, int** suffix,int h,int len)
+int binsearch_up( int*p, struct lcs** lcs,int h,int len)
 {
         int m = 0;
         int l = 0;
         /*if (t_long_strncmp(p,text+suffix[l],len)<= 0){
           l = l;
           }else*/
-        if(cmp_int_array(p,suffix[h],len) >  0){
+        if(cmp_int_array(p,lcs[h]->str,len) >  0){
                 return h;
         }else{
                 while(h-l > 1){
                         //m = (l+h)/2;
                         m = (l + h) >> 1;
-                        if(cmp_int_array(p,suffix[m],len) < 0){
+                        if(cmp_int_array(p,lcs[m]->str,len) < 0){
                                 h = m;
                         }else{
                                 l = m;
@@ -447,6 +590,23 @@ int cmp_int_array(int* a, int*b, int len)
                 }
         }
         return 0;
+}
+
+
+int qsort_motif_struct(const void *a, const void *b)
+{
+        struct motif_struct* const *one = a;
+        struct motif_struct* const *two = b;
+
+        if((*one)->len == (*two)->len){
+                if((*one)->mean_rel_entropy > (*two)->mean_rel_entropy){
+                        return -1;
+                }else{
+                        return 1;
+                }
+
+        }
+        return  (*two)->len - (*one)->len;
 }
 
 int qsort_lcs_cmp(const void *a, const void *b)
@@ -597,7 +757,7 @@ int main(const int argc,const char * argv[])
         //119l
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,119));
         RUN(random_label_ihmm_sequences(sb,10,0.3f));
-        RUN(analyze_label_sequences_with_pst(sb));
+        RUN(analyze_label_sequences_with_pst("../upstream1000_selection.fa.h5", 6, 0.7, 10));
         free_ihmm_sequences(sb);
 
 

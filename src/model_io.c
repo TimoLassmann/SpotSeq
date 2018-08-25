@@ -258,7 +258,7 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         free_2d((void**) tmp);
         tmp= NULL;
 
-
+        RUN(hdf5_close_group(hdf5_data));
         /*
         fprintf(f_ptr,"Beta:\n");
         for(i = 0; i < model->num_states;i++){
@@ -267,7 +267,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         fprintf(f_ptr,"Transition counts:\n");
         for(i = 0; i < model->num_states;i++){
                 for(j = 0; j < model->num_states;j++){
-                        fprintf(f_ptr,"%f\n", model->transition_counts[i][j]);
+
+       fprintf(f_ptr,"%f\n", model->transition_counts[i][j]);
                 }
         }
         fprintf(f_ptr,"Emission counts:\n");

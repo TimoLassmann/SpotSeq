@@ -233,13 +233,53 @@ int run_build_ihmm(struct parameters* param)
                 model->alpha0_b = 15.0f;
                 model->gamma_a = 16.0f;
                 model->gamma_b = 4.0f;
+                /* vague */
+                /*model->alpha0_a = 1.0f;
+                model->alpha0_b = 1.0f;
+                model->gamma_a = 2.0f;
+                model->gamma_b = 1.0f;*/
+
                 model->alpha = IHMM_PARAM_PLACEHOLDER;
                 model->gamma = IHMM_PARAM_PLACEHOLDER;
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));
                 }
         }
+
+        /*LOG_MSG("testing");
+        int a,b,r;
+        float test[4];
+        float sum;
+        float min, max;
+
+        for(a = 1;a < 100;a++){
+
+                for(r = 0; r < 10;r++){
+                        sum = 0.0f;
+                        for(b = 0; b < 4;b++){
+                                test[b] = rk_gamma(&model->rndstate,10.0 + (float) a, 1.0);
+                                sum += test[b];
+                        }
+                        min = 2.0;
+                        max = -2.0;
+                        fprintf(stdout,"%d\t",a);
+                        for(b = 0; b < 4;b++){
+                                test[b] = test[b] / sum;
+                                fprintf(stdout," %0.2f",test[b]);
+                                if(max <  test[b]){
+                                        max= test[b];
+                                }
+                                if(min > test[b]){
+                                        min= test[b];
+                                }
+                        }
+                        fprintf(stdout,"\t%f-%f range:%f\n",min,max,max-min);
+                }
+        }
+
+        exit(0);*/
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));

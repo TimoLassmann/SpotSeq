@@ -21,7 +21,9 @@ dat = read.csv("test.csv",header= TRUE, row.names= 1)
 #+BEGIN_SRC R :session one :output graphics :file hist.jpg
 sum = colSums(dat);
 
+
 plot(sum)
+
 
 #+END_SRC
 
@@ -32,23 +34,32 @@ Melt and plot
 
 #+BEGIN_SRC R :session one 
 
+
+
 max_count = max(dat)
 min_count = min(dat)
-x = melt(t(dat[,sum > 50]))
+x = melt(t(dat))
+sum = colSums(dat);
+
+
 head(x)
 
 #+END_SRC
 
 #+RESULTS:
 | State2 | 0 |  0 |
-| State3 | 0 |  0 |
+| State3 | 0 | 29 |
 | State4 | 0 |  0 |
-| State5 | 0 | 48 |
+| State5 | 0 | 11 |
 | State6 | 0 |  0 |
-| State7 | 0 |  0 |
+| State2 | 1 |  2 |
 
 #+BEGIN_SRC R :session one
 
+d <- 1-cor((dat))
+ord <- hclust( dist(d, method = "euclidean"), method = "ward.D" )$order
+
+x$Var1 <- factor( x$Var1, levels = colnames(dat)[ord],labels =colnames(dat)[ord])
   cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
             colorRampPalette(c("yellow", "red"))(30))
 
@@ -56,7 +67,7 @@ head(x)
     geom_tile(colour="white", linewidth=2, 
               width=.9, height=.9) + theme_minimal() +
       scale_fill_gradientn(colours=cols, limits=c(min_count, max_count),
-                          breaks=seq(min_count, maxcount, by=1), 
+                          breaks=seq(min_count, max_count, by=1), 
                           na.value=rgb(246, 246, 246, max=255),
                           guide=guide_colourbar(ticks=T, nbin=10,
                                  barheight=2, label=T, 
@@ -65,10 +76,26 @@ head(x)
 
 #+RESULTS:
 
+#+BEGIN_SRC R :session one
 
+d <- scale(t(dat2))
+ord <- hclust( dist(d, method = "euclidean"), method = "ward.D" )$order
+x = melt(t(dat2))
+
+pd.m <- melt( pd, id.vars = "Time", variable.name = "Gene" )
+
+pd.m$Gene <- factor( pd.m$Gene, levels = colnames(data), labels = seq_along( colnames(data) ) )
+pd.m$Time <- factor( pd.m$Time, levels = rownames(data)[ord],  labels = c("0h", "0.25h", "0.5h","1h","2h","3h","6h","12h","24h","48h") )
+
+
+  ggplot(x, aes(x=Var2, y=value, group=Var1, color=Var1))+
+    geom_line() + theme_minimal()+ facet_grid(Var1 ~ .)
+
+#+END_SRC  
 
 * plotting LOGOs 
 
+** gglogo
 #+BEGIN_SRC R :session one 
 library(ggplot2)
 library(gglogo)
@@ -82,6 +109,29 @@ ggplot(data = ggfortify(sequences, "peptide")) +
   theme(legend.position = "bottom")
 #+END_SRC
 
+
+** ggseqlogo
+
+#+BEGIN_SRC R :session one 
+  library("rhdf5")
+  require(ggplot2)
+  require(ggseqlogo)
+
+                                          # Some sample data
+
+
+  x = h5dump("../src/mysmalltest.h5")
+
+
+  add_rowname <- function(x){
+      rownames(x) = c("A","C","G","T");
+      return(x);
+  }
+  x$MotifData = lapply(x$MotifData,add_rowname)
+ggseqlogo(x$MotifData, ncol=12)
+ 
+
+#+END_SRC
 #+RESULTS:
 
 * Testing rhdf5 
@@ -95,14 +145,15 @@ h5ls("../upstream1000_selection.fa.h5")
 #+END_SRC
 
 #+RESULTS:
-| rhdf5     |
-| stats     |
-| graphics  |
-| grDevices |
-| utils     |
-| datasets  |
-| methods   |
-| base      |
+| /SequenceInformation | Labels            | H5I_DATASET | INTEGER | x 48  |
+| /SequenceInformation | Names             | H5I_DATASET | INTEGER | x 48  |
+| /SequenceInformation | Sequences         | H5I_DATASET | INTEGER | x 48  |
+| /SequenceInformation | background        | H5I_DATASET | FLOAT   | 4     |
+| /fmodel              | emission          | H5I_DATASET | FLOAT   | x 134 |
+| /fmodel              | transition        | H5I_DATASET | FLOAT   | x 134 |
+| /imodel              | Beta              | H5I_DATASET | FLOAT   | 134   |
+| /imodel              | emission_counts   | H5I_DATASET | FLOAT   | x 4   |
+| /imodel              | transition_counts | H5I_DATASET | FLOAT   | x 134 |
 
 * Meeting Notes
 

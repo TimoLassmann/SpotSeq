@@ -9,6 +9,8 @@ static struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_l
 static int calculate_relative_entropy(struct rbtree_root* root, struct fhmm* fhmm);
 static int add_positional_distribution(struct rbtree_root* root, struct sa* sa,struct seq_buffer* sb, int pos_resolution);
 
+static int write_lcs_motif_data_for_plotting(char* filename, struct sa* sa,struct seq_buffer*sb,struct rbtree_root* root, struct fhmm*  fhmm);
+
 static int qsort_lcs_cmp(const void *a, const void *b);
 static int qsort_motif_struct(const void *a, const void *b);
 int count_int_string(int*p, struct lcs** lcs,int h,int len);
@@ -27,8 +29,6 @@ static long int compare_state_path(void* keyA, void* keyB);
 static int resolve_default(void* ptr_a,void* ptr_b);
 static void print_motif_struct(void* ptr,FILE* out_ptr);
 static void free_motif_struct(void* ptr);
-
-
 
 static struct sa* build_sa(struct seq_buffer* sb);
 static void free_sa(struct sa* sa);
@@ -49,6 +49,18 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
         sa = build_sa(sb);
 
         RUNP(root = find_lcs(sa, sb->num_seq,  min_pattern_len, min_seq_occur));
+
+        /* check if we found motifs!!!! */
+
+        if(root->num_entries == 0){
+                WARNING_MSG("No motif found.");
+                free_fhmm(fhmm);
+                root->free_tree(root);
+                free_sa(sa);
+                free_ihmm_sequences(sb);
+                return OK;
+        }
+
         RUNP(fhmm = alloc_fhmm());
         /* get HMM parameters  */
         RUN(read_hmm_parameters(fhmm,filename));
@@ -59,6 +71,7 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
 
         RUN(add_positional_distribution( root, sa, sb, pos_resolution));
 
+        RUN(write_lcs_motif_data_for_plotting("mysmalltest.h5",sa,sb, root, fhmm));
         /*int i;
          for(i = 0; i < root->num_entries;i++){
                 print_motif_struct(root->data_nodes[i], stdout);
@@ -75,7 +88,105 @@ ERROR:
 
 }
 
-//int write_lcs_motif_data_for_plotting(struct)
+int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb, struct rbtree_root* root, struct fhmm*  fhmm)
+{
+        char buffer[BUFFER_LEN];
+        struct hdf5_data* hdf5_data = NULL;
+        struct motif_struct* m = NULL;
+        struct lcs* g = NULL;
+
+        float** tmp = NULL;
+        int i,j,c;
+        uint8_t* seq;
+
+
+
+        ASSERT(filename != NULL, "No file name");
+        ASSERT(root != NULL, "No motifs");
+        ASSERT(root->num_entries != 0, "No Motifs");
+
+
+        /* determine max_len of motif - to alloc frequency matrix */
+
+        RUNP(hdf5_data = hdf5_create());
+        snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
+        hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
+        snprintf(buffer, BUFFER_LEN, "%s", PACKAGE_VERSION);
+        hdf5_add_attribute(hdf5_data, "Version", buffer, 0, 0.0f, HDF5GLUE_CHAR);
+
+
+        RUN(hdf5_create_file(filename,hdf5_data));
+
+        hdf5_write_attributes(hdf5_data, hdf5_data->file);
+
+
+        RUN(hdf5_create_group("MotifData",hdf5_data));
+
+        for(c = 0; c < root->num_entries;c++){
+                m = root->data_nodes[c];
+
+
+                RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
+
+
+                for(i = m->start_in_sa; i < m->end_in_sa;i++){
+                        g = sa->lcs[i];
+
+                        seq = sb->sequences[g->seq_num]->seq + g->pos;
+                        //g->possb->
+
+                        for(j = 0; j < m->len;j++){
+                                tmp[j][seq[j]]++;
+                                //       c = sb->sequences[g->seq_num]->dd;
+
+                        }
+                        //l = sb->sequences[ g->seq_num]->seq_len;
+                        //index =roundf((float)pos_resolution * ((float) g->pos / l));
+                        //m->occ[index]++;
+                        /*tmp= g->str;
+                        fprintf(stdout,"i:%d %d s:%d p:%d\t",i ,g->lcp,g->seq_num, g->pos);
+                        for(c = 0; c < m->len+2;c++){
+                                fprintf(stdout," %2d", tmp[c]);
+                                if(tmp[c] == -1){
+                                        break;
+                                }
+                        }
+                        fprintf(stdout,"\n");*/
+
+                }
+
+                        /*for(i = 0; i < fhmm->L;i++){
+                        for(j = 0; j < m->len;j++){
+                                tmp[j][i] = fhmm->e[m->state_list[j]][i];
+                        }
+                        }*/
+
+                hdf5_data->rank = 2;
+                hdf5_data->dim[0] = m->len;
+                hdf5_data->dim[1] = fhmm->L;
+                hdf5_data->chunk_dim[0] = m->len;
+                hdf5_data->chunk_dim[1] = fhmm->L;
+                hdf5_data->native_type = H5T_NATIVE_FLOAT;
+                snprintf(buffer, BUFFER_LEN, "Motif%06d", c+1);
+                hdf5_write(buffer,&tmp[0][0], hdf5_data);
+
+                free_2d((void**) tmp);
+                tmp = NULL;
+
+        }
+
+        RUN(hdf5_close_group(hdf5_data));
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
 
 int add_positional_distribution(struct rbtree_root* root, struct sa* sa, struct seq_buffer*sb, int pos_resolution)
 {
@@ -254,15 +365,17 @@ struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, flo
                                                 min_lcp_location = i;
                                         }
                                 }
+                                /*
+                                if(min_lcp > lcs_count->cur_longest){
 
-                                /*if(min_lcp > lcs_count->cur_longest){
+                                        lcs_count->cur_longest = sa->lcs[min_lcp_location]->lcp;
+                                        //root->free_tree(root);
 
-                                        //lcs_count->cur_longest = lcs[min_lcp_location]->lcp;
                                 }else if(min_lcp == lcs_count->cur_longest){
 
                                 }else{
                                         min_lcp_location = -1;
-                                }*/
+                                        }*/
 
                                 if(min_lcp >=  lcs_count->cur_longest){
                                         /*for(i = lower;i <= upper;i++){
@@ -304,22 +417,24 @@ struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, flo
 
         MFREE(lcs_count->counts);
         MFREE(lcs_count);
+        if(root->num_entries){
 
-        /* flatten tree  */
-        root->flatten_tree(root);
+                /* flatten tree  */
+                root->flatten_tree(root);
 
-/* count number of occurances...  */
-        for(i = 0; i < root->num_entries;i++){
-                motif = root->data_nodes[i];
+                /* count number of occurances...  */
 
-                motif->start_in_sa = binsearch_down(motif->state_list, sa->lcs, sa->len-1, motif->len);
-                motif->end_in_sa =   binsearch_up  (motif->state_list,sa->lcs,sa->len-1, motif->len);
+                for(i = 0; i < root->num_entries;i++){
+                        motif = root->data_nodes[i];
 
-                motif->n_occur =  motif->end_in_sa - motif->start_in_sa;
-                //print_motif_struct(root->data_nodes[i], stdout);
+                        motif->start_in_sa = binsearch_down(motif->state_list, sa->lcs, sa->len-1, motif->len);
+                        motif->end_in_sa =   binsearch_up  (motif->state_list,sa->lcs,sa->len-1, motif->len);
+
+                        motif->n_occur =  motif->end_in_sa - motif->start_in_sa;
+                        //print_motif_struct(root->data_nodes[i], stdout);
+                }
+
         }
-        /* calculate KL divergence  */
-        /* sort based on length; then KL */
         return root;
 ERROR:
         return NULL;
@@ -757,7 +872,7 @@ int main(const int argc,const char * argv[])
         //119l
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,119));
         RUN(random_label_ihmm_sequences(sb,10,0.3f));
-        RUN(analyze_label_sequences_with_pst("../upstream1000_selection.fa.h5", 6, 0.7, 10));
+        RUN(analyze_label_sequences_with_pst("../upstream1000_selection.fa.h5", 12, 0.2, 100));
         free_ihmm_sequences(sb);
 
 

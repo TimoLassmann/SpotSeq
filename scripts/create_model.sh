@@ -60,34 +60,37 @@ OUTSCORES=$INPUT$RUNNAME".scores.csv"
 
 
 LOCALITER=$(($NUMITER / 100))
-foo=$(printf "%05d" $((0* $LOCALITER)))
+foo=$(printf "%05d" $((1* $LOCALITER)))
 LOCALNAME=$INPUT$RUNNAME"_"$foo".h5"
+SCORENAME=$INPUT$RUNNAME"_"$foo".scores.csv"
+OUTDOT=$INPUT$RUNNAME"_"$foo".dot"
 echo $LOCALNAME
+
 echo "Running:spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER"
 spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER
-for i in `seq 1 99`;
+echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
+spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
+echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
+spotseq_plot -in $LOCALNAME  -out $OUTDOT
+
+for i in `seq 2 100`;
 do
     OLDLOCALNAME=$LOCALNAME
      foo=$(printf "%05d" $((i* $LOCALITER)))
 
     LOCALNAME=$INPUT$RUNNAME"_"$foo".h5"
     SCORENAME=$INPUT$RUNNAME"_"$foo".scores.csv"
+    OUTDOT=$INPUT$RUNNAME"_"$foo".dot"
     echo "Running: spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $LOCALNAME -niter $LOCALITER"
     spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $LOCALNAME -niter $LOCALITER
     echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
     spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
+    echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
+    spotseq_plot -in $LOCALNAME  -out $OUTDOT
     #spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME-out $LOCALNAME -niter $NUMITER
     #LOCALNAME=$INPUT$RUNNAME"_"$((i* $LOCALITER))".h5"
     #echo $LOCALNAME
 done
-echo "Running:spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $OUTMODEL -niter $LOCALITER"
-spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME -out $OUTMODEL -niter $LOCALITER
-
-echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
-spotseq_plot -in $OUTMODEL  -out $OUTDOT
-
-echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
-spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
 exit
 

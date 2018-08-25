@@ -1,3 +1,5 @@
+
+
 library(ggplot2)
 library(reshape2)
 summarize_cell_counts <- function(pattern){
@@ -12,7 +14,7 @@ summarize_cell_counts <- function(pattern){
 dat = summarize_cell_counts(pattern = "*scores.csv")
 
 
-colnames(dat) = gsub("Score_.home.user.tmp.RANDOM_TGCATGCATGCA.fa1000_","",colnames(dat))
+colnames(dat) = gsub("Score_.home.user.tmp.Standard_Challenge_ATGACCTCTATTACC_mis_0.fatest_","",colnames(dat))
 colnames(dat) = gsub("*.h5","",colnames(dat))
 
 
@@ -21,4 +23,5 @@ x = melt(dat)
 
 p <- ggplot(x,aes(x = variable, y = value)) + geom_boxplot()
 
-p 
+
+p

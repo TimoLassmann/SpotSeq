@@ -179,7 +179,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         RUNP(model = read_model_hdf5(param->input));
 
 
-        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 1001, 0.0f));
+        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 201, 0.0f));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
         for(i = 0; i < model->num_states;i++){
                 state_sums[i] = 0.0f;
@@ -189,7 +189,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 l = (float) sb->sequences[i]->seq_len;
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
                         c = (float) sb->sequences[i]->label[j];
-                        index = roundf(1000.0f * ((float) j / l));
+                        index = roundf(200.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
                         state_sums[c] += 1.0f;
                 }
@@ -204,7 +204,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 }
         }
         fprintf(fptr,"\n");
-        for(j = 0; j < 1000;j++){
+        for(j = 0; j < 200;j++){
                 fprintf(fptr, "%d",j);
                 for(i = 2; i < model->num_states;i++){
                         if(state_sums[i]){
@@ -568,7 +568,9 @@ int print_help(char **argv)
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 
-        //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthres","Distance between seeds." ,"[0]"  );
+
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--ethres","Edge threshold." ,"[0.5]"  );
         return OK;
 }
 

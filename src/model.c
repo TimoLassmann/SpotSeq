@@ -19,7 +19,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         }
         LOG_MSG("Will start with %d states",K);
 
-        RUN(random_label_ihmm_sequences(sb, K, 0.3));
+        //RUN(random_label_ihmm_sequences(sb, K, 0.3));
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
         //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
@@ -28,7 +28,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         // emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
         //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
 
-        //RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
+        RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
 
         RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
@@ -422,9 +422,11 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 /* First of all initialize the random number generator */
                 rk_randomseed(&model->rndstate);
 
-                model->alpha = rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
-                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
-                fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
+                model->alpha = 1.0;// rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
+                model->gamma = 30.0;//rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
+
+
                 /* Note this also initializes the last (to infinity state) */
 
                 for(i = 0; i < model->num_states;i++){
@@ -432,10 +434,10 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 }
                 /* Ok all set to re-estimate hyper parameters..  */
         }
-
+        //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
         gamma = model->gamma;
-
+        //gamma = 10;
         //WAS here - need to alloc auxillary arrays for calculations below!
         transition_counts = model->transition_counts;
         sum_M = supp[0];

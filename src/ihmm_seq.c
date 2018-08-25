@@ -406,11 +406,11 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
         RUNP(transition = malloc_2d_float(transition, k+1,  k , 0.0f));
 
         MMALLOC(tmp, sizeof(float) * k);
-        //fprintf(stdout,"Emission\n");
+        fprintf(stdout,"Emission\n");
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < n;j++){
-                        emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
+                        emission[i][j] = rk_gamma(&rndstate,alpha + 1 + i, 1.0);
                         sum += emission[i][j];
                 }
                 sanity = 0.0f;
@@ -418,17 +418,20 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         emission[i][j] /= sum;
                         emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
                         sanity += emission[i][j];
-                        //fprintf(stdout,"%f ",emission[i][j]);
+                        fprintf(stdout,"%f ",emission[i][j]);
                 }
-                //fprintf(stdout,"sum: %f\n",sanity);
+                fprintf(stdout,"sum: %f\n",sanity);
         }
-        //fprintf(stdout,"Transition\n");
+
+        fprintf(stdout,"Transition\n");
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0; j < k;j++){
 
                         transition[i][j] = rk_gamma(&rndstate,alpha , 1.0);
-
+                        if(i == j){
+                                transition[i][j] = rk_gamma(&rndstate,alpha+j , 1.0);
+                        }
                         sum += transition[i][j];
                 }
                 sanity = 0.0f;
@@ -436,11 +439,11 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         transition[i][j] /= sum;
                         transition[k][j] += transition[i][j];
                         sanity += transition[i][j];
-                        // fprintf(stdout,"%f ",transition[i][j]);
+                        fprintf(stdout,"%f ",transition[i][j]);
                 }
-                // fprintf(stdout,"sum: %f\n", sanity);
+                fprintf(stdout,"sum: %f\n", sanity);
         }
-        //exit(0);
+
         cur_state = -1;
         for(i = 0;i< sb->num_seq;i++){
 

@@ -143,18 +143,18 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 for(i = 0; i < sb->num_seq;i++){
                         if(sb->sequences[i]->u[0] == -1){
                                 no_path = no_path + 1;
-                                //LOG_MSG("weird split must have happened in seq %d",i);
+                                LOG_MSG("weird split must have happened in seq %d",i);
                         }
-                        if(i < 5){
-                                LOG_MSG("seq:%d had score of %f", i, sb->sequences[i]->score);
-                        }
+                        //if(i < 5){
+                        //        LOG_MSG("seq:%d had score of %f", i, sb->sequences[i]->score);
+                        //}
                 }
                 /* if more than 1% of sequences don't have a path redo */
-                if((double) no_path / (double) sb->num_seq >= 0.01){
-                        no_path = 1;
-                }else{
-                        no_path = 0;
-                }
+                //if((double) no_path / (double) sb->num_seq >= 0.01){
+                //        no_path = 1;
+                //}else{
+                //        no_path = 0;
+                //}
 
                 if(no_path){
                         LOG_MSG("weird split must have happened. %d",iter);
@@ -165,13 +165,16 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                          * contain states that are not visited.. */
                         RUN(remove_unused_states_labels(model, sb));
                         RUN(fill_counts(model,sb));
+
                         RUN(iHmmHyperSample(model, 1));
+                        model->gamma = 0.1;
+                        model->alpha = 0.5;
                         RUN(fill_fast_transitions(model,ft));
                 }
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
-                        //LOG_MSG("print %d\n",iter);
-                        char tmp_buffer[BUFFER_LEN];
+                //LOG_MSG("print %d\n",iter);
+                char tmp_buffer[BUFFER_LEN];
                         snprintf(tmp_buffer,BUFFER_LEN,"model_at_%07d.h5",iter+1);
                         RUN(write_model_hdf5(model,tmp_buffer));
                         RUN(add_background_emission(tmp_buffer,ft->background_emission,ft->L));
@@ -328,6 +331,10 @@ void* do_dynamic_programming(void *threadarg)
                 if( i% num_threads == thread_id){
                         //               LOG_MSG("Thread %d running sequence %d",thread_id, i);
                         RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
+
+                        /*while(data->sb->sequences[i]->score == -INFINITY){
+                                RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
+                                }*/
                 }
         }
         return NULL;
@@ -1232,7 +1239,7 @@ int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct ihmm_se
                 ihmm_seq->score = score;
 
         }else{
-                u[0] = -1.0f;
+                //u[0] = -1.0f;
                 ihmm_seq->score = -INFINITY;
                 //LOG_MSG("No PATH!: %f",sum);
         }

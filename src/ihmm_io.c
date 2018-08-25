@@ -14,10 +14,10 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
         FILE* f_ptr = NULL;
         struct double_matrix* matrix = NULL;
         int i,j;
-        
+
         ASSERT(model != NULL,"No model.");
 
-        /* allocate a matrix to hold emission parameter on top followed by
+ /* allocate a matrix to hold emission parameter on top followed by
          * transistion parameters */
 
         /* oh oh annoying + 1's again = necessary here as there are <=
@@ -29,7 +29,7 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
                 snprintf(matrix->col_names[i],32,"State%d",i+1);
         }
         snprintf(matrix->col_names[model->infinityghost+1],32,"Background");
-        
+
         /* First rows for emission and other  */
         for(i = 0; i < 4;i++){
                 snprintf(matrix->row_names[i],32,"Emission%c","ACGT"[i]);
@@ -45,7 +45,7 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
         for(j = 0;j < model->L;j++){
                 matrix->matrix[j][model->infinityghost+1] = model->back[j];// emission[i][j];
         }
-        
+
 
         /* fill in emission and usage...  */
         for(i = 0; i <= model->infinityghost;i++){
@@ -54,30 +54,30 @@ int write_ihmm_parameters_to_file(struct iHMM_model* model,char* filename)
                         matrix->matrix[j][i] = model->emission[i][j];
                 }
         }
-        
+
         /* Fill out remaining matrix with transistion probabilities...  */
         for(i = 0; i <= model->infinityghost;i++){
 
                 for(j = 0;j <= model->infinityghost;j++){
                         matrix->matrix[j+6][i] = model->transition[i][j];
-                       
+
                 }
         }
-        
+
         RUNP(f_ptr = fopen(filename,"w"));
         RUN(print_double_matrix(matrix, f_ptr,1,1));
 
         fclose(f_ptr);
 
         free_double_matrix(matrix);
-        
+
         return OK;
 ERROR:
         if(f_ptr){
                 fclose(f_ptr);
         }
         free_double_matrix(matrix);
-        return FAIL; 
+        return FAIL;
 }
 
 

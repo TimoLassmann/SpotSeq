@@ -1,15 +1,27 @@
 
-#include "pst.h"
+#include "lcs.h"
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
+#include <getopt.h>
+
+struct parameters{
+        char* input;
+        char* out;
+        float min_frac_occur;
+        int min_pattern_len;
+        int pos_resolution;
+};
+
+static int run_lcs(struct parameters* param);
 
 //static int analyze_label_sequences_with_pst(struct seq_buffer* sb);
-static struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq);
+static struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq, int all);
 
-static int calculate_relative_entropy(struct rbtree_root* root, struct fhmm* fhmm);
-static int add_positional_distribution(struct rbtree_root* root, struct sa* sa,struct seq_buffer* sb, int pos_resolution);
+static int calculate_relative_entropy(struct motif_struct** list, int num_motif, struct fhmm* fhmm);
+static int add_positional_distribution(struct motif_struct** list, int num_motif, struct sa* sa, struct seq_buffer*sb, int pos_resolution);
 
-static int write_lcs_motif_data_for_plotting(char* filename, struct sa* sa,struct seq_buffer*sb,struct rbtree_root* root, struct fhmm*  fhmm);
+static int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb,struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm);
+
 
 static int qsort_lcs_cmp(const void *a, const void *b);
 static int qsort_motif_struct(const void *a, const void *b);
@@ -21,7 +33,6 @@ int cmp_int_array(int* a, int*b, int len);
 
 int lcp_int_array(int* a, int*b);
 
-
 static struct motif_struct* alloc_motif(int len);
 
 static void* get_state_path(void* ptr);
@@ -32,6 +43,249 @@ static void free_motif_struct(void* ptr);
 
 static struct sa* build_sa(struct seq_buffer* sb);
 static void free_sa(struct sa* sa);
+
+
+static int free_parameters(struct parameters* param);
+static int print_help(char **argv);
+
+int main (int argc, char *argv[])
+{
+        struct parameters* param = NULL;
+        int c;
+
+        tlog.echo_build_config();
+
+        MMALLOC(param, sizeof(struct parameters));
+        param->min_pattern_len = 10;
+        param->pos_resolution = 100;
+        param->out = NULL;
+        param->input = NULL;
+        param->min_frac_occur = 0.5;
+
+        while (1){
+                static struct option long_options[] ={
+                        {"in",required_argument,0,'i'},
+                        {"d",required_argument,0,'d'},
+                        {"frac",required_argument,0,'f'},
+                        {"len",required_argument,0,'l'},
+                        {"out",required_argument,0,'o'},
+                        {"help",0,0,'h'},
+                        {0, 0, 0, 0}
+                };
+                int option_index = 0;
+                c = getopt_long_only (argc, argv,"i:o:l:d:hf:",long_options, &option_index);
+
+                if (c == -1){
+                        break;
+                }
+                switch(c) {
+                case 'i':
+                        param->input = optarg;
+                        break;
+                case 'f':
+                        param->min_frac_occur = atof(optarg);
+                        break;
+
+                case 'l':
+                        param->min_pattern_len = atoi(optarg);
+                        break;
+                case 'd':
+                        param->pos_resolution = atoi(optarg);
+                        break;
+                case 'o':
+                        param->out = optarg;
+                        break;
+
+                case 'h':
+                        RUN(print_help(argv));
+                        MFREE(param);
+                        exit(EXIT_SUCCESS);
+                        break;
+                default:
+                        ERROR_MSG("not recognized");
+                        break;
+                }
+        }
+
+        LOG_MSG("Starting run");
+
+        if(!param->pos_resolution){
+                RUN(print_help(argv));
+                ERROR_MSG("Numseq is 0! use --n 1 (or more!).");
+
+        }
+        if(!param->input){
+                RUN(print_help(argv));
+                ERROR_MSG("No input file! use -i <blah.h5>");
+
+        }
+        if(!param->out){
+                RUN(print_help(argv));
+                ERROR_MSG("No output file! use -o <blah.h5>");
+        }
+
+        ASSERT(param->min_pattern_len > 3, "Minimum pattern length has to be > 3");
+        RUN(run_lcs(param));
+
+        RUN(free_parameters(param));
+        return EXIT_SUCCESS;
+ERROR:
+        fprintf(stdout,"\n  Try run with  --help.\n\n");
+        free_parameters(param);
+        return EXIT_FAILURE;
+}
+
+int free_parameters(struct parameters* param)
+{
+        ASSERT(param != NULL, " No param found - free'd already???");
+
+        MFREE(param);
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
+int print_help(char **argv)
+{
+        const char usage[] = " -in <h5 model> -out <h5 out>";
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
+        fprintf(stdout,"Options:\n\n");
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--len","Minimum pattern length." ,"[10]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--frac","Minimum fraction of seq containing pattern." ,"[0.5]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"-d","Resolution." ,"[100]"  );
+        return OK;
+}
+
+int run_lcs(struct parameters* param)
+{
+        struct seq_buffer* sb = NULL;
+        struct sa* sa = NULL;
+
+        struct rbtree_root* root = NULL;
+        struct fhmm* fhmm = NULL;
+
+        int i,j,c;
+        int iter;
+        int seq,pos;
+
+        struct motif_struct** res_motif = NULL;
+        struct motif_struct* motif_ptr = NULL;
+        int num_alloc_res_motif = 1024;
+        int num_res_motif = 0;
+
+        MMALLOC(res_motif, sizeof(struct motif_struct*) * num_alloc_res_motif);
+        for(i = 0; i < num_alloc_res_motif;i++){
+                res_motif[i] = NULL;
+        }
+
+
+        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+
+        ASSERT(sb != NULL, "No sequence Buffer");
+
+        /* try 512 times to get lcs -  */
+        for(iter = 0;iter < 512;iter++){
+
+                /* build / re-build suffix array */
+                sa = build_sa(sb);
+
+
+                RUNP(root = find_lcs(sa, sb->num_seq,  param->min_pattern_len, param->min_frac_occur,0));
+
+                if(root->num_entries){ /* copy motif instances  */
+                        /* sort - note this will be done on length only. Rel entropy will be done later */
+                        qsort(root->data_nodes, root->num_entries, sizeof(struct motif_struct*), qsort_motif_struct);
+                        motif_ptr = root->data_nodes[0];
+                        LOG_MSG("Found motif of length: %d",motif_ptr->len );
+                        for(i = 0; i < root->num_entries;i++){
+                                motif_ptr = root->data_nodes[i];
+                                res_motif[num_res_motif] = alloc_motif(motif_ptr->len+1);
+                                res_motif[num_res_motif]->len = motif_ptr->len;
+                                res_motif[num_res_motif]->start_in_sa = motif_ptr->start_in_sa;
+                                res_motif[num_res_motif]->end_in_sa = motif_ptr->end_in_sa;
+                                res_motif[num_res_motif]->n_occur =  motif_ptr->n_occur;
+                                for(j = 0; j < motif_ptr->len;j++){
+                                        res_motif[num_res_motif]->state_list[j] = motif_ptr->state_list[j];
+                                }
+                                res_motif[num_res_motif]->state_list[motif_ptr->len] = -1;
+
+                                /* Nuke motif in sb..  */
+                                fprintf(stdout,"%d %d\n",motif_ptr->start_in_sa,motif_ptr->end_in_sa);
+                                for(j = motif_ptr->start_in_sa; j <= motif_ptr->end_in_sa;j++){
+                                        //fprintf(stdout,"Nuking: seq%d pos%d\n",sa->lcs[j]->seq_num,sa->lcs[j]->pos);
+                                        seq = sa->lcs[j]->seq_num;
+                                        pos = sa->lcs[j]->pos;
+                                        for(c = 0; c < motif_ptr->len;c++){
+                                                sb->sequences[seq]->label[pos+c] = -1;
+                                        }
+                                }
+                                num_res_motif++;
+                                if(num_res_motif == num_alloc_res_motif){
+                                        j = num_alloc_res_motif;
+                                        num_alloc_res_motif = num_alloc_res_motif << 1;
+                                        MREALLOC(res_motif, sizeof(struct motif_struct*) * num_alloc_res_motif);
+                                        for(c = j; c < num_alloc_res_motif;c++){
+                                                res_motif[c] = NULL;
+                                        }
+
+                                }
+
+                        }
+                        /* Nuke motif in sb..  */
+                }else{          /* clean up and exit loop  */
+                        free_sa(sa);
+                        sa = NULL;
+                        root->free_tree(root);
+                        root = NULL;
+                        break;
+                }
+                root->free_tree(root);
+                root = NULL;
+                free_sa(sa);
+                sa = NULL;
+
+        }
+        /* remove old sequence buffer and load a fresh one from file  */
+        free_ihmm_sequences(sb);
+        sb = NULL;
+        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+
+        /* check if we found motifs!!!! */
+        if(num_res_motif){
+                sa = build_sa(sb);
+
+
+                /* I can do this later...  */
+                RUNP(fhmm = alloc_fhmm());
+                /* get HMM parameters  */
+                RUN(read_hmm_parameters(fhmm,param->input));
+
+                RUN(calculate_relative_entropy(res_motif, num_res_motif,fhmm));
+
+                qsort(res_motif, num_res_motif, sizeof(struct motif_struct*), qsort_motif_struct);
+
+                RUN(add_positional_distribution(res_motif, num_res_motif , sa, sb, param->pos_resolution));
+
+                RUN(write_lcs_motif_data_for_plotting(param->out,sa,sb,res_motif, num_res_motif, fhmm));
+
+                for(i = 0; i < num_res_motif;i++){
+                        free_motif_struct( (void*) res_motif[i]);
+                }
+                MFREE(res_motif);
+
+                free_fhmm(fhmm);
+                //root->free_tree(root);
+                free_sa(sa);
+        }
+        free_ihmm_sequences(sb);
+
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
 
 int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float min_seq_occur, int pos_resolution)
 {
@@ -48,7 +302,7 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
         ASSERT(sb != NULL, "No sequence Buffer");
         sa = build_sa(sb);
 
-        RUNP(root = find_lcs(sa, sb->num_seq,  min_pattern_len, min_seq_occur));
+        RUNP(root = find_lcs(sa, sb->num_seq,  min_pattern_len, min_seq_occur,0));
 
         /* check if we found motifs!!!! */
 
@@ -65,13 +319,13 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
         /* get HMM parameters  */
         RUN(read_hmm_parameters(fhmm,filename));
 
-        RUN(calculate_relative_entropy(root,fhmm));
+        RUN(calculate_relative_entropy((struct motif_struct**)root->data_nodes, root->num_entries,fhmm));
 
         qsort(root->data_nodes, root->num_entries, sizeof(struct motif_struct*), qsort_motif_struct);
 
-        RUN(add_positional_distribution( root, sa, sb, pos_resolution));
+        RUN(add_positional_distribution((struct motif_struct**)root->data_nodes, root->num_entries, sa, sb, pos_resolution));
 
-        RUN(write_lcs_motif_data_for_plotting("mysmalltest.h5",sa,sb, root, fhmm));
+        RUN(write_lcs_motif_data_for_plotting("mysmalltest.h5",sa,sb,(struct motif_struct**)root->data_nodes, root->num_entries, fhmm));
         /*int i;
          for(i = 0; i < root->num_entries;i++){
                 print_motif_struct(root->data_nodes[i], stdout);
@@ -88,7 +342,7 @@ ERROR:
 
 }
 
-int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb, struct rbtree_root* root, struct fhmm*  fhmm)
+int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb,struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm)
 {
         char buffer[BUFFER_LEN];
         struct hdf5_data* hdf5_data = NULL;
@@ -102,8 +356,8 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
 
         ASSERT(filename != NULL, "No file name");
-        ASSERT(root != NULL, "No motifs");
-        ASSERT(root->num_entries != 0, "No Motifs");
+        ASSERT(res_motif != NULL, "No motifs");
+        ASSERT(num_res_motif != 0, "No Motifs");
 
 
         /* determine max_len of motif - to alloc frequency matrix */
@@ -122,12 +376,13 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
         RUN(hdf5_create_group("MotifData",hdf5_data));
 
-        for(c = 0; c < root->num_entries;c++){
-                m = root->data_nodes[c];
+        for(c = 0; c < num_res_motif;c++){
+                m = res_motif[c];
 
 
                 RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
-
+                m->start_in_sa = binsearch_down(m->state_list, sa->lcs, sa->len-1, m->len);
+                m->end_in_sa =   binsearch_up  (m->state_list,sa->lcs,sa->len-1, m->len);
 
                 for(i = m->start_in_sa; i < m->end_in_sa;i++){
                         g = sa->lcs[i];
@@ -188,7 +443,7 @@ ERROR:
 }
 
 
-int add_positional_distribution(struct rbtree_root* root, struct sa* sa, struct seq_buffer*sb, int pos_resolution)
+int add_positional_distribution(struct motif_struct** list, int num_motif, struct sa* sa, struct seq_buffer*sb, int pos_resolution)
 {
         struct motif_struct* m = NULL;
         struct lcs* g = NULL;
@@ -196,8 +451,8 @@ int add_positional_distribution(struct rbtree_root* root, struct sa* sa, struct 
         int i,j,c;
         int index;
         int l;
-        for(i = 0; i < root->num_entries;i++){
-                m = root->data_nodes[i];
+        for(i = 0; i < num_motif;i++){
+                m = list[i];
                 print_motif_struct(m, stdout);
                 MMALLOC(m->occ, sizeof(int) * (pos_resolution+1));
                 for(j = 0; j <  pos_resolution+1;j++){
@@ -237,19 +492,19 @@ ERROR:
         return FAIL;
 }
 
-int calculate_relative_entropy(struct rbtree_root* root, struct fhmm* fhmm)
+int calculate_relative_entropy(struct motif_struct** list, int num_motif, struct fhmm* fhmm)
 {
         int i,j,c,s;
         struct motif_struct* m = NULL;
         float* background = NULL;
         float x;
 
-        ASSERT(root!= NULL, "No rbtree");
+        ASSERT(list!= NULL, "No rbtree");
         ASSERT(fhmm != NULL, "No fhmm");
 
         background = fhmm->background;
-        for(i = 0; i < root->num_entries;i++){
-                m = root->data_nodes[i];
+        for(i = 0; i < num_motif;i++){
+                m = list[i];
                 x = 0.0f;
                 for(j = 0; j < m->len;j++){
                         s = m->state_list[j];
@@ -269,7 +524,7 @@ ERROR:
 }
 
 
-struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq)
+struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq, int all)
 {
         struct lcs_count* lcs_count = NULL;
 
@@ -365,17 +620,13 @@ struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, flo
                                                 min_lcp_location = i;
                                         }
                                 }
-                                /*
-                                if(min_lcp > lcs_count->cur_longest){
+
+                                if(min_lcp > lcs_count->cur_longest && !all){
 
                                         lcs_count->cur_longest = sa->lcs[min_lcp_location]->lcp;
                                         //root->free_tree(root);
 
-                                }else if(min_lcp == lcs_count->cur_longest){
-
-                                }else{
-                                        min_lcp_location = -1;
-                                        }*/
+                                }
 
                                 if(min_lcp >=  lcs_count->cur_longest){
                                         /*for(i = lower;i <= upper;i++){
@@ -741,7 +992,7 @@ int qsort_lcs_cmp(const void *a, const void *b)
         return (*one)->str[i] - (*two)->str[i];
 }
 
-
+#ifdef ITESTLST
 int main(const int argc,const char * argv[])
 {
         struct seq_buffer* sb = NULL;
@@ -883,3 +1134,5 @@ ERROR:
         return EXIT_FAILURE;
 
 }
+
+#endif

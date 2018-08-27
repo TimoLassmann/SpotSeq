@@ -120,7 +120,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
                                           # Some sample data
 
 
-  x = h5dump("../src/mysmalltest.h5")
+  x = h5dump("../src/test.h5")
 
 
   add_rowname <- function(x){
@@ -140,20 +140,47 @@ ggseqlogo(x$MotifData, ncol=12)
 
 library("rhdf5")
 
-h5ls("../upstream1000_selection.fa.h5")
+h5ls("../src/test.h5")
 
 #+END_SRC
 
 #+RESULTS:
-| /SequenceInformation | Labels            | H5I_DATASET | INTEGER | x 48  |
-| /SequenceInformation | Names             | H5I_DATASET | INTEGER | x 48  |
-| /SequenceInformation | Sequences         | H5I_DATASET | INTEGER | x 48  |
-| /SequenceInformation | background        | H5I_DATASET | FLOAT   | 4     |
-| /fmodel              | emission          | H5I_DATASET | FLOAT   | x 134 |
-| /fmodel              | transition        | H5I_DATASET | FLOAT   | x 134 |
-| /imodel              | Beta              | H5I_DATASET | FLOAT   | 134   |
-| /imodel              | emission_counts   | H5I_DATASET | FLOAT   | x 4   |
-| /imodel              | transition_counts | H5I_DATASET | FLOAT   | x 134 |
+| /MotifData | Motif000001 | H5I_DATASET | FLOAT | x 12 |
+| /MotifData | Motif000002 | H5I_DATASET | FLOAT | x 12 |
+| /MotifData | Motif000003 | H5I_DATASET | FLOAT | x 11 |
+| /MotifData | Motif000004 | H5I_DATASET | FLOAT | x 11 |
+| /MotifData | Motif000005 | H5I_DATASET | FLOAT | x 10 |
+| /MotifData | Motif000006 | H5I_DATASET | FLOAT | x 10 |
+| /MotifData | Motif000007 | H5I_DATASET | FLOAT | x 9  |
+| /MotifData | Motif000008 | H5I_DATASET | FLOAT | x 9  |
+| /MotifData | Motif000009 | H5I_DATASET | FLOAT | x 9  |
+| /MotifData | Motif000010 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000011 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000012 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000013 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000014 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000015 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000016 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000017 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000018 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000019 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000020 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000021 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000022 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000023 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000024 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000025 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000026 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000027 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000028 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000029 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000030 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000031 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000032 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000033 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000034 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000035 | H5I_DATASET | FLOAT | x 8  |
+| /MotifData | Motif000036 | H5I_DATASET | FLOAT | x 8  |
 
 * Meeting Notes
 

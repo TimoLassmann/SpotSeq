@@ -49,7 +49,7 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs
 
 
 
@@ -64,6 +64,9 @@ spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 spotseq_score_SOURCES = \
 score_sequences.c          $(CONVERSION)  $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)
 spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+spotseq_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
+spotseq_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 sim_seq_SOURCES = \
 outdir.h \
@@ -137,7 +140,7 @@ beam_ITEST_SOURCES = $(BEAMSOURCE) $(ISEQSOURCE) $(MODELSOURCE)  $(HDF5GLUESOURC
 beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTBEAM
 beam_ITEST_LDADD = $(libihmm_a_LIBADD) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-pst_ITEST_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) pst.c pst.h 
-pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTPST
+pst_ITEST_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
+pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTLST
 pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 

@@ -22,6 +22,8 @@ static int add_positional_distribution(struct motif_struct** list, int num_motif
 
 static int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb,struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm);
 
+static int find_overlapping_motifs(struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm);
+static int compare_motif(struct motif_struct* a,struct motif_struct* b,struct fhmm*  fhmm, float* KLdivergence);
 
 static int qsort_lcs_cmp(const void *a, const void *b);
 static int qsort_motif_struct(const void *a, const void *b);
@@ -30,7 +32,6 @@ int binsearch_down(int*p,struct lcs** lcs,int h,int len);
 int binsearch_up(int*p,struct lcs** lcs,int h,int len);
 
 int cmp_int_array(int* a, int*b, int len);
-
 int lcp_int_array(int* a, int*b);
 
 static struct motif_struct* alloc_motif(int len);
@@ -188,10 +189,13 @@ int run_lcs(struct parameters* param)
         for(iter = 0;iter < 512;iter++){
 
                 /* build / re-build suffix array */
+                LOG_MSG("Building SA");
                 sa = build_sa(sb);
+                LOG_MSG("Done");
 
-
+                LOG_MSG("LCA");
                 RUNP(root = find_lcs(sa, sb->num_seq,  param->min_pattern_len, param->min_frac_occur,0));
+                LOG_MSG("Done");
 
                 if(root->num_entries){ /* copy motif instances  */
                         /* sort - note this will be done on length only. Rel entropy will be done later */
@@ -232,8 +236,9 @@ int run_lcs(struct parameters* param)
                                 }
 
                         }
-                        /* Nuke motif in sb..  */
+
                 }else{          /* clean up and exit loop  */
+                        LOG_MSG("Found nothing");
                         free_sa(sa);
                         sa = NULL;
                         root->free_tree(root);
@@ -264,6 +269,8 @@ int run_lcs(struct parameters* param)
                 RUN(calculate_relative_entropy(res_motif, num_res_motif,fhmm));
 
                 qsort(res_motif, num_res_motif, sizeof(struct motif_struct*), qsort_motif_struct);
+
+                //RUN(find_overlapping_motifs(res_motif, num_res_motif, fhmm));
 
                 RUN(add_positional_distribution(res_motif, num_res_motif , sa, sb, param->pos_resolution));
 
@@ -323,6 +330,7 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
 
         qsort(root->data_nodes, root->num_entries, sizeof(struct motif_struct*), qsort_motif_struct);
 
+        /* look for overlapping motifs */
         RUN(add_positional_distribution((struct motif_struct**)root->data_nodes, root->num_entries, sa, sb, pos_resolution));
 
         RUN(write_lcs_motif_data_for_plotting("mysmalltest.h5",sa,sb,(struct motif_struct**)root->data_nodes, root->num_entries, fhmm));
@@ -340,6 +348,83 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
 ERROR:
         return FAIL;
 
+}
+
+int find_overlapping_motifs(struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm)
+{
+        int i,j;
+        float x;
+        ASSERT(res_motif != NULL, "No motifs");
+
+        for(i = 0; i < num_res_motif;i++){
+                for(j = i +1; j < num_res_motif;j++){
+                        RUN(compare_motif(res_motif[i], res_motif[j],fhmm, &x));
+                        if(x <= 1.0){
+                                if(res_motif[i]->len > res_motif[j]->len){
+                                        res_motif[j]->mean_rel_entropy = 0.0;
+                                }else{
+                                        res_motif[i]->mean_rel_entropy = 0.0;
+                                }
+                        }
+                        //print_motif_struct(res_motif[i], stdout);
+                        //print_motif_struct(res_motif[j], stdout);
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int compare_motif(struct motif_struct* a,struct motif_struct* b,struct fhmm*  fhmm, float* KLdivergence)
+{
+        struct motif_struct* tmp = NULL;
+        int i,j,c;
+        float x;
+        float col;
+        int sa;
+        int sb;
+        ASSERT(a != NULL, "No A motif");
+        ASSERT(b != NULL, "No B motif");
+        *KLdivergence = FLT_MAX;
+
+        if(a->mean_rel_entropy <= 0.05 || b->mean_rel_entropy <= 0.05){
+                return OK;
+        }
+        /* swap if b longer than a */
+        if(a->len < b->len){
+                tmp = a;
+                a = b;
+                b = tmp;
+        }
+        //print_motif_struct(a, stdout);
+        //print_motif_struct(b, stdout);
+        for(i = 0; i <= a->len - b->len;i++){
+
+                x = 0.0f;
+                for(j = 0; j < b->len;j++){
+                        sb = b->state_list[j];
+                        sa = a->state_list[i+j];
+
+                        col = 0.0;
+                        for(c = 0; c < fhmm->L;c++){
+                                if(fhmm->e[sb][c] > 0.0f){
+                                        col  += fhmm->e[sb][c] * log2f(fhmm->e[sb][c] / fhmm->e[sa][c]);
+                                }
+                        }
+                        //LOG_MSG("%d vs %d : %f",  sb,sa,col);
+                        x += col;
+                }
+                x = x / (float) b->len;
+                //LOG_MSG("SCORE:%f",x);
+                if(x < *KLdivergence){
+                        *KLdivergence = x;
+                }
+        }
+        //LOG_MSG("SCORE:%f",*KLdivergence);
+
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_buffer*sb,struct motif_struct** res_motif, int num_res_motif, struct fhmm*  fhmm)
@@ -378,55 +463,57 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
         for(c = 0; c < num_res_motif;c++){
                 m = res_motif[c];
+                if(m->mean_rel_entropy > 0.005){
 
 
-                RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
-                m->start_in_sa = binsearch_down(m->state_list, sa->lcs, sa->len-1, m->len);
-                m->end_in_sa =   binsearch_up  (m->state_list,sa->lcs,sa->len-1, m->len);
+                        RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
+                        m->start_in_sa = binsearch_down(m->state_list, sa->lcs, sa->len-1, m->len);
+                        m->end_in_sa =   binsearch_up  (m->state_list,sa->lcs,sa->len-1, m->len);
 
-                for(i = m->start_in_sa; i < m->end_in_sa;i++){
-                        g = sa->lcs[i];
+                        for(i = m->start_in_sa; i < m->end_in_sa;i++){
+                                g = sa->lcs[i];
 
-                        seq = sb->sequences[g->seq_num]->seq + g->pos;
-                        //g->possb->
+                                seq = sb->sequences[g->seq_num]->seq + g->pos;
+                                //g->possb->
 
-                        for(j = 0; j < m->len;j++){
-                                tmp[j][seq[j]]++;
-                                //       c = sb->sequences[g->seq_num]->dd;
+                                for(j = 0; j < m->len;j++){
+                                        tmp[j][seq[j]]++;
+                                        //       c = sb->sequences[g->seq_num]->dd;
 
-                        }
-                        //l = sb->sequences[ g->seq_num]->seq_len;
-                        //index =roundf((float)pos_resolution * ((float) g->pos / l));
-                        //m->occ[index]++;
-                        /*tmp= g->str;
-                        fprintf(stdout,"i:%d %d s:%d p:%d\t",i ,g->lcp,g->seq_num, g->pos);
-                        for(c = 0; c < m->len+2;c++){
-                                fprintf(stdout," %2d", tmp[c]);
-                                if(tmp[c] == -1){
-                                        break;
                                 }
-                        }
-                        fprintf(stdout,"\n");*/
+                                //l = sb->sequences[ g->seq_num]->seq_len;
+                                //index =roundf((float)pos_resolution * ((float) g->pos / l));
+                                //m->occ[index]++;
+                                /*tmp= g->str;
+                                  fprintf(stdout,"i:%d %d s:%d p:%d\t",i ,g->lcp,g->seq_num, g->pos);
+                                  for(c = 0; c < m->len+2;c++){
+                                  fprintf(stdout," %2d", tmp[c]);
+                                  if(tmp[c] == -1){
+                                  break;
+                                  }
+                                  }
+                                  fprintf(stdout,"\n");*/
 
-                }
+                        }
 
                         /*for(i = 0; i < fhmm->L;i++){
-                        for(j = 0; j < m->len;j++){
-                                tmp[j][i] = fhmm->e[m->state_list[j]][i];
-                        }
-                        }*/
+                          for(j = 0; j < m->len;j++){
+                          tmp[j][i] = fhmm->e[m->state_list[j]][i];
+                          }
+                          }*/
 
-                hdf5_data->rank = 2;
-                hdf5_data->dim[0] = m->len;
-                hdf5_data->dim[1] = fhmm->L;
-                hdf5_data->chunk_dim[0] = m->len;
-                hdf5_data->chunk_dim[1] = fhmm->L;
-                hdf5_data->native_type = H5T_NATIVE_FLOAT;
-                snprintf(buffer, BUFFER_LEN, "Motif%06d", c+1);
-                hdf5_write(buffer,&tmp[0][0], hdf5_data);
+                        hdf5_data->rank = 2;
+                        hdf5_data->dim[0] = m->len;
+                        hdf5_data->dim[1] = fhmm->L;
+                        hdf5_data->chunk_dim[0] = m->len;
+                        hdf5_data->chunk_dim[1] = fhmm->L;
+                        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+                        snprintf(buffer, BUFFER_LEN, "Motif%06d", c+1);
+                        hdf5_write(buffer,&tmp[0][0], hdf5_data);
 
-                free_2d((void**) tmp);
-                tmp = NULL;
+                        free_2d((void**) tmp);
+                        tmp = NULL;
+                }
 
         }
 
@@ -570,7 +657,7 @@ struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, flo
         for(i= 0 ; i < lcs_count->len;i++){
                 lcs_count->counts[i] = 0;
         }
-        if(min_seq < 1.0){
+        if(min_seq <= 1.0){
                 min_seq = (int) (min_seq * (float) total_sequences);
         }
         lcs_count->unique = 0;
@@ -732,6 +819,9 @@ struct sa* build_sa(struct seq_buffer* sb)
         sa->len = 0;
         for(i = 0 ;i < sb->num_seq;i++){
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        if(sb->sequences[i]->label[j] == -1 && i == 0){
+                                fprintf(stdout,"Seq:%d pos: %d is -1\n", i,j);
+                        }
                         sa->lcs[sa->len]->str =  &sb->sequences[i]->label[j];
                         sa->lcs[sa->len]->lcp = 0;
                         sa->lcs[sa->len]->seq_num = i;

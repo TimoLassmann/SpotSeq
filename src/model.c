@@ -422,8 +422,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 /* First of all initialize the random number generator */
                 rk_randomseed(&model->rndstate);
 
-                model->alpha = 1.0;// rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
-                model->gamma = 30.0;//rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                model->alpha = rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
+                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
                 //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
 
 

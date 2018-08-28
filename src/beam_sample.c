@@ -167,8 +167,8 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(fill_counts(model,sb));
 
                         RUN(iHmmHyperSample(model, 1));
-                        model->gamma = 0.1;
-                        model->alpha = 0.5;
+                        //model->gamma = 0.1;
+                        //model->alpha = 0.5;
                         RUN(fill_fast_transitions(model,ft));
                 }
                 /* print out model - used for plotting  */

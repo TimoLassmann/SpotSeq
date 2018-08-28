@@ -179,7 +179,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         RUNP(model = read_model_hdf5(param->input));
 
 
-        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 201, 0.0f));
+        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 251, 0.0f));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
         for(i = 0; i < model->num_states;i++){
                 state_sums[i] = 0.0f;
@@ -189,7 +189,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 l = (float) sb->sequences[i]->seq_len;
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
                         c = (float) sb->sequences[i]->label[j];
-                        index = roundf(200.0f * ((float) j / l));
+                        index = roundf(250.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
                         state_sums[c] += 1.0f;
                 }
@@ -204,7 +204,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 }
         }
         fprintf(fptr,"\n");
-        for(j = 0; j < 200;j++){
+        for(j = 0; j < 250;j++){
                 fprintf(fptr, "%d",j);
                 for(i = 2; i < model->num_states;i++){
                         if(state_sums[i]){

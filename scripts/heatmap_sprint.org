@@ -13,7 +13,9 @@
 #+BEGIN_SRC R :session one :results none
 library(reshape2)
 library(ggplot2)
-dat = read.csv("test.csv",header= TRUE, row.names= 1)
+dat = read.csv("../test.csv",header= TRUE, row.names= 1)
+
+
 
 
 #+END_SRC
@@ -34,7 +36,7 @@ Melt and plot
 
 #+BEGIN_SRC R :session one 
 
-
+dat= log(dat+0.5);
 
 max_count = max(dat)
 min_count = min(dat)
@@ -44,15 +46,16 @@ sum = colSums(dat);
 
 head(x)
 
+
 #+END_SRC
 
 #+RESULTS:
-| State2 | 0 |  0 |
-| State3 | 0 | 29 |
-| State4 | 0 |  0 |
-| State5 | 0 | 11 |
-| State6 | 0 |  0 |
-| State2 | 1 |  2 |
+| State2 | 0 | -0.693147180559945 |
+| State3 | 0 |   7.60115242829729 |
+| State4 | 0 | -0.693147180559945 |
+| State5 | 0 | -0.693147180559945 |
+| State6 | 0 | -0.693147180559945 |
+| State7 | 0 | -0.693147180559945 |
 
 #+BEGIN_SRC R :session one
 
@@ -120,7 +123,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
                                           # Some sample data
 
 
-  x = h5dump("../src/test.h5")
+  x = h5dump("test.h5")
 
 
   add_rowname <- function(x){
@@ -128,7 +131,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
       return(x);
   }
   x$MotifData = lapply(x$MotifData,add_rowname)
-ggseqlogo(x$MotifData, ncol=12)
+ggseqlogo(x$MotifData, ncol=6)
  
 
 #+END_SRC

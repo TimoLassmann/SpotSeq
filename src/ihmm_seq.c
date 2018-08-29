@@ -1,8 +1,5 @@
 #include "ihmm_seq.h"
 
-
-static struct ihmm_sequence* alloc_ihmm_seq(void);
-static int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
 
@@ -16,7 +13,7 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb);
 
 int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 
-
+int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
 {
@@ -25,6 +22,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         char** name = NULL;
         char** seq = NULL;
         int** label = NULL;
+        float* background;
 
         int num_seq;
         int max_len;
@@ -41,25 +39,6 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         hdf5_read_attributes(hdf5_data,hdf5_data->file);
         //print_attributes(hdf5_data);
         get_group_names(hdf5_data);
-        //fprintf(stdout,"Groups:\n");
-        //for(i = 0; i < hdf5_data->grp_names->num_names;i++){
-        //        fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
-        //}
-
-        hdf5_open_group("imodel",hdf5_data);
-        hdf5_read_attributes(hdf5_data, hdf5_data->group);
-        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        //print_attributes(hdf5_data);
-        local_L = 0;
-        for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
-                        local_L = hdf5_data->attr[i]->int_val;
-                }
-
-        }
-        ASSERT(local_L!=0, "No letters???");
-        hdf5_close_group(hdf5_data);
-
 
         hdf5_open_group("SequenceInformation",hdf5_data);
         hdf5_read_attributes(hdf5_data, hdf5_data->group);
@@ -69,6 +48,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         num_seq = -1;
         max_len = -1;
         max_name_len = -1;
+        local_L = -1;
         for(i = 0; i < hdf5_data->num_attr;i++){
                 if(!strncmp("NumSeq", hdf5_data->attr[i]->attr_name, 6)){
                         num_seq = hdf5_data->attr[i]->int_val;
@@ -81,14 +61,20 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                 if(!strncmp("MaxNameLen", hdf5_data->attr[i]->attr_name, 10)){
                         max_name_len = hdf5_data->attr[i]->int_val;
                 }
+
+                if(!strncmp("Alphabet", hdf5_data->attr[i]->attr_name, 8)){
+                        local_L = hdf5_data->attr[i]->int_val;
+                }
         }
 
         ASSERT(num_seq != -1, "No numseq");
         ASSERT(max_len != -1, "No maxlen");
         ASSERT(max_name_len != -1, "No maxnamelen");
+        ASSERT(local_L != -1,"No Alphabet");
+
+        LOG_MSG("L:%d",local_L);
 
         hdf5_read_dataset("Names",hdf5_data);
-
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read beta");
         name = (char**)hdf5_data->data;
 
@@ -96,6 +82,11 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         hdf5_read_dataset("Sequences",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         seq = (char**)hdf5_data->data;
+
+
+        hdf5_read_dataset("Background",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read background");
+        background = (float*)hdf5_data->data;
 
         hdf5_read_dataset("Labels",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
@@ -111,6 +102,9 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         sb->sequences = NULL;
         sb->max_len = max_len;
         sb->L = local_L;
+
+        sb->background = background;
+
 
         MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
         for(i = 0; i < sb->num_seq;i++){
@@ -250,6 +244,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
         hdf5_add_attribute(hdf5_data, "NumSeq",     "", sb->num_seq , 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "MaxLen",     "", sb->max_len , 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "MaxNameLen", "", max_name_len, 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "Alphabet",   "", sb->L       , 0.0f, HDF5GLUE_INT);
 
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
 
@@ -278,6 +273,16 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
         hdf5_data->native_type = H5T_NATIVE_INT;
         hdf5_write("Labels",&label[0][0], hdf5_data);
 
+
+
+
+        hdf5_data->rank = 1;
+        hdf5_data->dim[0] = sb->L;
+        hdf5_data->dim[1] = 0;
+        hdf5_data->chunk_dim[0] = sb->L;
+        hdf5_data->chunk_dim[1] = 0;
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("Background",&sb->background[0], hdf5_data);
 
         hdf5_close_group(hdf5_data);
         hdf5_close_file(hdf5_data);
@@ -575,6 +580,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
+        sb->background = NULL;
         while(sb->malloc_num <= numseq){
                 sb->malloc_num = sb->malloc_num << 1;
         }
@@ -637,6 +643,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
         }
         sb->num_seq = numseq;
         RUN(detect_alphabet(sb));
+        RUN(add_background_to_sequence_buffer(sb));
         return sb;
 ERROR:
         free_ihmm_sequences(sb);
@@ -662,6 +669,7 @@ struct seq_buffer* load_sequences(char* in_filename)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
+        sb->background = NULL;
 
         MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
@@ -744,6 +752,8 @@ struct seq_buffer* load_sequences(char* in_filename)
         fclose(f_ptr);
         sb->num_seq++;
         RUN(detect_alphabet(sb));
+
+        RUN(add_background_to_sequence_buffer(sb));
         return sb;
 ERROR:
         free_ihmm_sequences(sb);
@@ -751,6 +761,35 @@ ERROR:
                 fclose(f_ptr);
         }
         return NULL;
+}
+
+int add_background_to_sequence_buffer(struct seq_buffer* sb)
+{
+        int i,j;
+        float sum = 0.0f;
+        ASSERT(sb!= NULL, "No sequence buffer");
+        ASSERT(sb->L != 0, "No alphabet detected");
+
+        MMALLOC(sb->background, sizeof(float)* sb->L);
+        for(i = 0; i < sb->L;i++){
+               sb->background[i] = 0.0f;
+        }
+
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0;j < sb->sequences[i]->seq_len;j++){
+                        sb->background[sb->sequences[i]->seq[j]]++;
+                        sum++;
+                }
+        }
+        ASSERT(sum != 0.0f,"No sequence counts found");
+        for(i = 0; i < sb->L;i++){
+                LOG_MSG("%d %f %f",i,sb->background[i], sum);
+                 sb->background[i] /= sum;
+        }
+        // exit(0);
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
@@ -905,6 +944,105 @@ ERROR:
         }
         return FAIL;
 }
+int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename)
+{
+        FILE* f_ptr = NULL;
+        int i,j,c;
+        int has_names;
+        int max_label;
+        int digits;
+        int block;
+
+
+        ASSERT(sb!= NULL, "No sequences.");
+        ASSERT(filename != NULL, "No filename given");
+
+
+        if(sb->L == ALPHABET_DNA){
+                RUN(translate_internal_to_DNA(sb));
+                DPRINTF1("DNA");
+        }
+        if(sb->L == ALPHABET_PROTEIN){
+                RUN(translate_internal_to_PROTEIN(sb));
+                DPRINTF1("PROT");
+        }
+        DPRINTF1("L: %d",sb->L);
+        DPRINTF1("numseq: %d",sb->num_seq );
+
+        /* Check if sequence names are present.. */
+        has_names = 0;
+        for (i = 0;i < sb->num_seq;i++){
+                if(sb->sequences[i]->name != NULL){
+                        has_names++;
+                }
+        }
+        if(has_names != sb->num_seq){
+                if(has_names == 0){
+                        /* create new sequence names */
+                        for (i = 0;i < sb->num_seq;i++){
+                                snprintf(sb->sequences[i]->name,256,"Seq%d",i+1);
+                        }
+
+                }
+                if(has_names != 0 && has_names != sb->num_seq){
+                        ERROR_MSG("Some sequences have names; other don't.");
+                }
+        }
+
+
+
+        //DPRINTF1("max_len:%d",sb->max_len );
+
+        f_ptr = NULL;
+        /* open file and write */
+
+        RUNP(f_ptr = fopen(filename, "w"));
+
+
+        for (i = 0;i < sb->num_seq;i++){
+
+
+                for(block = 0; block <= sb->sequences[i]->seq_len / BLOCK_LEN;block++){
+                        if(!block){
+                                fprintf(f_ptr,">%s\n", sb->sequences[i]->name);
+                        }//else{
+                         //       fprintf(f_ptr,"^%s\n", sb->sequences[i]->name);
+                        //}
+                        for(j = block * BLOCK_LEN; j < MACRO_MIN((block +1 ) * BLOCK_LEN,sb->sequences[i]->seq_len) ; j++){
+                                fprintf(f_ptr,"%c", sb->sequences[i]->seq[j]);
+                        }
+                        fprintf(f_ptr,"\n");
+
+                        //fprintf(f_ptr,"%s\n", sb->sequences[i]->seq);
+                        //for(c = digits;c > 0;c--){
+                                //for(j = 0; j < sb->sequences[i]->seq_len; j++){
+                        //        for(j = block * BLOCK_LEN; j < MACRO_MIN((block +1 ) * BLOCK_LEN,sb->sequences[i]->seq_len) ; j++){
+                        //               fprintf(f_ptr,"%c", dwb[j][19-c]);
+                        //       }
+                        //       fprintf(f_ptr,"\n");
+                        //}
+                }
+
+        }
+
+
+
+
+        fclose(f_ptr);
+        if(sb->L == ALPHABET_DNA){
+                RUN(translate_DNA_to_internal(sb));
+        }
+        if(sb->L == ALPHABET_PROTEIN){
+                RUN(translate_PROTEIN_to_internal(sb));
+        }
+        return OK;
+ERROR:
+        if(f_ptr){
+                fclose(f_ptr);
+        }
+
+        return FAIL;
+}
 
 
 struct seq_buffer* load_ihmm_sequences(char* in_filename)
@@ -1050,6 +1188,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
         fclose(f_ptr);
         sb->num_seq++;
         RUN(detect_alphabet(sb));
+        RUN(add_background_to_sequence_buffer(sb));
         free_2d((void**) digit_buffer);
         return sb;
 ERROR:
@@ -1506,6 +1645,9 @@ void free_ihmm_sequences(struct seq_buffer* sb)
                         free_ihmm_sequence(sb->sequences[i]);
                 }
                 MFREE(sb->sequences);
+                if(sb->background){
+                        MFREE(sb->background);
+                }
                 MFREE(sb);
         }
 }

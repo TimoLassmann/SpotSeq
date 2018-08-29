@@ -8,7 +8,5 @@
 #include "global.h"
 #include "tldevel.h"
 
-
-extern int emit_sequences_from_random_model(char* filename, int num);
-
+int emit_sequences_from_random_model(char* in_filename,char* out_filename, int num);
 #endif

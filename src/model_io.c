@@ -35,7 +35,6 @@ struct ihmm_model* read_model_hdf5(char* filename)
                 if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
                         b = hdf5_data->attr[i]->int_val;
                 }
-
         }
         ASSERT(a!=0, "No states???");
         ASSERT(b!=0, "No letters???");

@@ -291,7 +291,7 @@ int run_build_ihmm(struct parameters* param)
         RUN(write_model_hdf5(model, param->output));
 //        RUN(add_annotation)
         RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
-        RUN(add_background_emission(param->output,ft->background_emission,ft->L));
+        //RUN(add_background_emission(param->output,ft->background_emission,ft->L));
         RUN(add_sequences_to_hdf5_model(param->output, sb));
         //RUN(print_states_per_sequence(sb));
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));

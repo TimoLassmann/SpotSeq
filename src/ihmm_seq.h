@@ -34,11 +34,15 @@ struct ihmm_sequence{
 
 struct seq_buffer{
         struct ihmm_sequence** sequences;
+        float* background;
         int malloc_num;
         int num_seq;
         int max_len;
         int L;
 };
+
+extern struct ihmm_sequence* alloc_ihmm_seq(void);
+extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 
 extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename);
 extern int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb);
@@ -52,10 +56,11 @@ extern int print_states_per_sequence(struct seq_buffer* sb);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);
 
+
 extern int print_labelled_ihmm_buffer(struct seq_buffer* sb);
 
 extern void free_ihmm_sequences(struct seq_buffer* sb);
-
+extern int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename);
 extern int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment);
 struct seq_buffer* load_ihmm_sequences(char* in_filename);
 #endif

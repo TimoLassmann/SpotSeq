@@ -273,6 +273,10 @@ int standard_challenge(char* outdir)
         int i,j,c;
         int n_mismatches;
         float r;
+        int lf = 0;
+        int sample_window;
+        int upstream;
+
         ASSERT(outdir != NULL,"No parameters");
         RUNP(sb = alloc_seq_buffer(20));
 
@@ -287,78 +291,84 @@ int standard_challenge(char* outdir)
                 }
         }
         motif[15] = 0;
-        /* Loop through mismatches */
-        for(n_mismatches = 0; n_mismatches < 10; n_mismatches++ ){
-                /* reset sb to nothing */
-                for(i = 0; i < 20;i++){
-                        sb->seqs[i]->seq_len = 0;
-                }
-                sb->num_seq = 0;
-                for(i = 0; i < 20;i++){
-                        sequence = sb->seqs[i];
+        for(lf = 1;lf <= 10;lf++){
 
-                        for(j = 0; j < 600;j++){
-                                r = random_float_zero_to_x(1.0);
-                                for(c = 0; c < 4;c++){
-                                        if(r <= background[c]){
-                                                sequence->seq[sequence->seq_len] = "ACGT"[c];
-                                                sequence->seq_len++;
-                                                if(sequence->seq_len == sequence->malloc_len){
-                                                        sequence->malloc_len = sequence->malloc_len << 1;
-                                                        MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
+                /* Loop through mismatches */
+                for(n_mismatches = 0; n_mismatches < 10; n_mismatches++ ){
+                        /* reset sb to nothing */
+                        for(i = 0; i < 20;i++){
+                                sb->seqs[i]->seq_len = 0;
+                        }
+                        sb->num_seq = 0;
+                        for(i = 0; i < 20;i++){
+                                sequence = sb->seqs[i];
+
+                                for(j = 0; j < 600;j++){
+                                        r = random_float_zero_to_x(1.0);
+                                        for(c = 0; c < 4;c++){
+                                                if(r <= background[c]){
+                                                        sequence->seq[sequence->seq_len] = "ACGT"[c];
+                                                        sequence->seq_len++;
+                                                        if(sequence->seq_len == sequence->malloc_len){
+                                                                sequence->malloc_len = sequence->malloc_len << 1;
+                                                                MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
+                                                        }
+                                                        break;
                                                 }
-                                                break;
                                         }
                                 }
+                                sb->num_seq++;
                         }
-                        sb->num_seq++;
-                }
 
 
-                for(i = 0; i < 20;i++){
-                        sequence = sb->seqs[i];
-                        /* copy motif */
-                        for(j = 0; j < 15;j++){
-                                motif_mutated[j] = motif[j];
-                        }
-                        /* mutate until exactly 4 mismatches */
-                        //f
+                        for(i = 0; i < 20;i++){
+                                sequence = sb->seqs[i];
+                                /* copy motif */
+                                for(j = 0; j < 15;j++){
+                                        motif_mutated[j] = motif[j];
+                                }
+                                /* mutate until exactly 4 mismatches */
+                                //f
 
 
-                        for(c = 0; c < n_mismatches; c ++){
-                                j = random_int_zero_to_x(14);
-                                motif_mutated[j] = "ACGT"[random_int_zero_to_x(3)];
-                        }
-                        fprintf(stdout, "Here we go:\n");
-                        for(j = 0; j < 15;j++){
-                                fprintf(stdout, "%c", motif[j]);
-                        }
-                        fprintf(stdout, "\n");
+                                for(c = 0; c < n_mismatches; c ++){
+                                        j = random_int_zero_to_x(14);
+                                        motif_mutated[j] = "ACGT"[random_int_zero_to_x(3)];
+                                }
+                                fprintf(stdout, "Here we go:\n");
+                                for(j = 0; j < 15;j++){
+                                        fprintf(stdout, "%c", motif[j]);
+                                }
+                                fprintf(stdout, "\n");
 
-                        for(j = 0; j < 15;j++){
-                                if(motif_mutated[j] == motif[j]){
-                                        fprintf(stdout, "|", motif[j]);
-                                }else{
-                                        fprintf(stdout, " ", motif[j]);
+                                for(j = 0; j < 15;j++){
+                                        if(motif_mutated[j] == motif[j]){
+                                                fprintf(stdout, "|", motif[j]);
+                                        }else{
+                                                fprintf(stdout, " ", motif[j]);
+                                        }
+                                }
+                                fprintf(stdout, "\n");
+                                for(j = 0; j < 15;j++){
+                                        fprintf(stdout, "%c", motif_mutated[j]);
+                                }
+                                fprintf(stdout, "\n");
+
+
+                                sample_window = (int) ((600.0-15.0) * (float) (lf) / 10.0f);
+                                upstream = (int) ((600-15) - sample_window)/2;
+                                c = random_int_zero_to_x(sample_window) + upstream;
+
+                                for(j = 0; j < 15;j++){
+                                        sequence->seq[c+j] = motif_mutated[j];
                                 }
                         }
-                        fprintf(stdout, "\n");
-                        for(j = 0; j < 15;j++){
-                                fprintf(stdout, "%c", motif_mutated[j]);
-                        }
-                        fprintf(stdout, "\n");
 
-                        c = random_int_zero_to_x(600 -15);
 
-                        for(j = 0; j < 15;j++){
-                                sequence->seq[c+j] = motif_mutated[j];
-                        }
+                        snprintf(buffer, BUFFER_LEN, "%s/%s_%s_mis_%d_%d.fa", outdir,"Standard_Challenge", motif,n_mismatches,lf*10);
+                        LOG_MSG("Writing to: %s.",buffer);
+                        RUN(write_sequences_to_file(sb,buffer));
                 }
-
-
-                snprintf(buffer, BUFFER_LEN, "%s/%s_%s_mis_%d.fa", outdir,"Standard_Challenge", motif,n_mismatches);
-                LOG_MSG("Writing to: %s.",buffer);
-                RUN(write_sequences_to_file(sb,buffer));
         }
         free_sb(sb);
         return OK;

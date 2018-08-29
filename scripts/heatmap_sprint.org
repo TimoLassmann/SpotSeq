@@ -13,30 +13,8 @@
 #+BEGIN_SRC R :session one :results none
 library(reshape2)
 library(ggplot2)
-dat = read.csv("../test.csv",header= TRUE, row.names= 1)
-
-
-
-
-#+END_SRC
-
-#+BEGIN_SRC R :session one :output graphics :file hist.jpg
+dat = read.csv("test.csv",header= TRUE, row.names= 1)
 sum = colSums(dat);
-
-
-plot(sum)
-
-
-#+END_SRC
-
-#+RESULTS:
-[[file:hist.jpg]]
-
-Melt and plot
-
-#+BEGIN_SRC R :session one 
-
-dat= log(dat+0.5);
 
 max_count = max(dat)
 min_count = min(dat)
@@ -47,22 +25,6 @@ sum = colSums(dat);
 head(x)
 
 
-#+END_SRC
-
-#+RESULTS:
-| State2 | 0 | -0.693147180559945 |
-| State3 | 0 |   7.60115242829729 |
-| State4 | 0 | -0.693147180559945 |
-| State5 | 0 | -0.693147180559945 |
-| State6 | 0 | -0.693147180559945 |
-| State7 | 0 | -0.693147180559945 |
-
-#+BEGIN_SRC R :session one
-
-d <- 1-cor((dat))
-ord <- hclust( dist(d, method = "euclidean"), method = "ward.D" )$order
-
-x$Var1 <- factor( x$Var1, levels = colnames(dat)[ord],labels =colnames(dat)[ord])
   cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
             colorRampPalette(c("yellow", "red"))(30))
 
@@ -185,8 +147,26 @@ h5ls("../src/test.h5")
 | /MotifData | Motif000035 | H5I_DATASET | FLOAT | x 8  |
 | /MotifData | Motif000036 | H5I_DATASET | FLOAT | x 8  |
 
-* Meeting Notes
+* Plot distribution of scores
+
+#+BEGIN_SRC R :session one :results none 
+library(extRemes)
+library(reshape2)
+library(ggplot2)
+library(tidyverse)
+tmp = read.csv("../scores.csv",header= TRUE, row.names= 1)
+
+dat= as.tibble(tmp); 
+colnames(dat) = c("Scores")
+
+plot(hist(dat$Scores,breaks = 100));
+
+dat = as.data.frame(dat) 
+
+dat$Scores = dat$Scores / log(2) 
+fit0 <- fevd(Scores, dat, type="Gumbel", units="deg C") 
+plot(fit0)
 
 
 
-
+#+END_SRC

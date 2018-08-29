@@ -259,7 +259,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
 
         hdf5_open_group("SequenceInformation",hdf5_data);
 
-        hdf5_read_dataset("background",hdf5_data);
+        hdf5_read_dataset("Background",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read transition_counts");
         fhmm->background = (float*) hdf5_data->data;
         hdf5_close_group(hdf5_data);

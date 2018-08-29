@@ -21,7 +21,6 @@ static void* do_sample_path_and_posterior(void* threadarg);
 static void* do_dynamic_programming(void *threadarg);
 static void* do_forward_backward(void *threadarg);
 
-
 int approximatelyEqual(float a, float b, float epsilon);
 
 static struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len, int K);

@@ -265,8 +265,6 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
 {
         int i,j;
         int* label = NULL;
-        uint8_t* seq;
-        //float** p = NULL;
         int max_state_ID;
         int len;
         ASSERT(ihmm != NULL,"No model.");
@@ -344,7 +342,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         uint8_t* seq = NULL;
         float** e = NULL;
         float** m = NULL;
-        float* u = NULL;
+        //float* u = NULL;
         //float r;
         int len;
         int i;
@@ -355,7 +353,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
         label = sb->sequences[seq_ID]->label;
         seq = sb->sequences[seq_ID]->seq;
         len = sb->sequences[seq_ID]->seq_len;
-        u = sb->sequences[seq_ID]->u;
+        //u = sb->sequences[seq_ID]->u;
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
 
@@ -420,7 +418,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 ASSERT(model->gamma_b != IHMM_PARAM_PLACEHOLDER,"you need to set gamma_b before calling iHmmHyperSample .");
                 /* all good let's set the initial guess parameters...  */
                 /* First of all initialize the random number generator */
-                rk_randomseed(&model->rndstate);
+
+
 
                 model->alpha = rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
                 model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
@@ -523,45 +522,46 @@ ERROR:
         return FAIL;
 }
 
-
 struct ihmm_model* alloc_ihmm_model(int K, int L)
 {
-        struct ihmm_model* ihmm = NULL;
+        struct ihmm_model* model = NULL;
         int i;
         ASSERT(K>3, "No states requested");
         ASSERT(L>1, "No letters");
 
-        MMALLOC(ihmm, sizeof(struct ihmm_model));
+        MMALLOC(model, sizeof(struct ihmm_model));
 
 
-        ihmm->transition_counts = NULL;
-        ihmm->emission_counts = NULL;
-        ihmm->beta = NULL;
-        ihmm->num_states = 0;
-        ihmm->alloc_num_states = 16;
-        ihmm->L = L;
-        ihmm->alpha = IHMM_PARAM_PLACEHOLDER;
-        ihmm->alpha0_a = IHMM_PARAM_PLACEHOLDER;
-        ihmm->alpha0_b = IHMM_PARAM_PLACEHOLDER;
-        ihmm->gamma = IHMM_PARAM_PLACEHOLDER;
-        ihmm->gamma_a = IHMM_PARAM_PLACEHOLDER;
-        ihmm->gamma_b = IHMM_PARAM_PLACEHOLDER;
+        model->transition_counts = NULL;
+        model->emission_counts = NULL;
+        model->beta = NULL;
+        model->num_states = 0;
+        model->alloc_num_states = 16;
+        model->L = L;
+        model->alpha = IHMM_PARAM_PLACEHOLDER;
+        model->alpha0_a = IHMM_PARAM_PLACEHOLDER;
+        model->alpha0_b = IHMM_PARAM_PLACEHOLDER;
+        model->gamma = IHMM_PARAM_PLACEHOLDER;
+        model->gamma_a = IHMM_PARAM_PLACEHOLDER;
+        model->gamma_b = IHMM_PARAM_PLACEHOLDER;
 
-        while(K > ihmm->alloc_num_states){
-                ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
+        rk_randomseed(&model->rndstate);
+
+        while(K > model->alloc_num_states){
+                model->alloc_num_states = model->alloc_num_states << 1;
         }
 
-        RUNP(ihmm->transition_counts = malloc_2d_float(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
-        RUNP(ihmm->emission_counts = malloc_2d_float(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
+        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0f));
+        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 0.0f));
 
-        MMALLOC(ihmm->beta,sizeof(float) * ihmm->alloc_num_states);
-        for(i = 0; i < ihmm->alloc_num_states;i++){
-                ihmm->beta[i] = 0.0f;
+        MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
+        for(i = 0; i < model->alloc_num_states;i++){
+                model->beta[i] = 0.0f;
         }
 
-        return ihmm;
+        return model;
 ERROR:
-        free_ihmm_model(ihmm);
+        free_ihmm_model(model);
         return NULL;
 }
 

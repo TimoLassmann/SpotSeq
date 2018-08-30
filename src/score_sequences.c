@@ -19,8 +19,15 @@ struct parameters{
         char* in_model;
         char* in_sequences;
         char* output;
+        int num_threads;
 };
 
+struct thread_data_score_sequences{
+        struct fhmm* fhmm;      /* shared */
+        struct seq_buffer* sb;  /* shares */
+        float** matrix;         /* thread private */
+        int thread_id;          /* thread ID */
+};
 
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
@@ -38,12 +45,15 @@ int main (int argc, char *argv[])
         param->in_model = NULL;
         param->in_sequences = NULL;
         param->output = NULL;
+        param->num_threads = 8;
+
 
         while (1){
                 static struct option long_options[] ={
                         {"model",required_argument,0,'m'},
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
+                        {"nthreads",required_argument,0,'t'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
@@ -60,7 +70,9 @@ int main (int argc, char *argv[])
                 case 'o':
                         param->output = optarg;
                         break;
-
+                case 't':
+                        param->num_threads = atoi(optarg);
+                        break;
                 case 'm':
                         param->in_model = optarg;
                         break;
@@ -121,13 +133,18 @@ int run_score_sequences(struct parameters* param)
 {
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
+        struct thr_pool* pool = NULL;
+
         int i;
         int expected_len;
         FILE* fptr = NULL;
 
         ASSERT(param != NULL, "no parameters");
 
+        /* start threadpool  */
+        if((pool = thr_pool_create(param->num_threads ,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
         /* get model set up  */
+
         RUNP(fhmm = init_fhmm(param->in_model));
 
         /* load sequences.  */
@@ -159,11 +176,13 @@ int run_score_sequences(struct parameters* param)
                 fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  fhmm->f_score - fhmm->r_score);// /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
         }
 
+        thr_pool_destroy(pool);
         fclose(fptr);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return OK;
 ERROR:
+        thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return FAIL;
@@ -184,7 +203,7 @@ int print_help(char **argv)
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 
-        //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         return OK;
 }
 

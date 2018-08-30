@@ -12,5 +12,8 @@
 /* safe logistic function  */
 #define LOGISTIC_FLT(x) ((x)) >= log(FLT_MAX) ? 1.0f : (expf((x)) /(1.0f + expf((x))))
 
+#define ALPHABET_DNA 4
+#define ALPHABET_APPROXDNA 16
+#define ALPHABET_PROTEIN 20
 
 #endif

@@ -3,30 +3,15 @@
 
 #include "fast_hmm_param_test_functions.h"
 
-struct beam_thread_data{
-        struct fast_hmm_param* ft;
-        struct seq_buffer* sb;
-        struct fhmm* fhmm;
-        float** dyn;
-        float** F_matrix;
-        float** B_matrix;
-        float** t;
-        float** e;
-        int thread_ID;
-        int num_threads;
-};
-
-static void* do_score_sequences(void* threadarg);
 static void* do_sample_path_and_posterior(void* threadarg);
 static void* do_dynamic_programming(void *threadarg);
 static void* do_forward_backward(void *threadarg);
 
 int approximatelyEqual(float a, float b, float epsilon);
 
-static struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len, int K);
-static int sum_counts_from_multiple_threads(struct beam_thread_data** td,int* num_threads,int K);
-static int resize_beam_thread_data(struct beam_thread_data** td,int* num_threads, int max_len, int K);
-static void free_beam_thread_data(struct beam_thread_data** td, int num_threads);
+static int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K);
+
+
 
 static int transfer_counts(struct ihmm_model* ihmm, float** t, float** e);
 
@@ -43,7 +28,7 @@ static int dynamic_programming(float** matrix,struct fast_hmm_param* ft, struct 
 
 static int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
 static int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
-static int collect_slice(struct beam_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
+static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
 
 int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft,struct thr_pool* pool, int iterations, int num_threads)
 {
@@ -53,7 +38,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         float max;
         //float** matrix = NULL;
         struct thr_pool* local_pool = NULL;
-        struct beam_thread_data** td = NULL;
+        struct spotseq_thread_data** td = NULL;
         int need_local_pool;
 
         int no_path;
@@ -86,7 +71,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 need_local_pool =1;
         }
 
-        RUNP(td = create_beam_thread_data(&num_threads,(sb->max_len+2)  , ft->last_state));
+        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , ft->last_state));
         LOG_MSG("Will use %d threads.", num_threads);
         no_path = 0;
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
@@ -108,7 +93,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                  RUN(make_flat_param_list(ft));
                 LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
 
-                RUN(resize_beam_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
+                RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
 
                 //dyn prog + labelling
                 for(i = 0; i < num_threads;i++){
@@ -184,23 +169,23 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         if(need_local_pool){
                 thr_pool_destroy(local_pool);
         }
-        free_beam_thread_data(td, num_threads);
+        free_spotseq_thread_data(td, num_threads);
         return OK;
 ERROR:
-        free_beam_thread_data(td, num_threads);
+        free_spotseq_thread_data(td, num_threads);
         return FAIL;
 }
 
 void* do_forward_backward(void *threadarg)
 {
-        struct beam_thread_data *data;
+        struct spotseq_thread_data *data;
         int i,j;
         int num_threads;
         int thread_id;
 
         float f_score;
         float b_score;
-        data = (struct beam_thread_data *) threadarg;
+        data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -235,46 +220,10 @@ ERROR:
         return NULL;
 }
 
-void* do_score_sequences(void* threadarg)
-{
-        struct beam_thread_data *data;
-        struct fhmm* fhmm = NULL;
-        struct ihmm_sequence* seq = NULL;
-        int i;
-        int num_threads;
-        int thread_id;
-        int expected_len;
-        float f_score;
-        float r_score;
-        data = (struct beam_thread_data *) threadarg;
-
-        num_threads = data->num_threads;
-        thread_id = data->thread_ID;
-        fhmm = data->fhmm;
-
-        expected_len = 0;
-        for(i = 0; i < data->sb->num_seq;i++){
-                expected_len += data->sb->sequences[i]->seq_len;
-        }
-        expected_len = expected_len / data->sb->num_seq;
-        //LOG_MSG("Average sequence length: %d",expected_len);
-
-        for(i =0; i < data->sb->num_seq;i++){
-                if( i% num_threads == thread_id){
-                        seq = data->sb->sequences[i];
-                        RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
-                        RUN(random_model_score(fhmm->background, &r_score, seq->seq, seq->seq_len,expected_len));
-                        fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, LOGISTIC_FLT(f_score - r_score));
-                }
-        }
-        return NULL;
-ERROR:
-        return NULL;
-}
 
 void* do_sample_path_and_posterior(void* threadarg)
 {
-        struct beam_thread_data *data;
+        struct spotseq_thread_data *data;
         struct ihmm_sequence* seq = NULL;
         int i;
         int num_threads;
@@ -283,7 +232,7 @@ void* do_sample_path_and_posterior(void* threadarg)
         float b_score;
         float r_score;
 
-        data = (struct beam_thread_data *) threadarg;
+        data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -316,12 +265,12 @@ ERROR:
 
 void* do_dynamic_programming(void *threadarg)
 {
-        struct beam_thread_data *data;
+        struct spotseq_thread_data *data;
         int i;
         int num_threads;
         int thread_id;
 
-        data = (struct beam_thread_data *) threadarg;
+        data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -574,60 +523,6 @@ ERROR:
 }
 
 
-struct beam_thread_data** create_beam_thread_data(int* num_threads, int max_len, int K)
-{
-        struct beam_thread_data** td = NULL;
-        int i;
-        int local_num_treads;
-        size_t mem_needed;
-        ASSERT(*num_threads> 0, "no threads");
-        local_num_treads = *num_threads;
-
-
-        mem_needed = sizeof(float) * local_num_treads * max_len * K;
-
-        while(mem_needed  > GB){
-                local_num_treads--;
-                ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
-                mem_needed = sizeof(float) * local_num_treads * max_len * K;
-
-        }
-
-        MMALLOC(td, sizeof(struct beam_thread_data*) * local_num_treads);
-        for(i = 0; i < local_num_treads;i++){
-                td[i] = NULL;
-                MMALLOC(td[i], sizeof(struct beam_thread_data));
-                td[i]->dyn = NULL;
-                td[i]->F_matrix = NULL;
-                td[i]->B_matrix = NULL;
-                td[i]->t = NULL;
-                td[i]->e = NULL;
-                td[i]->fhmm = NULL;
-                //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
-                RUNP(td[i]->F_matrix = malloc_2d_float(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = malloc_2d_float(td[i]->B_matrix, max_len, K, 0.0f));
-
-                RUNP(td[i]->t = malloc_2d_float(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = malloc_2d_float(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
-
-
-                td[i]->ft = NULL;
-                td[i]->sb = NULL;
-                td[i]->thread_ID = i;
-                td[i]->num_threads = local_num_treads;
-
-
-        }
-
-        *num_threads = local_num_treads;
-
-        return td;
-ERROR:
-        free_beam_thread_data(td, *num_threads);
-        return NULL;
-}
-
 int transfer_counts(struct ihmm_model* ihmm, float** t, float** e)
 {
         float* used_states = NULL;
@@ -718,7 +613,7 @@ ERROR:
         return FAIL;
 }
 
-int sum_counts_from_multiple_threads(struct beam_thread_data** td,int* num_threads,int K)
+int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K)
 {
         int i,j,c;
         int local_num_treads;
@@ -744,70 +639,6 @@ int sum_counts_from_multiple_threads(struct beam_thread_data** td,int* num_threa
 
         return OK;
 }
-
-int resize_beam_thread_data(struct beam_thread_data** td,int* num_threads, int max_len, int K)
-{
-        int i;
-        int local_num_treads;
-        int cur_threads;
-        size_t mem_needed;
-        ASSERT(*num_threads> 0, "no threads");
-        local_num_treads = *num_threads;
-        cur_threads =  *num_threads;
-
-        mem_needed = sizeof(float) * local_num_treads * max_len * K;
-
-        while(mem_needed  > GB){
-                local_num_treads--;
-                ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
-                mem_needed = sizeof(float) * local_num_treads * max_len * K;
-        }
-
-
-        for(i = local_num_treads; i < cur_threads;i++){
-
-                free_2d((void**) td[i]->dyn);
-                MFREE(td[i]);
-        }
-
-        //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
-        for(i = 0; i < local_num_treads;i++){
-                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
-
-                RUNP(td[i]->F_matrix = malloc_2d_float(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = malloc_2d_float(td[i]->B_matrix, max_len, K, 0.0f));
-
-                RUNP(td[i]->t = malloc_2d_float(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = malloc_2d_float(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
-
-                td[i]->num_threads = local_num_treads;
-        }
-        *num_threads = local_num_treads;
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-
-void free_beam_thread_data(struct beam_thread_data** td, int num_threads)
-{
-        int i;
-        if(td){
-                for(i = 0; i < num_threads;i++){
-                        free_2d((void**) td[i]->dyn);
-                        free_2d((void**) td[i]->F_matrix);
-                        free_2d((void**) td[i]->B_matrix);
-                        free_2d((void**) td[i]->t);
-                        free_2d((void**) td[i]->e);
-
-                        MFREE(td[i]);
-                }
-
-                MFREE(td);
-        }
-}
-
-
 
 
 
@@ -848,7 +679,7 @@ int assign_posterior_probabilities_to_sampled_path(float** F,float** B,float** E
 
 
 
-int collect_slice(struct beam_thread_data* data,struct ihmm_sequence* ihmm_seq, float total)
+int collect_slice(struct spotseq_thread_data * data,struct ihmm_sequence* ihmm_seq, float total)
 {
         float** e = data->e;
         float** t = data->t;

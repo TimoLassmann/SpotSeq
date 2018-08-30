@@ -9,16 +9,13 @@
 
 #include "tldevel.h"
 
-
+#include "global.h"
 #include "distributions.h"
 
 #include <stdint.h>
 #include <ctype.h>
 #include "hdf5_glue.h"
 
-#define ALPHABET_DNA 4
-#define ALPHABET_APPROXDNA 16
-#define ALPHABET_PROTEIN 20
 
 #define BLOCK_LEN 70
 

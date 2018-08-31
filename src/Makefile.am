@@ -13,7 +13,7 @@ MYLIBDIRS = ../tldevel/libthrpool.a \
 
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
             -I${top_srcdir}/${LIB_TLDEVELDIR} 
- 
+
 
 LIBS = -lm -lpthread
 

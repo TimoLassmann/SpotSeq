@@ -7,8 +7,7 @@ CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa  libhdf5gl
 # top_builddir = @top_builddir@
 
 
-MYLIBDIRS = ../tldevel/libthrpool.a \
-	../tldevel/libtldevel.a
+MYLIBDIRS = ../tldevel/libtldevel.a
 
 
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \

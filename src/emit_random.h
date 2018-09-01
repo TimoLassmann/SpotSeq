@@ -7,6 +7,7 @@
 
 #include "global.h"
 #include "tldevel.h"
-
-int emit_sequences_from_random_model(char* in_filename,char* out_filename, int num);
+#include "ihmm_seq.h"
+#include "distributions.h"
+extern struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num);
 #endif

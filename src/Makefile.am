@@ -45,12 +45,20 @@ THREADSOURCE = thread_data.c thread_data.h
 
 HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
 
+SCORESOURCE = run_score.h run_score.c
+
+EMITSOURCE = run_emit.c emit_random.h
+
+CALIBRATESOURCE = calibrate.c calibrate.h
+
 CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_emit
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_emit cal 
 
+cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
+cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 spotseq_plot_SOURCES = \
@@ -62,13 +70,14 @@ build_model.c $(BEAMSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOUR
 spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_score_SOURCES = \
-score_sequences.c $(CONVERSION)  $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
+score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
 spotseq_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-spotseq_emit_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) emit_random.c emit_random.h
+spotseq_emit_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
+
 spotseq_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 

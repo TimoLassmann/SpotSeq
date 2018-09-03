@@ -163,7 +163,6 @@ plot(hist(dat$Scores,breaks = 100));
 
 dat = as.data.frame(dat) 
 
-dat$Scores = dat$Scores / log(2) 
 fit0 <- fevd(Scores, dat, type="Gumbel", units="deg C") 
 plot(fit0)
 

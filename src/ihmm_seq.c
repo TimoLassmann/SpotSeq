@@ -1405,9 +1405,7 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
         for(i = 0; i < sb->num_seq;i++){
                 sequence = sb->sequences[i];
                 for(j = 0; j < sequence->seq_len;j++){
-                        switch(sequence->seq[j]){
-
-
+                        switch(toupper(sequence->seq[j])){
                         case 'A':
                                 sequence->seq[j] = 0;
                                 break;
@@ -1469,8 +1467,11 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
                         case 'Y':
                                 sequence->seq[j] = 19;
                                 break;
+                        case 'X':
+                                sequence->seq[j] = random_int_zero_to_x(19);
+                                break;
                         default:
-                                ERROR_MSG("Non ACGTN letter in sequence:%d %s.",i,sequence->seq);
+                                ERROR_MSG("Non ACGTN letter in sequence:%d %c.",i,sequence->seq[j]);
                                 break;
                         }
 

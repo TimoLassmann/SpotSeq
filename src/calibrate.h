@@ -8,6 +8,5 @@
 #include "tldevel.h"
 
 
-extern int calibrate(char* model_file,int num_threads, float* lambda, float* beta);
-
+extern int calibrate(char* model_file,int num_threads, double* mu,double* lambda);
 #endif

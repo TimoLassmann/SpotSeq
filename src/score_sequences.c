@@ -26,10 +26,11 @@ static int free_parameters(struct parameters* param);
 
 int main (int argc, char *argv[])
 {
+        FILE* fptr = NULL;
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
-        int c;
+        int i,c;
 
         tlog.echo_build_config();
 
@@ -121,13 +122,22 @@ int main (int argc, char *argv[])
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
         RUN(run_score_sequences(fhmm,sb, param->num_threads));
-                /* Print scores.. */
+         /* Print scores.. */
+        RUNP(fptr = fopen(param->output, "w"));
+        fprintf(fptr, "Name,Score_%s\n",  param->in_model);
+        for(i = 0; i < sb->num_seq;i++){
+                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
+        }
+        fclose(fptr);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
 ERROR:
         fprintf(stdout,"\n  Try run with  --help.\n\n");
+        if(fptr){
+                fclose(fptr);
+        }
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         free_parameters(param);

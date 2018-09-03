@@ -7,7 +7,6 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         int i,j,c;
         double s1,s2;
         //double s1_t,s2_t;
-
         double r;
 
         rk_state rndstate;
@@ -29,6 +28,7 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
 
 
         LOG_MSG("Mean length: %f stdev: %f",s1,s2);
+
         /*for(j = 0; j < 10;j++){
                 s1_t = 0.0;
                 s2_t = 0.0;

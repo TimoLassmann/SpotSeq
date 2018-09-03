@@ -41,21 +41,11 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
                 }
         }
         thr_pool_wait(pool);
-        for(i = 0; i < sb->num_seq;i++){
-                fprintf(stdout,"%f ", sb->sequences[i]->score);
-        }
-        /*
-        RUNP(fptr = fopen(output, "w"));
-        fprintf(fptr, "Name,Score_%s\n",  in_model);
-        for(i = 0; i < sb->num_seq;i++){
-                //fprintf(stdout,"Running %d (len: %d) %d%d%d\n",i,sb->sequences[i]->seq_len,sb->sequences[i]->seq[0],sb->sequences[i]->seq[1],sb->sequences[i]->seq[2]);
-                RUN(forward(fhmm, fhmm->F_matrix, &fhmm->f_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len));
-                RUN(random_model_score(fhmm->background  , &fhmm->r_score, sb->sequences[i]->seq, sb->sequences[i]->seq_len, expected_len));
-                //fprintf(stdout,"%d f:%f  r:%f\tlog-odds:%f\tP(M):%f\n",  i, fhmm->f_score, fhmm->r_score, fhmm->f_score - fhmm->r_score, expf(fhmm->f_score - fhmm->r_score ) /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
-                //fprintf(stdout,"%f %f\n",fhmm->f_score,fhmm->r_score );
-                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name,  fhmm->f_score - fhmm->r_score);// /  (1.0 + expf(fhmm->f_score - fhmm->r_score ) ));
-        }
-        fclose(fptr);*/
+        //for(i = 0; i < sb->num_seq;i++){
+        //        fprintf(stdout,"%f ", sb->sequences[i]->score);
+        //}
+
+        
 
         free_spotseq_thread_data(td,num_threads);
         thr_pool_destroy(pool);

@@ -54,7 +54,7 @@ OUTMODEL=$INPUT$RUNNAME".h5"
 OUTDOT=$INPUT$RUNNAME".dot"
 OUTPDF=$INPUT$RUNNAME".pdf"
 OUTSCORES=$INPUT$RUNNAME".scores.csv"
-
+OUTNEQSEQ=$INPUT$RUNNAME".neg.fa"
 
 
 
@@ -63,6 +63,7 @@ LOCALITER=$(($NUMITER / 100))
 foo=$(printf "%05d" $((1* $LOCALITER)))
 LOCALNAME=$INPUT$RUNNAME"_"$foo".h5"
 SCORENAME=$INPUT$RUNNAME"_"$foo".scores.csv"
+NEGSCORENAME=$INPUT$RUNNAME"_"$foo".scores_neg.csv"
 OUTDOT=$INPUT$RUNNAME"_"$foo".dot"
 echo $LOCALNAME
 
@@ -70,7 +71,8 @@ echo "Running:spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -nit
 spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER
 echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
 spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
-echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
+echo "Running: spotseq_plot -in $OUTMODEL  -o
+ut $OUTDOT"
 spotseq_plot -in $LOCALNAME  -out $OUTDOT
 
 for i in `seq 2 100`;
@@ -107,12 +109,9 @@ dot -Tpdf $OUTDOT -o $OUTPDF
 echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
 spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES
 
-exit
+echo "Running: spotseq_emit  -m $OUTMODEL  -out  $INPUT  -n 10000 "
+spotseq_emit  -m $OUTMODEL  -o $OUTNEQSEQ -n 10000
 
-for file in model_at_*.h5 ; do
-    echo $file;
-    OUTSCORES=$file".scores.csv"
-    spotseq_score  -m $file  -i $INPUT  -o $OUTSCORES
-done
+echo "Running: spotseq_score  -m $OUTMODEL  -i $INPUT  -o $OUTSCORES"
+spotseq_score  -m $OUTMODEL  -i $OUTNEQSEQ  -o $NEGSCORENAME
 
-exit

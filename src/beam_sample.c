@@ -81,8 +81,8 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 /* I only want to add states if the last iteration was successful */
                 if(!no_path){
                         RUN(get_max_to_last_state_transition(ft, &max));
-                        //fprintf(stdout,"MAX:%f\n", max);
-                        while(max > min_u && model->num_states < 300){//}sb->max_len){
+                        fprintf(stdout,"MAX:%f MIN:%f\n", max,min_u);
+                        while(max >= min_u && model->num_states < 1000){//}sb->max_len){
                                 //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                                 RUN(add_state_from_fast_hmm_param(model,ft));
                                 RUN(get_max_to_last_state_transition(ft, &max));
@@ -90,8 +90,8 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                                 //exit(0);
                         }
                 }
-                 RUN(make_flat_param_list(ft));
-                LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
+                RUN(make_flat_param_list(ft));
+                //LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
 
                 RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
 
@@ -147,14 +147,17 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 }else{
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
+
                         RUN(remove_unused_states_labels(model, sb));
                         RUN(fill_counts(model,sb));
 
-                        RUN(iHmmHyperSample(model, 1));
+                        RUN(iHmmHyperSample(model, 20));
                         //model->gamma = 0.1;
                         //model->alpha = 0.5;
                         RUN(fill_fast_transitions(model,ft));
                 }
+
+                LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
                 //LOG_MSG("print %d\n",iter);
@@ -498,7 +501,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         /* add emission  */
         sum = 0.0;
         for(i = 0; i < ihmm->L;i++){
-                ft->emission[i][new_k] =rk_gamma(&rndstate, EMISSION_H, 1.0);
+                ft->emission[i][new_k] = rk_gamma(&rndstate, EMISSION_H, 1.0);
                 sum += ft->emission[i][new_k];
         }
         for(i = 0; i < ihmm->L;i++){
@@ -1086,6 +1089,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         float* u = 0;
         int* label =0;
         float x;
+        //float r;
         int len;
 
         float local_min_u = 1.0;
@@ -1102,13 +1106,27 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 x = ft->transition[IHMM_START_STATE][label[0]];
                 //c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
-                u[0] =  rk_double(&model->rndstate) *x;
+                //u[0] = rk_beta(&model->rndstate, 1.0, 11) * x;
+                //r = rk_beta(&model->rndstate, 1.0, 1.0) * x;
+                //while(fabs(r-0.0) < FLT_EPSILON ){
+                //        r = rk_beta(&model->rndstate, 1.0, 1.1) * x;
+                //}
+                //u[0] = r;
+
+
+                u[0] = rk_double(&model->rndstate) *x;
                 //ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
 
                 local_min_u = MACRO_MIN(local_min_u, u[0]);
                 for (j = 1; j < len;j++){
                         //c = label[j-1] * last_state + label[j];
                         x = ft->transition[label[j-1]][label[j]];
+                        //r = rk_beta(&model->rndstate, 1.0, 1.0) * x;
+                        //while(fabs(r-0.0) < FLT_EPSILON ){
+                        //        r = rk_beta(&model->rndstate, 1.0, 1.1) * x;
+                        //}
+                        //u[j] = r;
+                        //u[j] = rk_beta(&model->rndstate, 1.0, 11) * x;
                         u[j] =  rk_double(&model->rndstate) * x;//rk_double(&model->rndstate) *
                         //if(!i && j < 5){
                         //       fprintf(stdout,"%d->%d %f\n",label[j-1],label[j],ft->list[c]->t );
@@ -1121,7 +1139,13 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 }
                 x = ft->transition[label[len-1]][IHMM_END_STATE];
 
-                u[len] =  rk_double(&model->rndstate) * x;//(ft->list[c]->t);
+                //r = rk_beta(&model->rndstate, 1.0, 1.0) * x;
+                //while(fabs(r-0.0) < FLT_EPSILON ){
+                //        r = rk_beta(&model->rndstate, 1.0, 1.1) * x;
+                // }
+                //u[len] = r;
+                //u[len] = rk_beta(&model->rndstate, 1.0, 11) * x;
+                u[len] = rk_double(&model->rndstate) * x;//(ft->list[c]->t);
                 //ASSERT(ft->list[c]->t != 0.0f,"BAD %d -> %d %f",ft->list[c]->from,ft->list[c]->to,ft->list[c]->t);
                 //fprintf(stdout,"%d %d -> %d: %f  \n",label[len-1],ft->list[c]->from ,ft->list[c]->to, ft->list[c]->t );
                 local_min_u = MACRO_MIN(local_min_u, u[len]);

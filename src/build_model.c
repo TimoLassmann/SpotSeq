@@ -32,9 +32,6 @@ struct parameters{
 
 
 static int run_build_ihmm(struct parameters* param);
-
-
-
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -43,13 +40,26 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
-        /*int i;
-        for(i = 0 ; i < 100;i++){
-                fprintf(stdout,"%d %f\n",i,loggam((double) i / 10.0f));
+        /*rk_state rndstate;
+        float r;
+        rk_randomseed(&rndstate);
+
+        int i;
+        for(i = 0; i < 10000;i++){
+
+                r = rk_beta(&rndstate, 1.0, 11) * 0.0001;
+                if(r == 0.0){
+                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
                 }
-        exit(0);
-        */
+                if(fabs(r-0.0) < FLT_EPSILON){
+                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
+                }
+
+        }
+        exit(0);*/
+
+        tlog.echo_build_config();
+
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
         param->output = NULL;
@@ -164,6 +174,7 @@ int run_build_ihmm(struct parameters* param)
 
         int initial_states = 400;
         int i;
+
         ASSERT(param!= NULL, "No parameters found.");
 
         initial_states = param->num_start_states;

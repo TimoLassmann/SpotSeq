@@ -85,7 +85,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
                                           # Some sample data
 
 
-  x = h5dump("test.h5")
+  x = h5dump("../motif.h5")
 
 
   add_rowname <- function(x){
@@ -93,8 +93,10 @@ ggplot(data = ggfortify(sequences, "peptide")) +
       return(x);
   }
   x$MotifData = lapply(x$MotifData,add_rowname)
-ggseqlogo(x$MotifData, ncol=6)
+p = ggseqlogo(x$MotifData, ncol=6)
  
+ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 12,width=24,limitsize = TRUE )
+
 
 #+END_SRC
 #+RESULTS:
@@ -167,5 +169,18 @@ fit0 <- fevd(Scores, dat, type="Gumbel", units="deg C")
 plot(fit0)
 
 
+
+#+END_SRC
+
+** pos/ neg comparison 
+
+
+#+BEGIN_SRC R :session one :results none 
+pos = read.csv("positive.csv",header = T,row.names= 1) 
+neg = read.csv("negative.csv",header = T,row.names= 1) 
+jpeg("ScoreSep.jpg")
+plot(density(pos[,1]) ,col= "red", xlim = c(-100,100),ylim = c(0,0.06))
+lines(density(neg[,1]))
+dev.off()
 
 #+END_SRC

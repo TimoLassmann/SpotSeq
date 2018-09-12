@@ -269,7 +269,7 @@ int run_lcs(struct parameters* param)
 
                 qsort(res_motif, num_res_motif, sizeof(struct motif_struct*), qsort_motif_struct);
 
-                //RUN(find_overlapping_motifs(res_motif, num_res_motif, fhmm));
+                RUN(find_overlapping_motifs(res_motif, num_res_motif, fhmm));
 
                 RUN(add_positional_distribution(res_motif, num_res_motif , sa, sb, param->pos_resolution));
 
@@ -462,7 +462,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
         for(c = 0; c < num_res_motif;c++){
                 m = res_motif[c];
-                if(m->mean_rel_entropy > 0.005){
+                if(m->mean_rel_entropy > 0.05){
 
 
                         RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));

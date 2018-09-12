@@ -411,7 +411,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
         RUNP(transition = malloc_2d_float(transition, k+1,  k , 0.0f));
 
         MMALLOC(tmp, sizeof(float) * k);
-        fprintf(stdout,"Emission\n");
+        //fprintf(stdout,"Emission\n");
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < n;j++){
@@ -423,12 +423,12 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         emission[i][j] /= sum;
                         emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
                         sanity += emission[i][j];
-                        fprintf(stdout,"%f ",emission[i][j]);
+                        //        fprintf(stdout,"%f ",emission[i][j]);
                 }
-                fprintf(stdout,"sum: %f\n",sanity);
+                //fprintf(stdout,"sum: %f\n",sanity);
         }
 
-        fprintf(stdout,"Transition\n");
+        //fprintf(stdout,"Transition\n");
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0; j < k;j++){
@@ -444,9 +444,9 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         transition[i][j] /= sum;
                         transition[k][j] += transition[i][j];
                         sanity += transition[i][j];
-                        fprintf(stdout,"%f ",transition[i][j]);
+                        //       fprintf(stdout,"%f ",transition[i][j]);
                 }
-                fprintf(stdout,"sum: %f\n", sanity);
+                //fprintf(stdout,"sum: %f\n", sanity);
         }
 
         cur_state = -1;

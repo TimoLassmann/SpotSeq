@@ -32,8 +32,6 @@ int calibrate(char* model_file,int num_threads, double* mu, double* lambda)
 
         int i;
 
-
-
         /* Step 1: emit sequences with same background and length
          * distribution as training sequences */
         LOG_MSG("Generating random sequences.");
@@ -82,8 +80,6 @@ ERROR:
 }
 
 //#ifdef ITEST
-
-
 
 int main (int argc,char * argv[])
 {

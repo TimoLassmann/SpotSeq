@@ -484,7 +484,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         }
                 }
         }
-        for(i = 0;i< sb->num_seq;i++){
+        /*for(i = 0;i< sb->num_seq;i++){
                 label = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
                 seq = sb->sequences[i]->seq;
@@ -494,7 +494,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                  for(j = len; j != len-5;j--){
                         label[j] = 3;
                 }
-        }
+                }*/
         free_2d((void**) emission);
         free_2d((void**) transition );
         MFREE(tmp);
@@ -1399,15 +1399,49 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
 {
         struct ihmm_sequence* sequence = NULL;
         int i,j;
+        int r;
 
         ASSERT(sb != NULL,"No sequence buffer.");
 
         for(i = 0; i < sb->num_seq;i++){
                 sequence = sb->sequences[i];
                 for(j = 0; j < sequence->seq_len;j++){
+                        /* Amino Acid Code: Three letter Code: Amino Acid: */
+                        /* ---------------- ------------------ ----------- */
+                        /* A.................Ala.................Alanine */
+                        /* B.................Asx.................Aspartic acid or Asparagine */
+                        /* C.................Cys.................Cysteine */
+                        /* D.................Asp.................Aspartic Acid */
+                        /* E.................Glu.................Glutamic Acid */
+                        /* F.................Phe.................Phenylalanine */
+                        /* G.................Gly.................Glycine */
+                        /* H.................His.................Histidine */
+                        /* I.................Ile.................Isoleucine */
+                        /* K.................Lys.................Lysine */
+                        /* L.................Leu.................Leucine */
+                        /* M.................Met.................Methionine */
+                        /* N.................Asn.................Asparagine */
+                        /* P.................Pro.................Proline */
+                        /* Q.................Gln.................Glutamine */
+                        /* R.................Arg.................Arginine */
+                        /* S.................Ser.................Serine */
+                        /* T.................Thr.................Threonine */
+                        /* V.................Val.................Valine */
+                        /* W.................Trp.................Tryptophan */
+                        /* X.................Xaa.................Any amino acid */
+                        /* Y.................Tyr.................Tyrosine */
+                        /* Z.................Glx.................Glutamine or Glutamic acid */
                         switch(toupper(sequence->seq[j])){
                         case 'A':
                                 sequence->seq[j] = 0;
+                                break;
+                        case 'B'://D or N - 2 or 11
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 2;
+                                }else{
+                                        sequence->seq[j] = 11;
+                                }
                                 break;
                         case 'C':
                                 sequence->seq[j] = 1;
@@ -1470,8 +1504,17 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
                         case 'X':
                                 sequence->seq[j] = random_int_zero_to_x(19);
                                 break;
+                        case 'Z':
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 3;
+                                }else{
+                                        sequence->seq[j] = 13;
+                                }
+                                break;
                         default:
-                                ERROR_MSG("Non ACGTN letter in sequence:%d %c.",i,sequence->seq[j]);
+                                WARNING_MSG("Non ACGTN letter in sequence:%d %c.",i,sequence->seq[j]);
+                                sequence->seq[j] = random_int_zero_to_x(19);
                                 break;
                         }
 

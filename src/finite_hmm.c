@@ -74,7 +74,7 @@ int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int 
                 for(j = 0; j < fhmm->K;j++){
                         tmp = last[j];
                         trans = fhmm->t[j];
-                        for(c = 1; c <   fhmm->tindex[j][0];c++){
+                        for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
                                 cur[f] = logsum(cur[f], tmp + trans[f] );//+ hmm->emissions[c][(int)a[i-1]]);
                         }
@@ -87,11 +87,9 @@ int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int 
         last = cur;//matrix[len];
         cur = matrix[len+1];
 
-
         for(j = 0; j < fhmm->K;j++){
                 cur[j] = -INFINITY;// prob2scaledprob(0.0);
         }
-
 
         for(j = 2; j < fhmm->K;j++){
                 cur[IHMM_END_STATE] = logsum(cur[IHMM_END_STATE],last[j] + fhmm->t[j][IHMM_END_STATE]);

@@ -158,7 +158,7 @@ int main (int argc, char *argv[])
         standard_challenge(param->outdir);
         standard_challenge_split(param->outdir, 10);
 
-        RUN(run_sim_seq(param));
+        //RUN(run_sim_seq(param));
         //RUN(run_build_ihmm(param));
 
         //RUN(seed_controller_thread(param));

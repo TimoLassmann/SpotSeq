@@ -11,8 +11,6 @@ int approximatelyEqual(float a, float b, float epsilon);
 
 static int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K);
 
-
-
 static int transfer_counts(struct ihmm_model* ihmm, float** t, float** e);
 
 static int assign_posterior_probabilities_to_sampled_path(float** F,float** B,float** E, struct ihmm_sequence* ihmm_seq );

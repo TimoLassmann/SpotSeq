@@ -30,7 +30,6 @@ struct parameters{
         int num_start_states;
 };
 
-
 static int run_build_ihmm(struct parameters* param);
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
@@ -46,14 +45,9 @@ int main (int argc, char *argv[])
 
         int i;
         for(i = 0; i < 10000;i++){
+                r = rk_gamma(&rndstate, 9.0,1.0 / 8.0f);
+                  fprintf(stdout,"%d Got a zero: %f\n",i, r);
 
-                r = rk_beta(&rndstate, 1.0, 11) * 0.0001;
-                if(r == 0.0){
-                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
-                }
-                if(fabs(r-0.0) < FLT_EPSILON){
-                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
-                }
 
         }
         exit(0);*/
@@ -165,6 +159,7 @@ ERROR:
         free_parameters(param);
         return EXIT_FAILURE;
 }
+
 
 int run_build_ihmm(struct parameters* param)
 {
@@ -285,9 +280,7 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-
         return FAIL;
-
 }
 
 int print_help(char **argv)
@@ -301,4 +294,3 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--niter","Number of iterations." ,"[1000]"  );
         return OK;
 }
-

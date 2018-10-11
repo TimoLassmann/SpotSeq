@@ -24,8 +24,8 @@ struct ihmm_model{
         rk_state rndstate;
         float gamma;
         float alpha;
-        float alpha0_a;
-        float alpha0_b;
+        float alpha_a;
+        float alpha_b;
         float gamma_a;
         float gamma_b;
         float log_likelihood;

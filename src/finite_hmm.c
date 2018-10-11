@@ -174,11 +174,6 @@ ERROR:
         return FAIL;
 }
 
-
-
-
-
-
 int alloc_dyn_matrices(struct fhmm* fhmm)
 {
         ASSERT(fhmm!= NULL, "No model");
@@ -220,12 +215,7 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
-
-
         /* read in hdf5 file and get emission and transition matrix */
-
-
-
         hdf5_data = hdf5_create();
 
         hdf5_open_file(filename,hdf5_data);
@@ -235,9 +225,9 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         //print_attributes(hdf5_data);
         get_group_names(hdf5_data);
         /*fprintf(stdout,"Groups:\n");
-        for(i = 0; i < hdf5_data->grp_names->num_names;i++){
-                fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
-                }*/
+          for(i = 0; i < hdf5_data->grp_names->num_names;i++){
+          fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
+          }*/
 
         hdf5_open_group("imodel",hdf5_data);
         hdf5_read_attributes(hdf5_data,hdf5_data->group);
@@ -268,7 +258,6 @@ int read_hmm_parameters(struct fhmm* fhmm, char* filename)
         hdf5_read_dataset("emission",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         fhmm->e = (float**) hdf5_data->data;
-
 
         hdf5_read_dataset("transition",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");

@@ -24,12 +24,13 @@ struct parameters{
         char* output;
         char* in_model;
         char* cmd_line;
+        float alpha;
+        float gamma;
         int num_iter;
         int local;
         int num_threads;
         int num_start_states;
 };
-
 
 static int run_build_ihmm(struct parameters* param);
 static int print_help(char **argv);
@@ -39,24 +40,6 @@ int main (int argc, char *argv[])
 {
         struct parameters* param = NULL;
         int c;
-
-        /*rk_state rndstate;
-        float r;
-        rk_randomseed(&rndstate);
-
-        int i;
-        for(i = 0; i < 10000;i++){
-
-                r = rk_beta(&rndstate, 1.0, 11) * 0.0001;
-                if(r == 0.0){
-                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
-                }
-                if(fabs(r-0.0) < FLT_EPSILON){
-                        fprintf(stdout,"%d Got a zero: %f\n",i, r);
-                }
-
-        }
-        exit(0);*/
 
         tlog.echo_build_config();
 
@@ -69,7 +52,8 @@ int main (int argc, char *argv[])
         param->num_start_states = 10;
         param->local = 0;
         param->num_iter = 1000;
-
+        param->alpha = IHMM_PARAM_PLACEHOLDER;
+        param->gamma = IHMM_PARAM_PLACEHOLDER;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -79,16 +63,24 @@ int main (int argc, char *argv[])
                         {"nthreads",required_argument,0,'t'},
                         {"niter",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
+                        {"alpha",required_argument,0,'a'},
+                        {"gamma",required_argument,0,'g'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:l",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:la:g:",long_options, &option_index);
 
                 if (c == -1){
                         break;
                 }
                 switch(c) {
+                case 'a':
+                        param->alpha = atof(optarg);
+                        break;
+                case 'g':
+                        param->gamma = atof(optarg);
+                        break;
                 case 'l':
                         param->local = 1;
                         break;
@@ -101,8 +93,7 @@ int main (int argc, char *argv[])
                         break;
                 case 'm':
                         param->in_model = optarg;
-                       break;
-
+                        break;
                 case 's':
                         param->num_start_states = atoi(optarg);
                         break;
@@ -112,7 +103,6 @@ int main (int argc, char *argv[])
                 case 't':
                         param->num_threads = atoi(optarg);
                         break;
-
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);
@@ -184,9 +174,6 @@ int run_build_ihmm(struct parameters* param)
                 // print_model_parameters(model);
                 // print_counts(model);
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
-
-                //RUN(fill_counts(model, sb));
-
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -194,21 +181,28 @@ int run_build_ihmm(struct parameters* param)
 
                 RUNP(sb = load_sequences(param->input));
 
-                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
-                /* Initial guess... */
-                model->alpha0_a = 6.0f;
-                model->alpha0_b = 15.0f;
-                model->gamma_a = 16.0f;
-                model->gamma_b = 4.0f;
-                /* vague */
-                /*model->alpha0_a = 1.0f;
-                model->alpha0_b = 1.0f;
-                model->gamma_a = 2.0f;
-                model->gamma_b = 1.0f;*/
+                RUN(add_reverse_complement_sequences_to_buffer(sb));
 
-                model->alpha = IHMM_PARAM_PLACEHOLDER;
-                model->gamma = IHMM_PARAM_PLACEHOLDER;
+                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+                if(param->alpha != IHMM_PARAM_PLACEHOLDER && param->gamma != IHMM_PARAM_PLACEHOLDER){
+                        model->alpha = param->alpha;
+                        model->gamma = param->gamma;
+                }else{
+                        /* Initial guess... */
+                        model->alpha_a = 6.0f;
+                        model->alpha_b = 15.0f;
+                        model->gamma_a = 16.0f;
+                        model->gamma_b = 4.0f;
+                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                        model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                }
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
+
+                /* Note this also initializes the last (to infinity state) */
+
+                for(i = 0; i < model->num_states;i++){
+                        model->beta[i] = 1.0 / (float)(model->num_states);
+                }
 
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));
@@ -299,6 +293,8 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--model","Continue training model <>." ,"[]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--niter","Number of iterations." ,"[1000]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--alpha","Alpha hyper parameter." ,"[NA]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--gamma","Gamma hyper oparameter." ,"[NA]"  );
         return OK;
 }
 

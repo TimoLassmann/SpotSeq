@@ -53,6 +53,8 @@ extern int print_states_per_sequence(struct seq_buffer* sb);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);
 extern struct seq_buffer* load_sequences(char* in_filename);
 
+extern int add_reverse_complement_sequences_to_buffer(struct seq_buffer* sb);
+
 
 extern int print_labelled_ihmm_buffer(struct seq_buffer* sb);
 

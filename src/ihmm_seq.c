@@ -15,6 +15,8 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 
 int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
+int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
+
 struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
 {
         struct hdf5_data* hdf5_data = NULL;
@@ -415,7 +417,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < n;j++){
-                        emission[i][j] = rk_gamma(&rndstate,alpha + 1 + i, 1.0);
+                        emission[i][j] = rk_gamma(&rndstate,alpha + 1.0 + ((float)i) / (float)(k)*10.0f, 1.0);
                         sum += emission[i][j];
                 }
                 sanity = 0.0f;
@@ -435,7 +437,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
 
                         transition[i][j] = rk_gamma(&rndstate,alpha , 1.0);
                         if(i == j){
-                                transition[i][j] = rk_gamma(&rndstate,alpha+j , 1.0);
+                                transition[i][j] = rk_gamma(&rndstate,alpha+((float)j) / (float) k , 1.0);
                         }
                         sum += transition[i][j];
                 }
@@ -1072,7 +1074,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
-
+        sb->background = NULL;
 
         label_pos = 0;
         old_label_pos = 0;
@@ -1203,6 +1205,66 @@ ERROR:
         return NULL;
 }
 
+int add_reverse_complement_sequences_to_buffer(struct seq_buffer* sb)
+{
+        struct ihmm_sequence* sequence = NULL;
+        char buffer[BUFFER_LEN];
+        int i,j;
+        int old_numseq;
+        ASSERT(sb!= NULL, "No sequence buffer");
+        ASSERT(sb->L == ALPHABET_DNA, "No DNA sequences in buffer");
+        /* remember old sequence count. */
+        old_numseq = sb->num_seq;
+        /* main loop */
+        for(i = 0; i < old_numseq;i++){
+                sequence = sb->sequences[sb->num_seq];
+                /* alloc space for revcomp sequence */
+                while(sequence->malloc_len < sb->sequences[i]->seq_len){
+                        RUN(realloc_ihmm_seq(sequence));
+                }
+                /* copy sequence name */
+                snprintf(sequence->name, 256 , "%s_rev", sb->sequences[i]->name);
+                /* copy & reverse_complement sequences */
+                reverse_complement(sb->sequences[i], sequence);
+                sequence->seq_len = sb->sequences[i]->seq_len;
+                sb->num_seq++;
+                if(sb->num_seq == sb->malloc_num){
+                        sb->malloc_num = sb->malloc_num << 1;
+                        MREALLOC(sb->sequences,sizeof(struct ihmm_sequence*) * sb->malloc_num);
+                        for(i = sb->num_seq; i < sb->malloc_num;i++){
+                                sb->sequences[i] = NULL;
+                                RUNP(sb->sequences[i] = alloc_ihmm_seq());
+                        }
+                }
+        }
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest)
+{
+        int rev[5] = {3,2,1,0,4};
+
+        int i,c;
+        int len;
+        uint8_t* org_s;
+        uint8_t* dest_s;
+        len = org->seq_len;
+        org_s = org->seq;
+        dest_s = dest->seq;
+        c = 0;
+        for(i = len-1; i >= 0;i--){
+                dest_s[c] = rev[org_s[i]];
+                dest->label[c] = org->label[c];
+                dest->u[c] =   org->u[c];
+                c++;
+        }
+        return OK;
+}
+
+
 int print_states_per_sequence(struct seq_buffer* sb)
 {
 
@@ -1332,8 +1394,25 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
 {
         struct ihmm_sequence* sequence = NULL;
         int i,j;
-
+        int r;
         ASSERT(sb != NULL,"No sequence buffer.");
+
+        /* A 	Adenine */
+        /* C 	Cytosine */
+        /* G 	Guanine */
+        /* T (or U) 	Thymine (or Uracil) */
+        /* R 	A or G */
+        /* Y 	C or T */
+        /* S 	G or C */
+        /* W 	A or T */
+        /* K 	G or T */
+        /* M 	A or C */
+        /* B 	C or G or T */
+        /* D 	A or G or T */
+        /* H 	A or C or T */
+        /* V 	A or C or G */
+        /* N 	any base */
+        /* . or - 	gap */
 
         for(i = 0; i < sb->num_seq;i++){
                 sequence = sb->sequences[i];
@@ -1341,27 +1420,140 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         switch(sequence->seq[j]){
                         case 'A':
                         case 'a':
+                                /* A 	Adenine */
                                 sequence->seq[j] = 0;
                                 break;
                         case 'C':
                         case 'c':
+                                /* C 	Cytosine */
                                 sequence->seq[j] = 1;
                                 break;
                         case 'G':
                         case 'g':
+                                /* G 	Guanine */
                                 sequence->seq[j] = 2;
                                 break;
                         case 'T':
                         case 't':
+                        case 'U':
+                        case 'u':
+                                /* T (or U) 	Thymine (or Uracil) */
                                 sequence->seq[j] = 3;
+                                break;
+                        case 'R':
+                        case 'r':
+                                /* R 	A or G */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else{
+                                        sequence->seq[j] = 2;
+                                }
+                                break;
+                        case 'Y':
+                        case 'y':
+                                /* Y 	C or T */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 1;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'S':
+                        case 's':
+                                /* S 	G or C */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 1;
+                                }else{
+                                        sequence->seq[j] = 2;
+                                }
+                                break;
+                        case 'W':
+                        case 'w':
+                                /* W 	A or T */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'K':
+                        case 'k':
+                                /* K 	G or T */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 2;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'M':
+                        case 'm':
+                                /* M 	A or C */
+                                r = random_int_zero_to_x(1);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else{
+                                        sequence->seq[j] = 2;
+                                }
+                                break;
+                        case 'B':
+                        case 'b':
+                                /* B 	C or G or T */
+                                r = random_int_zero_to_x(2);
+                                if(r == 0){
+                                        sequence->seq[j] = 1;
+                                }else if(r == 1){
+                                        sequence->seq[j] = 2;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'D':
+                        case 'd':
+                                /* D 	A or G or T */
+                                r = random_int_zero_to_x(2);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else if(r == 1){
+                                        sequence->seq[j] = 2;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'H':
+                        case 'h':
+                                /* H 	A or C or T */
+                                r = random_int_zero_to_x(2);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else if(r == 1){
+                                        sequence->seq[j] = 1;
+                                }else{
+                                        sequence->seq[j] = 3;
+                                }
+                                break;
+                        case 'V':
+                        case 'v':
+                                /* V 	A or C or G */
+                                r = random_int_zero_to_x(2);
+                                if(r == 0){
+                                        sequence->seq[j] = 0;
+                                }else if(r == 1){
+                                        sequence->seq[j] = 1;
+                                }else{
+                                        sequence->seq[j] = 2;
+                                }
                                 break;
                         case 'N':
                         case 'n':
                                 sequence->seq[j] = random_int_zero_to_x(3);
                                 break;
-
                         default:
-                                ERROR_MSG("Non ACGTN letter in sequence:%d %s.",i,sequence->seq);
+                                ERROR_MSG("Non ACGTN letter in sequence:%s (%d) %s (%d out of %d).",sequence->name, i,sequence->seq,j, sequence->seq_len);
                                 break;
                         }
 
@@ -1716,7 +1908,7 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b)
                 }
 
                 for(j = 0; j < a->sequences[i]->seq_len;j++){
-                       ASSERT(a->sequences[i]->label[j]  == b->sequences[i]->label[j], "Labels differ" );
+                        ASSERT(a->sequences[i]->label[j]  == b->sequences[i]->label[j], "Labels differ");
                 }
         }
 
@@ -1868,11 +2060,12 @@ int main(const int argc,const char * argv[])
         iseq = NULL;
 
         RUNP(iseq = load_sequences("ihmm_seq_itest_read_test.fa"));
-        RUN(write_ihmm_sequences(iseq,"test.lfa","generated by iseq_ITEST"));
+        RUN(add_reverse_complement_sequences_to_buffer(iseq));
+        RUN(write_ihmm_sequences(iseq,"test_dna.lfa","generated by iseq_ITEST"));
 
 
 
-        RUNP(iseq_b  =load_ihmm_sequences("test.lfa"));
+        RUNP(iseq_b  = load_ihmm_sequences("test_dna.lfa"));
 
         RUN(compare_sequence_buffers(iseq,iseq_b));
         free_ihmm_sequences(iseq);

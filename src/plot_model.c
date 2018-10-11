@@ -51,7 +51,7 @@ int main (int argc, char *argv[])
         param->node_count_cutoff = 0;
         while (1){
                 static struct option long_options[] ={
-                        {"in",required_argument,0,'i'},
+                        {"model",required_argument,0,'m'},
                         {"out",required_argument,0,'o'},
                         {"ethres",required_argument,0,'e'},
                         {"nthres",required_argument,0,'n'},
@@ -59,7 +59,7 @@ int main (int argc, char *argv[])
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:e:n:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hm:o:e:n:",long_options, &option_index);
 
                 if (c == -1){
                         break;
@@ -71,7 +71,7 @@ int main (int argc, char *argv[])
                 case 'e':
                         param->edge_threshold = atof(optarg);
                         break;
-                case 'i':
+                case 'm':
                         param->input = optarg;
                         break;
                 case 'o':
@@ -559,14 +559,13 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-
         return FAIL;
 
 }
 
 int print_help(char **argv)
 {
-        const char usage[] = " -i <input model> -o <output dot file>";
+        const char usage[] = " -m <input model> -o <output dot file>";
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 

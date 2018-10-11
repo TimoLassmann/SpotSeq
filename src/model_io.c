@@ -61,10 +61,10 @@ struct ihmm_model* read_model_hdf5(char* filename)
                         model->alpha = hdf5_data->attr[i]->float_val;
                 }
                 if(!strncmp("alpha0_a", hdf5_data->attr[i]->attr_name, 8)){
-                        model->alpha0_a = hdf5_data->attr[i]->float_val;
+                        model->alpha_a = hdf5_data->attr[i]->float_val;
                 }
                 if(!strncmp("alpha0_b", hdf5_data->attr[i]->attr_name, 8)){
-                        model->alpha0_b = hdf5_data->attr[i]->float_val;
+                        model->alpha_b = hdf5_data->attr[i]->float_val;
                 }
         }
 
@@ -210,8 +210,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_add_attribute(hdf5_data, "gamma_b","",0, model->gamma_b, HDF5GLUE_FLOAT);
 
         hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha0_a, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha0_b, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha_a, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_FLOAT);
 
         hdf5_create_group("imodel",hdf5_data);
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
@@ -309,9 +309,8 @@ int write_model(struct ihmm_model* model, char* filename)
         fprintf(f_ptr,"gamma_b: %f\n", model->gamma_b);
 
         fprintf(f_ptr,"alpha: %f\n", model->alpha);
-        fprintf(f_ptr,"alpha0_a: %f\n", model->alpha0_a);
-        fprintf(f_ptr,"alpha0_b: %f\n", model->alpha0_b);
-
+        fprintf(f_ptr,"alpha_a: %f\n", model->alpha_a);
+        fprintf(f_ptr,"alpha_b: %f\n", model->alpha_b);
 
         fprintf(f_ptr,"Beta:\n");
         for(i = 0; i < model->num_states;i++){
@@ -362,8 +361,8 @@ struct ihmm_model* read_model(char* filename)
         fscanf(f_ptr,"gamma_b: %f\n", &model->gamma_b);
 
         fscanf(f_ptr,"alpha: %f\n", &model->alpha);
-        fscanf(f_ptr,"alpha0_a: %f\n", &model->alpha0_a);
-        fscanf(f_ptr,"alpha0_b: %f\n", &model->alpha0_b);
+        fscanf(f_ptr,"alpha0_a: %f\n", &model->alpha_a);
+        fscanf(f_ptr,"alpha0_b: %f\n", &model->alpha_b);
 
 
         fscanf(f_ptr, "%*[^\n]\n");

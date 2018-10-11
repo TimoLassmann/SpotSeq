@@ -288,7 +288,7 @@ ERROR:
 
 
 /* This function assumes (oh no!) that beta has space for an additional
-   g * element */
+p   g * element */
 int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft)
 {
         struct fast_t_item** infinity = NULL;
@@ -307,15 +307,12 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         //int pg_hack;            /* I don't want add states that are not reachable. */
         //float* tmp_pg = NULL;
 
-
         ASSERT(ihmm != NULL, "No model");
         ASSERT(ft != NULL, "No ft.");
         /* Sorting is only strictly necessary if this is called after another function re-sorted it */
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
 
-
         rndstate = ihmm->rndstate;
-
 
         //list_index = ft->num_items;
 
@@ -456,9 +453,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 infinity[i]->to = new_k+1;
                 infinity[i]->t = (1.0-pg) * pe;
                 ft->transition[i][new_k+1] = infinity[i]->t;
-
-
-
         }
 
         /*qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_asc);
@@ -1262,8 +1256,8 @@ int full_run_test(void)
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
 
-        model->alpha0_a = 6.0f;
-        model->alpha0_b = 15.0f;
+        model->alpha_a = 6.0f;
+        model->alpha_b = 15.0f;
         model->gamma_a = 16.0f;
         model->gamma_b = 4.0f;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -1329,8 +1323,8 @@ int full_run_test_protein(void)
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
 
-        model->alpha0_a = 6.0f;
-        model->alpha0_b = 15.0f;
+        model->alpha_a = 6.0f;
+        model->alpha_b = 15.0f;
         model->gamma_a = 16.0f;
         model->gamma_b = 4.0f;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -1388,8 +1382,8 @@ static int shrink_grow_integration_test(void)
         RUN(fill_counts(model,iseq));
         RUN(print_counts(model));
 
-        model->alpha0_a = 4.0f;
-        model->alpha0_b = 2.0f;
+        model->alpha_a = 4.0f;
+        model->alpha_b = 2.0f;
         model->gamma_a = 3.0f;
         model->gamma_b = 6.0f;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -1494,8 +1488,8 @@ static int add_state_integration_test(void)
         RUN(fill_counts(model,iseq));
         RUN(print_counts(model));
         /* Now there are counts but no model parameters. */
-        model->alpha0_a = 4.0f;
-        model->alpha0_b = 2.0f;
+        model->alpha_a = 4.0f;
+        model->alpha_b = 2.0f;
         model->gamma_a = 3.0f;
         model->gamma_b = 6.0f;
         model->alpha = IHMM_PARAM_PLACEHOLDER;

@@ -556,14 +556,13 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-
         return FAIL;
 
 }
 
 int print_help(char **argv)
 {
-        const char usage[] = " -i <input model> -o <output dot file>";
+        const char usage[] = " -m <input model> -o <output dot file>";
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 

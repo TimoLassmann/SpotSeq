@@ -19,7 +19,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         }
         LOG_MSG("Will start with %d states",K);
 
-        //RUN(random_label_ihmm_sequences(sb, K, 0.3));
+        //RUN(random_label_ihmm_sequences(sb, K, 30));
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
         //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
@@ -137,7 +137,7 @@ int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
                 //- sum(gammaln( ab(nzind) ));
                 sum = 0.0;
                 for(j = 0; j < model->num_states;j++){
-                        if(model->beta[j] * model->alpha){
+                        if(model->beta[j] && model->alpha){
                                 RUN(esl_stats_LogGamma(model->beta[j] * model->alpha,&r  ));
                                 sum += r;
                         }
@@ -163,7 +163,6 @@ int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
         return OK;
 ERROR:
         return FAIL;
-
 }
 
 int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb)
@@ -402,37 +401,13 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
 
         ASSERT(model != NULL, "No model");
         ASSERT(iterations > 0, "No iterations");
+
         last_state = model->num_states-1;
 
         /* alloc auxillary data structures  */
         RUNP(M = malloc_2d_float(M, model->num_states,model->num_states, 0.0f));
         RUNP(supp = malloc_2d_float(supp, 5,model->num_states, 0.0f));
 
-        /* am I in the first iteration? */
-        if(model->alpha == IHMM_PARAM_PLACEHOLDER || model->gamma == IHMM_PARAM_PLACEHOLDER){
-                /* What shall I do with an empty (just alloced) model with no
-                 * _a/b variables ? Throw an error! */
-                ASSERT(model->alpha0_a != IHMM_PARAM_PLACEHOLDER,"you need to set alpha0_a before calling iHmmHyperSample .");
-                ASSERT(model->alpha0_b != IHMM_PARAM_PLACEHOLDER,"you need to set alpha0_b before calling iHmmHyperSample .");
-                ASSERT(model->gamma_a != IHMM_PARAM_PLACEHOLDER,"you need to set gamma_a before calling iHmmHyperSample .");
-                ASSERT(model->gamma_b != IHMM_PARAM_PLACEHOLDER,"you need to set gamma_b before calling iHmmHyperSample .");
-                /* all good let's set the initial guess parameters...  */
-                /* First of all initialize the random number generator */
-
-
-
-                model->alpha = rk_gamma(&model->rndstate, model->alpha0_a,1.0 / model->alpha0_b);
-                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
-                //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
-
-
-                /* Note this also initializes the last (to infinity state) */
-
-                for(i = 0; i < model->num_states;i++){
-                        model->beta[i] = 1.0 / (float)(model->num_states);
-                }
-                /* Ok all set to re-estimate hyper parameters..  */
-        }
         //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
         gamma = model->gamma;
@@ -476,42 +451,45 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         for(i = 0; i <= last_state;i++){
                 model->beta[i] /= sum;
         }
-        /* ok done with beta now gamma and alpha  */
-        w = supp[2];
-        p = supp[3];
-        s = supp[4];
 
-        for(j = 0;j < iterations;j++){
-                sum_s = 0.0f;
-                sum_w = 0.0f;
-                for(i = 0; i < last_state;i++){
-                        w[i] = rk_beta(&model->rndstate, alpha+1.0, sum_N[i]);
-                        p[i] = sum_N[i] / alpha;
-                        p[i] = p[i] / (p[i]+1.0);
-                        s[i] = rk_binomial(&model->rndstate, 1, p[i]);
-                        sum_s += s[i];
-                        sum_w += log(w[i]);
+        /* Only re-estimate alpha and gamma if vague priors are set...  */
+        if(model->gamma_a != IHMM_PARAM_PLACEHOLDER){
+                /* ok done with beta now gamma and alpha  */
+                w = supp[2];
+                p = supp[3];
+                s = supp[4];
+
+                for(j = 0;j < iterations;j++){
+                        sum_s = 0.0f;
+                        sum_w = 0.0f;
+                        for(i = 0; i < last_state;i++){
+                                w[i] = rk_beta(&model->rndstate, alpha+1.0, sum_N[i]);
+                                p[i] = sum_N[i] / alpha;
+                                p[i] = p[i] / (p[i]+1.0);
+                                s[i] = rk_binomial(&model->rndstate, 1, p[i]);
+                                sum_s += s[i];
+                                sum_w += log(w[i]);
+                        }
+                        alpha = rk_gamma(&model->rndstate, model->alpha_a + total_M - sum_s, 1.0 / (model->alpha_b -sum_w));
                 }
-                alpha = rk_gamma(&model->rndstate, model->alpha0_a + total_M - sum_s, 1.0 / (model->alpha0_b -sum_w));
-        }
-        model->alpha = alpha;
+                model->alpha = alpha;
 
-        /* Let's do gamma now...    */
-        mu = 0.0f;
-        pi_mu = 0.0f;
+                /* Let's do gamma now...    */
+                mu = 0.0f;
+                pi_mu = 0.0f;
 
 
-        for(j = 0;j < iterations;j++){
-                mu =  rk_beta(&model->rndstate, gamma+1.0, total_M);
-                pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + last_state -1.0));
-                if(rk_double( &model->rndstate) < pi_mu){
-                        gamma = rk_gamma(&model->rndstate,model->gamma_a + last_state, 1.0 / (model->gamma_b - log(mu)));
-                }else{
-                        gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
+                for(j = 0;j < iterations;j++){
+                        mu =  rk_beta(&model->rndstate, gamma+1.0, total_M);
+                        pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + last_state -1.0));
+                        if(rk_double( &model->rndstate) < pi_mu){
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state, 1.0 / (model->gamma_b - log(mu)));
+                        }else{
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
+                        }
                 }
+                model->gamma = gamma;
         }
-        model->gamma = gamma;
-
         free_2d((void**) M);
         free_2d((void**) supp);
 
@@ -539,8 +517,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         model->alloc_num_states = 16;
         model->L = L;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
-        model->alpha0_a = IHMM_PARAM_PLACEHOLDER;
-        model->alpha0_b = IHMM_PARAM_PLACEHOLDER;
+        model->alpha_a = IHMM_PARAM_PLACEHOLDER;
+        model->alpha_b = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
         model->gamma_a = IHMM_PARAM_PLACEHOLDER;
         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
@@ -714,8 +692,8 @@ int main(const int argc,const char * argv[])
         RUN(fill_counts(ihmm,iseq));
         RUN(print_counts(ihmm));
         /* Now there are counts but no model parameters. */
-        ihmm->alpha0_a = 4.0f;
-        ihmm->alpha0_b = 2.0f;
+        ihmm->alpha_a = 4.0f;
+        ihmm->alpha_b = 2.0f;
         ihmm->gamma_a = 3.0f;
         ihmm->gamma_b = 6.0f;
         ihmm->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -730,8 +708,8 @@ int main(const int argc,const char * argv[])
 
         /* Verify (by eye!) if the estimation of the hyperparameters works  */
         for(i = 0; i < 10;i++){
-                ihmm->alpha0_a = 4.0f;
-                ihmm->alpha0_b = 2.0f;
+                ihmm->alpha_a = 4.0f;
+                ihmm->alpha_b = 2.0f;
                 ihmm->gamma_a = 3.0f;
                 ihmm->gamma_b = 6.0f;
                 ihmm->alpha = IHMM_PARAM_PLACEHOLDER;

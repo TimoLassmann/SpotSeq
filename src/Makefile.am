@@ -2,7 +2,7 @@
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
 
 
-CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa  libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5
+CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.lfa libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5
 
 # top_builddir = @top_builddir@
 

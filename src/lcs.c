@@ -546,7 +546,7 @@ int add_positional_distribution(struct motif_struct** list, int num_motif, struc
                 }
                 for(j = m->start_in_sa; j < m->end_in_sa;j++){
                         g = sa->lcs[j];
-                        l = sb->sequences[ g->seq_num]->seq_len;
+                        l = sb->sequences[g->seq_num]->seq_len;
                         index =roundf((float)pos_resolution * ((float) g->pos / l));
                         m->occ[index]++;
                         /*tmp= g->str;

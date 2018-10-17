@@ -252,7 +252,6 @@ int max_score_segment(float* x , int start ,int end, float min_density,struct pa
                         //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
                 }
                 //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
-
         }
 
         if (max_density < 1e100) {

@@ -55,7 +55,8 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_emit cal 
+
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal 
 
 cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
 cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
@@ -75,6 +76,11 @@ spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
 spotseq_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+
+spotseq_iclu_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) infoclust.c infoclust.h
+spotseq_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
 
 spotseq_emit_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
 

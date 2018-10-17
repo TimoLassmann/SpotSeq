@@ -406,7 +406,7 @@ ERROR:
         return NULL;
 }
 
-int run_build_fhmm_file(char* h5file)
+int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
@@ -422,7 +422,6 @@ int run_build_fhmm_file(char* h5file)
         float** s2_t = NULL;
         float sum;
         int iterations = 1000;
-
 
         ASSERT(h5file != NULL, "No parameters found.");
 
@@ -440,22 +439,40 @@ int run_build_fhmm_file(char* h5file)
         s1_t = malloc_2d_float(s1_t, model->num_states, model->num_states, 0.0);
         s2_t = malloc_2d_float(s2_t, model->num_states, model->num_states, 0.0);
 
-
-        for( iter=  0;iter < iterations;iter++){
-                RUN(fill_fast_transitions_only_matrices(model,ft));
-                for(i = 0;i < model->num_states;i++){
-                        for(c = 0; c < model->L;c++){
-                                s1_e[i][c] += ft->emission[c][i];
-                                s2_e[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
+        if(allow_zero_counts){
+                for( iter=  0;iter < iterations;iter++){
+                        RUN(fill_fast_transitions_only_matrices(model,ft));
+                        for(i = 0;i < model->num_states;i++){
+                                for(c = 0; c < model->L;c++){
+                                        s1_e[i][c] += ft->emission[c][i];
+                                        s2_e[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
+                                }
+                        }
+                        for(i = 0;i < model->num_states;i++){
+                                for(c = 0;c < model->num_states;c++){
+                                        s1_t[i][c] += ft->transition[i][c];
+                                        s2_t[i][c] += (ft->transition[i][c] * ft->transition[i][c]);
+                                }
                         }
                 }
-                for(i = 0;i < model->num_states;i++){
-                        for(c = 0;c < model->num_states;c++){
-                                s1_t[i][c] += ft->transition[i][c];
-                                s2_t[i][c] += (ft->transition[i][c] * ft->transition[i][c]);
+        }else{
+                for( iter=  0;iter < iterations;iter++){
+                        RUN(fill_fast_transitions_only_matrices(model,ft));
+                        for(i = 0;i < model->num_states;i++){
+                                for(c = 0; c < model->L;c++){
+                                        s1_e[i][c] += ft->emission[c][i];
+                                        s2_e[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
+                                }
+                        }
+                        for(i = 0;i < model->num_states;i++){
+                                for(c = 0;c < model->num_states;c++){
+                                        if(model->transition_counts[i][c]){
+                                                s1_t[i][c] += ft->transition[i][c];
+                                                s2_t[i][c] += (ft->transition[i][c] * ft->transition[i][c]);
+                                        }
+                                }
                         }
                 }
-
         }
 
         for(i = 0; i < model->num_states;i++){

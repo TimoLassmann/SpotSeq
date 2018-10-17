@@ -1,12 +1,9 @@
 
 #include "finite_hmm.h"
 
-
-
 int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int expected_len)
 {
         int i;
-
         float score;
         float r;                /* self transition */
         float e;                /* 1- r (exit) */
@@ -14,7 +11,6 @@ int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int exp
         ASSERT(b != NULL, "No background probabilities");
         ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
-
 
         /* initialise transitions  */
         r = (double)expected_len / ((double) expected_len + 1.0);
@@ -33,17 +29,14 @@ int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int exp
 
         *ret_score = score;
 
-
         return OK;
 ERROR:
         return FAIL;
-
 }
 
 int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
-
 
         float* last= 0;
         float* cur = 0;
@@ -95,7 +88,6 @@ int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int 
                 cur[IHMM_END_STATE] = logsum(cur[IHMM_END_STATE],last[j] + fhmm->t[j][IHMM_END_STATE]);
         }
         *ret_score = cur[IHMM_END_STATE];
-
         //fhmm->f_score = cur[IHMM_END_STATE];// matrix[ENDSTATE][i];
         return OK;
 ERROR:
@@ -107,9 +99,7 @@ struct fhmm* init_fhmm(char* filename)
 {
         struct fhmm* fhmm = NULL;
         ASSERT(filename!= NULL, "No filename");
-
-
-
+        /* allocate finite hmm */
         RUNP(fhmm = alloc_fhmm());
 
         /* get HMM parameters  */
@@ -148,7 +138,6 @@ int setup_model(struct fhmm* fhmm)
                 for(j = 0; j < fhmm->K;j++){
                         fhmm->t[i][j] = prob2scaledprob(fhmm->t[i][j]);
                 }
-
         }
 
         for(i = 0; i < fhmm->K;i++){
@@ -158,17 +147,14 @@ int setup_model(struct fhmm* fhmm)
                                 fhmm->tindex[i][c+1] = j;
                                 c++;
                         }
-
                 }
                 fhmm->tindex[i][0] = c+1;
         }
 
         /* background */
-
         for(i = 0; i < fhmm->L;i++){
                 fhmm->background[i] = prob2scaledprob(fhmm->background[i]);
         }
-
         return OK;
 ERROR:
         return FAIL;
@@ -349,5 +335,3 @@ void free_fhmm(struct fhmm* fhmm)
                 MFREE(fhmm);
         }
 }
-
-

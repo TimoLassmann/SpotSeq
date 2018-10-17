@@ -30,6 +30,7 @@ struct parameters{
         int local;
         int num_threads;
         int num_start_states;
+        int rev;
 };
 
 static int run_build_ihmm(struct parameters* param);
@@ -51,6 +52,7 @@ int main (int argc, char *argv[])
         param->num_threads = 8;
         param->num_start_states = 10;
         param->local = 0;
+        param->rev = 0;
         param->num_iter = 1000;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
@@ -65,11 +67,12 @@ int main (int argc, char *argv[])
                         {"model",required_argument,0,'m'},
                         {"alpha",required_argument,0,'a'},
                         {"gamma",required_argument,0,'g'},
+                        {"rev",0,0,'r'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:la:g:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"rhi:o:t:n:m:s:la:g:",long_options, &option_index);
 
                 if (c == -1){
                         break;
@@ -80,6 +83,9 @@ int main (int argc, char *argv[])
                         break;
                 case 'g':
                         param->gamma = atof(optarg);
+                        break;
+                case 'r':
+                        param->rev = 1;
                         break;
                 case 'l':
                         param->local = 1;
@@ -145,8 +151,9 @@ int main (int argc, char *argv[])
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         RUN(run_build_ihmm(param));
-
-        RUN(run_build_fhmm_file(param->output));
+        /* 1 means allow transitions that are not seen in the training
+         * data */
+        RUN(run_build_fhmm_file(param->output,0));
         /* calibrate model parameters */
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -180,9 +187,9 @@ int run_build_ihmm(struct parameters* param)
 
 
                 RUNP(sb = load_sequences(param->input));
-
-                RUN(add_reverse_complement_sequences_to_buffer(sb));
-
+                if(param->rev && sb->L == ALPHABET_DNA){
+                        RUN(add_reverse_complement_sequences_to_buffer(sb));
+                }
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
                 if(param->alpha != IHMM_PARAM_PLACEHOLDER && param->gamma != IHMM_PARAM_PLACEHOLDER){
                         model->alpha = param->alpha;

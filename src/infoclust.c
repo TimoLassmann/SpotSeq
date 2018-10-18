@@ -12,10 +12,21 @@ static int run_infoclust(struct parameters* param);
 
 int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy);
 
+int insert_motif(struct motif_list*m, struct paraclu_cluster* p,struct fhmm* fhmm);
+int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div);
+
+
+int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm);
+
+
+struct motif_list* init_motif_list(int initial_len);
+int extend_motif_list(struct motif_list* m);
+void free_motif_list(struct motif_list* m);
+
 struct paraclu_cluster* init_paraclu_cluster(float min_d,int num_sequences);
 void free_paraclu_cluster(struct paraclu_cluster* p);
 
-int max_score_segment(float* x , int start ,int end, float min_density,struct paraclu_cluster* p);
+int max_score_segment(float* x , int start ,int end, int min_len,float min_density,struct paraclu_cluster* p);
 float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix);
 void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix);
 int free_parameters(struct parameters* param);
@@ -100,6 +111,8 @@ int run_infoclust(struct parameters* param)
         struct ihmm_sequence* s = NULL;
         struct fhmm* fhmm = NULL;
         struct paraclu_cluster* p =  NULL;
+        struct motif_list* m = NULL;
+
         float* rel_entropy = NULL;
         int i,j,c;
         ASSERT(param != NULL, "No parameters.");
@@ -118,8 +131,8 @@ int run_infoclust(struct parameters* param)
         /* Step one: calculate relative entropy for each state */
         RUN(calc_per_state_rel_entrophy(fhmm, rel_entropy));
 
-        /* Don't need fhmm anymore */
-        free_fhmm(fhmm);
+
+
         /* Step two: label sequences with rel entropy perstate */
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
@@ -129,28 +142,54 @@ int run_infoclust(struct parameters* param)
                 }
                 //fprintf(stdout,"\n");
         }
+        m = init_motif_list(sb->num_seq);
 
-        p = init_paraclu_cluster(1.0, sb->num_seq);
 
-         for(i = 0; i < sb->num_seq;i++){
-                 s = sb->sequences[i];
-                 for(j = 0; j < 5;j++){
-                         RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,1,p));
-                         if(p->start == -1){
-                                 break;
-                         }
-                         /* print cluster  */
-                         fprintf(stderr,"CLUSTER:%d:%d	%d	%d	%d	%f %f %f\n",i,j,p->start, p->stop,p->stop-p->start, p->kl_divergence,p->max_d ,p->kl_divergence / (float)(p->stop-p->start) );
-                         /* delete motif */
-                         for(c = p->start;c < p->stop;c++){
-                                 sb->sequences[i]->u[c] = 0.0f;
-                         }
+        for(i = 0; i < sb->num_seq;i++){
+                s = sb->sequences[i];
+                for(j = 0; j < 5;j++){
+                        p = init_paraclu_cluster(1.0, sb->num_seq);
+                        RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,6,1,p));
+                        if(p->start == -1){
+                                free_paraclu_cluster(p);
+                                break;
+                        }
+                        MMALLOC(p->state_sequence, sizeof(int) * p->stop-p->start);
+                        for(c = 0; c < p->stop-p->start;c++){
+                                p->state_sequence[c] = s->label[p->start + c];
+                        }
+                        //fprintf(stderr,"CLUSTER:%d:%d	%d	%d	%d	%f %f %f\n",i,j,p->start, p->stop,p->stop-p->start, p->kl_divergence,p->max_d ,p->kl_divergence / (float)(p->stop-p->start) );
+                        /* delete motif */
+                        for(c = p->start;c < p->stop;c++){
+                                sb->sequences[i]->u[c] = 0.0f;
+                        }
+                        /* print cluster  */
+                        RUN(insert_motif(m,p,fhmm));
+                        //free_paraclu_cluster(p);
+                }
+        }
 
-                         p->max_d = 0;
-                         p->start = -1;
-                         p->stop = -1;
-                 }
-         }
+
+
+        for(i = 0 ; i < m->num_items;i++){
+                p = m->plist[i];
+                fprintf(stderr,"CLUSTER:%d	%d	%d	%d\t",i,p->start, p->stop,p->len);
+                for(j = 0 ; j < p->len;j++){
+                        fprintf(stdout," %d", p->state_sequence[j]);
+                }
+
+                fprintf(stdout,"\n");
+                for(c = 0; c < fhmm->L;c++){
+                        for(j = 0 ; j < p->len;j++){
+                                fprintf(stdout," %0.4f",  fhmm->e[p->state_sequence[j]][c]);
+                        }
+                         fprintf(stdout,"\n");
+                }
+                fprintf(stdout,"\n");
+        }
+        RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
+        free_fhmm(fhmm);
+        free_motif_list(m);
         //run_paraclu_clustering(sb, "GAGA");
         /* clean up */
         free_ihmm_sequences(sb);
@@ -167,6 +206,87 @@ ERROR:
         MFREE(rel_entropy);
         return FAIL;
 }
+
+
+int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm)
+{
+        char buffer[BUFFER_LEN];
+        struct hdf5_data* hdf5_data = NULL;
+        struct paraclu_cluster* p =  NULL;
+        float** tmp = NULL;
+        int i,j,c;
+
+
+
+        ASSERT(filename != NULL, "No file name");
+        ASSERT(m != NULL, "No motifs");
+
+
+
+        /* determine max_len of motif - to alloc frequency matrix */
+
+        RUNP(hdf5_data = hdf5_create());
+        snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
+        hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
+        snprintf(buffer, BUFFER_LEN, "%s", PACKAGE_VERSION);
+        hdf5_add_attribute(hdf5_data, "Version", buffer, 0, 0.0f, HDF5GLUE_CHAR);
+
+
+        RUN(hdf5_create_file(filename,hdf5_data));
+
+        hdf5_write_attributes(hdf5_data, hdf5_data->file);
+
+
+        RUN(hdf5_create_group("MotifData",hdf5_data));
+
+
+        for(i = 0 ; i < m->num_items;i++){
+                p = m->plist[i];
+                RUNP(tmp = malloc_2d_float(tmp, p->len, fhmm->L, 0.0));
+
+                fprintf(stderr,"CLUSTER:%d	%d	%d	%d\t",i,p->start, p->stop,p->len);
+                for(j = 0 ; j < p->len;j++){
+                        fprintf(stdout," %d", p->state_sequence[j]);
+                }
+
+                fprintf(stdout,"\n");
+
+                for(j = 0 ; j < p->len;j++){
+                        for(c = 0; c < fhmm->L;c++){
+                                tmp[j][c] = fhmm->e[p->state_sequence[j]][c];
+                                fprintf(stdout," %0.4f",  fhmm->e[p->state_sequence[j]][c]);
+                        }
+                        fprintf(stdout,"\n");
+                }
+                fprintf(stdout,"\n");
+
+
+                hdf5_data->rank = 2;
+                hdf5_data->dim[0] = p->len;
+                hdf5_data->dim[1] = fhmm->L;
+                hdf5_data->chunk_dim[0] = p->len;
+                hdf5_data->chunk_dim[1] = fhmm->L;
+                hdf5_data->native_type = H5T_NATIVE_FLOAT;
+                snprintf(buffer, BUFFER_LEN, "Motif%06d", i+1);
+                hdf5_write(buffer,&tmp[0][0], hdf5_data);
+
+                free_2d((void**) tmp);
+                tmp = NULL;
+        }
+
+        RUN(hdf5_close_group(hdf5_data));
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+
 
 int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy)
 {
@@ -195,18 +315,146 @@ ERROR:
         return FAIL;
 }
 
+int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fhmm)
+{
+        int i,j;
+        int new = 1;
+        float kl;
+        for(i = 0; i < m->num_items;i++){
+                /* compare motifs - keep longer one... */
+                RUN(compare_motif(fhmm, m->plist[i], p, &kl));
+                //fprintf(stdout,"%d %f %f \n",i, kl,kl / MACRO_MIN(p->len, m->plist[i]->len));
+                if(kl / MACRO_MIN(p->len, m->plist[i]->len) < 0.1f){
+                        new = 0;
+                        if(p->len > m->plist[i]->len){
+                                //                fprintf(stdout,"replace existing cluster\n");
+                                free_paraclu_cluster(m->plist[i]);
+                                m->plist[i] = p;
+                        }else{
+                                //                fprintf(stdout,"keep\n");
+                                free_paraclu_cluster(p);
+
+                        }
+                        break;
+                }
+        }
+        //fprintf(stdout,"Insert? %d\n",new);
+        if(new){                /* still */
+                m->plist[m->num_items] = p;
+                m->num_items++;
+                if(m->num_items == m->alloc_items){
+                        RUN(extend_motif_list(m));
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+/* just compare - decision what to do later */
+int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div)
+{
+        float x;
+        float y;
+        int i,j,c;
+
+        struct paraclu_cluster* temp = NULL;
+
+        ASSERT(a != NULL, "No a");
+        ASSERT(b != NULL, "No b");
+
+        if(b->len > a->len){
+                temp = a;
+                a = b;
+                b = temp;
+        }
+
+        *kl_div = 10000000;
+        /* outer loop - slide shorter motif across longer one.. */
+
+        for(i = 0; i <= a->len - b->len;i++){
+                x = 0.0f;
+                y = 0.0f;
+                for(j = 0; j < b->len;j++){
+                        for(c = 0; c < fhmm->L;c++){
+                                if(fhmm->e[a->state_sequence[i+j]][c] > 0.0f && fhmm->e[b->state_sequence[j]][c] > 0.0f ){
+                                        x += fhmm->e[a->state_sequence[i+j]][c] * log2f(fhmm->e[a->state_sequence[i+j]][c] / fhmm->e[b->state_sequence[j]][c]);
+                                        y += fhmm->e[b->state_sequence[j]][c] * log2f(fhmm->e[b->state_sequence[j]][c] / fhmm->e[a->state_sequence[i+j]][c]);
+                                }
+                        }
+                }
+                if(x < *kl_div){
+                        *kl_div = x;
+                }
+                if(y < *kl_div){
+                        *kl_div = y;
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+struct motif_list* init_motif_list(int initial_len)
+{
+        struct motif_list* m = NULL;
+        int i;
+        ASSERT(initial_len > 0, "No length");
+
+        MMALLOC(m, sizeof(struct motif_list));
+        m->plist = NULL;
+        m->num_items = 0;
+        m->alloc_items = initial_len;
+        MMALLOC(m->plist, sizeof(struct paraclu_cluster*)* m->alloc_items);
+        for(i = 0; i < m->alloc_items;i++){
+                m->plist[i] = NULL;
+        }
+        return m;
+ERROR:
+        return NULL;
+}
+
+int extend_motif_list(struct motif_list* m )
+{
+        int i,old_len;
+
+        ASSERT(m != NULL, "No list");
+        old_len = m->alloc_items;
+        m->alloc_items = m->alloc_items << 1;
+        MREALLOC(m->plist, sizeof(struct paraclu_cluster*)* m->alloc_items);
+        for(i = old_len; i < m->alloc_items;i++){
+                m->plist[i] = NULL;
+        }
+        return OK;
+ERROR:
+
+        return FAIL;
+}
+
+void free_motif_list(struct motif_list* m)
+{
+        int i;
+        if(m){
+                for(i = 0; i < m->num_items;i++){
+                        free_paraclu_cluster(m->plist[i]);
+                }
+                MFREE(m->plist);
+                MFREE(m);
+        }
+
+}
+
 struct paraclu_cluster* init_paraclu_cluster(float min_d,int num_sequences)
 {
         struct paraclu_cluster* p = NULL;
 
         MMALLOC(p, sizeof(struct paraclu_cluster));
+        p->state_sequence = NULL;
         p->max_d = 0;
         p->seq_id = -1;
         p->start = -1;
         p->stop = -1;
         p->kl_divergence = -1;
-        p->min_d_parameter = 1.0;
-        p->min_len_parameter = 6;
         return p;
 ERROR:
         return NULL;
@@ -215,11 +463,14 @@ ERROR:
 void free_paraclu_cluster(struct paraclu_cluster* p)
 {
         if(p){
+                if(p->state_sequence){
+                        MFREE(p->state_sequence);
+                }
                 MFREE(p);
         }
 }
 
-int max_score_segment(float* x , int start ,int end, float min_density,struct paraclu_cluster* p)
+int max_score_segment(float* x , int start ,int end, int min_len, float min_density,struct paraclu_cluster* p)
 {
         float max_density;
         float new_min_density;
@@ -243,11 +494,12 @@ int max_score_segment(float* x , int start ,int end, float min_density,struct pa
         max_density =  (min_prefix < min_suffix) ? min_prefix : min_suffix;
 
 
-        if (max_density > min_density &&  end-start >= p->min_len_parameter ){
+        if (max_density > min_density &&  end-start >= min_len ){
                 if(max_density /  min_density >= p->max_d){
                         p->max_d =  max_density /  min_density;
                         p->start = start;
                         p->stop = end;
+                        p->len = end - start;
                         p->kl_divergence = total;
                         //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
                 }
@@ -259,10 +511,10 @@ int max_score_segment(float* x , int start ,int end, float min_density,struct pa
                 new_min_density =  (max_density > min_density) ? max_density : min_density;
                 //Ci mid = (minPrefixDensity < minSuffixDensity) ? minPrefix : minSuffix;
                 //fprintf(stderr,"test:%f	%f\n",new_min_density,max_density);
-                RUN(max_score_segment(x ,start , mid , new_min_density, p));
+                RUN(max_score_segment(x ,start , mid , min_len,new_min_density, p));
                 //fprintf(stderr,"test:%f	%f\n",new_min_density,max_density);
                 //writeClusters(beg, mid, newMinDensity);
-                RUN(max_score_segment(x ,mid , end , new_min_density, p));
+                RUN(max_score_segment(x ,mid , end , min_len,new_min_density, p));
                 //writeClusters(mid, end, newMinDensity);
         }
         return OK;

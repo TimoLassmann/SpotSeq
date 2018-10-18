@@ -85,7 +85,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
                                           # Some sample data
 
 
-  x = h5dump("../motif.h5")
+  x = h5dump("../src/motif.h5")
 
 
   add_rowname <- function(x){

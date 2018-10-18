@@ -2,14 +2,20 @@
 #define INFOCLUST_H
 
 struct paraclu_cluster{
+        int* state_sequence;
+        float max_d;
+        float kl_divergence;
         int seq_id;
         int start;
         int stop;
-        float max_d;
-        float kl_divergence;
-
-        float min_d_parameter;
-        int min_len_parameter;
+        int len;
 };
+
+struct motif_list{
+        struct paraclu_cluster** plist;
+        int num_items;
+        int alloc_items;
+};
+
 
 #endif

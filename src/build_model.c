@@ -173,7 +173,7 @@ int run_build_ihmm(struct parameters* param)
         int i;
 
         ASSERT(param!= NULL, "No parameters found.");
-
+        init_logsum();
         initial_states = param->num_start_states;
 
         if(param->in_model){
@@ -187,22 +187,30 @@ int run_build_ihmm(struct parameters* param)
 
 
                 RUNP(sb = load_sequences(param->input));
+
+                //sb = concatenate_sequences(sb);
+
                 if(param->rev && sb->L == ALPHABET_DNA){
+                        LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
                 RUNP(model = alloc_ihmm_model(initial_states, sb->L));
-                if(param->alpha != IHMM_PARAM_PLACEHOLDER && param->gamma != IHMM_PARAM_PLACEHOLDER){
-                        model->alpha = param->alpha;
-                        model->gamma = param->gamma;
-                }else{
-                        /* Initial guess... */
+                if(param->alpha == IHMM_PARAM_PLACEHOLDER){
                         model->alpha_a = 6.0f;
                         model->alpha_b = 15.0f;
+                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                }else{
+                        model->alpha = param->alpha;
+                }
+
+                if(param->gamma == IHMM_PARAM_PLACEHOLDER){
                         model->gamma_a = 16.0f;
                         model->gamma_b = 4.0f;
-                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
                         model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                }else{
+                        model->gamma = param->gamma;
                 }
+
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
 
                 /* Note this also initializes the last (to infinity state) */
@@ -210,6 +218,12 @@ int run_build_ihmm(struct parameters* param)
                 for(i = 0; i < model->num_states;i++){
                         model->beta[i] = 1.0 / (float)(model->num_states);
                 }
+
+                //for(i = 0; i < 10;i++){
+                //       fprintf(stdout,"%f \n", rk_gamma(&model->rndstate,1.0 / (float)(model->num_states)*10000 * model->alpha,1.0));
+
+                //}
+                //exit(0);
 
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));

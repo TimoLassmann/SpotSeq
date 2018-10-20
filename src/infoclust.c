@@ -12,6 +12,8 @@ static int run_infoclust(struct parameters* param);
 
 int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy);
 
+int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm);
+
 int insert_motif(struct motif_list*m, struct paraclu_cluster* p,struct fhmm* fhmm);
 int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div);
 
@@ -26,11 +28,14 @@ void free_motif_list(struct motif_list* m);
 struct paraclu_cluster* init_paraclu_cluster(float min_d,int num_sequences);
 void free_paraclu_cluster(struct paraclu_cluster* p);
 
+int sort_paraclu_cluster_based_on_kl(const void *a, const void *b);
 int max_score_segment(float* x , int start ,int end, int min_len,float min_density,struct paraclu_cluster* p);
 float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix);
 void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix);
 int free_parameters(struct parameters* param);
 int print_help(char **argv);
+
+
 
 
 /* Here I plan to:
@@ -169,11 +174,14 @@ int run_infoclust(struct parameters* param)
                 }
         }
 
+        RUN(calculate_relative_entropy(m, fhmm));
 
+
+        qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_kl);
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
-                fprintf(stderr,"CLUSTER:%d	%d	%d	%d\t",i,p->start, p->stop,p->len);
+                fprintf(stderr,"CLUSTER:%d	%d	%d	%d %f\t",i,p->start, p->stop,p->len,p->kl_divergence);
                 for(j = 0 ; j < p->len;j++){
                         fprintf(stdout," %d", p->state_sequence[j]);
                 }
@@ -204,6 +212,41 @@ ERROR:
                 free_ihmm_sequences(sb);
         }
         MFREE(rel_entropy);
+        return FAIL;
+}
+
+
+
+int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm)
+{
+        int i,j,c,s;
+        struct paraclu_cluster* p =  NULL;
+        float* background = NULL;
+        float x;
+
+        ASSERT(m != NULL, "No rbtree");
+        ASSERT(fhmm != NULL, "No fhmm");
+
+        background = fhmm->background;
+        for(i = 0; i < m->num_items;i++){
+                p = m->plist[i];
+
+                x = 0.0f;
+                for(j = 0; j < p->len;j++){
+                        s = p->state_sequence[j];
+
+                        for(c = 0; c < fhmm->L;c++){
+                                if(fhmm->e[s][c] > 0.0f){
+                                        x += fhmm->e[s][c] * log2f(fhmm->e[s][c] / background[c]);
+                                }
+                        }
+                }
+                x = x / (float) p->len;
+                p->kl_divergence = x;
+
+        }
+        return OK;
+ERROR:
         return FAIL;
 }
 
@@ -244,21 +287,12 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
                 p = m->plist[i];
                 RUNP(tmp = malloc_2d_float(tmp, p->len, fhmm->L, 0.0));
 
-                fprintf(stderr,"CLUSTER:%d	%d	%d	%d\t",i,p->start, p->stop,p->len);
-                for(j = 0 ; j < p->len;j++){
-                        fprintf(stdout," %d", p->state_sequence[j]);
-                }
-
-                fprintf(stdout,"\n");
 
                 for(j = 0 ; j < p->len;j++){
                         for(c = 0; c < fhmm->L;c++){
                                 tmp[j][c] = fhmm->e[p->state_sequence[j]][c];
-                                fprintf(stdout," %0.4f",  fhmm->e[p->state_sequence[j]][c]);
                         }
-                        fprintf(stdout,"\n");
                 }
-                fprintf(stdout,"\n");
 
 
                 hdf5_data->rank = 2;
@@ -606,4 +640,18 @@ float* shuffle_arr_r(float* arr,int n,unsigned int* seed)
                 arr[i] = tmp;
         }
         return arr;
+}
+
+
+
+int sort_paraclu_cluster_based_on_kl(const void *a, const void *b)
+{
+    struct paraclu_cluster* const *one = a;
+    struct paraclu_cluster* const *two = b;
+
+    if((*one)->kl_divergence <  (*two)->kl_divergence){
+            return 1;
+    }else{
+            return -1;
+    }
 }

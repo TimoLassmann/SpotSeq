@@ -3,7 +3,7 @@
 #include "ihmm_seq.h"
 
 
-int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID);
+int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s );
 
 int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 {
@@ -91,12 +91,9 @@ int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
         ASSERT(sb != NULL, "No sequences");
 
 
-
-
-
         for(i = 0; i < sb->num_seq;i++){
                 RUN(clear_counts(model));
-                RUN(fill_counts_i(model, sb, i));
+                RUN(fill_counts_i(model, sb->sequences[i]));
 
         }
         RUN(fill_counts(model,sb));
@@ -269,7 +266,6 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         ASSERT(ihmm != NULL,"No model.");
         ASSERT(sb != NULL,"No iseq struct");
 
-
         /* First I need to check what the largest state ID is and see if we have sufficient space allocated in the model.  */
         max_state_ID = -1;
         //fprintf(stdout,"%d numseq\n",sb->num_seq );
@@ -292,12 +288,24 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb)
         RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
 
+
+        /* Try to weight sequences  */
+        /* float sum = sb->sequences[0]->score; */
+        /* for(i = 1; i < sb->num_seq;i++){ */
+        /*         sum = logsum(sum, sb->sequences[i]->score); */
+        /* } */
+
+        /* for(i = 0 ; i < sb->num_seq;i++){ */
+        /*         //sb->sequences[i]->score = sb->sequences[i]->score -  sum; */
+        /*         fprintf(stdout,"LEN:%d  %d %f (%f)  %f \n",sb->sequences[i]->seq_len,  i,sb->sequences[i]->score , sb->sequences[i]->score -  sum,sum); */
+        /* } */
+
         /* clear transition counts */
         /* clear emission counts */
         RUN(clear_counts(ihmm));
 
         for(i = 0; i < sb->num_seq;i++){
-                RUN(fill_counts_i(ihmm, sb, i));
+                RUN(fill_counts_i(ihmm, sb->sequences[i]));
         }
 
         /* p = ihmm->transition_counts;
@@ -335,12 +343,13 @@ ERROR:
 }
 
 
-int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
+int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s)
 {
         int* label = NULL;
         uint8_t* seq = NULL;
         float** e = NULL;
         float** m = NULL;
+        float score = 0.0;
         //float* u = NULL;
         //float r;
         int len;
@@ -349,19 +358,22 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
 
         ASSERT(ihmm != NULL,"no model");
 
-        label = sb->sequences[seq_ID]->label;
-        seq = sb->sequences[seq_ID]->seq;
-        len = sb->sequences[seq_ID]->seq_len;
+        label = s->label;
+        seq = s->seq;
+        len = s->seq_len;
+        score = 1.0;// - scaledprob2prob(s->score);
+
         //u = sb->sequences[seq_ID]->u;
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
 
 
-        m[IHMM_START_STATE][label[0]] += 1;
-        e[(int)seq[0]][label[0]]++;
+        m[IHMM_START_STATE][label[0]]  += score;
+        e[(int)seq[0]][label[0]]+= score;
+
         for(i = 1; i < len;i++){
-                m[label[i-1]][label[i]]++;
-                e[(int)seq[i]][label[i]]++;
+                m[label[i-1]][label[i]] += score;
+                e[(int)seq[i]][label[i]] += score;
 
                 //e[(int)seq[i]][label[i]] += scaledprob2prob(u[i]);
 
@@ -372,7 +384,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct seq_buffer* sb, int seq_ID)
                 //e[(int)seq[i]][label[i]]+=  (r - 0.5f);//r / 1.0;
 
         }
-        m[label[len-1]][IHMM_END_STATE] += 1;
+        m[label[len-1]][IHMM_END_STATE] += score;
         // r = rk_double(&ihmm->rndstate);
         // m[label[len-1]][IHMM_END_STATE] += (r*2 - 1.0f);// r / 1.0;
 
@@ -453,7 +465,7 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         }
 
         /* Only re-estimate alpha and gamma if vague priors are set...  */
-        if(model->gamma_a != IHMM_PARAM_PLACEHOLDER){
+        if(model->alpha_a != IHMM_PARAM_PLACEHOLDER){
                 /* ok done with beta now gamma and alpha  */
                 w = supp[2];
                 p = supp[3];
@@ -473,7 +485,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                         alpha = rk_gamma(&model->rndstate, model->alpha_a + total_M - sum_s, 1.0 / (model->alpha_b -sum_w));
                 }
                 model->alpha = alpha;
-
+        }
+        if(model->gamma_a != IHMM_PARAM_PLACEHOLDER){
                 /* Let's do gamma now...    */
                 mu = 0.0f;
                 pi_mu = 0.0f;

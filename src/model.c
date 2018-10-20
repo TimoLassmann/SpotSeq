@@ -19,7 +19,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         }
         LOG_MSG("Will start with %d states",K);
 
-        //RUN(random_label_ihmm_sequences(sb, K, 30));
+        RUN(random_label_ihmm_sequences(sb, K, 30));
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
         //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
@@ -28,13 +28,13 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         // emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
         //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
 
-        RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
+        //RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
 
-        RUN(fill_counts(model,sb));
+        //RUN(fill_counts(model,sb));
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
-        RUN(remove_unused_states_labels(model, sb));
-        RUN(fill_counts(model,sb));
+        //RUN(remove_unused_states_labels(model, sb));
+        //RUN(fill_counts(model,sb));
         return OK;
 ERROR:
         return FAIL;
@@ -541,9 +541,10 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         while(K > model->alloc_num_states){
                 model->alloc_num_states = model->alloc_num_states << 1;
         }
+        model->num_states = K;
 
-        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0f));
-        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 0.0f));
+        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 10.0f));
+        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 10.0f));
 
         MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){

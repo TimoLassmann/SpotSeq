@@ -181,6 +181,14 @@ int run_build_ihmm(struct parameters* param)
                 // print_model_parameters(model);
                 // print_counts(model);
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
+
+                /*model->alpha_a = 6.0f;
+                model->alpha_b = 15.0f;
+                model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                model->gamma_a = 16.0f;
+                model->gamma_b = 4.0f;
+                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);*/
+
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -194,7 +202,7 @@ int run_build_ihmm(struct parameters* param)
                         LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
-                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
+                RUNP(model = alloc_ihmm_model(initial_states+2, sb->L));
                 if(param->alpha == IHMM_PARAM_PLACEHOLDER){
                         model->alpha_a = 6.0f;
                         model->alpha_b = 15.0f;
@@ -216,7 +224,7 @@ int run_build_ihmm(struct parameters* param)
                 /* Note this also initializes the last (to infinity state) */
 
                 for(i = 0; i < model->num_states;i++){
-                        model->beta[i] = 1.0 / (float)(model->num_states);
+                        model->beta[i] = (float)(model->num_states);
                 }
 
                 //for(i = 0; i < 10;i++){

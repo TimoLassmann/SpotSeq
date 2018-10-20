@@ -489,9 +489,9 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                 for(j = 0; j < k;j++){
 
                         transition[i][j] = rk_gamma(&rndstate,alpha , 1.0);
-                        if(i == j){
-                                transition[i][j] = rk_gamma(&rndstate,alpha+((float)j) / (float) k , 1.0);
-                        }
+                        //if(i == j){
+                        //        transition[i][j] = rk_gamma(&rndstate,alpha+((float)j) / (float) k , 1.0);
+                        //}
                         sum += transition[i][j];
                 }
                 sanity = 0.0f;
@@ -613,7 +613,7 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
                                         break;
                                 }
                         }
-                        //label[j] =  random_int_zero_to_x(k-1) + 2;
+                        label[j] =  random_int_zero_to_x(k-1) + 2;
                         DPRINTF3("%d",label[j]);
                 }
         }

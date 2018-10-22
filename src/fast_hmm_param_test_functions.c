@@ -9,13 +9,13 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
 
         float sum = 0.0;
 
-  
-                
+
+
         ASSERT(ft != NULL, "No param");
-        
+
         //RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
         fprintf(stdout,"Transitions:\n");
-        
+
         m = ft->transition;
         for(i = 0; i< ft->last_state+1;i++){
                 fprintf(stdout,"S%d",i);
@@ -30,8 +30,8 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
 
         fprintf(stdout,"Emission:\n");
 
-      for(i = 0; i < ft->L;i++){
-        
+        for(i = 0; i < ft->L;i++){
+
                 sum = 0.0;
                 for(j = 0; j< ft->last_state+1;j++){
                         fprintf(stdout," %0.3f",ft->emission[i][j]);
@@ -60,20 +60,20 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
         float* tmp_probs = NULL;
         ASSERT(ft != NULL, "No ft.");
         MMALLOC(tmp_probs, sizeof(float) * k);
-        
+
         RUN(expand_ft_if_necessary(ft, k));
-        
-        
+
+
         //num = ft->num_items;
         //list = ft->list;
- 
+
         for(i = 0;i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < k;j++){
-  
+
                         tmp_probs[j] = random_float_zero_to_x(1.0);
-                       
-                                
+
+
                         sum+=tmp_probs[j];
 
                 }

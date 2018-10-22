@@ -729,7 +729,7 @@ struct seq_buffer* load_sequences(char* in_filename)
         sb->L = -1;
         sb->background = NULL;
 
-        MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
+        MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
                 sb->sequences[i] = NULL;
                 RUNP(sb->sequences[i] = alloc_ihmm_seq());
@@ -1002,13 +1002,12 @@ ERROR:
         }
         return FAIL;
 }
+
 int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename)
 {
         FILE* f_ptr = NULL;
-        int i,j,c;
+        int i,j;
         int has_names;
-        int max_label;
-        int digits;
         int block;
 
 
@@ -1136,7 +1135,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
         old_label_pos = 0;
         digit = 0;
 
-        MMALLOC(sb->sequences, sizeof(struct chromosome*) *sb->malloc_num );
+        MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
                 sb->sequences[i] = NULL;
                 RUNP(sb->sequences[i] = alloc_ihmm_seq());
@@ -1264,8 +1263,8 @@ ERROR:
 int add_reverse_complement_sequences_to_buffer(struct seq_buffer* sb)
 {
         struct ihmm_sequence* sequence = NULL;
-        char buffer[BUFFER_LEN];
-        int i,j;
+
+        int i;
         int old_numseq;
         ASSERT(sb!= NULL, "No sequence buffer");
         ASSERT(sb->L == ALPHABET_DNA, "No DNA sequences in buffer");

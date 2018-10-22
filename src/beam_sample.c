@@ -51,16 +51,9 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         ASSERT(num_threads > 0, "No threads");
 
         init_logsum();
-        //for(i = 0;i < 10;i++){
-        //        RUN(iHmmHyperSample(model, 20));
-        //}
 
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
-        //RUN(print_fast_hmm_params(ft));
-
-        //LOG_MSG("LASTSTATE in FT: %d", ft->last_state);
-        //exit(0);
 
         /* Threading setup...  */
         need_local_pool = 0;
@@ -77,11 +70,10 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* Set U */
                 RUN(set_u(sb,model,ft, &min_u));
-
                 /* I only want to add states if the last iteration was successful */
                 if(!no_path){
                         RUN(get_max_to_last_state_transition(ft, &max));
-                        while(max >= min_u && model->num_states < 1000){//}sb->max_len){
+                        while(max >= min_u && model->num_states < 1000 && max > 0.0 ){//}sb->max_len){
                                 //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                                 RUN(add_state_from_fast_hmm_param(model,ft));
                                 RUN(get_max_to_last_state_transition(ft, &max));
@@ -90,10 +82,10 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         }
                 }
                 RUN(make_flat_param_list(ft));
-                //LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
 
                 RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
 
+                LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
                 //dyn prog + labelling
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft = ft;
@@ -150,7 +142,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         //model->alpha = 0.5;
                         RUN(fill_fast_transitions(model,ft));
                 }
-
                 LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
@@ -161,6 +152,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         RUN(add_background_emission(tmp_buffer,ft->background_emission,ft->L));
                         RUN(run_build_fhmm_file(tmp_buffer));
                         }*/
+                model->training_iterations++;
         }
 
         if(need_local_pool){

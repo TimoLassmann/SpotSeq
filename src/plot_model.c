@@ -25,7 +25,6 @@ struct parameters{
         int node_count_cutoff;
 };
 
-
 static int run_plot_ihmm(struct parameters* param);
 static int run_plot_positional_state_distribution(struct parameters* param);
 static int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param);
@@ -150,11 +149,9 @@ int run_plot_ihmm(struct parameters* param)
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
         RUN(fill_background_emission_from_model(ft,model));
-
         RUN(fill_fast_transitions_only_matrices(model,ft));
         //RUN(print_fast_hmm_params(ft));
         RUN(make_dot_file( ft, model, param));
-
 
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
@@ -360,9 +357,9 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                 if(total_counts[j] >  sum_usage){
                         sum_usage = total_counts[j];
                 }
-                fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
+                //        fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
         }
-        fprintf(stdout,"%f\n",sum_usage);
+        //fprintf(stdout,"%f\n",sum_usage);
 
 
 
@@ -382,14 +379,14 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
                         /* Further scale bar height by usage of state.  */
                         //tmp_prob = tmp_prob * (double) matrix->matrix[4][i] / sum_usage;
-                        fprintf(stdout,"%d %f %f\n",i,tmp_prob ,(double) model->emission_counts[0][i] / sum_usage);
-                        LOG_MSG("Len:%d %d",ft->L,model->num_states);
+                        //fprintf(stdout,"%d %f %f\n",i,tmp_prob ,(double) model->emission_counts[0][i] / sum_usage);
+                        //LOG_MSG("Len:%d %d",ft->L,model->num_states);
 
                         //ncol =0;
                         for(j = 0; j < ft->L;j++){
 
                                 tmp_sum[j] =  ft->emission[j][i] * tmp_prob  ;
-                                fprintf(stdout,"%d %c %f\n", i,"ACDEFGHIKLMNPQRSTVWY"[j],ft->emission[j][i]  );
+                                //fprintf(stdout,"%d %c %f\n", i,"ACDEFGHIKLMNPQRSTVWY"[j],ft->emission[j][i]  );
                                 //LOG_MSG("i:%d j:%d  %d  (wetfg%d)",i,j,ft->L, ncol);
                                 //ncol++;
 
@@ -418,26 +415,8 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                                 }
                         }
 
-
-
-                        /*
-
-
-                          fprintf(f_ptr,"<TR>\n");
-                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\"  COLOR=\"#f4a460\">C</FONT></TD>\n",(int)tmp_sum[1]);
-                          fprintf(f_ptr,"</TR>\n");
-
-                          fprintf(f_ptr,"<TR>\n");
-                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#f08080\">G</FONT></TD>\n",(int)tmp_sum[2]);
-                          fprintf(f_ptr,"</TR>\n");
-
-                          fprintf(f_ptr,"<TR>\n");
-                          fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\" COLOR=\"#90ee90\">T</FONT></TD>\n",(int)tmp_sum[3]);
-                          fprintf(f_ptr,"</TR>\n");
-                        */
-
                         fprintf(f_ptr,"</TABLE>>];\n");
-                        LOG_MSG("i:%d",i);
+                        //LOG_MSG("i:%d",i);
                 }
         }
         fprintf(f_ptr,"\n\n");
@@ -446,23 +425,21 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
         for(i = 0;i < ft->last_state;i++){
                 if(total_counts[i] >= param->node_count_cutoff){
-                for(j = 0;j < ft->last_state;j++){
-                          if(total_counts[j] >= param->node_count_cutoff){
-                        if(ft->transition[i][j] >= param->edge_threshold ){
-                                RUN(get_color(color_buffer,ft->transition[i][j], 0.0f,1.0f ));
-                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
-                        }
-                          }
+                        for(j = 0;j < ft->last_state;j++){
+                                if(total_counts[j] >= param->node_count_cutoff){
+                                        if(ft->transition[i][j] >= param->edge_threshold ){
+                                                RUN(get_color(color_buffer,ft->transition[i][j], 0.0f,1.0f ));
+                                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
+                                        }
+                                }
 
-                }
+                        }
 
                 }
         }
 
         /* print end of dot file  */
         fprintf(f_ptr,"}\n");
-
-
 
         fclose(f_ptr);
 

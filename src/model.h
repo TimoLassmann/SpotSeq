@@ -32,6 +32,7 @@ struct ihmm_model{
         int num_states;         /* this excludes the start and stop states (0,1) */
         int alloc_num_states;
         int L;
+        int training_iterations;
 };
 
 /* Housekeeping */

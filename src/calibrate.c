@@ -27,7 +27,7 @@ int calibrate(char* model_file,int num_threads, double* mu, double* lambda)
         struct seq_buffer* sb_in = NULL;
         struct fhmm* fhmm = NULL;
 
-        int num_seq = 10000;
+        int num_seq = 100000;
         double* scores = NULL;
 
         int i;
@@ -95,7 +95,7 @@ int main (int argc,char * argv[])
         RUN(rk_randomseed(&rndstate));
 
         fprintf(stdout,"Running libhdf5glue sanity tests\n");
-        RUN(calibrate("Standard_Challenge_GCCTAGGAGTCGGTT_mis_0_10.fa.h5", 8, &mu, &lambda));
+        RUN(calibrate("test.h5", 8, &mu, &lambda));
 
         /*lambda = 0.4;
         mu = -20;
@@ -257,7 +257,7 @@ ERROR:
  * Complete data, maximum a posteriori parameters
  *****************************************************************/
 
-/* lawless416()
+/* lawless416()b
  * SRE, Thu Nov 13 11:48:50 1997 [St. Louis]
  *
  * Purpose:  Equation 4.1.6 from [Lawless82], pg. 143, and

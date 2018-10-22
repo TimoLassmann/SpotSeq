@@ -528,6 +528,7 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         model->beta = NULL;
         model->num_states = 0;
         model->alloc_num_states = 16;
+        model->training_iterations = 0;
         model->L = L;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->alpha_a = IHMM_PARAM_PLACEHOLDER;

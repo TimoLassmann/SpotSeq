@@ -410,7 +410,6 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
-        struct seq_buffer* sb = NULL;
 
         int initial_states = 10;
         int iter;

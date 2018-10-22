@@ -71,9 +71,9 @@ echo "Running:spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -nit
 spotseq_model -in $INPUT --states $NUMSTATES  -out $LOCALNAME -niter $LOCALITER
 echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
 spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
-echo "Running: spotseq_plot -in $OUTMODEL  -o
+echo "Running: spotseq_plot -m $OUTMODEL  -o
 ut $OUTDOT"
-spotseq_plot -in $LOCALNAME  -out $OUTDOT
+spotseq_plot -m $LOCALNAME  -out $OUTDOT
 
 for i in `seq 2 100`;
 do
@@ -88,7 +88,7 @@ do
     echo "Running: spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME"
     spotseq_score  -m $LOCALNAME  -i $INPUT  -o $SCORENAME
     echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
-    spotseq_plot -in $LOCALNAME  -out $OUTDOT
+    spotseq_plot -m $LOCALNAME  -out $OUTDOT
     #spotseq_model -in $INPUT --states $NUMSTATES -m $OLDLOCALNAME-out $LOCALNAME -niter $NUMITER
     #LOCALNAME=$INPUT$RUNNAME"_"$((i* $LOCALITER))".h5"
     #echo $LOCALNAME
@@ -101,7 +101,7 @@ echo "Running: spotseq_model -in $INPUT --states 100 -out $OUTMODEL"
 spotseq_model -in $INPUT --states $NUMSTATES -out $OUTMODEL -niter $NUMITER
 
 echo "Running: spotseq_plot -in $OUTMODEL  -out $OUTDOT"
-spotseq_plot -in $OUTMODEL  -out $OUTDOT
+spotseq_plot -m $OUTMODEL  -out $OUTDOT
 
 echo "Running: dot -Tpdf $OUTDOT -o $OUTPDF"
 dot -Tpdf $OUTDOT -o $OUTPDF

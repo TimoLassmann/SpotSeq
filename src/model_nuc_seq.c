@@ -306,7 +306,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
         sb->malloc_num = 1024;
         sb->num_seq = -1; 
         sb->seqs = NULL;
-        MMALLOC(sb->seqs, sizeof(struct chromosome*) *sb->malloc_num );
+        MMALLOC(sb->seqs, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
                 sb->seqs[i] = NULL;
                 sequence = NULL;

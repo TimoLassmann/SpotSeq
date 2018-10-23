@@ -358,7 +358,7 @@ int find_overlapping_motifs(struct motif_struct** res_motif, int num_res_motif, 
         for(i = 0; i < num_res_motif;i++){
                 for(j = i +1; j < num_res_motif;j++){
                         RUN(compare_motif(res_motif[i], res_motif[j],fhmm, &x));
-                        if(x <= 1.0){
+                        if(x <= 0.5){
                                 if(res_motif[i]->len > res_motif[j]->len){
                                         res_motif[j]->mean_rel_entropy = 0.0;
                                 }else{
@@ -462,7 +462,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
         for(c = 0; c < num_res_motif;c++){
                 m = res_motif[c];
-                if(m->mean_rel_entropy > 0.05){
+                if(m->mean_rel_entropy > 0.5){
 
 
                         RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
@@ -546,7 +546,7 @@ int add_positional_distribution(struct motif_struct** list, int num_motif, struc
                 }
                 for(j = m->start_in_sa; j < m->end_in_sa;j++){
                         g = sa->lcs[j];
-                        l = sb->sequences[ g->seq_num]->seq_len;
+                        l = sb->sequences[g->seq_num]->seq_len;
                         index =roundf((float)pos_resolution * ((float) g->pos / l));
                         m->occ[index]++;
                         /*tmp= g->str;

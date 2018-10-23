@@ -128,7 +128,6 @@ int main (int argc, char *argv[])
                 case 'o':
                         param->outdir = optarg;
                         break;
-
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);
@@ -156,7 +155,7 @@ int main (int argc, char *argv[])
         ASSERT(param->len > 10, "Simulated sequence length has to be > 10");
 
         standard_challenge(param->outdir);
-        standard_challenge_split(param->outdir, 10);
+        //standard_challenge_split(param->outdir, 10);
 
         //RUN(run_sim_seq(param));
         //RUN(run_build_ihmm(param));
@@ -294,9 +293,8 @@ int standard_challenge(char* outdir)
         }
         motif[15] = 0;
         for(lf = 1;lf <= 10;lf++){
-
                 /* Loop through mismatches */
-                for(n_mismatches = 0; n_mismatches < 10; n_mismatches++ ){
+                for(n_mismatches = 0; n_mismatches < 5; n_mismatches++ ){
                         /* reset sb to nothing */
                         for(i = 0; i < 20;i++){
                                 sb->seqs[i]->seq_len = 0;
@@ -496,7 +494,7 @@ ERROR:
 
 int embedded(struct parameters* param, struct seq_buffer*sb)
 {
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN*2];
         char motif[BUFFER_LEN];
 
         ASSERT(sb != NULL,"No seq buffer");
@@ -983,7 +981,7 @@ struct seq_buffer* alloc_seq_buffer(int num_seq)
         sb->malloc_num = num_seq;
         sb->num_seq = 0;
         sb->seqs = NULL;
-        MMALLOC(sb->seqs, sizeof(struct chromosome*) *sb->malloc_num );
+        MMALLOC(sb->seqs, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
                 sb->seqs[i] = NULL;
                 sequence = NULL;

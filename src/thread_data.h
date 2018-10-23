@@ -18,6 +18,7 @@ struct spotseq_thread_data{
         float** e;
         int thread_ID;
         int num_threads;
+        unsigned int seed;
 };
 
 extern  struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K);

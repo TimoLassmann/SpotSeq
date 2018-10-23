@@ -48,6 +48,7 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
                 td[i]->sb = NULL;
                 td[i]->thread_ID = i;
                 td[i]->num_threads = local_num_treads;
+                td[i]->seed =  time(NULL) * (i+1);
 
 
         }

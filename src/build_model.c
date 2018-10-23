@@ -19,6 +19,8 @@
 
 #include "distributions.h"
 
+#include "run_score.h"
+
 struct parameters{
         char* input;
         char* output;
@@ -30,9 +32,13 @@ struct parameters{
         int local;
         int num_threads;
         int num_start_states;
+        int rev;
 };
 
 static int run_build_ihmm(struct parameters* param);
+
+static int score_sequences_for_command_line_reporting(struct parameters* param);
+
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -51,6 +57,7 @@ int main (int argc, char *argv[])
         param->num_threads = 8;
         param->num_start_states = 10;
         param->local = 0;
+        param->rev = 0;
         param->num_iter = 1000;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
@@ -65,11 +72,12 @@ int main (int argc, char *argv[])
                         {"model",required_argument,0,'m'},
                         {"alpha",required_argument,0,'a'},
                         {"gamma",required_argument,0,'g'},
+                        {"rev",0,0,'r'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hi:o:t:n:m:s:la:g:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"rhi:o:t:n:m:s:la:g:",long_options, &option_index);
 
                 if (c == -1){
                         break;
@@ -80,6 +88,9 @@ int main (int argc, char *argv[])
                         break;
                 case 'g':
                         param->gamma = atof(optarg);
+                        break;
+                case 'r':
+                        param->rev = 1;
                         break;
                 case 'l':
                         param->local = 1;
@@ -145,8 +156,12 @@ int main (int argc, char *argv[])
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         RUN(run_build_ihmm(param));
+        /* 1 means allow transitions that are not seen in the training
+         * data */
+        RUN(run_build_fhmm_file(param->output,0));
 
-        RUN(run_build_fhmm_file(param->output));
+        RUN(score_sequences_for_command_line_reporting(param));
+
         /* calibrate model parameters */
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -154,6 +169,56 @@ ERROR:
         fprintf(stdout,"\n  Try run with  --help.\n\n");
         free_parameters(param);
         return EXIT_FAILURE;
+}
+
+/* After training a model it would be nice to know the logodds scores
+ * of a number of sequences to see if something was found */
+
+int score_sequences_for_command_line_reporting(struct parameters* param)
+{
+        struct seq_buffer* sb = NULL;
+        struct fhmm* fhmm;
+        double s1,s2;
+        int max = 100;
+        int i;
+        int limit;
+        /* Maybe runscoring on top X sequences to report if something was found... */
+        LOG_MSG("Loading model.");
+        RUNP(fhmm = init_fhmm(param->output));
+
+        /* load sequences.  */
+        LOG_MSG("Loading sequences.");
+        RUNP(sb =get_sequences_from_hdf5_model(param->output));
+
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
+        RUN(run_score_sequences(fhmm,sb, param->num_threads));
+
+        limit = MACRO_MIN(max, sb->num_seq);
+
+        s1 = 0.0;
+        s2 = 0.0;
+        for(i = 0; i < limit;i++){
+                //sb_in->sequences[i]->seq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
+                s1 += sb->sequences[i]->score;
+                s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
+        }
+
+        s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
+        s1 = s1 / (double) limit;
+
+
+
+        LOG_MSG("Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
+
+        free_ihmm_sequences(sb);
+        free_fhmm(fhmm);
+
+        return OK;
+ERROR:
+        free_ihmm_sequences(sb);
+        free_fhmm(fhmm);
+        return FAIL;
 }
 
 
@@ -167,7 +232,7 @@ int run_build_ihmm(struct parameters* param)
         int i;
 
         ASSERT(param!= NULL, "No parameters found.");
-
+        init_logsum();
         initial_states = param->num_start_states;
 
         if(param->in_model){
@@ -175,6 +240,14 @@ int run_build_ihmm(struct parameters* param)
                 // print_model_parameters(model);
                 // print_counts(model);
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
+
+                /*model->alpha_a = 6.0f;
+                model->alpha_b = 15.0f;
+                model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                model->gamma_a = 16.0f;
+                model->gamma_b = 4.0f;
+                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);*/
+
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -182,28 +255,42 @@ int run_build_ihmm(struct parameters* param)
 
                 RUNP(sb = load_sequences(param->input));
 
-                RUN(add_reverse_complement_sequences_to_buffer(sb));
+                //sb = concatenate_sequences(sb);
 
-                RUNP(model = alloc_ihmm_model(initial_states, sb->L));
-                if(param->alpha != IHMM_PARAM_PLACEHOLDER && param->gamma != IHMM_PARAM_PLACEHOLDER){
-                        model->alpha = param->alpha;
-                        model->gamma = param->gamma;
-                }else{
-                        /* Initial guess... */
+                if(param->rev && sb->L == ALPHABET_DNA){
+                        LOG_MSG("Add revcomp sequences.");
+                        RUN(add_reverse_complement_sequences_to_buffer(sb));
+                }
+                RUNP(model = alloc_ihmm_model(initial_states+2, sb->L));
+                if(param->alpha == IHMM_PARAM_PLACEHOLDER){
                         model->alpha_a = 6.0f;
                         model->alpha_b = 15.0f;
+                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                }else{
+                        model->alpha = param->alpha;
+                }
+
+                if(param->gamma == IHMM_PARAM_PLACEHOLDER){
                         model->gamma_a = 16.0f;
                         model->gamma_b = 4.0f;
-                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
                         model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                }else{
+                        model->gamma = param->gamma;
                 }
+
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
 
                 /* Note this also initializes the last (to infinity state) */
 
                 for(i = 0; i < model->num_states;i++){
-                        model->beta[i] = 1.0 / (float)(model->num_states);
+                        model->beta[i] = (float)(model->num_states);
                 }
+
+                //for(i = 0; i < 10;i++){
+                //       fprintf(stdout,"%f \n", rk_gamma(&model->rndstate,1.0 / (float)(model->num_states)*10000 * model->alpha,1.0));
+
+                //}
+                //exit(0);
 
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));

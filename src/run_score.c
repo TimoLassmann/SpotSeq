@@ -41,15 +41,9 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
                 }
         }
         thr_pool_wait(pool);
-        //for(i = 0; i < sb->num_seq;i++){
-        //        fprintf(stdout,"%f ", sb->sequences[i]->score);
-        //}
-
-        
 
         free_spotseq_thread_data(td,num_threads);
         thr_pool_destroy(pool);
-
 
         return OK;
 ERROR:

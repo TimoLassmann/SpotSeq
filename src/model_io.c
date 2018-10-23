@@ -66,6 +66,9 @@ struct ihmm_model* read_model_hdf5(char* filename)
                 if(!strncmp("alpha0_b", hdf5_data->attr[i]->attr_name, 8)){
                         model->alpha_b = hdf5_data->attr[i]->float_val;
                 }
+                if(!strncmp("Iteration", hdf5_data->attr[i]->attr_name, 9)){
+                        model->training_iterations = hdf5_data->attr[i]->int_val;
+                }
         }
 
         hdf5_read_dataset("Beta",hdf5_data);
@@ -89,7 +92,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         RUN(resize_ihmm_model(model, model->num_states+1));
 
 
-        fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
+        //fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
         rk_randomseed(&model->rndstate);
         return model;
 ERROR:
@@ -212,6 +215,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha_a, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_FLOAT);
+
+        hdf5_add_attribute(hdf5_data, "Iteration", "",model->training_iterations, 0.0f, HDF5GLUE_INT);
 
         hdf5_create_group("imodel",hdf5_data);
         hdf5_write_attributes(hdf5_data, hdf5_data->group);

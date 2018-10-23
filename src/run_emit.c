@@ -65,7 +65,7 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         }
 
 
-        MMALLOC(sb_out->sequences, sizeof(struct chromosome*) *sb_out->malloc_num );
+        MMALLOC(sb_out->sequences, sizeof(struct ihmm_sequence*) *sb_out->malloc_num );
         for(i = 0; i < sb_out->num_seq;i++){
                 sb_out->sequences[i] = NULL;
                 RUNP(sb_out->sequences[i] = alloc_ihmm_seq());

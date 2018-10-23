@@ -1,5 +1,5 @@
 # Build the library in the hand subdirectory first.
-LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
+LIB_TLDEVELDIR = @LIB_TLDEVELDIR@
 
 
 CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.lfa libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5
@@ -11,8 +11,7 @@ MYLIBDIRS = ../tldevel/libtldevel.a
 
 
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
-            -I${top_srcdir}/${LIB_TLDEVELDIR} 
-
+            -I${top_srcdir}/${LIB_TLDEVELDIR}
 
 LIBS = -lm -lpthread
 
@@ -56,7 +55,7 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 FINITEHMM = finite_hmm.c finite_hmm.h
 
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal 
+bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
 
 cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
 cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
@@ -67,7 +66,7 @@ plot_model.c  $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMM
 spotseq_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_model_SOURCES = \
-build_model.c $(BEAMSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
+build_model.c $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_score_SOURCES = \
@@ -95,6 +94,15 @@ matrix_io.c \
 sim_seq.c
 
 sim_seq_LDADD =  ${MYLIBDIRS}
+
+tfbs_bench_SOURCES = $(RANDOMKIT_FILES) \
+outdir.h \
+outdir.c \
+matrix_io.h \
+matrix_io.c \
+create_TFBS_benchmark_datasets.c
+
+tfbs_bench_LDADD =  ${MYLIBDIRS}
 
 build_ihmm_SOURCES = \
 model_nuc_seq.c \

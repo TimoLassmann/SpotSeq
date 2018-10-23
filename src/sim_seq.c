@@ -128,7 +128,6 @@ int main (int argc, char *argv[])
                 case 'o':
                         param->outdir = optarg;
                         break;
-
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);

@@ -48,12 +48,12 @@ int set_log_file(char* root, char* name)
         char out_root_dir[BUFFER_LEN];
         snprintf(out_root_dir, BUFFER_LEN, "%s/" ,root);
         snprintf(buffer, BUFFER_LEN, "%s%s/%s.log",out_root_dir,OUTDIR_LOG,name);
-        
+
         RUNP(test_ptr = fopen(buffer, "w"));
         fclose(test_ptr);
-        
+
         tlog.set_logfile(buffer);
-        
+
         return OK;
 ERROR:
         WARNING_MSG("Log file: %s cannot be opened",buffer);
@@ -84,7 +84,7 @@ int create_output_directories(char* root)
         snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_VIZ);
         RUN(create_dir(buffer,1));
 
-        
+
         snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_CHECKPOINTS);
         RUN(create_dir(buffer,1));
 

@@ -19,6 +19,8 @@
 
 #include "distributions.h"
 
+#include "run_score.h"
+
 struct parameters{
         char* input;
         char* output;
@@ -34,6 +36,9 @@ struct parameters{
 };
 
 static int run_build_ihmm(struct parameters* param);
+
+static int score_sequences_for_command_line_reporting(struct parameters* param);
+
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -154,6 +159,9 @@ int main (int argc, char *argv[])
         /* 1 means allow transitions that are not seen in the training
          * data */
         RUN(run_build_fhmm_file(param->output,0));
+
+        RUN(score_sequences_for_command_line_reporting(param));
+
         /* calibrate model parameters */
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -161,6 +169,56 @@ ERROR:
         fprintf(stdout,"\n  Try run with  --help.\n\n");
         free_parameters(param);
         return EXIT_FAILURE;
+}
+
+/* After training a model it would be nice to know the logodds scores
+ * of a number of sequences to see if something was found */
+
+int score_sequences_for_command_line_reporting(struct parameters* param)
+{
+        struct seq_buffer* sb = NULL;
+        struct fhmm* fhmm;
+        double s1,s2;
+        int max = 100;
+        int i;
+        int limit;
+        /* Maybe runscoring on top X sequences to report if something was found... */
+        LOG_MSG("Loading model.");
+        RUNP(fhmm = init_fhmm(param->output));
+
+        /* load sequences.  */
+        LOG_MSG("Loading sequences.");
+        RUNP(sb =get_sequences_from_hdf5_model(param->output));
+
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
+        RUN(run_score_sequences(fhmm,sb, param->num_threads));
+
+        limit = MACRO_MIN(max, sb->num_seq);
+
+        s1 = 0.0;
+        s2 = 0.0;
+        for(i = 0; i < limit;i++){
+                //sb_in->sequences[i]->seq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
+                s1 += sb->sequences[i]->score;
+                s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
+        }
+
+        s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
+        s1 = s1 / (double) limit;
+
+
+
+        LOG_MSG("Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
+
+        free_ihmm_sequences(sb);
+        free_fhmm(fhmm);
+
+        return OK;
+ERROR:
+        free_ihmm_sequences(sb);
+        free_fhmm(fhmm);
+        return FAIL;
 }
 
 int run_build_ihmm(struct parameters* param)

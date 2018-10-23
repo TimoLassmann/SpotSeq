@@ -18,6 +18,46 @@
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
 
+
+char* nuc_colors[ALPHABET_DNA] = {"#cbf751", "#5ec0cc", "#ffdf59", "#b51f16"};
+
+char* protein_colors[ALPHABET_PROTEIN] = {
+        "#FF9966",
+        "#009999",
+        "#FF0000",
+        "#CC0033",
+        "#00FF00",
+        "#f2f20c",
+        "#660033",
+        "#CC9933",
+        "#663300",
+        "#FF9933",
+        "#CC99CC",
+        "#336666",
+        "#0099FF",
+        "#6666CC",
+        "#990000",
+        "#0000FF",
+        "#00FFFF",
+        "#FFCC33",
+        "#66CC66",
+        "#006600"};
+
+
+/*
+sub _dna_colors {
+  return {
+    'A'=> '#cbf751',
+    'C'=> '#5ec0cc',
+    'G'=> '#ffdf59',
+    'T'=> '#b51f16',
+    'U'=> '#b51f16'
+  };
+}
+*/
+
+
+
 struct parameters{
         char* input;
         char* output;
@@ -140,7 +180,6 @@ int run_plot_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
-        struct seq_buffer* sb = NULL;
 
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
@@ -297,7 +336,8 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         double max_IC;
         double tmp_prob;
         double sum_usage;
-        int i,j;
+        int i,j,c;
+        int out_letter;
 
         int max_stack_height = 128;
 
@@ -315,7 +355,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         fprintf(f_ptr,"digraph structs {\n");
         fprintf(f_ptr,"rankdir=LR;\n");
         fprintf(f_ptr,"overlap=false;\n");
-        fprintf(f_ptr,"node [shape=circle];\n");//plaintext shape?
+        fprintf(f_ptr,"node [shape=rectangle];\n");//plaintext shape?
         max_IC = -1000.0;
         for(i = 0;i< 4;i++){
                 IC = 0.0;
@@ -391,6 +431,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                                 //ncol++;
 
                                 //       fprintf(stdout,"\t%f afa\n",tmp_sum[j]);
+                                tmp_sum[j] = MACRO_MAX ((int)tmp_sum[j],1);
                         }
                         fprintf(f_ptr,"State%d [label=<\n",i);
 
@@ -402,16 +443,39 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
 
                         if(ft->L == ALPHABET_DNA){
-                                for(j = 0; j < ft->L;j++){
+                                for(c = 0; c < ft->L;c++){
+                                        max_IC = -100;
+                                        out_letter = -1;
+                                        for(j = 0; j < ft->L;j++){
+                                                if(max_IC < (int)tmp_sum[j]){
+                                                        max_IC = (int)tmp_sum[j];
+                                                        out_letter = j;
+                                                }
+                                        }
                                         fprintf(f_ptr,"<TR>\n");
-                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX( (int)tmp_sum[j],1),"ACGTN"[j]);
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",nuc_colors[out_letter],  MACRO_MAX( (int)tmp_sum[out_letter],1),"ACGTN"[out_letter]);
                                         fprintf(f_ptr,"</TR>\n");
+                                        tmp_sum[out_letter] = -1;
                                 }
+
                         }else if(ft->L == ALPHABET_PROTEIN ){
-                                for(j = 0; j < ft->L;j++){
+                                for(c = 0; c < ft->L;c++){
+                                        max_IC = -100;
+                                        out_letter = -1;
+                                        for(j = 0; j < ft->L;j++){
+                                                if(max_IC < (int)tmp_sum[j]){
+                                                        max_IC = (int)tmp_sum[j];
+                                                        out_letter = j;
+                                                }
+                                        }
+
+                                        //for(j = 0; j < ft->L;j++){
                                         fprintf(f_ptr,"<TR>\n");
-                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%c</FONT></TD>\n",MACRO_MAX ((int)tmp_sum[j],1),"ACDEFGHIKLMNPQRSTVWY"[j]);
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",protein_colors[out_letter],  MACRO_MAX ((int)tmp_sum[out_letter],1),"ACDEFGHIKLMNPQRSTVWY"[out_letter]);
                                         fprintf(f_ptr,"</TR>\n");
+                                        //}
+
+                                        tmp_sum[out_letter] = -1;
                                 }
                         }
 

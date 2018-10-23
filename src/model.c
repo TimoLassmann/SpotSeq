@@ -558,7 +558,6 @@ ERROR:
         return NULL;
 }
 
-
 int resize_ihmm_model(struct ihmm_model* ihmm, int K)
 {
         int old_size;
@@ -571,7 +570,7 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
                 while(K > ihmm->alloc_num_states){
                         ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
                 }
-                LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
+                //LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
                 RUNP(ihmm->transition_counts = malloc_2d_float(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
                 RUNP(ihmm->emission_counts = malloc_2d_float(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
 

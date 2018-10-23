@@ -92,7 +92,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         RUN(resize_ihmm_model(model, model->num_states+1));
 
 
-        fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
+        //fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
         rk_randomseed(&model->rndstate);
         return model;
 ERROR:

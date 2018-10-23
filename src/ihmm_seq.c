@@ -281,12 +281,11 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
         get_group_names(hdf5_data);
 
         has_seq_info = 0;
-        fprintf(stdout,"Groups:\n");
+
         for(i = 0; i < hdf5_data->grp_names->num_names;i++){
                 if(strncmp("SequenceInformation", hdf5_data->grp_names->names[i],19) == 0){
                         has_seq_info = 1;
                 }
-                fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
         }
         if(!has_seq_info ){
                 hdf5_create_group("SequenceInformation",hdf5_data);
@@ -431,7 +430,6 @@ ERROR:
         }
         return FAIL;
 }
-
 
 int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha)
 {

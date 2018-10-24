@@ -29,6 +29,8 @@ struct fhmm{
 
 extern int random_model_score(float* b, float* ret_score, uint8_t* a, int len, int expected_len);
 extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a, int len);
+extern int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len);
+extern int posterior_decoding(struct fhmm* fhmm,float** Fmatrix, float** Bmatrix,float score,uint8_t* a, int len,int* path);
 
 extern int read_hmm_parameters(struct fhmm* fhmm, char* filename);
 

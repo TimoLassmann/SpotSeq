@@ -94,6 +94,147 @@ ERROR:
         return FAIL;
 }
 
+int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
+{
+        int i,j,c,f;
+
+        float* next= 0;
+        float* cur = 0;
+        const float* trans = 0;
+
+        ASSERT(fhmm != NULL, "No model");
+        ASSERT(matrix != NULL, "No dyn programming  matrix");
+        ASSERT(a != NULL, "No sequence");
+
+        ASSERT(len > 0, "Seq is of length 0");
+
+        cur = matrix[len+1];
+
+        for(j = 0; j < fhmm->K;j++){
+                cur[j] = -INFINITY;
+        }
+
+        cur[IHMM_END_STATE] = 0.0f;
+
+        next = cur;
+
+        cur = matrix[len];
+        for(j = 0; j < fhmm->K;j++){
+                cur[j] = fhmm->t[j][IHMM_END_STATE] + next[IHMM_END_STATE];
+        }
+        for(c = 2;c < fhmm->K;c++){
+                cur[c] += fhmm->e[c][a[len-1]];
+        }
+
+        // backward recursion...
+        for(i = len-1; i > 0; i -- ){
+                next = cur;
+                cur = matrix[i];
+                for(j = 0; j < fhmm->K;j++){
+                        trans = fhmm->t[j];
+                        cur[j] = -INFINITY;
+                        for(c = 1; c < fhmm->tindex[j][0];c++){
+                                f = fhmm->tindex[j][c];
+                                cur[j] = logsum(cur[j],trans[f] + next[f]);// hmm->emissions[c][(int)a[i]]);// + next[c]);
+                        }
+                }
+                for(j = 2; j < fhmm->K;j++){
+                        cur[j] += fhmm->e[j][(int)a[i-1]];
+                }
+        }
+
+        cur = matrix[0];
+        next = matrix[1];
+
+        for(j = 0; j < fhmm->K;j++){
+                cur[j] = -INFINITY;// prob2scaledprob(0.0f);
+        }
+        for(i = 0; i < fhmm->K;i++){
+                cur[IHMM_START_STATE] = logsum(cur[IHMM_START_STATE], fhmm->t[IHMM_START_STATE][i] + next[i]);//  + hmm->emissions[i][(int)a[0]]  );
+        }
+        *ret_score = cur[IHMM_START_STATE];
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+int posterior_decoding(struct fhmm* fhmm,float** Fmatrix, float** Bmatrix,float score,uint8_t* a, int len,int* path)
+{
+        int i,j,c,f,best;
+        int state;
+
+        float* this_F = 0;
+        float* this_B = 0;
+
+        ASSERT(fhmm != NULL, "No model");
+        ASSERT(a != NULL, "No sequence");
+        ASSERT(len > 0, "Seq is of length 0");
+
+
+        //const float* trans = 0;
+        float max = prob2scaledprob(0.0);
+        float total = score;
+
+        for(i = 1; i <= len+1;i++){
+                //last_F = Fmatrix[i-1];
+                this_F = Fmatrix[i];
+                this_B = Bmatrix[i];
+                for(j = 0; j < fhmm->K;j++){
+                        this_F[j] = scaledprob2prob((this_F[j]  +( this_B[j] - fhmm->e[j][a[i-1]] )) - total);
+                }
+        }
+
+        for(j = 0; j < fhmm->K ;j++){
+                Fmatrix[len][j] = Fmatrix[len][j]  + Fmatrix[len+1][IHMM_END_STATE] ;
+                Bmatrix[len][j] = IHMM_END_STATE;
+        }
+        best = -1;
+        /* Fill B with best transition pointers... */
+        for(i = len-1; i >= 0; i-- ){
+                for(j = 0; j < fhmm->K;j++){
+                        //trans = hmm->transitions[j];
+                        max = -INFINITY;
+                        for(c = 1; c < fhmm->tindex[j][0];c++){
+                                f = fhmm->tindex[j][c];
+                                if( Fmatrix[i+1][f] > max){
+                                        max  = Fmatrix[i+1][f] ;
+                                        best = f;
+                                }
+                        }
+                        Fmatrix[i][j] = max + Fmatrix[i][j];
+                        Bmatrix[i][j] = best;
+                }
+        }
+        state = IHMM_START_STATE;
+
+
+        /* traceback */
+        i = 0;
+        while (i <= len){
+                //going to
+                if(i){
+                        path[i-1] = state;
+                }
+
+                state =  Bmatrix[i][state];
+                i++;
+        }
+
+
+        /*for(i =0; i < len;i++){
+                fprintf(stdout,"%2d %2d %2d ", i,(int) a[i], path[i] );
+                for(j = 0; j < fhmm->L;j++){
+                        fprintf(stdout,"%2f ",scaledprob2prob(fhmm->e[path[i]][j]));;
+                }
+                fprintf(stdout,"\n");
+        }
+        fprintf(stdout,"\n");*/
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 /* reads finite model from hdf5 file  */
 struct fhmm* init_fhmm(char* filename)
 {

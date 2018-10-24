@@ -54,7 +54,6 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
 
         /* sample transitions / emission */
         RUN(fill_fast_transitions(model,ft));
-
         /* Threading setup...  */
         need_local_pool = 0;
         if(pool){
@@ -85,7 +84,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
 
                 RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  ,model->num_states));
 
-                //LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
+                LOG_MSG("Iteration %d (%d states)", iter, model->num_states);
                 //dyn prog + labelling
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft = ft;
@@ -142,7 +141,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                         //model->alpha = 0.5;
                         RUN(fill_fast_transitions(model,ft));
                 }
-                //LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
+                LOG_MSG("Iteration %d (%d states)  alpha = %f, gamma = %f", iter, model->num_states, model->alpha ,model->gamma);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
                 //LOG_MSG("print %d\n",iter);
@@ -1042,7 +1041,7 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
                         //r =  random_float_zero_to_x(sum);
 
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
-                        r = random_float_zero_to_x_thread(sum, & data->seed);
+                        r = random_float_zero_to_x_thread(sum, &data->seed);
 
                         for(j = 0; j < boundary;j++){
                                 //if(j == 0 && i == len-1){

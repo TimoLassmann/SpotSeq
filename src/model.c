@@ -1,10 +1,12 @@
 
 #include "model.h"
 #include "ihmm_seq.h"
+#include "finite_hmm.h"
 
 
 int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s );
 
+int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, float alpha);
 int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 {
         int i;
@@ -19,7 +21,7 @@ int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
         }
         LOG_MSG("Will start with %d states",K);
 
-        RUN(random_label_ihmm_sequences(sb, K, 30));
+        RUN(random_label_ihmm_sequences(sb, K, 3));
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
         //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
@@ -40,6 +42,9 @@ ERROR:
         return FAIL;
 
 }
+
+
+
 
 
 int esl_stats_LogGamma(double x, double *ret_answer)

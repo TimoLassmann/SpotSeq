@@ -1,13 +1,10 @@
 #ifndef HMM_SCORE_H
 #define HMM_SCORE_H
 
-
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include "tldevel.h"
-
 
 #include "global.h"
 #include "hdf5_glue.h"
@@ -32,7 +29,6 @@ extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a
 
 extern int read_hmm_parameters(struct fhmm* fhmm, char* filename);
 
-
 extern struct fhmm* alloc_fhmm(void);
 extern int setup_model(struct fhmm* fhmm);
 extern struct fhmm* init_fhmm(char* filename);
@@ -40,4 +36,3 @@ extern int alloc_dyn_matrices(struct fhmm* fhmm);
 extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);
 extern void free_fhmm(struct fhmm* fhmm);
 #endif
-

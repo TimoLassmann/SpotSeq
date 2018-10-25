@@ -1,5 +1,6 @@
 #include "ihmm_seq.h"
 
+
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
 
@@ -430,6 +431,9 @@ ERROR:
         }
         return FAIL;
 }
+
+
+
 
 int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha)
 {
@@ -1268,6 +1272,7 @@ int add_reverse_complement_sequences_to_buffer(struct seq_buffer* sb)
         ASSERT(sb->L == ALPHABET_DNA, "No DNA sequences in buffer");
         /* remember old sequence count. */
         old_numseq = sb->num_seq;
+
         /* main loop */
         for(i = 0; i < old_numseq;i++){
                 sequence = sb->sequences[sb->num_seq];

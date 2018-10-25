@@ -21,6 +21,8 @@
 
 #include "run_score.h"
 
+#include "init_seq_label.h"
+
 struct parameters{
         char* input;
         char* output;
@@ -254,8 +256,10 @@ int run_build_ihmm(struct parameters* param)
 
 
                 RUNP(sb = load_sequences(param->input));
-
                 //sb = concatenate_sequences(sb);
+                //RUN(label_seq_based_on_random_fhmm(sb, initial_states, 0.3));
+
+
 
                 if(param->rev && sb->L == ALPHABET_DNA){
                         LOG_MSG("Add revcomp sequences.");
@@ -278,6 +282,12 @@ int run_build_ihmm(struct parameters* param)
                         model->gamma = param->gamma;
                 }
 
+
+                //RUN(fill_counts(model,sb));
+                /* I am doing this as a pre-caution. I don't want the inital model
+                 * contain states that are not visited.. */
+                //RUN(remove_unused_states_labels(model, sb));
+                //RUN(fill_counts(model,sb));
                 RUN(inititalize_model(model, sb,initial_states));// initial_states) );
 
                 /* Note this also initializes the last (to infinity state) */

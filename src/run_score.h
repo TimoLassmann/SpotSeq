@@ -23,4 +23,7 @@
 extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_threads);
 extern void* do_score_sequences(void* threadarg);
 
+extern int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_threads);
+extern void* do_label_sequences(void* threadarg);
+
 #endif

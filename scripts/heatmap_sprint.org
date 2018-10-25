@@ -78,23 +78,23 @@ ggplot(data = ggfortify(sequences, "peptide")) +
 ** ggseqlogo
 
 #+BEGIN_SRC R :session one 
-  library("rhdf5")
-  require(ggplot2)
+    library("rhdf5")
+    require(ggplot2)
   require(ggseqlogo)
 
-                                        
 
-  x = h5dump("../src/motif.h5")
+    x = h5dump("../motif.h5")
 
 
-  add_rowname <- function(x){
-      rownames(x) = c("A","C","G","T");
-      return(x);
-  }
-  x$MotifData = lapply(x$MotifData,add_rowname)
-p = ggseqlogo(x$MotifData[1:18], ncol=6)
+
+    add_rowname <- function(x){
+        rownames(x) = c("A","C","G","T");
+        return(x);
+    }
+    x$MotifData = lapply(x$MotifData,add_rowname)
+  p = ggseqlogo(x$MotifData[1:40], ncol=6)
  
-ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 12,width=18,limitsize = TRUE )
+  ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 12,width=18,limitsize = TRUE )
 
 
 #+END_SRC

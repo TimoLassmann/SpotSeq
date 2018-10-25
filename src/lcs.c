@@ -16,6 +16,8 @@ static int run_lcs(struct parameters* param);
 //static int analyze_label_sequences_with_pst(struct seq_buffer* sb);
 static struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, float min_seq, int all);
 
+
+static int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct motif_struct* motif,struct sa* sa);
 static int calculate_relative_entropy(struct motif_struct** list, int num_motif, struct fhmm* fhmm);
 static int add_positional_distribution(struct motif_struct** list, int num_motif, struct sa* sa, struct seq_buffer*sb, int pos_resolution);
 
@@ -184,6 +186,52 @@ int run_lcs(struct parameters* param)
 
         ASSERT(sb != NULL, "No sequence Buffer");
 
+        /* I can do this later...  */
+        RUNP(fhmm = alloc_fhmm());
+        /* get HMM parameters  */
+        RUN(read_hmm_parameters(fhmm,param->input));
+
+        int* array_rename = NULL;
+
+        MMALLOC(array_rename, sizeof(int) *fhmm->K);
+        for(i = 0; i < fhmm->K;i++){
+                array_rename[i] = i;
+        }
+        for(i = 2; i < fhmm->K-1;i++){
+                for(j = i+1; j < fhmm->K-1;j++){
+                        float x,y;
+                        x = 0.0;
+                        y = 0.0;
+                        for(c = 0; c < fhmm->L;c++){
+                                if(fhmm->e[i][c] > 0.0f && fhmm->e[j][c] > 0.0f){
+                                        x += fhmm->e[i][c] * log2f(fhmm->e[i][c] / fhmm->e[j][c]);
+                                        y += fhmm->e[j][c] * log2f(fhmm->e[j][c] / fhmm->e[i][c]);
+                                }
+                        }
+
+
+                        if((x+y) / 2.0f < 0.0001){
+                                fprintf(stdout,"%d - %d : %f\n", i,j, (x+y) / 2.0f);
+                                for(c = 0; c < fhmm->L;c++){
+                                        fprintf(stdout,"%c %f %f\n","ACGT"[c],  fhmm->e[i][c],fhmm->e[j][c] );
+                                }
+                                //array_rename[MACRO_MAX(i, j)] = MACRO_MIN(i,j);
+                        }
+                }
+        }
+        for(i = 0; i < fhmm->K;i++){
+                fprintf(stdout,"%d %d \n",i,array_rename[i]);
+        }
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        sb->sequences[i]->label[j] = array_rename[sb->sequences[i]->label[j]];
+
+                }
+        }
+
+        // exit(0);
+
+        RUN(setup_model(fhmm));
         /* try 512 times to get lcs -  */
         for(iter = 0;iter < 512;iter++){
 
@@ -200,28 +248,39 @@ int run_lcs(struct parameters* param)
                         /* sort - note this will be done on length only. Rel entropy will be done later */
                         qsort(root->data_nodes, root->num_entries, sizeof(struct motif_struct*), qsort_motif_struct);
                         motif_ptr = root->data_nodes[0];
-                        LOG_MSG("Found motif of length: %d",motif_ptr->len );
+                        LOG_MSG("Found %d motifs",root->num_entries);
                         for(i = 0; i < root->num_entries;i++){
+                                /* calculate log odds score.. */
                                 motif_ptr = root->data_nodes[i];
+
+
+                                RUN(calculate_log_likelihood(fhmm,sb, motif_ptr,sa));
+                                fprintf(stdout,"%d %d  len:%d occ:%d  %f\n",motif_ptr->start_in_sa,motif_ptr->end_in_sa,motif_ptr->len, motif_ptr->n_occur, motif_ptr->log_likelihood);
                                 res_motif[num_res_motif] = alloc_motif(motif_ptr->len+1);
                                 res_motif[num_res_motif]->len = motif_ptr->len;
                                 res_motif[num_res_motif]->start_in_sa = motif_ptr->start_in_sa;
                                 res_motif[num_res_motif]->end_in_sa = motif_ptr->end_in_sa;
                                 res_motif[num_res_motif]->n_occur =  motif_ptr->n_occur;
+                                res_motif[num_res_motif]->log_likelihood = motif_ptr->log_likelihood;
                                 for(j = 0; j < motif_ptr->len;j++){
                                         res_motif[num_res_motif]->state_list[j] = motif_ptr->state_list[j];
                                 }
                                 res_motif[num_res_motif]->state_list[motif_ptr->len] = -1;
 
+                                /* Test for significance... */
+
                                 /* Nuke motif in sb..  */
-                                fprintf(stdout,"%d %d\n",motif_ptr->start_in_sa,motif_ptr->end_in_sa);
+
                                 for(j = motif_ptr->start_in_sa; j <= motif_ptr->end_in_sa;j++){
                                         //fprintf(stdout,"Nuking: seq%d pos%d\n",sa->lcs[j]->seq_num,sa->lcs[j]->pos);
                                         seq = sa->lcs[j]->seq_num;
                                         pos = sa->lcs[j]->pos;
+                                        //fprintf(stdout,"%d:%d\n", seq,pos);
                                         for(c = 0; c < motif_ptr->len;c++){
                                                 sb->sequences[seq]->label[pos+c] = -1;
+
                                         }
+                                        //fprintf(stdout,"\n");
                                 }
                                 num_res_motif++;
                                 if(num_res_motif == num_alloc_res_motif){
@@ -233,6 +292,7 @@ int run_lcs(struct parameters* param)
                                         }
 
                                 }
+                                //exit(0);
 
                         }
 
@@ -244,17 +304,28 @@ int run_lcs(struct parameters* param)
                         root = NULL;
                         break;
                 }
+                //exit(0);
                 root->free_tree(root);
                 root = NULL;
                 free_sa(sa);
                 sa = NULL;
 
         }
+
+        free_fhmm(fhmm);
         /* remove old sequence buffer and load a fresh one from file  */
         free_ihmm_sequences(sb);
         sb = NULL;
         RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0; j < sb->sequences[i]->seq_len;j++){
+                        sb->sequences[i]->label[j] = array_rename[sb->sequences[i]->label[j]];
 
+                }
+        }
+
+
+        MFREE(array_rename);
         /* check if we found motifs!!!! */
         if(num_res_motif){
                 sa = build_sa(sb);
@@ -292,6 +363,92 @@ ERROR:
 
 }
 
+int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct motif_struct* motif,struct sa* sa)
+{
+        int i,j,c;
+        int w;
+        int state;
+        float a,b,cc;
+        float sum;
+        float lambda_0;         /* background prior */
+
+        float lambda_1;         /* motif prior */
+
+        float log_likelihood_0;
+
+        float log_likelihood_1;
+
+        struct ihmm_sequence* s = NULL;
+
+        ASSERT(fhmm != NULL, "No hmm");
+        ASSERT(sb != NULL, "No sequences");
+        ASSERT(sb->num_seq != 0, " No sequences");
+        ASSERT(motif != NULL, "No motif");
+
+        w = motif->len;
+        //w = 1;
+        /* set z_ij */
+        c= 0;
+        for( i = 0; i < sb->num_seq;i++){
+                s = sb->sequences[i];
+                for(j = 0; j < s->seq_len;j++){
+                        s->u[j] = 0;
+                }
+                c += s->seq_len - w;
+        }
+        //c /= 4;
+
+        lambda_0 = (float)(c - motif->n_occur) / (float)c;
+        lambda_1 = (float)(motif->n_occur) / (float)c;
+
+
+        lambda_0 = prob2scaledprob(lambda_0);
+        lambda_1 = prob2scaledprob(lambda_1);
+        for(j = motif->start_in_sa; j <= motif->end_in_sa;j++){
+                sb->sequences[sa->lcs[j]->seq_num]->u[sa->lcs[j]->pos] = 1.0;
+        }
+
+        /*for( i = 0; i < sb->num_seq;i++){
+                s = sb->sequences[i];
+                sum = 0.0;
+                for(j = 0; j < s->seq_len-w;j++){
+                        sum += s->u[j];
+                }
+                fprintf(stdout, "sum:%f\n", sum);
+                if(sum){
+                for(j = 0; j < s->seq_len-w;j++){
+                        s->u[j] =  s->u[j] / sum;
+                }
+                }
+                }*/
+        cc = prob2scaledprob(1.0f);
+
+
+        for( i = 0; i < sb->num_seq;i++){
+                s = sb->sequences[i];
+                for(j = 0; j < s->seq_len-w;j++){
+                        if(s->u[j]){
+                                a = prob2scaledprob(1.0);
+                                for(c = 0; c < w;c++){
+                                        state = motif->state_list[c];
+                                        a = a + fhmm->e[state][s->seq[j+c]];
+                                }
+
+                                b = prob2scaledprob(1.0);
+                                for(c = 0; c < w;c++){
+                                        b = b + fhmm->background[s->seq[j+c]];
+                                }
+                                //fprintf(stdout,"%d %d %f  %f\n", i,j, (a - b) + (lambda_1 - lambda_0), exp((a - b) + (lambda_1 - lambda_0))/ (1.0f + exp((a - b) + (lambda_1 - lambda_0))));
+                                cc += (a - b) + (lambda_1 - lambda_0);
+                        }
+                }
+        }
+
+        motif->log_likelihood  = cc;
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float min_seq_occur, int pos_resolution)
 {
@@ -358,7 +515,7 @@ int find_overlapping_motifs(struct motif_struct** res_motif, int num_res_motif, 
         for(i = 0; i < num_res_motif;i++){
                 for(j = i +1; j < num_res_motif;j++){
                         RUN(compare_motif(res_motif[i], res_motif[j],fhmm, &x));
-                        if(x <= 0.5){
+                        if(x <= 0.05){
                                 if(res_motif[i]->len > res_motif[j]->len){
                                         res_motif[j]->mean_rel_entropy = 0.0;
                                 }else{
@@ -462,7 +619,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
 
         for(c = 0; c < num_res_motif;c++){
                 m = res_motif[c];
-                if(m->mean_rel_entropy > 0.5){
+                if(m->mean_rel_entropy > 0.01){
 
 
                         RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
@@ -507,7 +664,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
                         hdf5_data->chunk_dim[0] = m->len;
                         hdf5_data->chunk_dim[1] = fhmm->L;
                         hdf5_data->native_type = H5T_NATIVE_FLOAT;
-                        snprintf(buffer, BUFFER_LEN, "Motif%06d", c+1);
+                        snprintf(buffer, BUFFER_LEN, "Motif%03d_%4.2f", c+1, m->log_likelihood);
                         hdf5_write(buffer,&tmp[0][0], hdf5_data);
 
                         free_2d((void**) tmp);
@@ -648,14 +805,10 @@ struct rbtree_root* find_lcs(struct sa* sa, int total_sequences,int min_len, flo
         lcs_count->cur_longest = 0;
 
         MMALLOC(lcs_count->counts, sizeof(int) * lcs_count->len);
-        for(i= 0 ; i < lcs_count->len;i++){
+        for(i = 0; i < lcs_count->len;i++){
                 lcs_count->counts[i] = 0;
         }
 
-
-        for(i= 0 ; i < lcs_count->len;i++){
-                lcs_count->counts[i] = 0;
-        }
         if(min_seq <= 1.0){
                 min_seq = (int) (min_seq * (float) total_sequences);
         }
@@ -818,9 +971,9 @@ struct sa* build_sa(struct seq_buffer* sb)
         sa->len = 0;
         for(i = 0 ;i < sb->num_seq;i++){
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
-                        if(sb->sequences[i]->label[j] == -1 && i == 0){
-                                fprintf(stdout,"Seq:%d pos: %d is -1\n", i,j);
-                        }
+                        //if(sb->sequences[i]->label[j] == -1 && i == 0){
+                        //        fprintf(stdout,"Seq:%d pos: %d is -1\n", i,j);
+                        //}
                         sa->lcs[sa->len]->str =  &sb->sequences[i]->label[j];
                         sa->lcs[sa->len]->lcp = 0;
                         sa->lcs[sa->len]->seq_num = i;
@@ -933,6 +1086,7 @@ struct motif_struct* alloc_motif(int len)
         motif->mean_rel_entropy = 0.0;
         motif->n_occur = 0;
         motif->occ = NULL;
+        motif->log_likelihood = prob2scaledprob(0.0f);
 
         motif->state_list = NULL;
         MMALLOC(motif->state_list, sizeof(int) * len);

@@ -36,6 +36,7 @@ struct lcs_count{
 struct motif_struct{
         int* state_list;
         int* occ;
+        float log_likelihood;
         float mean_rel_entropy;
         int n_occur;
         int len;

@@ -152,9 +152,9 @@ int run_infoclust(struct parameters* param)
 
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
-                for(j = 0; j < 5;j++){
+                for(j = 0; j < 1;j++){
                         p = init_paraclu_cluster(1.0, sb->num_seq);
-                        RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,6,1,p));
+                        RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,6,0.1,p));
                         if(p->start == -1){
                                 free_paraclu_cluster(p);
                                 break;
@@ -163,7 +163,7 @@ int run_infoclust(struct parameters* param)
                         for(c = 0; c < p->stop-p->start;c++){
                                 p->state_sequence[c] = s->label[p->start + c];
                         }
-                        //fprintf(stderr,"CLUSTER:%d:%d	%d	%d	%d	%f %f %f\n",i,j,p->start, p->stop,p->stop-p->start, p->kl_divergence,p->max_d ,p->kl_divergence / (float)(p->stop-p->start) );
+                        fprintf(stderr,"CLUSTER:%d:%d	%d	%d	%d	%f %f %f\n",i,j,p->start, p->stop,p->stop-p->start, p->kl_divergence,p->max_d ,p->kl_divergence / (float)(p->stop-p->start) );
                         /* delete motif */
                         for(c = p->start;c < p->stop;c++){
                                 sb->sequences[i]->u[c] = 0.0f;
@@ -358,7 +358,7 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
                 /* compare motifs - keep longer one... */
                 RUN(compare_motif(fhmm, m->plist[i], p, &kl));
                 //fprintf(stdout,"%d %f %f \n",i, kl,kl / MACRO_MIN(p->len, m->plist[i]->len));
-                if(kl / MACRO_MIN(p->len, m->plist[i]->len) < 0.1f){
+                /*if(kl / MACRO_MIN(p->len, m->plist[i]->len) < 0.0001f){
                         new = 0;
                         if(p->len > m->plist[i]->len){
                                 //                fprintf(stdout,"replace existing cluster\n");
@@ -370,7 +370,7 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
 
                         }
                         break;
-                }
+                        }*/
         }
         //fprintf(stdout,"Insert? %d\n",new);
         if(new){                /* still */
@@ -528,7 +528,7 @@ int max_score_segment(float* x , int start ,int end, int min_len, float min_dens
         max_density =  (min_prefix < min_suffix) ? min_prefix : min_suffix;
 
 
-        if (max_density > min_density &&  end-start >= min_len ){
+        if (max_density > min_density &&  end-start >= min_len && end-start < 20){
                 if(max_density /  min_density >= p->max_d){
                         p->max_d =  max_density /  min_density;
                         p->start = start;
@@ -537,7 +537,7 @@ int max_score_segment(float* x , int start ,int end, int min_len, float min_dens
                         p->kl_divergence = total;
                         //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
                 }
-                //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
+                fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
         }
 
         if (max_density < 1e100) {

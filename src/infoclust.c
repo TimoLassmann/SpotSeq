@@ -35,9 +35,6 @@ void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* mi
 int free_parameters(struct parameters* param);
 int print_help(char **argv);
 
-
-
-
 /* Here I plan to:
 1) project information content of states onto labelled sequences
 2) visualise

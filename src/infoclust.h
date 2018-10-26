@@ -6,6 +6,7 @@ struct paraclu_cluster{
         float min_density;
         float max_density;
         float total;
+        float log_likelihood;
         int start_in_sa;
         int end_in_sa;
         int seq_id;

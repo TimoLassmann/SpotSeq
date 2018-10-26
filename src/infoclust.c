@@ -1,6 +1,8 @@
 #include "infoclust.h"
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
+#include "label_suffix_array.h"
+
 #include <getopt.h>
 
 struct parameters{
@@ -16,6 +18,8 @@ int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy);
 
 int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm);
 
+int calculate_log_likelihood(struct fhmm* fhmm,struct seq_buffer* sb, struct paraclu_cluster* motif,struct sa* sa);
+
 int insert_motif(struct motif_list*m, struct paraclu_cluster* p,struct fhmm* fhmm);
 int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div);
 
@@ -30,7 +34,7 @@ void free_motif_list(struct motif_list* m);
 struct paraclu_cluster* init_paraclu_cluster(void);
 void free_paraclu_cluster(struct paraclu_cluster* p);
 
-int sort_paraclu_cluster_based_on_kl(const void *a, const void *b);
+int sort_paraclu_cluster_based_on_likelihood(const void *a, const void *b);
 int max_score_segment(float* x , int start ,int end, int min_len,float min_density,struct motif_list* m);
 float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix);
 void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix);
@@ -54,8 +58,8 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->out = NULL;
         param->input = NULL;
-        param->maxlen = 10;
-        param->min_d_increase = 1.01;
+        param->maxlen = 25;
+        param->min_d_increase = 1.00;
 
 
         while (1){
@@ -116,10 +120,11 @@ int run_infoclust(struct parameters* param)
         struct seq_buffer* sb = NULL;
         struct ihmm_sequence* s = NULL;
         struct fhmm* fhmm = NULL;
+        struct fhmm* fhmm_log = NULL;
         struct paraclu_cluster* p =  NULL;
         struct motif_list* m = NULL;
         struct motif_list* t = NULL;
-
+        struct sa* sa = NULL;
         float* rel_entropy = NULL;
         int i,j,c;
         int old_end;
@@ -150,6 +155,14 @@ int run_infoclust(struct parameters* param)
                 }
                 //fprintf(stdout,"\n");
         }
+
+        RUNP(sa= build_sa(sb));
+        /* Now I can set up */
+        /* read in finite hmm */
+        RUNP(fhmm_log = alloc_fhmm());
+        /* get HMM parameters  */
+        RUN(read_hmm_parameters(fhmm_log,param->input));
+        RUN(setup_model(fhmm_log));
         m = init_motif_list(sb->num_seq);
 
 
@@ -158,7 +171,7 @@ int run_infoclust(struct parameters* param)
                 t = init_motif_list(sb->num_seq);
 
                 p = init_paraclu_cluster();
-                RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,8,0.1,t));
+                RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,6,0.1,t));
 
                 /*for(j = 0; j < t->num_items;j++){
                         p = t->plist[j];
@@ -192,7 +205,7 @@ int run_infoclust(struct parameters* param)
                         p = t->plist[j];
                         if(p->total > 0){
                                 if(p->stop <= old_end ){
-                                        p->total = -3; /* marker to not include sequence */
+                                        //                p->total = -3; /* marker to not include sequence */
                                 }
                                 old_end = p->stop;
                         }
@@ -202,8 +215,8 @@ int run_infoclust(struct parameters* param)
                         p = t->plist[j];
                         fprintf(stderr,"CLUSTER:%d:\t%d\t%d\t%d\t%f\t%f\t%f\t%f\n",j,p->start, p->stop,p->len,p->total,p->min_density,p->max_density,p->max_density /p->min_density  );
                 }
-                fprintf(stdout,"\n");
-                exit(0);*/
+                fprintf(stdout,"\n");*/
+                //exit(0);
 
                 /*if(p->start == -1){
                         free_paraclu_cluster(p);
@@ -226,7 +239,14 @@ int run_infoclust(struct parameters* param)
                                 for(c = 0; c < p->stop-p->start;c++){
                                         p->state_sequence[c] = s->label[p->start + c];
                                 }
+
+
+                                RUN(search_sa(sa,p->state_sequence, p->len,&p->start_in_sa,&p->end_in_sa));
+                                RUN(calculate_log_likelihood(fhmm_log,sb,p,sa));
+
+                                //fprintf(stderr,"CLUSTER:%d	%d	%d	%d %f s:%d e:%d n:%d llr:%f\n",i,p->start, p->stop,p->len,p->total, p->start_in_sa, p->end_in_sa,p->end_in_sa- p->start_in_sa,p->log_likelihood);
                                 RUN(insert_motif(m,p,fhmm));
+                                //fprintf(stderr,"%d\n", m->num_items);
                                 t->plist[j] = NULL;
                         }
                 }
@@ -235,15 +255,17 @@ int run_infoclust(struct parameters* param)
 
         }
 
+
+
         RUN(calculate_relative_entropy(m, fhmm));
 
 
-        qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_kl);
+        qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_likelihood);
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
-                fprintf(stderr,"CLUSTER:%d	%d	%d	%d %f\t",i,p->start, p->stop,p->len,p->total);
-                for(j = 0 ; j < p->len;j++){
+                fprintf(stderr,"CLUSTER:%d	%d	%d	%d %f s:%d e:%d n:%d llr:%f\n",i,p->start, p->stop,p->len,p->total, p->start_in_sa, p->end_in_sa,p->end_in_sa- p->start_in_sa,p->log_likelihood);
+                /*for(j = 0 ; j < p->len;j++){
                         fprintf(stdout," %d", p->state_sequence[j]);
                 }
 
@@ -254,15 +276,16 @@ int run_infoclust(struct parameters* param)
                         }
                          fprintf(stdout,"\n");
                 }
-                fprintf(stdout,"\n");
+                fprintf(stdout,"\n");*/
         }
         RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
         free_fhmm(fhmm);
+        free_fhmm(fhmm_log);
         free_motif_list(m);
         //run_paraclu_clustering(sb, "GAGA");
         /* clean up */
         free_ihmm_sequences(sb);
-
+        free_sa(sa);
         MFREE(rel_entropy);
         return OK;
 ERROR:
@@ -276,7 +299,71 @@ ERROR:
         return FAIL;
 }
 
+int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct paraclu_cluster* motif,struct sa* sa)
+{
+        int i,j,c;
+        int w;
+        int state;
+        int occur;
+        float a,b,cc;
+        float sum;
+        float lambda_0;         /* background prior */
 
+        float lambda_1;         /* motif prior */
+
+        float log_likelihood_0;
+
+        float log_likelihood_1;
+
+        struct ihmm_sequence* s = NULL;
+
+        ASSERT(fhmm != NULL, "No hmm");
+        ASSERT(sb != NULL, "No sequences");
+        ASSERT(sb->num_seq != 0, " No sequences");
+        ASSERT(motif != NULL, "No motif");
+
+        w = motif->len;
+
+        occur =  motif->end_in_sa - motif->start_in_sa;
+        //w = 1;
+        /* set z_ij */
+        c= 0;
+        for( i = 0; i < sb->num_seq;i++){
+                c += sb->sequences[i]->seq_len - w;
+        }
+        //c /= 4;
+
+        lambda_0 = (float)(c - occur) / (float)c;
+        lambda_1 = (float)(occur) / (float)c;
+
+
+        lambda_0 = prob2scaledprob(lambda_0);
+        lambda_1 = prob2scaledprob(lambda_1);
+         cc = prob2scaledprob(1.0f);
+        for(i = motif->start_in_sa; i < motif->end_in_sa;i++){
+                s = sb->sequences[sa->lcs[i]->seq_num];
+                j = sa->lcs[i]->pos;
+
+                a = prob2scaledprob(1.0);
+                for(c = 0; c < w;c++){
+                        state = motif->state_sequence[c];
+                        a = a + fhmm->e[state][s->seq[j+c]];
+                }
+
+                b = prob2scaledprob(1.0);
+                for(c = 0; c < w;c++){
+                        b = b + fhmm->background[s->seq[j+c]];
+                }
+                //fprintf(stdout,"%d %d %f  %f\n", i,j, (a - b) + (lambda_1 - lambda_0), exp((a - b) + (lambda_1 - lambda_0))/ (1.0f + exp((a - b) + (lambda_1 - lambda_0))));
+                cc += (a - b) + (lambda_1 - lambda_0);
+
+        }
+
+        motif->log_likelihood  = cc;
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm)
 {
@@ -346,7 +433,6 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
-                if(p->count >= 100 ){
                 RUNP(tmp = malloc_2d_float(tmp, p->len, fhmm->L, 0.0));
 
 
@@ -368,8 +454,6 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
 
                 free_2d((void**) tmp);
                 tmp = NULL;
-
-                }
         }
 
         RUN(hdf5_close_group(hdf5_data));
@@ -419,13 +503,14 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
         int new = 1;
         float kl;
         for(i = 0; i < m->num_items;i++){
+
                 /* compare motifs - keep longer one... */
                 RUN(compare_motif(fhmm, m->plist[i], p, &kl));
                 //fprintf(stdout,"%d %f %f \n",i, kl,kl / MACRO_MIN(p->len, m->plist[i]->len));
-                if(kl / MACRO_MIN(p->len, m->plist[i]->len) < 1.0f){
+                if(kl / MACRO_MIN(p->len, m->plist[i]->len)  < 1.0f){
                         new = 0;
 
-                        if(p->len > m->plist[i]->len){
+                        if(p->log_likelihood > m->plist[i]->log_likelihood){
                                 //                fprintf(stdout,"replace existing cluster\n");
                                 p->count = p->count + m->plist[i]->count;
                                 free_paraclu_cluster(m->plist[i]);
@@ -439,6 +524,7 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
                         }
                         break;
                 }
+
         }
         //fprintf(stdout,"Insert? %d\n",new);
         if(new){                /* still */
@@ -560,6 +646,7 @@ struct paraclu_cluster* init_paraclu_cluster(void)
         p->total = -1;
         p->min_density = 0.0f;
         p->max_density = 0.0f;
+        p->log_likelihood = 0.0f;
         p->count = 1;
         p->start_in_sa = -1;
         p->end_in_sa = -1;
@@ -723,12 +810,12 @@ float* shuffle_arr_r(float* arr,int n,unsigned int* seed)
 
 
 
-int sort_paraclu_cluster_based_on_kl(const void *a, const void *b)
+int sort_paraclu_cluster_based_on_likelihood(const void *a, const void *b)
 {
     struct paraclu_cluster* const *one = a;
     struct paraclu_cluster* const *two = b;
 
-    if((*one)->total <  (*two)->total){
+    if((*one)->log_likelihood <  (*two)->log_likelihood){
             return 1;
     }else{
             return -1;

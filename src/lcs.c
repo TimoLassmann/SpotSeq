@@ -1022,6 +1022,7 @@ void free_sa(struct sa* sa)
                 MFREE(sa);
         }
 }
+
 static void* get_state_path(void* ptr)
 {
         struct  motif_struct* tmp = (struct motif_struct*)  ptr;

@@ -534,7 +534,7 @@ int max_score_segment(float* x , int start ,int end, int min_len, float min_dens
                         p->kl_divergence = total;
                         //fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
                 }
-                fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density /  min_density);
+                fprintf(stderr,"CLUSTER:	%d	%d	%d	%f	%e	%e	%f %d\n",start,end,end-start, total/(float)(end-start), min_density,max_density,max_density -  min_density, (min_density * 2 <= max_density)? 0 : 1);
         }
 
         if (max_density < 1e100) {

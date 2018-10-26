@@ -149,14 +149,11 @@ int main (int argc, char *argv[])
                 }
         }
 
-
         RUN(run_plot_ihmm(param));
 
         RUN(plot_model_entropy(param));
 
         RUN(run_plot_positional_state_distribution(param));
-
-        //RUN(seed_controller_thread(param));
 
         RUN(free_parameters(param));
         return EXIT_SUCCESS;

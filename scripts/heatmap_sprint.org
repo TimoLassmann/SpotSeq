@@ -82,10 +82,9 @@ ggplot(data = ggfortify(sequences, "peptide")) +
     require(ggplot2)
   require(ggseqlogo)
 
-                                            # Some sample data
-
 
     x = h5dump("../motif.h5")
+
 
 
     add_rowname <- function(x){

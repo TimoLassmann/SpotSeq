@@ -223,6 +223,7 @@ ERROR:
         return FAIL;
 }
 
+
 int run_build_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
@@ -376,9 +377,7 @@ int free_parameters(struct parameters* param)
         MFREE(param);
         return OK;
 ERROR:
-
         return FAIL;
-
 }
 
 int print_help(char **argv)
@@ -394,4 +393,3 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--gamma","Gamma hyper oparameter." ,"[NA]"  );
         return OK;
 }
-

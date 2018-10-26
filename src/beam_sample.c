@@ -68,7 +68,7 @@ int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fa
                 /* Set U */
                 RUN(set_u(sb,model,ft, &min_u));
                 /* I only want to add states if the last iteration was successful */
-                if(!no_path){
+                if(!no_path && model->training_iterations){
                         RUN(get_max_to_last_state_transition(ft, &max));
                         while(max >= min_u && model->num_states < 1000 && max > 0.0 ){//}sb->max_len){
                                 //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);

@@ -3,6 +3,10 @@
 
 struct paraclu_cluster{
         int* state_sequence;
+        int* present_in_seq;
+        int num_present_in_seq;
+
+        int num_seq;
         float min_density;
         float max_density;
         float total;

@@ -140,8 +140,6 @@ void* do_label_sequences(void* threadarg)
                         seq = data->sb->sequences[i];
                         RUN( forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len));
                         RUN(backward(fhmm, data->B_matrix, &b_score, seq->seq, seq->seq_len));
-                        //fprintf(stdout,"f:%f b:%f\n", f_score,b_score);
-
                         RUN(posterior_decoding(fhmm,data->F_matrix,data->B_matrix,f_score,seq->seq, seq->seq_len, seq->label));
                 }
         }

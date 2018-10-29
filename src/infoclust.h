@@ -2,6 +2,7 @@
 #define INFOCLUST_H
 
 struct paraclu_cluster{
+        float** matrix;
         int* state_sequence;
         int* present_in_seq;
         int num_present_in_seq;

@@ -127,7 +127,7 @@ int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int
         }
 
         // backward recursion...
-        for(i = len-1; i > 0; i -- ){
+        for(i = len-1; i > 0; i-- ){
                 next = cur;
                 cur = matrix[i];
                 for(j = 0; j < fhmm->K;j++){
@@ -176,13 +176,21 @@ int posterior_decoding(struct fhmm* fhmm,float** Fmatrix, float** Bmatrix,float 
         float max = prob2scaledprob(0.0);
         float total = score;
 
-        for(i = 1; i <= len+1;i++){
+        for(i = 1; i <= len;i++){
                 //last_F = Fmatrix[i-1];
                 this_F = Fmatrix[i];
                 this_B = Bmatrix[i];
                 for(j = 0; j < fhmm->K;j++){
                         this_F[j] = scaledprob2prob((this_F[j]  +( this_B[j] - fhmm->e[j][a[i-1]] )) - total);
                 }
+        }
+        /* need to do separately because sequence[len] is undefined */
+        i = len+1;
+
+        this_F = Fmatrix[i];
+        this_B = Bmatrix[i];
+        for(j = 0; j < fhmm->K;j++){
+                this_F[j] = scaledprob2prob((this_F[j]  +( this_B[j] )) - total);
         }
 
         for(j = 0; j < fhmm->K ;j++){

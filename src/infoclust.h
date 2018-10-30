@@ -1,7 +1,15 @@
 #ifndef INFOCLUST_H
 #define INFOCLUST_H
 
+
+struct hit{
+        int seq;
+        int pos;
+};
+
 struct paraclu_cluster{
+        struct hit** hits;
+        float** log_matrix;
         float** matrix;
         int* state_sequence;
         int* present_in_seq;
@@ -19,6 +27,7 @@ struct paraclu_cluster{
         int stop;
         int len;
         int count;
+        int num_hits;
 };
 
 struct motif_list{

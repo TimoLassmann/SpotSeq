@@ -89,7 +89,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
       rownames(x) = c("A","C","G","T");
       return(x);
   }
-  nplot = min(length(x$MotifData),12);
+  nplot = min(length(x$MotifData),24);
   x$MotifData = lapply(x$MotifData,add_rowname)
   p = ggseqlogo(x$MotifData[1:nplot], ncol=4)
 

@@ -58,7 +58,7 @@ pd.m$Time <- factor( pd.m$Time, levels = rownames(data)[ord],  labels = c("0h", 
 
 #+END_SRC  
 
-* plotting LOGOs 
+* plotting LOGOs
 
 ** gglogo
 #+BEGIN_SRC R :session one 
@@ -82,7 +82,6 @@ ggplot(data = ggfortify(sequences, "peptide")) +
   require(ggplot2)
   require(ggseqlogo)
 
-
   x = h5dump("../motif.h5")
 
   add_rowname <- function(x){
@@ -91,9 +90,9 @@ ggplot(data = ggfortify(sequences, "peptide")) +
   }
   nplot = min(length(x$MotifData),24);
   x$MotifData = lapply(x$MotifData,add_rowname)
-  p = ggseqlogo(x$MotifData[1:nplot], ncol=4)
+  p = ggseqlogo(x$MotifData[1:nplot], ncol=2)
 
-  ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 12,width=18,limitsize = TRUE )
+  ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 18,width=18,limitsize = TRUE )
 
 
 

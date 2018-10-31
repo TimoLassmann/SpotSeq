@@ -27,16 +27,17 @@ int find_overlapping_hits(struct sa* sa, int start, int stop, int w);
 
 int insert_motif(struct motif_list*m, struct paraclu_cluster* p,struct fhmm* fhmm);
 int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div);
-int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b);
+int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b,float* score);
+int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struct paraclu_cluster* b);
 static int motif_dyn_programming(struct fhmm* fhmm, int* a, int* b, int len_a, int len_b,int min_aln_len);
 int pick_state(float* a, float* b, int len, int* pick);
 int merge_motif(struct paraclu_cluster* a,struct paraclu_cluster* b);
 int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm);
-
+int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,float* jac);
-
+static int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif);
 int add_hit_locations(struct sa* sa, struct paraclu_cluster* p);
-
+static int remove_overlapping_hits( struct paraclu_cluster* p);
 struct motif_list* init_motif_list(int initial_len);
 int extend_motif_list(struct motif_list* m);
 void free_motif_list(struct motif_list* m);
@@ -45,6 +46,7 @@ struct paraclu_cluster* init_paraclu_cluster(void);
 void free_paraclu_cluster(struct paraclu_cluster* p);
 
 int sort_paraclu_cluster_based_on_likelihood(const void *a, const void *b);
+int sort_paraclu_cluster_based_on_hits(const void *a, const void *b);
 int max_score_segment(float* x , int start ,int end, int min_len,float min_density,struct motif_list* m);
 float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix);
 void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix);
@@ -236,7 +238,7 @@ int run_infoclust(struct parameters* param)
                 t = init_motif_list(sb->num_seq);
 
                 p = init_paraclu_cluster();
-                RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,6,0.1,t));
+                RUN(max_score_segment(sb->sequences[i]->u, 0, sb->sequences[i]->seq_len,8,0.01,t));
 
                 /*for(j = 0; j < t->num_items;j++){
                         p = t->plist[j];
@@ -325,7 +327,7 @@ int run_infoclust(struct parameters* param)
 
                                 RUN(add_present_in_seq(p,sa, sb->num_seq));
                                 RUN(calculate_log_likelihood(fhmm_log,sb,p,sa,sb_temp));
-                                if(p->log_likelihood > 5){
+                                if(p->log_likelihood >= 3.0f){
                                         RUN(add_motif_count_matrix(sb, p,sa));
 
                                         RUN(add_hit_locations(sa,p));
@@ -367,11 +369,17 @@ int run_infoclust(struct parameters* param)
                 if(p->num_present_in_seq < (int)sqrtf((float) sb->num_seq)){
                         free_paraclu_cluster(p);
                         m->plist[i] = 0;
-                 }else{
+                }else{
                         fprintf(stderr,"CLUSTER:%d	%d %f  llr:%f   %d in %d seq\n",i,p->len,p->total,p->log_likelihood,p->count, p->num_present_in_seq);
-                        }
+
+
+                        RUN(add_motif_count_matrix_based_on_hits(sb,p));
+                }
         }
         RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
+
+        RUN(write_meme_output("motif.meme",m,fhmm));
+
         free_fhmm(fhmm);
         free_fhmm(fhmm_log);
         free_motif_list(m);
@@ -421,9 +429,58 @@ int add_hit_locations(struct sa* sa, struct paraclu_cluster* p)
                         fprintf(stdout,"%d %d\n",p->hits[i]->seq ,p->hits[i]->pos);
                 }
                 }*/
+        //RUN(remove_overlapping_hits(p));
+        //qsort(p->hits, p->num_hits, sizeof(struct hit*), sort_hit_positions);
+
+        c = p->num_hits;
+        for(j = 0; j < p->num_hits;j++){
+                if(p->hits[j]->seq == 1000000){
+                        c = j;
+                        break;
+                }
+                //fprintf(stdout,"%d %d\n", a->hits[j]->seq,a->hits[j]->pos);
+        }
+        //fprintf(stdout,"%d\n",c);
+
+        for(j = c; j < p->num_hits;j++){
+                MFREE(p->hits[j]);
+                p->hits[j] = NULL;
+        }
+        p->num_hits = c;
+
+        MREALLOC(p->hits, sizeof(struct hit*) *(p->num_hits));
+
+
+
         return OK;
 ERROR:
         return FAIL;
+}
+
+int remove_overlapping_hits( struct paraclu_cluster* p)
+{
+        int i,j;
+        struct hit* a;
+        struct hit* b;
+        if(p->num_hits > 1){
+                for(i = 0;i < p->num_hits;i++){
+                        a = p->hits[i];
+                        for(j = i + 1; j < p->num_hits;j++){
+                                b = p->hits[j];
+                                if(a->seq == b->seq){
+                                        if(a->pos + p->len >= b->pos){
+                                                b->pos = 1000000;
+                                                b->seq = 1000000;
+                                                break;
+                                        }
+                                }
+                        }
+
+                }
+
+        }
+
+        return OK;
 }
 
 int add_present_in_seq(struct paraclu_cluster* motif,struct sa* sa, int numseq)
@@ -455,6 +512,37 @@ int add_present_in_seq(struct paraclu_cluster* motif,struct sa* sa, int numseq)
 ERROR:
         return FAIL;
 
+}
+
+int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif)
+{
+        int i;
+        int c;
+
+        RUNP(motif->matrix = malloc_2d_float(motif->matrix, motif->len, sb->L, 0.0f));
+
+
+        for(i = 0; i < motif->num_hits;i++){
+                for(c = 0;c < motif->len;c++){
+                        if(c + motif->hits[i]->pos < 0){
+                                fprintf(stdout,"-");
+                        }else if(c + motif->hits[i]->pos >= sb->sequences[motif->hits[i]->seq]->seq_len){
+                                fprintf(stdout,"-");
+                        }else{
+                                motif->matrix[c][sb->sequences[motif->hits[i]->seq]->seq[c + motif->hits[i]->pos]] += 1.0;;
+                                fprintf(stdout,"%c","ACGT"[sb->sequences[motif->hits[i]->seq]->seq[c + motif->hits[i]->pos]]);
+                        }
+                }
+                fprintf(stdout, "\n");
+
+
+                //fprintf(stdout,"%d:%d ",p->hits[j]->seq,p->hits[j]->pos);
+        }
+        fprintf(stdout, "\n");
+        return OK;
+
+ERROR:
+        return FAIL;
 }
 
 int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,struct sa* sa)
@@ -735,6 +823,62 @@ ERROR:
 }
 
 
+int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm)
+{
+        struct paraclu_cluster* p =  NULL;
+        FILE* fptr = NULL;
+        int i,j,c;
+        float sum;
+        ASSERT(filename != NULL, "No file name");
+        ASSERT(m != NULL, "No motifs");
+        if(fhmm->L == ALPHABET_DNA){
+                RUNP(fptr = fopen(filename, "w"));
+                fprintf(fptr,"MEME version 4\n");
+                fprintf(fptr,"\n");
+                fprintf(fptr,"ALPHABET= ACGT\n");
+                fprintf(fptr,"\n");
+                fprintf(fptr,"strands: +\n");
+                fprintf(fptr,"\n");
+                fprintf(fptr,"Background letter frequencies\n");
+                for(i = 0; i < fhmm->L;i++){
+                        fprintf(fptr,"%c %0.3f","ACGT"[i],fhmm->background[i]);
+                        if(i != 3){
+                                fprintf(fptr," ");
+                        }
+                }
+                fprintf(fptr,"\n");
+                fprintf(fptr,"\n");
+
+
+                for(i = 0 ; i < m->num_items;i++){
+                        p = m->plist[i];
+                        if(p){
+                                fprintf(fptr,"MOTIF M%03d\n", i+1);
+                                fprintf(fptr,"letter-probability matrix: alength= %d w= %d nsites= %d E= 4.1e-009\n",fhmm->L, p->len, p->num_hits);
+                                for(j = 0 ; j < p->len;j++){
+                                        sum = 0.0f;
+                                        for(c = 0; c < fhmm->L;c++){
+                                                sum += p->matrix[j][c];
+                                        }
+                                        fprintf(fptr,"%0.6f", p->matrix[j][0]/sum);
+                                        for(c = 1; c < fhmm->L;c++){
+                                                fprintf(fptr," %0.6f", p->matrix[j][c]/sum);
+                                        }
+                                        fprintf(fptr,"\n");
+                                }
+                                fprintf(fptr,"\n");
+                        }
+                }
+
+                fclose(fptr);
+
+        }
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm)
 {
         char buffer[BUFFER_LEN];
@@ -839,18 +983,37 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
 {
         int i;
         int new = 1;
-        float jac;
+        float score = 0.0f;
+        float best_score = 1000000.0f;
+        int hit = -1;
         for(i = 0; i < m->num_items;i++){
-                RUN(compare_hit_positions(  m->plist[i]->hits , p->hits, m->plist[i]->num_hits, p->num_hits, MACRO_MAX( m->plist[i]->len, p->len),&jac));
-                if(jac >= 0.8){
-                        RUN(align_motif(fhmm, m->plist[i], p));
-                        if(p->len == -1){
-                                merge_motif(m->plist[i],p);
-                                new = 0;
-                                free_paraclu_cluster(p);
-                                break;
-                        }
+                RUN(align_motif(fhmm, m->plist[i], p, &score));
+                if(score < best_score){
+                        best_score = score;
+                        hit = i;
                 }
+                //fprintf(stdout,"%d %f   %d\n",i, best_score,m->num_items);
+        }
+
+        if(best_score < 1.0 && hit != -1){
+                RUN(motif_dyn_programming(fhmm, m->plist[hit]->state_sequence, p->state_sequence, m->plist[hit]->len, p->len,MACRO_MIN(m->plist[hit]->len, p->len)));
+
+                RUN(traceback_and_merge_motifs(fhmm,m->plist[hit],p));
+                new = 0;
+                free_paraclu_cluster(p);
+
+        }
+        //for(i = 0; i < m->num_items;i++){
+                //RUN(compare_hit_positions(  m->plist[i]->hits , p->hits, m->plist[i]->num_hits, p->num_hits, MACRO_MAX( m->plist[i]->len, p->len),&jac));
+                //if(jac >= 0.0){
+                //RUN(align_motif(fhmm, m->plist[i], p, &score));
+                //        if(p->len == -1){
+                                //merge_motif(m->plist[i],p);
+                //                 new = 0;
+                //               free_paraclu_cluster(p);
+                                //                break;
+                                //        }
+                        //}
                 /* compare motifs - keep longer one... */
                 /*RUN(compare_motif(fhmm, m->plist[i], p, &kl));
                 //fprintf(stdout,"%d %f %f %f\n",i, kl,kl / MACRO_MIN(p->len, m->plist[i]->len),m->plist[i]->log_likelihood);
@@ -870,7 +1033,7 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
                         break;
                         }*/
 
-        }
+                //}
         //fprintf(stdout,"Insert? %d\n",new);
         if(new){                /* still */
                 m->plist[m->num_items] = p;
@@ -879,7 +1042,8 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
                         RUN(extend_motif_list(m));
                 }
         }
-        qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_likelihood);
+        qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_hits);
+
         return OK;
 ERROR:
         return FAIL;
@@ -966,31 +1130,269 @@ ERROR:
         return FAIL;
 }
 
-int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b)
+int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struct paraclu_cluster* b)
 {
         int i,j,c;
         int new_len;
-        int allowed_overlap;
-        float** m;
+        uint8_t* path = NULL;
         float** t;
-        float score = 0.0;
-        int* permuted_states = NULL;
         int* new_state_sequence = NULL;
         float** new_count_matrix = NULL;
-        unsigned int seed = 42;
-        m = fhmm->F_matrix;
-        t = fhmm->B_matrix;
 
-        uint8_t* path = NULL;
         ASSERT(fhmm != NULL, "No fhmm model");
         ASSERT(a != NULL,"No A motif");
         ASSERT(b != NULL,"No B motif");
 
+        t = fhmm->B_matrix;
+
         MMALLOC(path, sizeof(uint8_t) * (a->len + b->len +1));
-        MMALLOC(permuted_states, sizeof(int) * (a->len));
+/*fprintf(stdout,"Motif A\n");
+  for(c = 0; c < fhmm->L;c++){
+  fprintf(stdout,"%c","ACGT"[c]);
+  for(i = 0; i < a->len;i++){
+  fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[i]][c]);
+  }
+  fprintf(stdout,"\n");
+  }
+  fprintf(stdout,"Motif B\n");
+
+  for(c = 0; c < fhmm->L;c++){
+  fprintf(stdout,"%c","ACGT"[c]);
+  for(j = 0; j < b->len;j++){
+  fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[j]][c]);
+  }
+
+  fprintf(stdout,"\n");
+  }
+  fprintf(stdout,"Dyn matrix\n");
+  for(i = 0; i < a->len+1;i++){
+  for(j = 0; j < b->len+1;j++){
+
+  fprintf(stdout," %2.2f",m[i][j]);
+  }
+  fprintf(stdout,"\n");
+  }
+  fprintf(stdout,"\n");
+
+  fprintf(stdout,"Traceback matrix\n");
+  for(i = 0; i < a->len+1;i++){
+  for(j = 0; j < b->len+1;j++){
+
+  fprintf(stdout," %d",(int)t[i][j]);
+  }
+  fprintf(stdout,"\n");
+  }
+  fprintf(stdout,"\n");
+*/
+        /* Traceback to get path */
+
+        i = a->len;
+        j = b->len;
+        new_len = 0;
+        while( i + j != 0){
+                switch ((int)t[i][j]) {
+                case 0: {
+                        path[new_len] = 0;
+                        i--;
+                        j--;
+                        break;
+                }
+                case 1: {
+                        path[new_len] = 1;
+                        i--;
+                        break;
+                }
+                case 2: {
+                        path[new_len] = 2;
+                        j--;
+                        break;
+                }
+                default:
+                        break;
+                }
+                new_len++;
+        }
+        int pos_a = 0;
+        int pos_b = 0;
+        new_count_matrix = malloc_2d_float(new_count_matrix, new_len, fhmm->L, 0.0f);
+        MMALLOC(new_state_sequence, sizeof(int) * (new_len));
+        j = 0;
+        for(i = new_len-1; i >=0;i--){
+                //fprintf(stdout, "%d\t",path[i]);
+                switch (path[i]) {
+                case 0: {
+
+                        /*for(c = 0;c < fhmm->L;c++){
+                          fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[pos_a]][c]);
+                          }
+                          for(c = 0;c < fhmm->L;c++){
+                          fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[pos_b]][c]);
+                          }*/
+
+                        pick_state(fhmm->e[a->state_sequence[pos_a]],fhmm->e[b->state_sequence[pos_b]], fhmm->L, &c);
+                        if(c == 1){
+                                new_state_sequence[j] = a->state_sequence[pos_a];
+                        }else{
+                                new_state_sequence[j] = b->state_sequence[pos_b];
+                        }
+                        for(c = 0;c < fhmm->L;c++){
+
+                                new_count_matrix[j][c] = a->matrix[pos_a][c]+b->matrix[pos_b][c];
+                        }
+                        pos_a++;
+                        pos_b++;
+                        break;
+                }
+                case 1: {
+                        /*        for(c = 0;c < fhmm->L;c++){
+                                  fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[pos_a]][c]);
+                                  }
+                                  for(c = 0;c < fhmm->L;c++){
+                                  fprintf(stdout," %0.2f", 0.0);
+                                  }*/
+                        new_state_sequence[j] = a->state_sequence[pos_a];
+                        for(c = 0;c < fhmm->L;c++){
+
+                                new_count_matrix[j][c] = a->matrix[pos_a][c];
+                        }
+                        pos_a++;
+                        break;
+                }
+                case 2: {
+                        /*for(c = 0;c < fhmm->L;c++){
+                          fprintf(stdout," %0.2f", 0.0);
+                          }
+                          for(c = 0;c < fhmm->L;c++){
+                          fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[pos_b]][c]);
+                          }*/
+                        new_state_sequence[j] = b->state_sequence[pos_b];
+                        for(c = 0;c < fhmm->L;c++){
+                                new_count_matrix[j][c] = b->matrix[pos_b][c];
+                        }
+                        pos_b++;
+                        break;
+                }
+                default:
+                        break;
+                }
+                //fprintf(stdout, "\n");
+                j++;
+        }
 
 
-        allowed_overlap = MACRO_MIN(a->len, b->len)-2;
+
+        pos_a = 0;
+        j = new_len-1;
+        while(path[j] == 1){
+                pos_a++; /* All hits in b have to pushed back pos_a positions */
+                j--;
+        }
+
+        if(pos_a){
+                for(j = 0; j < b->num_hits;j++){
+                        b->hits[j]->pos -= pos_a;
+                }
+        }
+
+        pos_b= 0;
+        j = new_len-1;
+        while(path[j] == 2){
+                pos_b++; /* All hits in b have to pushed back pos_a positions */
+                j--;
+        }
+
+        if(pos_b){
+                for(j = 0; j < a->num_hits;j++){
+                        a->hits[j]->pos -= pos_b;
+                }
+        }
+        //fprintf(stdout,"pa:%d pb:%d\n",pos_a,pos_b);
+        //fprintf(stdout,"\n");
+        /*for(j = 0; j < new_len;j++){
+          fprintf(stdout," %d",new_state_sequence[j]);//fhmm->e[b->state_sequence[j]][i]);
+          }
+          fprintf(stdout,"\n");
+          for(i = 0; i < fhmm->L;i++){
+          fprintf(stdout,"%c","ACGT"[i]);
+          for(j = 0; j < new_len;j++){
+          fprintf(stdout," %0.2f", new_count_matrix[j][i]);//fhmm->e[b->state_sequence[j]][i]);
+          }
+
+          fprintf(stdout,"\n");
+          }*/
+        free_2d((void**) a->matrix);
+
+        a->matrix = NULL;
+        a->matrix = new_count_matrix;
+        a->len = new_len;
+        MFREE(a->state_sequence);
+        a->state_sequence = new_state_sequence;
+        MREALLOC(a->hits, sizeof(struct hit*) *(a->num_hits + b->num_hits));
+        for(j = 0; j < b->num_hits;j++){
+                a->hits[a->num_hits] = b->hits[j];
+                a->num_hits++;
+                b->hits[j] = NULL;
+                //        fprintf(stdout,"%d %d\n", a->hits[j]->seq,a->hits[j]->pos);
+        }
+        MFREE(b->hits);
+        //fprintf(stdout,"\n");
+        b->hits = NULL;
+        qsort(a->hits, a->num_hits, sizeof(struct hit*), sort_hit_positions);
+        for(j = 1; j < a->num_hits;j++){
+                if( a->hits[j]->seq ==  a->hits[j-1]->seq){
+                        if(a->hits[j]->pos ==  a->hits[j-1]->pos){
+                                a->hits[j]->seq = 1000000;
+                                a->hits[j]->pos = 1000000;
+                        }
+                }
+        }
+        //qsort(a->hits, a->num_hits, sizeof(struct hit*), sort_hit_positions);
+        //RUN(remove_overlapping_hits(a));
+        qsort(a->hits, a->num_hits, sizeof(struct hit*), sort_hit_positions);
+        c = a->num_hits;
+        for(j = 0; j < a->num_hits;j++){
+                if(a->hits[j]->seq == 1000000){
+                        c = j;
+                        break;
+                }
+                //fprintf(stdout,"%d %d\n", a->hits[j]->seq,a->hits[j]->pos);
+        }
+        //fprintf(stdout,"%d\n",c);
+
+        for(j = c; j < a->num_hits;j++){
+                MFREE(a->hits[j]);
+                a->hits[j] = NULL;
+        }
+        a->num_hits = c;
+
+        MREALLOC(a->hits, sizeof(struct hit*) *(a->num_hits));
+        b->len = -1;
+        a->log_likelihood = MACRO_MAX(a->log_likelihood, b->log_likelihood);
+
+        merge_motif(a,b);
+
+        MFREE(path);
+        return OK;
+ERROR:
+        MFREE(path);
+        return FAIL;
+
+}
+int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* score)
+{
+
+        int allowed_overlap;
+        //int* permuted_states = NULL;
+        //unsigned int seed = 42;
+
+        ASSERT(fhmm != NULL, "No fhmm model");
+        ASSERT(a != NULL,"No A motif");
+        ASSERT(b != NULL,"No B motif");
+
+        //MMALLOC(permuted_states, sizeof(int) * (a->len));
+
+
+        allowed_overlap = MACRO_MIN(a->len, b->len);
         /* Idea: dynamic programming to align a and b. Allow for
          * leading and trailing gaps; no gaps in the middle and a
          * minimum alignment length *(6 probably) */
@@ -998,26 +1400,27 @@ int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_clus
         /* Don't need to allocate a matrix - done in the main function... */
         RUN(motif_dyn_programming(fhmm, a->state_sequence, b->state_sequence, a->len, b->len,allowed_overlap));
 
-        score = m[a->len][b->len];
-        /*if(score){
+        *score = fhmm->F_matrix[a->len][b->len];
+        //fprintf(stdout,"SCORE:%f\n",score);
+          /*if(score){
                 for(i = 0; i < a->len;i++){
                         permuted_states[i] = a->state_sequence[i];
                 }
 
                 c = 0;
-                for(i = 0; i < 100;i++){
+                for(i = 0; i < 10000;i++){
                         RUN(shuffle_arr_r(permuted_states,a->len,&seed));
                         RUN(motif_dyn_programming(fhmm, permuted_states, b->state_sequence, a->len, b->len,6));
                         if(m[a->len][b->len] <= score){
                                 c++;
-                                if(c == 1){
+                                if(c == 100){
                                         break;
                                 }
                         }
                 }
         }else{
                 c =0;
-                }*/
+        }*/
         /*fprintf(stdout,"%d %f \n",c,score);
         for(i = 0; i < a->len;i++){
                 fprintf(stdout," %d", a->state_sequence[i]);
@@ -1027,233 +1430,17 @@ int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_clus
                 fprintf(stdout," %d", b->state_sequence[i]);
         }
         fprintf(stdout,"\n");*/
-        if(score <= 2.0){
-                RUN(motif_dyn_programming(fhmm, a->state_sequence, b->state_sequence, a->len, b->len,allowed_overlap));
-                /*fprintf(stdout,"Motif A\n");
-                for(c = 0; c < fhmm->L;c++){
-                        fprintf(stdout,"%c","ACGT"[c]);
-                        for(i = 0; i < a->len;i++){
-                                fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[i]][c]);
-                        }
-                        fprintf(stdout,"\n");
-                }
-                fprintf(stdout,"Motif B\n");
+        //if(*score <= 3.0){
+        //        RUN(motif_dyn_programming(fhmm, a->state_sequence, b->state_sequence, a->len, b->len,allowed_overlap));
 
-                for(c = 0; c < fhmm->L;c++){
-                        fprintf(stdout,"%c","ACGT"[c]);
-                        for(j = 0; j < b->len;j++){
-                                fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[j]][c]);
-                        }
+        //       RUN(traceback_and_merge_motifs(fhmm,a,b));
+        //}
 
-                        fprintf(stdout,"\n");
-                }
-                fprintf(stdout,"Dyn matrix\n");
-                for(i = 0; i < a->len+1;i++){
-                        for(j = 0; j < b->len+1;j++){
-
-                                fprintf(stdout," %2.2f",m[i][j]);
-                        }
-                        fprintf(stdout,"\n");
-                }
-                fprintf(stdout,"\n");
-
-                fprintf(stdout,"Traceback matrix\n");
-                for(i = 0; i < a->len+1;i++){
-                        for(j = 0; j < b->len+1;j++){
-
-                                fprintf(stdout," %d",(int)t[i][j]);
-                        }
-                        fprintf(stdout,"\n");
-                }
-                fprintf(stdout,"\n");
-                */
-                /* Traceback to get path */
-
-                i = a->len;
-                j = b->len;
-                new_len = 0;
-                while( i + j != 0){
-                        switch ((int)t[i][j]) {
-                        case 0: {
-                                path[new_len] = 0;
-                                i--;
-                                j--;
-                                break;
-                        }
-                        case 1: {
-                                path[new_len] = 1;
-                                i--;
-                                break;
-                        }
-                        case 2: {
-                                path[new_len] = 2;
-                                j--;
-                                break;
-                        }
-                        default:
-                                break;
-                        }
-                        new_len++;
-                }
-                int pos_a = 0;
-                int pos_b = 0;
-                new_count_matrix = malloc_2d_float(new_count_matrix, new_len, fhmm->L, 0.0f);
-                MMALLOC(new_state_sequence, sizeof(int) * (new_len));
-                j = 0;
-                for(i = new_len-1; i >=0;i--){
-                        switch (path[i]) {
-                        case 0: {
-
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[pos_a]][c]);
-                                }
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[pos_b]][c]);
-                                        }
-
-                                pick_state(fhmm->e[a->state_sequence[pos_a]],fhmm->e[b->state_sequence[pos_b]], fhmm->L, &c);
-                                if(c == 1){
-                                        new_state_sequence[j] = a->state_sequence[pos_a];
-                                }else{
-                                        new_state_sequence[j] = b->state_sequence[pos_b];
-                                }
-                                for(c = 0;c < fhmm->L;c++){
-
-                                        new_count_matrix[j][c] = a->matrix[pos_a][c]+b->matrix[pos_b][c];
-                                }
-                                pos_a++;
-                                pos_b++;
-                                break;
-                        }
-                        case 1: {
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", fhmm->e[a->state_sequence[pos_a]][c]);
-                                }
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", 0.0);
-                                        }
-                                new_state_sequence[j] = a->state_sequence[pos_a];
-                                for(c = 0;c < fhmm->L;c++){
-
-                                        new_count_matrix[j][c] = a->matrix[pos_a][c];
-                                }
-                                pos_a++;
-                                break;
-                        }
-                        case 2: {
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", 0.0);
-                                }
-                                for(c = 0;c < fhmm->L;c++){
-                                        fprintf(stdout," %0.2f", fhmm->e[b->state_sequence[pos_b]][c]);
-                                        }
-                                new_state_sequence[j] = b->state_sequence[pos_b];
-                                for(c = 0;c < fhmm->L;c++){
-                                        new_count_matrix[j][c] = b->matrix[pos_b][c];
-                                }
-                                pos_b++;
-                                break;
-                        }
-                        default:
-                                break;
-                        }
-                        fprintf(stdout, "\n");
-                        j++;
-                }
-
-
-                pos_a = 0;
-                j = new_len-1;
-                while(path[j] == 1){
-                        pos_a++; /* All hits in b have to pushed back pos_a positions */
-                        j--;
-                }
-
-                if(pos_a){
-                        for(j = 0; j < b->num_hits;j++){
-                                b->hits[j]->pos -= pos_a;
-                        }
-                }
-
-                pos_b= 0;
-                j = new_len-1;
-                while(path[j] == 2){
-                        pos_b++; /* All hits in b have to pushed back pos_a positions */
-                        j--;
-                }
-
-                if(pos_b){
-                        for(j = 0; j < a->num_hits;j++){
-                                a->hits[j]->pos -= pos_b;
-                        }
-                }
-                fprintf(stdout,"pa:%d pb:%d\n",pos_a,pos_b);
-                //fprintf(stdout,"\n");
-                /*for(j = 0; j < new_len;j++){
-                        fprintf(stdout," %d",new_state_sequence[j]);//fhmm->e[b->state_sequence[j]][i]);
-                }
-                fprintf(stdout,"\n");
-                for(i = 0; i < fhmm->L;i++){
-                        fprintf(stdout,"%c","ACGT"[i]);
-                        for(j = 0; j < new_len;j++){
-                                fprintf(stdout," %0.2f", new_count_matrix[j][i]);//fhmm->e[b->state_sequence[j]][i]);
-                        }
-
-                        fprintf(stdout,"\n");
-                        }*/
-                free_2d((void**) a->matrix);
-
-                a->matrix = NULL;
-                a->matrix = new_count_matrix;
-                a->len = new_len;
-                MFREE(a->state_sequence);
-                a->state_sequence = new_state_sequence;
-                MREALLOC(a->hits, sizeof(struct hit*) *(a->num_hits + b->num_hits));
-                for(j = 0; j < b->num_hits;j++){
-                        a->hits[a->num_hits] = b->hits[j];
-                        a->num_hits++;
-                        b->hits[j] = NULL;
-                }
-                MFREE(b->hits);
-                b->hits = NULL;
-                qsort(a->hits, a->num_hits, sizeof(struct hit*), sort_hit_positions);
-                for(j = 1; j < a->num_hits;j++){
-                        if( a->hits[j]->seq ==  a->hits[j-1]->seq){
-                                if(a->hits[j]->pos ==  a->hits[j-1]->pos){
-                                        a->hits[j]->seq = 1000000;
-                                        a->hits[j]->pos = 1000000;
-                                }
-                        }
-                }
-                qsort(a->hits, a->num_hits, sizeof(struct hit*), sort_hit_positions);
-                c = 0;
-                for(j = 0; j < a->num_hits;j++){
-                        if(a->hits[j]->seq == 1000000){
-                                c = j;
-                                break;
-                        }
-                        fprintf(stdout,"%d %d\n", a->hits[j]->seq,a->hits[j]->pos);
-                }
-                for(j = c; j < a->num_hits;j++){
-                        MFREE(a->hits[j]);
-                        a->hits[j] = NULL;
-                }
-                a->num_hits = c;
-
-                MREALLOC(a->hits, sizeof(struct hit*) *(a->num_hits));
-                b->len = -1;
-                a->log_likelihood = MACRO_MAX(a->log_likelihood, b->log_likelihood);
-
-        }
-
-        MFREE(path);
-
-        MFREE(permuted_states);
+        //MFREE(permuted_states);
 
         return OK;
 ERROR:
-        MFREE(permuted_states);
-        MFREE(path);
+        //MFREE(permuted_states);
         return FAIL;
 }
 
@@ -1276,7 +1463,7 @@ int pick_state(float* a, float* b, int len, int* pick)
 
 
         }
-        if(ma > mb){
+        if(ma < mb){
                 *pick = 1;
         }else{
                 *pick = 2;
@@ -1657,6 +1844,18 @@ int sort_paraclu_cluster_based_on_likelihood(const void *a, const void *b)
     struct paraclu_cluster* const *two = b;
 
     if((*one)->log_likelihood <  (*two)->log_likelihood){
+            return 1;
+    }else{
+            return -1;
+    }
+}
+
+int sort_paraclu_cluster_based_on_hits(const void *a, const void *b)
+{
+    struct paraclu_cluster* const *one = a;
+    struct paraclu_cluster* const *two = b;
+
+    if((*one)->num_hits <  (*two)->num_hits ){
             return 1;
     }else{
             return -1;

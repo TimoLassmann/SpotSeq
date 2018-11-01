@@ -9,6 +9,8 @@ struct parameters{
         char* input;
         char* out;
         float min_d_increase;
+        rk_state rndstate;
+        unsigned long seed;
         int maxlen;
 };
 
@@ -35,7 +37,7 @@ int merge_motif(struct paraclu_cluster* a,struct paraclu_cluster* b);
 int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,float* jac);
-static int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif);
+static int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif,rk_state rndstate );
 int add_hit_locations(struct sa* sa, struct paraclu_cluster* p);
 static int remove_overlapping_hits( struct paraclu_cluster* p);
 struct motif_list* init_motif_list(int initial_len);
@@ -75,16 +77,18 @@ int main (int argc, char *argv[])
         param->input = NULL;
         param->maxlen = 20;
         param->min_d_increase = 1.00;
+        param->seed = 0;
 
         while (1){
                 static struct option long_options[] ={
                         {"model",required_argument,0,'m'},
                         {"out",required_argument,0,'o'},
+                        {"seed",required_argument,0,'s'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"m:o:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"m:o:s:",long_options, &option_index);
 
                 if (c == -1){
                         break;
@@ -95,6 +99,9 @@ int main (int argc, char *argv[])
                         break;
                 case 'o':
                         param->out = optarg;
+                        break;
+                case 's':
+                        param->seed = atoi(optarg);
                         break;
                 case 'h':
                         RUN(print_help(argv));
@@ -119,6 +126,12 @@ int main (int argc, char *argv[])
                 ERROR_MSG("No output file! use -o <blah.h5>");
         }
 
+        if(param->seed){
+                rk_seed(param->seed, &param->rndstate);
+        }else{
+                rk_randomseed(&param->rndstate);
+        }
+
         RUN(run_infoclust(param));
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -140,6 +153,8 @@ int run_infoclust(struct parameters* param)
         struct motif_list* m = NULL;
         struct motif_list* t = NULL;
         struct sa* sa = NULL;
+
+
         float* rel_entropy = NULL;
         float sum = 0;
         int total_len = 0;
@@ -341,28 +356,16 @@ int run_infoclust(struct parameters* param)
                                 }else{
                                         free_paraclu_cluster(p);
                                         t->plist[j] = NULL;
-
-
-
                                 }
-
-
-
                         }
                 }
-                //exit(0);
-                //free_paraclu_cluster(p);
                 free_motif_list(t);
-
         }
-
-
 
         RUN(calculate_relative_entropy(m, fhmm));
 
-
         qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_likelihood);
-
+        c = 0;
         for(i = 0 ; i < MACRO_MIN(1000000, m->num_items);i++){
                 p = m->plist[i];
 
@@ -373,9 +376,15 @@ int run_infoclust(struct parameters* param)
                         fprintf(stderr,"CLUSTER:%d	%d %f  llr:%f   %d in %d seq\n",i,p->len,p->total,p->log_likelihood,p->count, p->num_present_in_seq);
 
 
-                        RUN(add_motif_count_matrix_based_on_hits(sb,p));
+                        RUN(add_motif_count_matrix_based_on_hits(sb,p, param->rndstate));
+                        m->plist[c] = p;
+                        c++;
+                        m->plist[i] = 0;
                 }
         }
+
+
+
         RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
 
         RUN(write_meme_output("motif.meme",m,fhmm));
@@ -403,6 +412,14 @@ ERROR:
         }
 
         MFREE(rel_entropy);
+        return FAIL;
+}
+
+int align_output_motifs(struct motif_list* m, struct fhmm* fhmm)
+{
+
+        return OK;
+ERROR:
         return FAIL;
 }
 
@@ -514,31 +531,64 @@ ERROR:
 
 }
 
-int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif)
+int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif, rk_state rndstate )
 {
-        int i;
+        float beta = 0.5;
+        float sum = 0.0;
+        int i,j;
         int c;
+        int seq;
+        int pos;
 
-        RUNP(motif->matrix = malloc_2d_float(motif->matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->count_matrix = malloc_2d_float(motif->count_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->freq_matrix = malloc_2d_float(motif->freq_matrix, motif->len, sb->L, 0.0f));
+        /* add dirichlet priors based on background frequencies */
+        for(i =0; i < motif->len;i++){
+                sum = 0.0;
+                for(j = 0; j < sb->L;j++){
+                        motif->count_matrix[i][j] = rk_gamma(&rndstate, sb->background[j], 1.0);
+                        sum += motif->count_matrix[i][j];
 
+
+                }
+                for(j = 0; j < sb->L;j++){
+                        motif->count_matrix[i][j] = beta * motif->count_matrix[i][j]/sum;
+                        //fprintf(stdout,"%c:%0.3f ","ACGT"[j],prob2scaledprob(motif->matrix[i][j]));
+                }
+                //fprintf(stdout," SUM:%f\n",sum);
+        }
 
         for(i = 0; i < motif->num_hits;i++){
+                seq = motif->hits[i]->seq;
+                pos = motif->hits[i]->pos;
                 for(c = 0;c < motif->len;c++){
-                        if(c + motif->hits[i]->pos < 0){
+                        if(c + pos < 0){
                                 fprintf(stdout,"-");
-                        }else if(c + motif->hits[i]->pos >= sb->sequences[motif->hits[i]->seq]->seq_len){
+                        }else if(c + pos >= sb->sequences[seq]->seq_len){
                                 fprintf(stdout,"-");
                         }else{
-                                motif->matrix[c][sb->sequences[motif->hits[i]->seq]->seq[c + motif->hits[i]->pos]] += 1.0;;
-                                fprintf(stdout,"%c","ACGT"[sb->sequences[motif->hits[i]->seq]->seq[c + motif->hits[i]->pos]]);
+                                motif->count_matrix[c][sb->sequences[seq]->seq[c + pos]] += 1.0;
+                                fprintf(stdout,"%c","ACGT"[sb->sequences[seq]->seq[c + pos]]);
                         }
                 }
                 fprintf(stdout, "\n");
-
-
-                //fprintf(stdout,"%d:%d ",p->hits[j]->seq,p->hits[j]->pos);
         }
         fprintf(stdout, "\n");
+        for(i =0; i < motif->len;i++){
+                sum = 0.0;
+                for(j = 0; j < sb->L;j++){
+                        sum += motif->count_matrix[i][j];
+                }
+                for(j = 0; j < sb->L;j++){
+                        motif->freq_matrix[i][j] = motif->count_matrix[i][j] / sum;
+                        fprintf(stdout,"%c:%0.3f ","ACGT"[j],motif->freq_matrix[i][j]);
+                }
+                fprintf(stdout," SUM:%f\n",sum);
+        }
+
+
+        //ft->emission[i][j] = rk_gamma(&model->rndstate, model->emission_counts[i][j] + EMISSION_H, 1.0);
+
         return OK;
 
 ERROR:
@@ -556,26 +606,27 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
         ASSERT(motif!= NULL, "No motif");
         ASSERT(sa != NULL, "No suffix array");
 
-        RUNP(motif->matrix = malloc_2d_float(motif->matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->count_matrix = malloc_2d_float(motif->count_matrix, motif->len, sb->L, 0.0f));
 
         for(i = motif->start_in_sa; i < motif->end_in_sa;i++){
                 s = sb->sequences[sa->lcs[i]->seq_num];
                 offset= sa->lcs[i]->pos;
                 for(j = 0; j < motif->len;j++){
-                        motif->matrix[j][s->seq[j+offset]] += 1.0;
+                        motif->count_matrix[j][s->seq[j+offset]] += 1.0;
                 }
         }
 
-        RUNP(motif->log_matrix = malloc_2d_float(motif->log_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->freq_matrix = malloc_2d_float(motif->freq_matrix, motif->len, sb->L, 0.0f));
         for(i = 0; i < motif->len;i++){
                 sum = 0.0;
                 for(j = 0; j < sb->L;j++){
-                        sum += motif->matrix[i][j];
+                        sum += motif->count_matrix[i][j];
                 }
                 for(j = 0; j < sb->L;j++){
-                        motif->log_matrix[i][j] = prob2scaledprob(motif->matrix[i][j] / sum);
+                        motif->freq_matrix[i][j] = prob2scaledprob(motif->count_matrix[i][j] / sum);
                 }
         }
+
         return OK;
 ERROR:
         return FAIL;
@@ -858,11 +909,11 @@ int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm)
                                 for(j = 0 ; j < p->len;j++){
                                         sum = 0.0f;
                                         for(c = 0; c < fhmm->L;c++){
-                                                sum += p->matrix[j][c];
+                                                sum += p->count_matrix[j][c];
                                         }
-                                        fprintf(fptr,"%0.6f", p->matrix[j][0]/sum);
+                                        fprintf(fptr,"%0.6f", p->count_matrix[j][0]/sum);
                                         for(c = 1; c < fhmm->L;c++){
-                                                fprintf(fptr," %0.6f", p->matrix[j][c]/sum);
+                                                fprintf(fptr," %0.6f", p->count_matrix[j][c]/sum);
                                         }
                                         fprintf(fptr,"\n");
                                 }
@@ -919,7 +970,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
 
                 for(j = 0 ; j < p->len;j++){
                         for(c = 0; c < fhmm->L;c++){
-                                tmp[j][c] =  p->matrix[j][c];//   fhmm->e[p->state_sequence[j]][c];// p->matrix[j][c];//
+                                tmp[j][c] =  p->count_matrix[j][c];//   fhmm->e[p->state_sequence[j]][c];// p->matrix[j][c];//
                         }
                 }
 
@@ -981,13 +1032,21 @@ ERROR:
 
 int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fhmm)
 {
+        struct paraclu_cluster* a;
         int i;
         int new = 1;
         float score = 0.0f;
         float best_score = 1000000.0f;
         int hit = -1;
+        int  allowed_overlap;
+
+
         for(i = 0; i < m->num_items;i++){
-                RUN(align_motif(fhmm, m->plist[i], p, &score));
+                a = m->plist[i];
+                allowed_overlap = MACRO_MIN(a->len, p->len);
+                RUN(motif_dyn_programming(fhmm, a->state_sequence, p->state_sequence, a->len, p->len,allowed_overlap));
+                score = fhmm->F_matrix[a->len][p->len];
+                //RUN(align_motif(fhmm, a , p, &score));
                 if(score < best_score){
                         best_score = score;
                         hit = i;
@@ -996,12 +1055,13 @@ int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fh
         }
 
         if(best_score < 1.0 && hit != -1){
-                RUN(motif_dyn_programming(fhmm, m->plist[hit]->state_sequence, p->state_sequence, m->plist[hit]->len, p->len,MACRO_MIN(m->plist[hit]->len, p->len)));
+                a = m->plist[hit];
+                allowed_overlap = MACRO_MIN(a->len, p->len);
+                RUN(motif_dyn_programming(fhmm, a->state_sequence, p->state_sequence, a->len, p->len,allowed_overlap));
 
-                RUN(traceback_and_merge_motifs(fhmm,m->plist[hit],p));
+                RUN(traceback_and_merge_motifs(fhmm,a,p));
                 new = 0;
                 free_paraclu_cluster(p);
-
         }
         //for(i = 0; i < m->num_items;i++){
                 //RUN(compare_hit_positions(  m->plist[i]->hits , p->hits, m->plist[i]->num_hits, p->num_hits, MACRO_MAX( m->plist[i]->len, p->len),&jac));
@@ -1237,7 +1297,7 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
                         }
                         for(c = 0;c < fhmm->L;c++){
 
-                                new_count_matrix[j][c] = a->matrix[pos_a][c]+b->matrix[pos_b][c];
+                                new_count_matrix[j][c] = a->count_matrix[pos_a][c]+b->count_matrix[pos_b][c];
                         }
                         pos_a++;
                         pos_b++;
@@ -1253,7 +1313,7 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
                         new_state_sequence[j] = a->state_sequence[pos_a];
                         for(c = 0;c < fhmm->L;c++){
 
-                                new_count_matrix[j][c] = a->matrix[pos_a][c];
+                                new_count_matrix[j][c] = a->count_matrix[pos_a][c];
                         }
                         pos_a++;
                         break;
@@ -1267,7 +1327,7 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
                           }*/
                         new_state_sequence[j] = b->state_sequence[pos_b];
                         for(c = 0;c < fhmm->L;c++){
-                                new_count_matrix[j][c] = b->matrix[pos_b][c];
+                                new_count_matrix[j][c] = b->count_matrix[pos_b][c];
                         }
                         pos_b++;
                         break;
@@ -1320,10 +1380,10 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
 
           fprintf(stdout,"\n");
           }*/
-        free_2d((void**) a->matrix);
+        free_2d((void**) a->count_matrix);
 
-        a->matrix = NULL;
-        a->matrix = new_count_matrix;
+        a->count_matrix = NULL;
+        a->count_matrix = new_count_matrix;
         a->len = new_len;
         MFREE(a->state_sequence);
         a->state_sequence = new_state_sequence;
@@ -1506,7 +1566,7 @@ int motif_dyn_programming(struct fhmm* fhmm, int* a, int* b, int len_a, int len_
                                 x += e[a[i-1]][c] * log2f(e[a[i-1]][c] / e[b[j-1]][c]);
                                 y += e[b[j-1]][c] * log2f(e[b[j-1]][c] / e[a[i-1]][c]);
                         }
-                        m[i][j] = (x + y) / 2.0f + m[i-1][j-1];
+                        m[i][j] = ((x + y)) / 2.0f + m[i-1][j-1];
                         t[i][j] = 0;
                 }
         }
@@ -1645,8 +1705,8 @@ struct paraclu_cluster* init_paraclu_cluster(void)
         MMALLOC(p, sizeof(struct paraclu_cluster));
         p->hits = NULL;
         p->num_hits = 0;
-        p->matrix = NULL;
-        p->log_matrix = NULL;
+        p->count_matrix = NULL;
+        p->freq_matrix = NULL;
         p->state_sequence = NULL;
         p->seq_id = -1;
         p->start = -1;
@@ -1677,11 +1737,11 @@ void free_paraclu_cluster(struct paraclu_cluster* p)
                         MFREE(p->hits);
 
                 }
-                if(p->matrix){
-                        free_2d((void**)p->matrix);
+                if(p->count_matrix){
+                        free_2d((void**)p->count_matrix);
                 }
-                if(p->log_matrix){
-                        free_2d((void**)p->log_matrix);
+                if(p->freq_matrix){
+                        free_2d((void**)p->freq_matrix);
                 }
                 if(p->present_in_seq){
                         MFREE(p->present_in_seq);

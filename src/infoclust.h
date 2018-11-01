@@ -9,8 +9,8 @@ struct hit{
 
 struct paraclu_cluster{
         struct hit** hits;
-        float** log_matrix;
-        float** matrix;
+        float** freq_matrix;
+        float** count_matrix;
         int* state_sequence;
         int* present_in_seq;
         int num_present_in_seq;
@@ -34,6 +34,8 @@ struct motif_list{
         struct paraclu_cluster** plist;
         int num_items;
         int alloc_items;
+
+
 };
 
 

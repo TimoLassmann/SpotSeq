@@ -30,7 +30,6 @@ struct sa* build_sa(struct seq_buffer* sb)
         for(i = 0 ;i < sb->num_seq;i++){
                 total_sequence_len += sb->sequences[i]->seq_len;
                 sb->sequences[i]->label[sb->sequences[i]->seq_len] = -1;
-
         }
 
 
@@ -71,22 +70,22 @@ struct sa* build_sa(struct seq_buffer* sb)
 
         for(i = 1; i < sa->len;i++){
                 struct lcs* g = NULL;
-
+                //int* tmp = NULL;
                 g = sa->lcs[i];
 
                 g->lcp = lcp_int_array(sa->lcs[i-1]->str,g->str);
                 /*tmp= g->str;
                 fprintf(stdout,"i:%d %d s:%d p:%d\t",i ,g->lcp,g->seq_num, g->pos);
-                while(*tmp !=  -1){
-                        fprintf(stdout," %2d", *tmp);
-                        tmp++;
+                for(j = 0; j < 20;j++){
+                        fprintf(stdout," %2d", tmp[j]);
+                        if(tmp[j] == -1){
+                                break;
+                        }
                 }
+
                 fprintf(stdout,"\n");*/
 
         }
-
-
-
         return sa;
 ERROR:
         return NULL;

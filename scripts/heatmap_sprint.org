@@ -90,7 +90,7 @@ ggplot(data = ggfortify(sequences, "peptide")) +
   }
   nplot = min(length(x$MotifData),24);
   x$MotifData = lapply(x$MotifData,add_rowname)
-  p = ggseqlogo(x$MotifData[1:nplot], ncol=2)
+  p = ggseqlogo(x$MotifData[1:nplot], ncol=3)
 
   ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 18,width=18,limitsize = TRUE )
 

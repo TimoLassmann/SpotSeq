@@ -18,6 +18,25 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
 
+int shuffle_sequences_in_buffer(struct seq_buffer* sb)
+{
+        struct ihmm_sequence* tmp = NULL;
+        int i,j;
+        ASSERT(sb!=NULL, "No sequences");
+        for(i = 0; i < sb->num_seq-1; i++){
+                j = i + (int) rk_interval((sb->num_seq-1) - i, &sb->rndstate);
+
+                tmp = sb->sequences[j];
+                sb->sequences[j] =  sb->sequences[i];
+                sb->sequences[i] = tmp;
+
+
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 struct seq_buffer* concatenate_sequences(struct seq_buffer* sb)
 {
         struct seq_buffer* sb_concat = NULL;
@@ -155,6 +174,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         MMALLOC(sb,sizeof(struct seq_buffer));
         sb->malloc_num = num_seq ;
         sb->num_seq = num_seq;
+        sb->org_num_seq = -1;
         sb->sequences = NULL;
         sb->max_len = max_len;
         sb->L = local_L;
@@ -615,7 +635,8 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
                                         break;
                                 }
                         }
-                        label[j] =  random_int_zero_to_x(k-1) + 2;
+
+                        label[j] = random_int_zero_to_x(k-1) + 2;
                         DPRINTF3("%d",label[j]);
                 }
         }
@@ -637,6 +658,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
         MMALLOC(sb,sizeof(struct seq_buffer));
         sb->malloc_num = 1024;
         sb->num_seq = -1;
+        sb->org_num_seq = -1;
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
@@ -726,6 +748,7 @@ struct seq_buffer* load_sequences(char* in_filename)
         MMALLOC(sb,sizeof(struct seq_buffer));
         sb->malloc_num = 1024;
         sb->num_seq = -1;
+        sb->org_num_seq = -1;
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
@@ -1805,6 +1828,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->malloc_len = 128;
         sequence->seq_len = 0;
         sequence->score = 1.0f;
+        sequence->r_score = 1.0f;
         MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
         MMALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
@@ -1974,6 +1998,7 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b)
 ERROR:
         return FAIL;
 }
+
 
 
 #ifdef ITESTSEQ

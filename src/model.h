@@ -29,10 +29,18 @@ struct ihmm_model{
         float gamma_a;
         float gamma_b;
         float log_likelihood;
+        float alpha_limit;
+        float gamma_limit;
         int num_states;         /* this excludes the start and stop states (0,1) */
         int alloc_num_states;
         int L;
         int training_iterations;
+};
+
+struct model_bag{
+        struct ihmm_model** models;
+        int num_models;
+        rk_state rndstate;      /* main seed */
 };
 
 /* Housekeeping */

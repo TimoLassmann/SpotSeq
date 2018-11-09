@@ -25,6 +25,7 @@ struct ihmm_sequence{
         int* label;
         char* name;
         float score;
+        float r_score;
         int malloc_len;
         int seq_len;
 };
@@ -32,8 +33,10 @@ struct ihmm_sequence{
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         float* background;
+        rk_state rndstate;
         int malloc_num;
         int num_seq;
+        int org_num_seq;
         int max_len;
         int L;
 };
@@ -46,7 +49,7 @@ extern int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb);
 
 extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha);
 
-
+extern int shuffle_sequences_in_buffer(struct seq_buffer* sb);
 
 extern struct seq_buffer* concatenate_sequences(struct seq_buffer* sb);
 extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha);

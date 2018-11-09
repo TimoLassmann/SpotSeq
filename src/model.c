@@ -367,11 +367,10 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s)
         seq = s->seq;
         len = s->seq_len;
         score = 1.0;// - scaledprob2prob(s->score);
-
+        //score =1.0 - scaledprob2prob ( s->score - logsum(s->score,  s->r_score));
         //u = sb->sequences[seq_ID]->u;
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
-
 
         m[IHMM_START_STATE][label[0]]  += score;
         e[(int)seq[0]][label[0]]+= score;
@@ -379,10 +378,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s)
         for(i = 1; i < len;i++){
                 m[label[i-1]][label[i]] += score;
                 e[(int)seq[i]][label[i]] += score;
-
                 //e[(int)seq[i]][label[i]] += scaledprob2prob(u[i]);
-
-
                 //r = rk_double(&ihmm->rndstate);
                 //m[label[i-1]][label[i]] += (r - 0.5f);
                 //r = rk_double(&ihmm->rndstate);
@@ -489,13 +485,16 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                         }
                         alpha = rk_gamma(&model->rndstate, model->alpha_a + total_M - sum_s, 1.0 / (model->alpha_b -sum_w));
                 }
-                model->alpha = alpha;
+                if(alpha >= model->alpha_limit){
+                        model->alpha = model->alpha_limit;
+                }else{
+                        model->alpha = alpha;
+                }
         }
         if(model->gamma_a != IHMM_PARAM_PLACEHOLDER){
                 /* Let's do gamma now...    */
                 mu = 0.0f;
                 pi_mu = 0.0f;
-
 
                 for(j = 0;j < iterations;j++){
                         mu =  rk_beta(&model->rndstate, gamma+1.0, total_M);
@@ -506,7 +505,12 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                                 gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
                         }
                 }
-                model->gamma = gamma;
+                if(gamma >= model->gamma_limit){
+                        model->gamma = model->gamma_limit;
+                }else{
+                        model->gamma = gamma;
+                }
+
         }
         free_2d((void**) M);
         free_2d((void**) supp);
@@ -516,6 +520,31 @@ ERROR:
         free_2d((void**) M);
         free_2d((void**) supp);
         return FAIL;
+}
+
+
+struct model_bag* alloc_model_bag(int num_models, unsigned int seed)
+{
+        struct model_bag* b == NULL;
+        ASSERT(num_models > 0;"need to allocate at least one model");
+
+        MMALLOC(b, sizeof(struct model_bag));
+
+        b->models = NULL;
+        b->num_models = num_models;
+
+        /* Set seed in model */
+        if(seed){
+                rk_seed(seed, &b->rndstate);
+        }else{
+                rk_randomseed(&b->rndstate);
+        }
+
+
+        return b;
+ERROR:
+        return NULL;
+
 }
 
 struct ihmm_model* alloc_ihmm_model(int K, int L)
@@ -541,6 +570,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         model->gamma = IHMM_PARAM_PLACEHOLDER;
         model->gamma_a = IHMM_PARAM_PLACEHOLDER;
         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
+        model->alpha_limit = FLT_MAX;
+        model->gamma_limit = FLT_MAX;
 
         rk_randomseed(&model->rndstate);
 
@@ -549,8 +580,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         }
         model->num_states = K;
 
-        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 10.0f));
-        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 10.0f));
+        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 1.0f));
+        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 1.0f));
 
         MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){

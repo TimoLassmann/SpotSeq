@@ -44,7 +44,7 @@ struct fast_param_bag{
 
 /* Housekeeping function */
 
-extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int k, int L);
+extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
 extern void free_fast_param_bag(struct fast_param_bag* b);
 
 

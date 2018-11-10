@@ -24,6 +24,8 @@
 #include "init_seq_label.h"
 
 #define OPT_SEED 1
+#define OPT_NUM_MODELS 2
+
 
 struct parameters{
         char* input;
@@ -35,6 +37,7 @@ struct parameters{
         unsigned long seed;
         int num_iter;
         int local;
+        int num_models;
         int num_threads;
         int num_start_states;
         int rev;
@@ -68,6 +71,7 @@ int main (int argc, char *argv[])
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
+        param->num_models = 10;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -75,6 +79,7 @@ int main (int argc, char *argv[])
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
                         {"nthreads",required_argument,0,'t'},
+                        {"nmodel",required_argument,0, OPT_NUM_MODELS},
                         {"niter",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"alpha",required_argument,0,'a'},
@@ -93,6 +98,9 @@ int main (int argc, char *argv[])
                 switch(c) {
                 case OPT_SEED:
                         param->seed = atoi(optarg);
+                        break;
+                case OPT_NUM_MODELS:
+                        param->num_models = atoi(optarg);
                         break;
                 case 'a':
                         param->alpha = atof(optarg);
@@ -163,14 +171,19 @@ int main (int argc, char *argv[])
                 }
         }
 
+        if(param->num_models < 1){
+                RUN(print_help(argv));
+                ERROR_MSG("To few models! use -nmodels <1+>");
+        }
+
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
          * data */
-        RUN(run_build_fhmm_file(param->output,0));
+        //RUN(run_build_fhmm_file(param->output,0));
 
-        RUN(score_sequences_for_command_line_reporting(param));
+        //RUN(score_sequences_for_command_line_reporting(param));
 
         /* calibrate model parameters */
         RUN(free_parameters(param));
@@ -183,29 +196,31 @@ ERROR:
 
 int run_build_ihmm(struct parameters* param)
 {
-        struct fast_hmm_param* ft = NULL;
-        struct ihmm_model* model = NULL;
+        struct fast_param_bag* ft_bag = NULL;
+
+        struct model_bag* model_bag = NULL;
+
         struct seq_buffer* sb = NULL;
 
+
+        int* num_state_array = NULL;
+
         int initial_states;
-        int i;
+        int i,j;
 
         ASSERT(param!= NULL, "No parameters found.");
         init_logsum();
         initial_states = param->num_start_states;
 
+
+        MMALLOC(num_state_array, sizeof(int)* param->num_models);
         if(param->in_model){
-                RUNP(model = read_model_hdf5(param->in_model));
-                // print_model_parameters(model);
-                // print_counts(model);
+                /* PROBABLY need to re-alloc num_state_array */
+                //MMALLOC(num_state_array, sizeof(int)* param->num_models);
+                /*RUNP(model = read_model_hdf5(param->in_model));
+
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
 
-                /*model->alpha_a = 6.0f;
-                model->alpha_b = 15.0f;
-                model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
-                model->gamma_a = 16.0f;
-                model->gamma_b = 4.0f;
-                model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);*/
                 if(param->alpha != IHMM_PARAM_PLACEHOLDER){
                         model->alpha = param->alpha;
                         model->alpha_a = IHMM_PARAM_PLACEHOLDER;
@@ -217,7 +232,7 @@ int run_build_ihmm(struct parameters* param)
                         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
                 }
 
-
+                */
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -233,45 +248,18 @@ int run_build_ihmm(struct parameters* param)
                         LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
-                RUNP(model = alloc_ihmm_model(initial_states+2, sb->L, param->seed));
 
 
 
-
-                if(param->alpha == IHMM_PARAM_PLACEHOLDER){
-                        model->alpha_a = 6.0f;
-                        model->alpha_b = 15.0f;
-                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
-                }else{
-                        model->alpha = param->alpha;
+                num_state_array[0] = 10;
+                for(i = 1; i < param->num_models;i++){
+                        num_state_array[i] = num_state_array[i-1] + ( (sb->max_len / 2) / param->num_models);
                 }
+                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,   param->seed));
 
-                if(param->gamma == IHMM_PARAM_PLACEHOLDER){
-                        model->gamma_a = 16.0f;
-                        model->gamma_b = 4.0f;
-                        model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
-                }else{
-                        model->gamma = param->gamma;
-                }
-                model->gamma_limit = 50.0f;
-                model->alpha_limit = 2.0f;
 
-                //RUN(fill_counts(model,sb));
-                /* I am doing this as a pre-caution. I don't want the inital model
-                 * contain states that are not visited.. */
-                //RUN(remove_unused_states_labels(model, sb));
-                //RUN(fill_counts(model,sb));
-                //RUN(inititalize_model(model, sb,initial_states));// initial_states) );
 
-                /* Note this also initializes the last (to infinity state) */
-
-                for(i = 0; i < model->num_states;i++){
-                        model->beta[i] = (float)(model->num_states);
-                }
-
-                for(i = 0;i < 10;i++){
-                        RUN(iHmmHyperSample(model, 20));
-                }
+                RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
         }
         /* Set seed in sequence buffer */
         if(param->seed){
@@ -279,68 +267,49 @@ int run_build_ihmm(struct parameters* param)
         }else{
                 rk_randomseed(&sb->rndstate);
         }
-
-        /*LOG_MSG("testing");
-        int a,b,r;
-        float test[4];
-        float sum;
-        float min, max;
-
-        for(a = 1;a < 100;a++){
-
-                for(r = 0; r < 10;r++){
-                        sum = 0.0f;
-                        for(b = 0; b < 4;b++){
-                                test[b] = rk_gamma(&model->rndstate,10.0 + (float) a, 1.0);
-                                sum += test[b];
-                        }
-                        min = 2.0;
-                        max = -2.0;
-                        fprintf(stdout,"%d\t",a);
-                        for(b = 0; b < 4;b++){
-                                test[b] = test[b] / sum;
-                                fprintf(stdout," %0.2f",test[b]);
-                                if(max <  test[b]){
-                                        max= test[b];
-                                }
-                                if(min > test[b]){
-                                        min= test[b];
-                                }
-                        }
-                        fprintf(stdout,"\t%f-%f range:%f\n",min,max,max-min);
-                }
-        }
-
-        exit(0);*/
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
-        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-        RUN(fill_background_emission(ft, sb));
+        RUNP(ft_bag = alloc_fast_param_bag(param->num_models, num_state_array, sb->L));
+        //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
+        /* fill background of first fast hmm param struct  */
+        RUN(fill_background_emission(ft_bag->fast_params[0], sb));
+        /* Now copy remaining 1:N first fast hmm param structs */
+        for(i = 1; i < ft_bag->num_models;i++){
+                for(j = 0; j < sb->L;j++){
+                        ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
+                }
+
+        }
 
         /* Do a random score */
 
-        RUN(random_score_sequences(sb, ft->background_emission  ));
+        RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
-        RUN(run_beam_sampling( model, sb, ft,NULL,  param->num_iter,  param->num_threads));
+        //RUN(run_beam_sampling( model, sb, ft,NULL,  param->num_iter,  param->num_threads));
 
         //RUN(write_model(model, param->output));
-        RUN(write_model_hdf5(model, param->output));
+        //RUN(write_model_hdf5(model, param->output));
 //        RUN(add_annotation)
-        RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
+        //RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
         //RUN(add_background_emission(param->output,ft->background_emission,ft->L));
-        RUN(add_sequences_to_hdf5_model(param->output, sb));
+        //RUN(add_sequences_to_hdf5_model(param->output, sb));
         //RUN(print_states_per_sequence(sb));
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
 
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
+
         free_ihmm_sequences(sb);
+        free_model_bag(model_bag);
+        free_fast_param_bag(ft_bag);
+
+        MFREE(num_state_array);
         return OK;
 ERROR:
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
         free_ihmm_sequences(sb);
+        free_model_bag(model_bag);
+        free_fast_param_bag(ft_bag);
+
+        MFREE(num_state_array);
         return FAIL;
 }
 
@@ -370,8 +339,10 @@ int random_score_sequences(struct seq_buffer* sb,float* background )
                 s = sb->sequences[i];
                 RUN(random_model_score(back, &s->r_score , s->seq, s->seq_len,expected_len));
         }
+        MFREE(back);
         return OK;
 ERROR:
+        MFREE(back);
         return FAIL;
 }
 

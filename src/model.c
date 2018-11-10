@@ -523,6 +523,43 @@ ERROR:
 }
 
 
+int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma)
+{
+        struct ihmm_model* model = NULL;
+        int i,j;
+        ASSERT(b != NULL, "No model bag");
+
+        for(i = 0; i < b->num_models;i++){
+                model = b->models[i];
+                if(alpha == IHMM_PARAM_PLACEHOLDER){
+                        model->alpha_a = 6.0f;
+                        model->alpha_b = 15.0f;
+                        model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
+                }else{
+                        model->alpha = alpha;
+                }
+
+                if(gamma == IHMM_PARAM_PLACEHOLDER){
+                        model->gamma_a = 16.0f;
+                        model->gamma_b = 4.0f;
+                        model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
+                }else{
+                        model->gamma = gamma;
+                }
+                model->gamma_limit = 50.0f;
+                model->alpha_limit = 2.0f;
+                for(j = 0; j < model->num_states;j++){
+                        model->beta[j] = (float)(model->num_states);
+                }
+                for(j = 0;j < 10;j++){
+                        RUN(iHmmHyperSample(model, 20));
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, unsigned int seed)
 {
         struct model_bag* b = NULL;

@@ -70,6 +70,11 @@ extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, in
 extern int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb);
 
 extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb);
+
+
+
+/* set hyperparameters  */
+extern int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma);
 /* re-estimate hyper parameters */
 extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 

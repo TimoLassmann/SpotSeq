@@ -40,6 +40,8 @@ struct ihmm_model{
 
 struct model_bag{
         struct ihmm_model** models;
+        float* min_u;
+        int max_num_states;
         int num_models;
         rk_state rndstate;      /* main seed */
 };

@@ -241,7 +241,7 @@ int run_build_ihmm(struct parameters* param)
                 RUNP(sb = load_sequences(param->input));
                 //sb = concatenate_sequences(sb);
                 //RUN(label_seq_based_on_random_fhmm(sb, initial_states, 0.3));
-
+                LOG_MSG("%d models ",param->num_models);
 
 
                 if(param->rev && sb->L == ALPHABET_DNA){
@@ -262,11 +262,10 @@ int run_build_ihmm(struct parameters* param)
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
         }
         /* Set seed in sequence buffer */
-        if(param->seed){
-                rk_seed(param->seed + 2, &sb->rndstate);
-        }else{
-                rk_randomseed(&sb->rndstate);
-        }
+
+        sb->seed = rk_ulong(&model_bag->rndstate );
+        rk_seed(sb->seed, &sb->rndstate);
+
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
         RUNP(ft_bag = alloc_fast_param_bag(param->num_models, num_state_array, sb->L));
@@ -285,7 +284,11 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
-        //RUN(run_beam_sampling( model, sb, ft,NULL,  param->num_iter,  param->num_threads));
+        RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
+
+
+
+        RUN(run_beam_sampling(model_bag,ft_bag, sb,NULL,  param->num_iter,  param->num_threads));
 
         //RUN(write_model(model, param->output));
         //RUN(write_model_hdf5(model, param->output));
@@ -322,7 +325,6 @@ int random_score_sequences(struct seq_buffer* sb,float* background )
 
         ASSERT(sb!=NULL, "No sequences");
         ASSERT(background != NULL, "No background");
-
 
         MMALLOC(back, sizeof(float) * sb->L);
         for(i= 0; i < sb->L;i++){

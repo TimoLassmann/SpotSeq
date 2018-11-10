@@ -38,6 +38,7 @@ struct fast_hmm_param{
 /* For when we want to train multiple models  */
 struct fast_param_bag{
         struct fast_hmm_param** fast_params;
+        int max_last_state;
         int num_models;
 };
 

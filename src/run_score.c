@@ -18,7 +18,7 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
         RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
 
         /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ));
+        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K , & sb->rndstate));
 
         /* score sequences  */
 
@@ -55,7 +55,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
 
         /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ));
+        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K , & sb->rndstate));
 
         /* score sequences  */
 

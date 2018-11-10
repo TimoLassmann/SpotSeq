@@ -571,6 +571,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, u
         MMALLOC(b, sizeof(struct model_bag));
 
         b->models = NULL;
+        b->min_u = NULL;
         b->num_models = num_models;
 
         /* Set seed in model */
@@ -580,11 +581,13 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, u
                 rk_randomseed(&b->rndstate);
         }
         MMALLOC(b->models, sizeof(struct ihmm_model*)* b->num_models);
+        MMALLOC(b->min_u , sizeof(float) * b->num_models);
 
         for(i = 0; i < b->num_models;i++){
                 /* set seed in each model based on RNG in main model bag */
                 local_seed = rk_ulong(&b->rndstate);
                 b->models[i] = NULL;
+                b->min_u[i] = 0.0;
                 RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i], L,local_seed));
         }
 
@@ -606,6 +609,9 @@ void free_model_bag(struct model_bag* b)
                                 }
                         }
                         MFREE(b->models);
+                }
+                if(b->min_u){
+                        MFREE(b->min_u);
                 }
                 MFREE(b);
         }

@@ -6,7 +6,7 @@
 
 
 
-struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K)
+struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K,rk_state* random)
 {
         struct spotseq_thread_data** td = NULL;
         int i;
@@ -48,7 +48,9 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
                 td[i]->sb = NULL;
                 td[i]->thread_ID = i;
                 td[i]->num_threads = local_num_treads;
-                td[i]->seed =  time(NULL) * (i+1);
+                td[i]->seed =  rk_ulong(random);
+                rk_seed(td[i]->seed, &td[i]->rndstate);
+                //fprintf(stdout,"thread:%d seed: %d\n",i, td[i]->seed);
 
 
         }

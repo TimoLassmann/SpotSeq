@@ -72,6 +72,7 @@ struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L)
 
         b->fast_params = NULL;
         b->num_models = num_models;
+        b->max_last_state = -1;
 
         MMALLOC(b->fast_params,sizeof(struct fast_hmm_param*)* b->num_models);
 

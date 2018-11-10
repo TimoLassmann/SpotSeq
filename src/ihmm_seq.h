@@ -35,7 +35,9 @@ struct ihmm_sequence{
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         float* background;
+
         rk_state rndstate;
+        int seed;
         int malloc_num;
         int num_seq;
         int org_num_seq;
@@ -45,7 +47,8 @@ struct seq_buffer{
 
 extern struct ihmm_sequence* alloc_ihmm_seq(void);
 
-extern int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models);
+extern int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models);
+
 
 extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 

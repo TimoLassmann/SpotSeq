@@ -26,9 +26,7 @@
 #include "thread_data.h"
 
 /* main runner function  */
-int run_beam_sampling(struct ihmm_model* model, struct seq_buffer* sb, struct fast_hmm_param* ft, struct thr_pool* pool, int iterations, int num_threads); 
-/* key Operations  */
-extern int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct thr_pool* pool, int iterations, int num_threads);
 
 
 #endif

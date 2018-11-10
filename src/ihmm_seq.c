@@ -19,6 +19,9 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
 
+static int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models);
+
+
 int shuffle_sequences_in_buffer(struct seq_buffer* sb)
 {
         struct ihmm_sequence* tmp = NULL;
@@ -1859,13 +1862,27 @@ ERROR:
 }
 
 
+int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models)
+{
+        int i;
+
+        ASSERT(sb != NULL,"No sequence buffer");
+
+        for(i = 0; i < sb->num_seq;i++){
+                RUN(alloc_multi_model_label_and_u(sb->sequences[i], num_models));
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models)
 {
         ASSERT(sequence != NULL, "No sequence");
 
-        RUNP(sequence->u_arr = malloc_2d_float(sequence->u_arr, num_models, sequence->seq_len, 0.0));
+        RUNP(sequence->u_arr = malloc_2d_float(sequence->u_arr, num_models, sequence->seq_len+1, 0.0));
 
-        RUNP(sequence->label_arr = malloc_2d_int(sequence->label_arr, num_models, sequence->seq_len, 0));
+        RUNP(sequence->label_arr = malloc_2d_int(sequence->label_arr, num_models, sequence->seq_len+1, 0));
 
         return OK;
 ERROR:

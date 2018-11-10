@@ -21,6 +21,8 @@
 
 struct ihmm_sequence{
         uint8_t* seq;
+        float** u_arr;
+        int** label_arr;
         float* u;
         int* label;
         char* name;
@@ -42,6 +44,9 @@ struct seq_buffer{
 };
 
 extern struct ihmm_sequence* alloc_ihmm_seq(void);
+
+extern int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models);
+
 extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 
 extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename);

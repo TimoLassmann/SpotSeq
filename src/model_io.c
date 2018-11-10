@@ -38,7 +38,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         }
         ASSERT(a!=0, "No states???");
         ASSERT(b!=0, "No letters???");
-        RUNP(model = alloc_ihmm_model(a, b));
+        RUNP(model = alloc_ihmm_model(a, b,0));
         free_2d((void**) model->emission_counts);
         free_2d((void**) model->transition_counts);
         MFREE(model->beta);
@@ -69,6 +69,9 @@ struct ihmm_model* read_model_hdf5(char* filename)
                 if(!strncmp("Iteration", hdf5_data->attr[i]->attr_name, 9)){
                         model->training_iterations = hdf5_data->attr[i]->int_val;
                 }
+                if(!strncmp("Seed", hdf5_data->attr[i]->attr_name, 4)){
+                        model->seed = hdf5_data->attr[i]->int_val;
+                }
         }
 
         hdf5_read_dataset("Beta",hdf5_data);
@@ -91,9 +94,12 @@ struct ihmm_model* read_model_hdf5(char* filename)
         model->alloc_num_states = model->num_states;
         RUN(resize_ihmm_model(model, model->num_states+1));
 
-
-        //fprintf(stdout,"num_states:%d alloc:%d\n",model->num_states, model->alloc_num_states);
-        rk_randomseed(&model->rndstate);
+        WARNING_MSG("Each time a run is continued a new RNG seed is selected...");
+        if(model->seed){
+                rk_seed(model->seed, &model->rndstate);
+        }else{
+                rk_randomseed(&model->rndstate );
+        }
         return model;
 ERROR:
         return NULL;
@@ -217,6 +223,7 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_FLOAT);
 
         hdf5_add_attribute(hdf5_data, "Iteration", "",model->training_iterations, 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "Seed", "",model->seed, 0.0f, HDF5GLUE_INT);
 
         hdf5_create_group("imodel",hdf5_data);
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
@@ -358,7 +365,7 @@ struct ihmm_model* read_model(char* filename)
 
 
 
-        RUNP(model = alloc_ihmm_model(a, b));
+        RUNP(model = alloc_ihmm_model(a, b,0));
         model->num_states = a;
 
         fscanf(f_ptr,"Gamma: %f\n", &model->gamma);

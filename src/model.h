@@ -21,6 +21,7 @@ struct ihmm_model{
         float** transition_counts;
         float** emission_counts;
         float* beta;
+        unsigned int seed;
         rk_state rndstate;
         float gamma;
         float alpha;
@@ -45,7 +46,11 @@ struct model_bag{
 
 /* Housekeeping */
 
-extern struct ihmm_model* alloc_ihmm_model(int K, int L);
+extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, unsigned int seed);
+extern void free_model_bag(struct model_bag* b);
+
+
+extern struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed);
 extern int clear_counts(struct ihmm_model* ihmm);
 extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);

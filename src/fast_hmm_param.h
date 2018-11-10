@@ -35,9 +35,23 @@ struct fast_hmm_param{
         uint32_t L;
 };
 
+/* For when we want to train multiple models  */
+struct fast_param_bag{
+        struct fast_hmm_param** fast_params;
+        int num_models;
+};
+
 
 /* Housekeeping function */
+
+extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int k, int L);
+extern void free_fast_param_bag(struct fast_param_bag* b);
+
+
 extern struct fast_hmm_param* alloc_fast_hmm_param(int k,int L);
+
+
+
 //extern int expand_fast_hmm_param_if_necessary(struct fast_hmm_param* ft, int new_num_states,int new_items);
 
 extern int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states);

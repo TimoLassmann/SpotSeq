@@ -3,13 +3,14 @@
 
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
-
 int detect_alphabet(struct seq_buffer* sb);
 
 int translate_DNA_to_internal(struct seq_buffer* sb);
+
 int translate_internal_to_DNA(struct seq_buffer* sb);
 
 int translate_internal_to_PROTEIN(struct seq_buffer* sb);
+
 int translate_PROTEIN_to_internal(struct seq_buffer* sb);
 
 int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
@@ -1833,6 +1834,10 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         MMALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
         MMALLOC(sequence->name, sizeof(char) * 256);
+        sequence->label_arr = NULL;
+        sequence->u_arr = NULL;
+
+
         return sequence;
 ERROR:
         free_ihmm_sequence(sequence);
@@ -1850,6 +1855,21 @@ int realloc_ihmm_seq(struct ihmm_sequence* sequence)
 
         return OK;
 ERROR:
+        return FAIL;
+}
+
+
+int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models)
+{
+        ASSERT(sequence != NULL, "No sequence");
+
+        RUNP(sequence->u_arr = malloc_2d_float(sequence->u_arr, num_models, sequence->seq_len, 0.0));
+
+        RUNP(sequence->label_arr = malloc_2d_int(sequence->label_arr, num_models, sequence->seq_len, 0));
+
+        return OK;
+ERROR:
+        free_ihmm_sequence(sequence);
         return FAIL;
 }
 
@@ -1949,6 +1969,12 @@ void free_ihmm_sequence(struct ihmm_sequence* sequence)
                 }
                 if(sequence->label){
                         MFREE(sequence->label);
+                }
+                if(sequence->u_arr){
+                        free_2d((void**) sequence->u_arr);
+                }
+                if(sequence->label_arr ){
+                        free_2d((void**) sequence->label_arr);
                 }
                 MFREE(sequence);
         }

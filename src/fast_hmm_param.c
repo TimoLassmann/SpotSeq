@@ -21,8 +21,8 @@
 
 static void* get_transition(void* ptr)
 {
-	struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
-	return &tmp->t;
+        struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
+        return &tmp->t;
 }
 
 static int resolve_default(void* ptr_a,void* ptr_b)
@@ -58,6 +58,48 @@ void free_fast_t_item_struct(void* ptr)
         if(ptr){
                 MFREE(ptr);
         }
+}
+
+
+
+struct fast_param_bag* alloc_fast_param_bag(int num_models, int k, int L)
+{
+        struct fast_param_bag* b = NULL;
+        int i;
+        ASSERT(num_models > 0, "No models");
+
+        MMALLOC(b, sizeof(struct fast_param_bag));
+
+        b->fast_params = NULL;
+        b->num_models = num_models;
+
+        MMALLOC(b->fast_params,sizeof(struct fast_hmm_param*)* b->num_models);
+
+        for(i = 0; i < b->num_models;i++){
+                b->fast_params[i] = NULL;
+                RUNP(b->fast_params[i] = alloc_fast_hmm_param(k,L));
+        }
+
+        return b;
+ERROR:
+        return NULL;
+}
+
+void free_fast_param_bag(struct fast_param_bag* b)
+{
+        int i;
+        if(b){
+                if(b->fast_params){
+                        for(i = 0; i < b->num_models;i++){
+                                if(b->fast_params[i]){
+                                        free_fast_hmm_param(b->fast_params[i]);
+                                }
+                        }
+                        MFREE(b->fast_params);
+                }
+                MFREE(b);
+        }
+
 }
 
 /* Goal: efficient datastructure for double indexing transition: */
@@ -157,25 +199,25 @@ ERROR:
 }
 
 /*int expand_transition_if_necessary(struct fast_hmm_param* ft)
-{
-        int i, num_old_item;
-        ASSERT(ft != NULL, "No ft struct!");
-        num_old_item = ft->alloc_items;
-        ft->alloc_items += 1024;
-        LOG_MSG("expanding from: %d to %d",num_old_item, ft->alloc_items);
-        MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_items);
-        for(i = num_old_item; i < ft->alloc_items;i++){
-                ft->infinity[i] = NULL;
-                MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
-                ft->infinity[i]->from = -1;
-                ft->infinity[i]->to = -1;
-                ft->infinity[i]->t = 0.0f;
-        }
-        return OK;
-ERROR:
-        free_fast_hmm_param(ft);
-        return FAIL;
-        }*/
+  {
+  int i, num_old_item;
+  ASSERT(ft != NULL, "No ft struct!");
+  num_old_item = ft->alloc_items;
+  ft->alloc_items += 1024;
+  LOG_MSG("expanding from: %d to %d",num_old_item, ft->alloc_items);
+  MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_items);
+  for(i = num_old_item; i < ft->alloc_items;i++){
+  ft->infinity[i] = NULL;
+  MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
+  ft->infinity[i]->from = -1;
+  ft->infinity[i]->to = -1;
+  ft->infinity[i]->t = 0.0f;
+  }
+  return OK;
+  ERROR:
+  free_fast_hmm_param(ft);
+  return FAIL;
+  }*/
 
 void free_fast_hmm_param(struct fast_hmm_param* ft)
 {
@@ -222,74 +264,74 @@ ERROR:
         return FAIL;
 }
 
-int fast_hmm_param_cmp_by_t_desc(const void *a, const void *b) 
-{ 
-    struct fast_t_item* const *one = a;
-    struct fast_t_item* const *two = b;
+int fast_hmm_param_cmp_by_t_desc(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
 
-    if((*one)->t > (*two)->t){
-            return -1;            
-    }else if((*one)->t == (*two)->t){
-            return 0;
-    }else{
-            return 1;
-    }
+        if((*one)->t > (*two)->t){
+                return -1;
+        }else if((*one)->t == (*two)->t){
+                return 0;
+        }else{
+                return 1;
+        }
 }
 
 
-int fast_hmm_param_cmp_by_to_from_asc(const void *a, const void *b) 
-{ 
-    struct fast_t_item* const *one = a;
-    struct fast_t_item* const *two = b;
+int fast_hmm_param_cmp_by_to_from_asc(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
 
-    if((*one)->from > (*two)->from){
-            return 1;            
-    }else if((*one)->from == (*two)->from){
-            if((*one)->to > (*two)->to){
-                    return 1;            
-            }else if((*one)->to == (*two)->to){
-                    return 0;
-            }else{
-                    return -1;
-            }
-    }else{
-            return -1;
-    }
+        if((*one)->from > (*two)->from){
+                return 1;
+        }else if((*one)->from == (*two)->from){
+                if((*one)->to > (*two)->to){
+                        return 1;
+                }else if((*one)->to == (*two)->to){
+                        return 0;
+                }else{
+                        return -1;
+                }
+        }else{
+                return -1;
+        }
 }
 
 
-int fast_hmm_param_cmp_by_from_asc(const void *a, const void *b) 
-{ 
-    struct fast_t_item* const *one = a;
-    struct fast_t_item* const *two = b;
+int fast_hmm_param_cmp_by_from_asc(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
 
-    if((*one)->from > (*two)->from){
-            return 1;            
-    }else if((*one)->from == (*two)->from){
-            
-            return 0;
-           
-    }else{
-            return -1;
-    }
+        if((*one)->from > (*two)->from){
+                return 1;
+        }else if((*one)->from == (*two)->from){
+
+                return 0;
+
+        }else{
+                return -1;
+        }
 }
 
 
 
 
-int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b) 
-{ 
-    struct fast_t_item* const *one = a;
-    struct fast_t_item* const *two = b;
+int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
 
 
-    if((*one)->to > (*two)->to){
-            return 1;            
-    }else if((*one)->to == (*two)->to){
-            return 0;
-    }else{
-            return -1;
-    }
+        if((*one)->to > (*two)->to){
+                return 1;
+        }else if((*one)->to == (*two)->to){
+                return 0;
+        }else{
+                return -1;
+        }
 
 }
 
@@ -305,19 +347,19 @@ int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, float x)
         while (l <= r)
         {
                 int m = l + (r-l)/2;
- 
+
                 // Check if x is present at mid
                 if (list[m]->t == x){
                         return m;
                 }
- 
+
                 // If x greater, ignore left half
                 if (list[m]->t > x){
                         l = m + 1;
                 }else{
                         r = m - 1;
                 }
-        }        
+        }
         return  MACRO_MAX(l,r);
 }
 
@@ -338,7 +380,7 @@ int fast_hmm_param_binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x)
                 }else{
                         r = m -1;
                 }
-        }        
+        }
         return  l;
 }
 
@@ -358,7 +400,7 @@ int fast_hmm_param_binarySearch_to_upper_bound(struct fast_hmm_param* ft, int x)
                 }else{
                         l = m + 1;
                 }
-        }        
+        }
         return  l;
 }
 
@@ -377,7 +419,7 @@ int fast_hmm_param_binarySearch_from_lower_bound(struct fast_hmm_param* ft, int 
                 }else{
                         r = m -1;
                 }
-        }        
+        }
         return  l;
 }
 
@@ -397,7 +439,7 @@ int fast_hmm_param_binarySearch_from_upper_bound(struct fast_hmm_param* ft, int 
                 }else{
                         l = m + 1;
                 }
-        }        
+        }
         return  l;
 }
 
@@ -415,7 +457,7 @@ int fast_hmm_param_binarySearch_from_upper_bound(struct fast_hmm_param* ft, int 
 
 int main(const int argc,const char * argv[])
 {
-        
+
         struct fast_hmm_param* ft = NULL;
         struct fast_t_item* tmp = NULL;
         int i,j;
@@ -430,13 +472,13 @@ int main(const int argc,const char * argv[])
         LOG_MSG("Fill with random transition (this will also expand the data structure if there isn't enough space..)");
         RUN(fill_with_random_transitions(ft, 4));
 
-        
+
         RUN(print_fast_hmm_params(ft));
-        
+
         RUN(make_flat_param_list(ft) );
-        
+
         //ft->root->flatten_tree(ft->root);
-                
+
         //ft->root->print_tree(ft->root,NULL);
         LOG_MSG("Sorted by RB tree.");
         fprintf(stdout,"%d items\n",ft->root->num_entries);
@@ -451,12 +493,12 @@ int main(const int argc,const char * argv[])
         for(i = 0; i < ft->num_items;i++){
                 fprintf(stdout,"%d %f\n",i , ft->list[i]->t);
         }
-        
+
         RUN(print_fast_hmm_params(ft));
-        
+
         for(i =0; i < 10;i++){
                 x = random_float_zero_to_x(1.0);
-                
+
                 res = fast_hmm_param_binarySearch_t(ft, x);
                 fprintf(stdout,"search for %f: %d  \n",x, res);
                 for(j = 0; j < res;j++){
@@ -464,22 +506,21 @@ int main(const int argc,const char * argv[])
                 }
         }
         x = ft->list[3]->t;
-    
+
         res = fast_hmm_param_binarySearch_t(ft,x);
         fprintf(stdout,"search for %f: %d   \n",x, res);
         for(j = 0; j < res;j++){
                 ASSERT(ft->list[j]->t >= x,"Warning - binary search seems to have failed");
         }
         RUN(print_fast_hmm_params(ft));
-        
+
         free_fast_hmm_param(ft);
         return EXIT_SUCCESS;
 ERROR:
-        
+
         free_fast_hmm_param(ft);
         return EXIT_FAILURE;
 }
 
 
-#endif 
- 
+#endif

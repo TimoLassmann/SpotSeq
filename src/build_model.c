@@ -109,7 +109,6 @@ int main (int argc, char *argv[])
                 case 'i':
                         param->input = optarg;
                         break;
-
                 case 'o':
                         param->output = optarg;
                         break;
@@ -141,7 +140,6 @@ int main (int argc, char *argv[])
         if(!param->input){
                 RUN(print_help(argv));
                 ERROR_MSG("No input file! use --in <blah.fa>");
-
         }else{
                 if(!my_file_exists(param->input)){
                         RUN(print_help(argv));
@@ -182,8 +180,6 @@ ERROR:
         free_parameters(param);
         return EXIT_FAILURE;
 }
-
-
 
 int run_build_ihmm(struct parameters* param)
 {
@@ -237,7 +233,7 @@ int run_build_ihmm(struct parameters* param)
                         LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
-                RUNP(model = alloc_ihmm_model(initial_states+2, sb->L));
+                RUNP(model = alloc_ihmm_model(initial_states+2, sb->L, param->seed));
 
 
 
@@ -273,21 +269,9 @@ int run_build_ihmm(struct parameters* param)
                         model->beta[i] = (float)(model->num_states);
                 }
 
-                //for(i = 0; i < 10;i++){
-                //       fprintf(stdout,"%f \n", rk_gamma(&model->rndstate,1.0 / (float)(model->num_states)*10000 * model->alpha,1.0));
-
-                //}
-                //exit(0);
-
                 for(i = 0;i < 10;i++){
                         RUN(iHmmHyperSample(model, 20));
                 }
-        }
-        /* Set seed in model */
-        if(param->seed){
-                rk_seed(param->seed + 1, &model->rndstate);
-        }else{
-                rk_randomseed(&model->rndstate);
         }
         /* Set seed in sequence buffer */
         if(param->seed){

@@ -523,10 +523,13 @@ ERROR:
 }
 
 
-struct model_bag* alloc_model_bag(int num_models, unsigned int seed)
+struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, unsigned int seed)
 {
-        struct model_bag* b == NULL;
-        ASSERT(num_models > 0;"need to allocate at least one model");
+        struct model_bag* b = NULL;
+
+        int i;
+        unsigned int local_seed;
+        ASSERT(num_models > 0,"need to allocate at least one model");
 
         MMALLOC(b, sizeof(struct model_bag));
 
@@ -539,15 +542,40 @@ struct model_bag* alloc_model_bag(int num_models, unsigned int seed)
         }else{
                 rk_randomseed(&b->rndstate);
         }
+        MMALLOC(b->models, sizeof(struct ihmm_model*)* b->num_models);
 
+        for(i = 0; i < b->num_models;i++){
+                /* set seed in each model based on RNG in main model bag */
+                local_seed = rk_ulong(&b->rndstate);
+                b->models[i] = NULL;
+                RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i], L,local_seed));
+        }
 
         return b;
 ERROR:
+        free_model_bag(b);
         return NULL;
 
 }
 
-struct ihmm_model* alloc_ihmm_model(int K, int L)
+void free_model_bag(struct model_bag* b)
+{
+        int i;
+        if(b){
+                if(b->num_models){
+                        for(i = 0; i < b->num_models;i++){
+                                if(b->models[i]){
+                                        free_ihmm_model(b->models[i]);
+                                }
+                        }
+                        MFREE(b->models);
+                }
+                MFREE(b);
+        }
+}
+
+
+struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
 {
         struct ihmm_model* model = NULL;
         int i;
@@ -573,7 +601,12 @@ struct ihmm_model* alloc_ihmm_model(int K, int L)
         model->alpha_limit = FLT_MAX;
         model->gamma_limit = FLT_MAX;
 
-        rk_randomseed(&model->rndstate);
+        model->seed = seed;
+        if(seed){
+                rk_seed(seed, &model->rndstate);
+        }else{
+                rk_randomseed(&model->rndstate);
+        }
 
         while(K > model->alloc_num_states){
                 model->alloc_num_states = model->alloc_num_states << 1;

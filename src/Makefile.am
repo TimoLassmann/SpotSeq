@@ -42,7 +42,7 @@ BEAMSOURCE = beam_sample.h beam_sample.c
 
 THREADSOURCE = thread_data.c thread_data.h
 
-HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h
+HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h save_random_state.c
 
 SCORESOURCE = run_score.h run_score.c
 

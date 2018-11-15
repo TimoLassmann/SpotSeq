@@ -505,6 +505,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
                         }
                 }
         }
+        LOG_MSG("Adding fhmm to %s",h5file);
 
         RUN(add_fhmm(h5file,s1_t,s1_e, model->num_states, model->L  ));
 

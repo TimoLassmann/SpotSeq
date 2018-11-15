@@ -315,6 +315,8 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
 {
         //int i;
         int type = -1;
+        void* ptr = NULL;
+
         char* m1d_char = NULL;
         int* m1d_int = NULL;
 
@@ -363,7 +365,8 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                 type =HDF5GLUE_DOUBLE;
         }
 
-        DPRINTF3( "TYPE is %d", type);
+        fprintf(stdout,"%d INT\n",H5Tget_size(H5T_NATIVE_LONG));
+        fprintf(stdout,"TYPE is %d   %d", type,hdf5_data->datatype);
 
 
         hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);

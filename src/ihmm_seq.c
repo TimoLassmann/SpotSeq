@@ -243,7 +243,7 @@ ERROR:
 }
 
 /* I want to save the labelled sequences in the hdf5model file to be able to resume jobs.  */
-int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
+int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_index)
 {
 
         struct hdf5_data* hdf5_data = NULL;
@@ -293,7 +293,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb)
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
                 for (j = 0; j < len;j++){
-                        label[i][j] = sb->sequences[i]->label[j];
+                        label[i][j] = sb->sequences[i]->label_arr[model_index][j];
                 }
         }
 
@@ -597,6 +597,31 @@ ERROR:
         return FAIL;
 }
 
+int random_label_based_on_multiple_models(struct seq_buffer* sb, int K, int model_index, rk_state* random)
+{
+        int i,j;
+        int* label;
+        int len;
+
+        ASSERT(sb != NULL, "No sequences");
+
+
+        for(i = 0;i< sb->num_seq;i++){
+
+                label = sb->sequences[i]->label_arr[model_index];
+                len = sb->sequences[i]->seq_len;
+                DPRINTF3("Seq%d len %d ",i ,len);
+                for(j = 0;j < len;j++){
+                        label[j] = rk_interval(K-3, random)+2;
+                }
+        }
+
+
+        return OK;
+ERROR:
+        return FAIL;
+
+}
 
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
 {

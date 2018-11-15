@@ -149,6 +149,10 @@ rk_seed(unsigned long seed, rk_state *state)
     state->gauss = 0;
     state->has_gauss = 0;
     state->has_binomial = 0;
+
+    /* Added git Timo Lassmann -> psave and nsave are un-initialized....*/
+    state->nsave = 10;
+    state->psave = 0.5;
 }
 
 /* Thomas Wang 32 bits integer hash function */
@@ -181,9 +185,11 @@ rk_randomseed(rk_state *state)
         state->gauss = 0;
         state->has_gauss = 0;
         state->has_binomial = 0;
-
+        /* Added git Timo Lassmann -> psave and nsave are un-initialized....*/
+        state->nsave = 10;
+        state->psave = 0.5;
         for (i = 0; i < 624; i++) {
-            state->key[i] &= 0xffffffffUL;
+                state->key[i] &= 0xffffffffUL;
         }
         return RK_NOERR;
     }

@@ -178,12 +178,17 @@ int main (int argc, char *argv[])
 
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
+
+
+        rk_save_testing();
+
+        return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
          * data */
-        //RUN(run_build_fhmm_file(param->output,0));
+        //
 
-        //RUN(score_sequences_for_command_line_reporting(param));
+        RUN(score_sequences_for_command_line_reporting(param));
 
         /* calibrate model parameters */
         RUN(free_parameters(param));
@@ -205,12 +210,11 @@ int run_build_ihmm(struct parameters* param)
 
         int* num_state_array = NULL;
 
-        int initial_states;
+        //int initial_states;
         int i,j;
 
         ASSERT(param!= NULL, "No parameters found.");
         init_logsum();
-        initial_states = param->num_start_states;
 
 
         MMALLOC(num_state_array, sizeof(int)* param->num_models);
@@ -231,32 +235,47 @@ int run_build_ihmm(struct parameters* param)
                         model->gamma_a = IHMM_PARAM_PLACEHOLDER;
                         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
                 }
-
                 */
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
 
-
                 RUNP(sb = load_sequences(param->input));
+
                 //sb = concatenate_sequences(sb);
                 //RUN(label_seq_based_on_random_fhmm(sb, initial_states, 0.3));
                 LOG_MSG("%d models ",param->num_models);
-
 
                 if(param->rev && sb->L == ALPHABET_DNA){
                         LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
 
-
-
                 num_state_array[0] = 10;
                 for(i = 1; i < param->num_models;i++){
-                        num_state_array[i] = num_state_array[i-1] + ( (sb->max_len / 2) / param->num_models);
+                        num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
                 }
                 RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,   param->seed));
 
+
+                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
+                //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
+                /* New label sequences  */
+                /* We need to label sequences somehow so that we can
+                 * set the u arrays properly based on the initial
+                 * model guess */
+                for(i = 0; i < model_bag->num_models  ;i++){
+                        RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
+
+                        //RUN(fill_counts(model_bag->models[i], sb,i));
+                        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
+                        RUN(fill_counts(model_bag->models[i], sb,i));
+                        //print_counts(model_bag->models[i]);
+
+
+                }
+
+                //exit(0);
 
 
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
@@ -284,17 +303,26 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
-        RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
+
 
 
 
         RUN(run_beam_sampling(model_bag,ft_bag, sb,NULL,  param->num_iter,  param->num_threads));
 
         //RUN(write_model(model, param->output));
-        //RUN(write_model_hdf5(model, param->output));
+        for(i = 0; i < model_bag->num_models;i++){
+                char buffer[BUFFER_LEN];
+                snprintf(buffer, BUFFER_LEN, "%s_%d.h5", param->output,i);
+                RUN(write_model_hdf5(model_bag->models[i],buffer));
+                RUN(add_annotation(buffer, "spotseq_model_cmd", param->cmd_line));
+                RUN(add_background_emission(buffer,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
+
+                RUN(add_sequences_to_hdf5_model(buffer, sb, i));
+
+                RUN(run_build_fhmm_file(buffer,0));
+        }
 //        RUN(add_annotation)
-        //RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
-        //RUN(add_background_emission(param->output,ft->background_emission,ft->L));
+
         //RUN(add_sequences_to_hdf5_model(param->output, sb));
         //RUN(print_states_per_sequence(sb));
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
@@ -357,40 +385,49 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm;
         double s1,s2;
-        int max = 100;
+        int max = 1000;
+        int c;
         int i;
         int limit;
-        /* Maybe runscoring on top X sequences to report if something was found... */
-        LOG_MSG("Loading model.");
-        RUNP(fhmm = init_fhmm(param->output));
 
-        /* load sequences.  */
-        LOG_MSG("Loading sequences.");
-        RUNP(sb =get_sequences_from_hdf5_model(param->output));
 
-        LOG_MSG("Read %d sequences.",sb->num_seq);
+        char buffer[BUFFER_LEN];
 
-        RUN(run_score_sequences(fhmm,sb, param->num_threads));
+        for(c = 0; c < param->num_models;c++){
+                snprintf(buffer, BUFFER_LEN, "%s_%d.h5", param->output,c);
+                //RUN(run_build_fhmm_file(buffer,0));
+                /* Maybe runscoring on top X sequences to report if something was found... */
+                LOG_MSG("Loading model.");
+                RUNP(fhmm = init_fhmm(buffer));
 
-        limit = MACRO_MIN(max, sb->num_seq);
+                /* load sequences.  */
+                LOG_MSG("Loading sequences.");
+                RUNP(sb =get_sequences_from_hdf5_model(buffer));
 
-        s1 = 0.0;
-        s2 = 0.0;
-        for(i = 0; i < limit;i++){
-                //sb_in->sequences[i]->seq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
-                s1 += sb->sequences[i]->score;
-                s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
+                LOG_MSG("Read %d sequences.",sb->num_seq);
+
+                RUN(run_score_sequences(fhmm,sb, param->num_threads));
+
+                limit = MACRO_MIN(max, sb->num_seq);
+
+                s1 = 0.0;
+                s2 = 0.0;
+                for(i = 0; i < limit;i++){
+                        //sb_in->sequences[i]->seq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
+                        s1 += sb->sequences[i]->score;
+                        s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
+                }
+
+                s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
+                s1 = s1 / (double) limit;
+
+
+
+                LOG_MSG("Model: %d Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",c,s1,s2,limit);
+
+                free_ihmm_sequences(sb);
+                free_fhmm(fhmm);
         }
-
-        s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
-        s1 = s1 / (double) limit;
-
-
-
-        LOG_MSG("Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
-
-        free_ihmm_sequences(sb);
-        free_fhmm(fhmm);
 
         return OK;
 ERROR:

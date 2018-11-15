@@ -82,7 +82,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Extracts motifs based on sequence labelling.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->out = NULL;
@@ -709,8 +709,8 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         int seq;
         int pos;
 
-        RUNP(motif->count_matrix = malloc_2d_float(motif->count_matrix, motif->len, sb->L, 0.0f));
-        RUNP(motif->freq_matrix = malloc_2d_float(motif->freq_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
         /* add dirichlet priors based on background frequencies */
         for(i =0; i < motif->len;i++){
                 sum = 0.0;
@@ -775,7 +775,7 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
         ASSERT(motif!= NULL, "No motif");
         ASSERT(sa != NULL, "No suffix array");
 
-        RUNP(motif->count_matrix = malloc_2d_float(motif->count_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
 
         for(i = motif->start_in_sa; i < motif->end_in_sa;i++){
                 s = sb->sequences[sa->lcs[i]->seq_num];
@@ -785,7 +785,7 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
                 }
         }
 
-        RUNP(motif->freq_matrix = malloc_2d_float(motif->freq_matrix, motif->len, sb->L, 0.0f));
+        RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
         for(i = 0; i < motif->len;i++){
                 sum = 0.0;
                 for(j = 0; j < sb->L;j++){
@@ -1255,7 +1255,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
                 if(p){
-                        RUNP(tmp = malloc_2d_float(tmp, p->len, fhmm->L, 0.0));
+                        RUNP(tmp = galloc(tmp, p->len, fhmm->L, 0.0));
 
 
                         for(j = 0 ; j < p->len;j++){
@@ -1274,7 +1274,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
                         snprintf(buffer, BUFFER_LEN, "M%03d", i+1);
                         hdf5_write(buffer,&tmp[0][0], hdf5_data);
 
-                        free_2d((void**) tmp);
+                        gfree(tmp);
                         tmp = NULL;
                 }
         }
@@ -1481,7 +1481,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                 a = m->plist[best_i];
                 b = m->plist[best_j];
                 allowed_overlap =  MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);
-                rand_freq_matrix = malloc_2d_float(rand_freq_matrix, a->len, fhmm->L, 0.0);
+                RUNP(rand_freq_matrix = galloc(rand_freq_matrix, a->len, fhmm->L, 0.0));
                 for(i = 0; i < a->len;i++){
                         for(j = 0; j < fhmm->L;j++){
                                 rand_freq_matrix[i][j] = a->freq_matrix[i][j];
@@ -1496,8 +1496,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                         RUN(motif_dyn_programming(fhmm,rand_freq_matrix,b->freq_matrix, a->len, b->len,allowed_overlap));
                         background_scores[j] = fhmm->F_matrix[a->len][b->len];
                 }
-
-                free_2d((void**) rand_freq_matrix);
+                gfree(rand_freq_matrix);
                 qsort(background_scores, num_random, sizeof(float),float_cmp);
 
 
@@ -2234,10 +2233,10 @@ void free_paraclu_cluster(struct paraclu_cluster* p)
 
                 }
                 if(p->count_matrix){
-                        free_2d((void**)p->count_matrix);
+                        gfree(p->count_matrix);
                 }
                 if(p->freq_matrix){
-                        free_2d((void**)p->freq_matrix);
+                        gfree(p->freq_matrix);
                 }
                 if(p->present_in_seq){
                         MFREE(p->present_in_seq);

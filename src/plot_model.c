@@ -81,7 +81,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Generates a model <.dot> for visualisation.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
@@ -214,7 +214,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         RUNP(model = read_model_hdf5(param->input));
 
 
-        RUNP(matrix = malloc_2d_float(matrix, model->num_states , 251, 0.0f));
+        RUNP(matrix = galloc(matrix, model->num_states , 251, 0.0f));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
         for(i = 0; i < model->num_states;i++){
                 state_sums[i] = 0.0f;
@@ -250,7 +250,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         }
         fclose(fptr);
         MFREE(state_sums);
-        free_2d((void**) matrix);
+        gfree(matrix);
         free_ihmm_model(model);
         free_ihmm_sequences(sb);
         return OK;
@@ -261,7 +261,7 @@ ERROR:
         if(sb){
                 free_ihmm_sequences(sb);
         }
-        free_2d((void**) matrix);
+        gfree(matrix);
         free_ihmm_model(model);
         return FAIL;
 }
@@ -287,8 +287,8 @@ int plot_model_entropy(struct parameters* param)
 
         /* first index is state * letter ; second is sample (max = 100) */
 
-        s1 = malloc_2d_float(s1, model->num_states, model->L, 0.0);
-        s2 = malloc_2d_float(s2, model->num_states, model->L, 0.0);
+        RUNP(s1 = galloc(s1, model->num_states, model->L, 0.0));
+        RUNP(s2 = galloc(s2, model->num_states, model->L, 0.0));
 
 
         for(iter=  0;iter < iterations;iter++){
@@ -307,8 +307,9 @@ int plot_model_entropy(struct parameters* param)
                         s1[i][j] = s1[i][j] / (double) iterations;
                 }
         }
-        free_2d((void**) s1);
-        free_2d((void**) s2);
+
+        gfree(s1);
+        gfree(s2);
 
 
         free_fast_hmm_param(ft);

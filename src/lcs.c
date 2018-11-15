@@ -55,7 +55,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Longest common sub-string for motif discovery.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->min_pattern_len = 10;
@@ -622,7 +622,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
                 if(m->mean_rel_entropy > 0.01){
 
 
-                        RUNP(tmp = malloc_2d_float(tmp,m->len, fhmm->L, 0.0));
+                        RUNP(tmp = galloc(tmp,m->len, fhmm->L, 0.0));
                         m->start_in_sa = binsearch_down(m->state_list, sa->lcs, sa->len-1, m->len);
                         m->end_in_sa =   binsearch_up  (m->state_list,sa->lcs,sa->len-1, m->len);
 
@@ -667,7 +667,7 @@ int write_lcs_motif_data_for_plotting(char* filename,struct sa* sa, struct seq_b
                         snprintf(buffer, BUFFER_LEN, "Motif%03d_%4.2f", c+1, m->log_likelihood);
                         hdf5_write(buffer,&tmp[0][0], hdf5_data);
 
-                        free_2d((void**) tmp);
+                        gfree(tmp);
                         tmp = NULL;
                 }
 

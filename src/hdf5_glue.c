@@ -31,7 +31,7 @@ int get_group_names(struct hdf5_data* hdf5_data)
         hdf5_data->grp_names->name_length = 0;
         hdf5_data->grp_names->num_names_mem = 65536;
 
-        RUNP(hdf5_data->grp_names->names = malloc_2d_char(hdf5_data->grp_names->names, hdf5_data->grp_names->num_names_mem , HDF5GLUE_MAX_NAME_LEN,0));
+        RUNP(hdf5_data->grp_names->names = galloc(hdf5_data->grp_names->names, hdf5_data->grp_names->num_names_mem , HDF5GLUE_MAX_NAME_LEN,0));
         //hdf5_data->grp_names->names = malloc_2d_char(hdf5_data->grp_names->names, hdf5_data->grp_names->num_names_mem , HDF5GLUE_MAX_NAME_LEN,0);
 
         if((hdf5_data->status = H5Literate (hdf5_data->file, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, op_func, hdf5_data->grp_names)) < 0) ERROR_MSG("H5Literate failed");
@@ -60,7 +60,7 @@ herr_t op_func (hid_t loc_id, const char *name, const H5L_info_t *info, void *op
                 grp_names->num_names++;
                 if(grp_names->num_names ==grp_names->num_names_mem){
                         grp_names->num_names_mem = grp_names->num_names_mem << 1;
-                        grp_names->names = malloc_2d_char(grp_names->names, grp_names->num_names_mem , HDF5GLUE_MAX_NAME_LEN,0);
+                        RUNP(grp_names->names = galloc(grp_names->names, grp_names->num_names_mem , HDF5GLUE_MAX_NAME_LEN,0));
                 }
                 break;
         case H5O_TYPE_DATASET:
@@ -279,7 +279,7 @@ int hdf5_free(struct hdf5_data* hdf5_data)
         MFREE(hdf5_data->attr);// , sizeof(struct hdf5_attribute*) * hdf5_data->num_attr_mem);
 
         if(hdf5_data->grp_names){
-                free_2d((void**) hdf5_data->grp_names->names);
+                gfree(hdf5_data->grp_names->names);
                 MFREE(hdf5_data->grp_names);
         }
 
@@ -366,7 +366,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
         }
 
         fprintf(stdout,"%d INT\n",H5Tget_size(H5T_NATIVE_LONG));
-        fprintf(stdout,"TYPE is %d   %d", type,hdf5_data->datatype);
+        fprintf(stdout,"%s TYPE is %d   %d\n",dataset_name,   type,hdf5_data->datatype);
 
 
         hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
@@ -385,7 +385,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                         hdf5_data->data = m1d_char;
                 }
                 if(hdf5_data->rank == 2){
-                        m2d_char = malloc_2d_char(m2d_char,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0);
+                        RUNP(m2d_char = galloc(m2d_char,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0));
                         hdf5_data->status = H5Dread(hdf5_data->dataset, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, H5P_DEFAULT, &m2d_char[0][0]);
                         hdf5_data->data = m2d_char;
                 }
@@ -401,7 +401,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                 if(hdf5_data->rank == 2){
 
 
-                        m2d_int = malloc_2d_int(m2d_int,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0);
+                        RUNP(m2d_int = galloc(m2d_int,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0));
                         hdf5_data->status = H5Dread(hdf5_data->dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &m2d_int[0][0]);
 
                         hdf5_data->data = m2d_int;
@@ -431,7 +431,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                 if(hdf5_data->rank == 2){
 
 
-                        m2d_float = malloc_2d_float(m2d_float,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0.0f);
+                        RUNP(m2d_float = galloc(m2d_float,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0.0f));
                         hdf5_data->status = H5Dread(hdf5_data->dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &m2d_float[0][0]);
 
                         hdf5_data->data = m2d_float;
@@ -469,7 +469,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                         hdf5_data->data = m1d_double;
                 }
                 if(hdf5_data->rank == 2){
-                        m2d_double = malloc_2d_double(m2d_double,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0.0);
+                        RUNP(m2d_double = galloc(m2d_double,(int)hdf5_data->dim[0],(int)hdf5_data->dim[1],0.0));
                         hdf5_data->status = H5Dread(hdf5_data->dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &m2d_double[0][0]);
 
                         hdf5_data->data = m2d_double;
@@ -493,13 +493,13 @@ ERROR:
 
         MFREE(m1d_int);
 
-        free_2d((void**)m2d_char);
+        gfree(m2d_char);
 
-        free_2d((void**)m2d_int);
+        gfree(m2d_int);
 
-        free_2d((void**)m2d_float);
+        gfree(m2d_float);
 
-        free_2d((void**)m2d_double);
+        gfree(m2d_double);
 
         free_3d((void***)m3d_float);
 
@@ -889,7 +889,7 @@ int main (int argc,char * argv[])
 
         dim1 = 3;
         dim2 = 15;
-        m2d_char = malloc_2d_char(m2d_char,dim1,dim2,0);
+        RUNP(m2d_char = galloc(m2d_char,dim1,dim2,0));
         for(i =0;i < dim1;i++){
                 for(j = 0; j < dim2;j++){
                         m2d_char[i][j] = i+j + 65;
@@ -898,7 +898,7 @@ int main (int argc,char * argv[])
 
         dim1 = 10;
         dim2 = 10;
-        m2d_int = malloc_2d_int(m2d_int,dim1,dim2,0);
+        RUNP(m2d_int = galloc(m2d_int,dim1,dim2,0));
         for(i =0;i < dim1;i++){
                 for(j = 0; j < dim2;j++){
                         m2d_int[i][j] = i+j;
@@ -907,7 +907,7 @@ int main (int argc,char * argv[])
 
         dim1 = 5;
         dim2 = 5;
-        m2d_float = malloc_2d_float(m2d_float,dim1,dim2,0.0f);
+        RUNP(m2d_float = galloc(m2d_float,dim1,dim2,0.0f));
         for(i =0;i < dim1;i++){
                 for(j = 0; j < dim2;j++){
                         m2d_float[i][j] = i+j + 0.1;
@@ -917,7 +917,7 @@ int main (int argc,char * argv[])
 
         dim1 = 5;
         dim2 = 5;
-        m2d_double = malloc_2d_double(m2d_double,dim1,dim2,0.0);
+        RUNP(m2d_double = galloc(m2d_double,dim1,dim2,0.0));
         for(i =0;i < dim1;i++){
                 for(j = 0; j < dim2;j++){
                         m2d_double[i][j] = i+j + 0.1;
@@ -1108,10 +1108,10 @@ int main (int argc,char * argv[])
 
         MFREE(string);
 
-        free_2d((void**) m2d_char);
-        free_2d((void**) m2d_int);
-        free_2d((void**) m2d_float);
-        free_2d((void**) m2d_double);
+        gfree(m2d_char);
+        gfree(m2d_int);
+        gfree(m2d_float);
+        gfree(m2d_double);
         free_3d((void***)m3d_float);
         free_4d((void****)m4d_float);
 
@@ -1156,7 +1156,7 @@ int main (int argc,char * argv[])
                         fprintf(stdout,"\n");
                 }
                 fprintf(stdout,"\n");
-                free_2d((void**) m);
+                gfree(m);
         }
 
         hdf5_read_dataset("int2D",hdf5_data);
@@ -1172,7 +1172,8 @@ int main (int argc,char * argv[])
                                 fprintf(stdout,"\n");
                         }
                         fprintf(stdout,"\n");
-                        free_2d((void**) int_ptr);
+                        gfree(int_ptr);
+
                 }
         }
 

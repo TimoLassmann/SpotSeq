@@ -32,7 +32,7 @@ int main (int argc, char *argv[])
         struct seq_buffer* sb = NULL;
         int i,c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Scores sequences.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;

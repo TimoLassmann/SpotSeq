@@ -327,11 +327,11 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         /* Set alphabet and number of states. */
 
-        s1_e = malloc_2d_float(s1_e, model->num_states, model->L, 0.0);
-        s2_e = malloc_2d_float(s2_e, model->num_states, model->L, 0.0);
+        RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
+        RUNP(s2_e = galloc(s2_e, model->num_states, model->L, 0.0));
 
-        s1_t = malloc_2d_float(s1_t, model->num_states, model->num_states, 0.0);
-        s2_t = malloc_2d_float(s2_t, model->num_states, model->num_states, 0.0);
+        RUNP(s1_t = galloc(s1_t, model->num_states, model->num_states, 0.0));
+        RUNP(s2_t = galloc(s2_t, model->num_states, model->num_states, 0.0));
 
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
@@ -390,17 +390,17 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
 
-        free_2d((void**) s2_e);
-
-        free_2d((void**) s2_t);
+        gfree(s2_e);
+        gfree(s2_t);
         free_fast_hmm_param(ft);
         return fhmm;
 ERROR:
-        free_2d((void**) s1_e);
-        free_2d((void**) s2_e);
+        gfree(s1_e);
+        gfree(s1_t);
 
-        free_2d((void**) s1_t);
-        free_2d((void**) s2_t);
+        gfree(s2_e);
+        gfree(s2_t);
+
         free_fast_hmm_param(ft);
 
         return NULL;
@@ -432,11 +432,11 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 
         /* first index is state * letter ; second is sample (max = 100) */
 
-        s1_e = malloc_2d_float(s1_e, model->num_states, model->L, 0.0);
-        s2_e = malloc_2d_float(s2_e, model->num_states, model->L, 0.0);
+        RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
+        RUNP(s2_e = galloc(s2_e, model->num_states, model->L, 0.0));
 
-        s1_t = malloc_2d_float(s1_t, model->num_states, model->num_states, 0.0);
-        s2_t = malloc_2d_float(s2_t, model->num_states, model->num_states, 0.0);
+        RUNP(s1_t = galloc(s1_t, model->num_states, model->num_states, 0.0));
+        RUNP(s2_t = galloc(s2_t, model->num_states, model->num_states, 0.0));
 
         if(allow_zero_counts){
                 for( iter=  0;iter < iterations;iter++){
@@ -509,11 +509,11 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 
         RUN(add_fhmm(h5file,s1_t,s1_e, model->num_states, model->L  ));
 
-        free_2d((void**) s1_e);
-        free_2d((void**) s2_e);
+        gfree(s1_e);
+        gfree(s1_t);
 
-        free_2d((void**) s1_t);
-        free_2d((void**) s2_t);
+        gfree(s2_e);
+        gfree(s2_t);
 
         free_fast_hmm_param(ft);
         free_ihmm_model(model);

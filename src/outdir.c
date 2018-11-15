@@ -52,7 +52,7 @@ int set_log_file(char* root, char* name)
         RUNP(test_ptr = fopen(buffer, "w"));
         fclose(test_ptr);
 
-        tlog.set_logfile(buffer);
+        //tlog.set_logfile(buffer);
 
         return OK;
 ERROR:

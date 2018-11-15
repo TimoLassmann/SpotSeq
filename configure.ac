@@ -52,6 +52,20 @@ AC_CHECK_FUNCS([floor gettimeofday pow sqrt getcwd mkdir])
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 
 
+AC_CANONICAL_HOST
+case $host_os in
+darwin* )
+DEAD_STRIP="-Wl,-dead_strip"
+;;
+*)
+DEAD_STRIP="-Wl,--gc-sections -Wl,--as-needed"
+;;
+esac
+AC_SUBST(DEAD_STRIP)
+
+
+
+
 AC_ARG_ENABLE(debugging,[AS_HELP_STRING([--enable-debugging],[include debugging code])
 AS_HELP_STRING([--enable-debugging=x],[also set diagnostics verbosity level to <x> (1-3)])],
 enable_debugging=$enableval, enable_debugging="no")
@@ -67,9 +81,9 @@ esac
 
 if test "$enable_debugging" != "no"; then
 AC_DEFINE(DEBUG,1,[Defines debugging .])
-CFLAGS="-ggdb -Wall -std=gnu11"
+CFLAGS="-ggdb -Wall -std=gnu11 -fdata-sections -ffunction-sections"
 else
-CFLAGS="-O3 -funroll-loops -Wall -std=gnu11"
+CFLAGS="-O3 -funroll-loops -Wall -std=gnu11 -fdata-sections -ffunction-sections"
 DEBUG=0
 fi
 

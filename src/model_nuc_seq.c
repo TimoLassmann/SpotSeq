@@ -21,7 +21,7 @@
 
 #include "make_dot_file.h"
 
-struct parameters{       
+struct parameters{
         char* input;
         char* outdir;
 };
@@ -34,11 +34,11 @@ struct sequence{
         int malloc_len;
         int seq_len;
 };
- 
+
 struct seq_buffer{
         struct sequence** seqs;
         int malloc_num;
-        int num_seq;        
+        int num_seq;
 };
 
 
@@ -56,27 +56,27 @@ static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
 
-int main (int argc, char *argv[]) 
-{		
+int main (int argc, char *argv[])
+{
         struct parameters* param = NULL;
         int c;
-        
-        tlog.echo_build_config();
-        
+
+        print_program_header(argv, "Model nucleotide sequences");
+
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
         param->outdir = NULL;
-                
-        while (1){	
+
+        while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
-                        {"out",required_argument,0,'o'},			       
+                        {"out",required_argument,0,'o'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
                 c = getopt_long_only (argc, argv,"hi:o:",long_options, &option_index);
-		
+
                 if (c == -1){
                         break;
                 }
@@ -84,11 +84,11 @@ int main (int argc, char *argv[])
                 case 'i':
                         param->input = optarg;
                         break;
-                                 
+
                 case 'o':
                         param->outdir = optarg;
                         break;
-                                          
+
                 case 'h':
                         RUN(print_help(argv));
                         MFREE(param);
@@ -99,23 +99,23 @@ int main (int argc, char *argv[])
                         break;
                 }
         }
-        	
+
         LOG_MSG("Starting run");
 
         if(!param->input){
                 RUN(print_help(argv));
                 ERROR_MSG("No input file! use --in <blah.fa>");
-                
+
         }else{
                 if(!my_file_exists(param->input)){
                         RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->input);               
-                }           
+                        ERROR_MSG("The file <%s> does not exist.",param->input);
+                }
         }
         if(!param->outdir){
                 RUN(print_help(argv));
                 ERROR_MSG("No output file! use -o <blah.fa>");
-                
+
         }
 
         RUN(run_build_ihmm(param));
@@ -132,24 +132,24 @@ int run_build_ihmm(struct parameters* param)
 {
         char buffer[BUFFER_LEN];
         struct seq_buffer* sb = NULL;
-        
+
         int i;
-       
+
         ASSERT(param!= NULL, "No parameters found.");
-        
+
 
 
         RUN(create_output_directories(param->outdir));
-        
+
         RUN(set_log_file(param->outdir,"scs_net"));
 
         snprintf(buffer, BUFFER_LEN, "%s/%s/",param->outdir,OUTDIR_CHECKPOINTS);
         DECLARE_CHK(MAIN_CHECK, buffer);
-        
+
         /* Step one read in sequences */
         LOG_MSG("Loading sequences.");
 
-       
+
 
 
         RUNP(sb = load_sequences(param));
@@ -159,18 +159,18 @@ int run_build_ihmm(struct parameters* param)
                 fprintf(stdout,"%i\t%s\n",i,(char*) sb->seqs[i]->seq);
 
         }
-        
+
         LOG_MSG("Read %d sequences.",sb->num_seq);
-        
+
         LOG_MSG("Make model.");
         snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
         RUN_CHECKPOINT(MAIN_CHECK,make_model(param,sb),buffer);
-        
+
         LOG_MSG("Make dotfiles.");
         snprintf(buffer, BUFFER_LEN, "make model out of %s.",param->input);
         //RUN_CHECKPOINT(MAIN_CHECK,make_dot_files(param),buffer);
         RUN(make_dot_files(param));
-        
+
         /*for(i = 0; i <= model->K;i++){
           model->sumM[i] = 0;
           }
@@ -179,10 +179,10 @@ int run_build_ihmm(struct parameters* param)
           model->sumM[iseq->labels[i][j]]++;
           }
           }*/
-	
+
         //print_transistion_matrix(model);
         //print_emisson_matrix(model);
-	
+
         /*for(i =0;i < iseq->num_seq;i++){
           for(j = 0; j < iseq->len[i];j++){
           fprintf(stdout,"  %c ","ACGT"[(int)iseq->seq[i][j]]);
@@ -193,15 +193,15 @@ int run_build_ihmm(struct parameters* param)
           }
           fprintf(stdout,"\n");
           }*/
-	
-	
+
+
         //DPRINTF2("DONE PGAS.");
-       
-        
-       
+
+
+
         free_sb(sb);
         DESTROY_CHK(MAIN_CHECK);
-        
+
         return OK;
 ERROR:
         free_sb(sb);
@@ -217,7 +217,7 @@ int make_model(struct parameters* param,struct seq_buffer* sb)
         char buffer[BUFFER_LEN];
         struct iHMM_model* model = NULL;
         char** tmp_seq_pointer = NULL;
-        
+
         int i;
         ASSERT(param != NULL, "No param.");
 
@@ -225,7 +225,7 @@ int make_model(struct parameters* param,struct seq_buffer* sb)
         for(i = 0; i < sb->num_seq;i++){
                 tmp_seq_pointer[i] = (char*) sb->seqs[i]->seq;
         }
-        
+
         RUNP(model = init_iHMM_model());
         /* Don't think I need three different variables here...  */
         model->numb = 100;
@@ -252,7 +252,7 @@ int make_dot_files(struct parameters* param)
 {
         char buffer_in[BUFFER_LEN];
         char buffer_out[BUFFER_LEN];
-        
+
         ASSERT(param != NULL, "No param.");
 
         snprintf(buffer_in, BUFFER_LEN, "%s/%s/%s",param->outdir,OUTDIR_MODEL,"iHMM_model_parameters.csv");
@@ -273,13 +273,13 @@ int free_parameters(struct parameters* param)
         return OK;
 ERROR:
         return FAIL;
-                
+
 }
 
 int print_help(char **argv)
 {
         const char usage[] = " -in <fasta> -out <outfile>";
-        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);	
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
         fprintf(stdout,"Options:\n\n");
 //        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-len","Length of seeds." ,"[12]"  );
         //    	fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed-step","Distance between seeds." ,"[8]"  );
@@ -290,7 +290,7 @@ int print_help(char **argv)
 
 struct seq_buffer* load_sequences(struct parameters* param)
 {
-       
+
         struct seq_buffer* sb  = NULL;
         struct sequence* sequence = NULL;
         FILE* f_ptr = NULL;
@@ -304,7 +304,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
         seq_p = 0;
         MMALLOC(sb,sizeof(struct seq_buffer));
         sb->malloc_num = 1024;
-        sb->num_seq = -1; 
+        sb->num_seq = -1;
         sb->seqs = NULL;
         MMALLOC(sb->seqs, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
@@ -320,19 +320,19 @@ struct seq_buffer* load_sequences(struct parameters* param)
 
                 sb->seqs[i] = sequence;
         }
-        
+
         RUNP(f_ptr = fopen(param->input, "r" ));
         while(fgets(line, LINE_LEN, f_ptr)){
                 if(line[0] == '@' || line[0] == '>'){
-                        line[strlen(line)-1] = 0;                       
+                        line[strlen(line)-1] = 0;
                         for(i =0 ; i<strlen(line);i++){
                                 if(isspace(line[i])){
                                         line[i] = 0;
-                                                
+
                                 }
-                                        
+
                         }
-                        sb->num_seq++; 
+                        sb->num_seq++;
 
                         if(sb->num_seq == sb->malloc_num){
                                 sb->malloc_num = sb->malloc_num << 1;
@@ -355,7 +355,7 @@ struct seq_buffer* load_sequences(struct parameters* param)
                         seq_p = 1;
                 }else if(line[0] == '+'){
                         seq_p = 0;
-                }else{	
+                }else{
                         if(seq_p){
                                 for(i = 0;i < LINE_LEN;i++){
                                         if(isalpha((int)line[i])){
@@ -373,11 +373,11 @@ struct seq_buffer* load_sequences(struct parameters* param)
                                         }
                                 }
                         } /* here I would look for quality values.... */
-                      
+
                 }
         }
         fclose(f_ptr);
-        sb->num_seq++; 
+        sb->num_seq++;
         return sb;
 ERROR:
         free_sb(sb);
@@ -390,7 +390,7 @@ ERROR:
 void free_sb(struct seq_buffer* sb)
 {
         int i;
-        struct sequence* seq = NULL; 
+        struct sequence* seq = NULL;
         if(sb){
                 for(i =0; i < sb->malloc_num;i++){
                         seq = sb->seqs[i];

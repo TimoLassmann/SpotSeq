@@ -421,8 +421,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         last_state = model->num_states-1;
 
         /* alloc auxillary data structures  */
-        RUNP(M = malloc_2d_float(M, model->num_states,model->num_states, 0.0f));
-        RUNP(supp = malloc_2d_float(supp, 5,model->num_states, 0.0f));
+        RUNP(M = galloc(M, model->num_states,model->num_states, 0.0f));
+        RUNP(supp = galloc(supp, 5,model->num_states, 0.0f));
 
         //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
@@ -515,13 +515,13 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 }
 
         }
-        free_2d((void**) M);
-        free_2d((void**) supp);
+        gfree(M);
+        gfree(supp);
 
         return OK;
 ERROR:
-        free_2d((void**) M);
-        free_2d((void**) supp);
+        gfree(M);
+        gfree(supp);
         return FAIL;
 }
 
@@ -660,8 +660,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         }
         model->num_states = K;
 
-        RUNP(model->transition_counts = malloc_2d_float(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 100.0f));
-        RUNP(model->emission_counts = malloc_2d_float(model->emission_counts , model->L, model->alloc_num_states, 100.0f));
+        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 100.0f));
+        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 100.0f));
 
         MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){
@@ -687,8 +687,8 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
                         ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
                 }
                 //LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
-                RUNP(ihmm->transition_counts = malloc_2d_float(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
-                RUNP(ihmm->emission_counts = malloc_2d_float(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
+                RUNP(ihmm->transition_counts = galloc(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
+                RUNP(ihmm->emission_counts = galloc(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
 
                 MREALLOC(ihmm->beta,sizeof(float) * ihmm->alloc_num_states);
                 for(i = old_size;i < ihmm->alloc_num_states;i++){
@@ -729,9 +729,8 @@ ERROR:
 void free_ihmm_model(struct ihmm_model* ihmm)
 {
         if(ihmm){
-                free_2d((void**) ihmm->transition_counts);
-                free_2d((void**) ihmm->emission_counts);
-
+                gfree(ihmm->transition_counts);
+                gfree(ihmm->emission_counts);
                 MFREE(ihmm->beta);
                 MFREE(ihmm);
         }

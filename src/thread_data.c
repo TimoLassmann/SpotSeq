@@ -36,12 +36,12 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
                 td[i]->e = NULL;
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
-                RUNP(td[i]->F_matrix = malloc_2d_float(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = malloc_2d_float(td[i]->B_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0f));
+                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0f));
 
-                RUNP(td[i]->t = malloc_2d_float(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = malloc_2d_float(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
+                RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
+                RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
 
 
                 td[i]->ft = NULL;
@@ -91,13 +91,13 @@ int resize_spotseq_thread_data(struct spotseq_thread_data** td,int* num_threads,
 
         //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
         for(i = 0; i < local_num_treads;i++){
-                RUNP(td[i]->dyn = malloc_2d_float(td[i]->dyn, max_len, K, 0.0f));
+                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0f));
 
-                RUNP(td[i]->F_matrix = malloc_2d_float(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = malloc_2d_float(td[i]->B_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0f));
 
-                RUNP(td[i]->t = malloc_2d_float(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = malloc_2d_float(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
+                RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
+                RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
 
                 td[i]->num_threads = local_num_treads;
         }
@@ -113,11 +113,11 @@ void free_spotseq_thread_data(struct spotseq_thread_data** td, int num_threads)
         int i;
         if(td){
                 for(i = 0; i < num_threads;i++){
-                        free_2d((void**) td[i]->dyn);
-                        free_2d((void**) td[i]->F_matrix);
-                        free_2d((void**) td[i]->B_matrix);
-                        free_2d((void**) td[i]->t);
-                        free_2d((void**) td[i]->e);
+                        gfree(td[i]->dyn);
+                        gfree(td[i]->F_matrix);
+                        gfree(td[i]->B_matrix);
+                        gfree(td[i]->t);
+                        gfree(td[i]->e);
                         MFREE(td[i]);
                 }
                 MFREE(td);

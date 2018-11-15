@@ -39,8 +39,8 @@ struct ihmm_model* read_model_hdf5(char* filename)
         ASSERT(a!=0, "No states???");
         ASSERT(b!=0, "No letters???");
         RUNP(model = alloc_ihmm_model(a, b,0));
-        free_2d((void**) model->emission_counts);
-        free_2d((void**) model->transition_counts);
+        gfree(model->emission_counts);
+        gfree(model->transition_counts);
         MFREE(model->beta);
         for(i = 0; i < hdf5_data->num_attr;i++){
                 if(!strncmp("Number of states", hdf5_data->attr[i]->attr_name, 16)){
@@ -92,7 +92,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         hdf5_free(hdf5_data);
         /* stretch matrices... */
         model->alloc_num_states = model->num_states;
-        RUN(resize_ihmm_model(model, model->num_states+1));
+        //RUN(resize_ihmm_model(model, model->num_states+1));
 
         WARNING_MSG("Each time a run is continued a new RNG seed is selected...");
         if(model->seed){
@@ -236,7 +236,7 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
         hdf5_write("Beta",&model->beta[0], hdf5_data);
 
-        RUNP(tmp = malloc_2d_float(tmp,  model->num_states,  model->num_states, 0.0));
+        RUNP(tmp = galloc(tmp,  model->num_states,  model->num_states, 0.0));
         for(i = 0; i < model->num_states;i++){
                 for(j = 0; j < model->num_states;j++){
                         tmp[i][j] = model->transition_counts[i][j];
@@ -250,10 +250,10 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
         hdf5_write("transition_counts",&tmp[0][0], hdf5_data);
 
-        free_2d((void**) tmp);
+        gfree(tmp);
         tmp= NULL;
 
-        RUNP(tmp = malloc_2d_float(tmp,  model->L ,  model->num_states, 0.0));
+        RUNP(tmp = galloc(tmp,  model->L ,  model->num_states, 0.0));
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
                         tmp[i][j] = model->emission_counts[i][j];
@@ -266,7 +266,8 @@ int write_model_hdf5(struct ihmm_model* model, char* filename)
         hdf5_data->chunk_dim[1] = model->num_states;
         hdf5_data->native_type = H5T_NATIVE_FLOAT;
         hdf5_write("emission_counts",&tmp[0][0], hdf5_data);
-        free_2d((void**) tmp);
+
+        gfree(tmp);
         tmp= NULL;
 
         RUN(hdf5_close_group(hdf5_data));

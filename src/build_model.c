@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Build HDPHMM model(s).");
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
@@ -180,15 +180,15 @@ int main (int argc, char *argv[])
 
 
 
-        rk_save_testing();
+        //rk_save_testing();
 
-        return EXIT_SUCCESS;
+        //return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
          * data */
         //
 
-        RUN(score_sequences_for_command_line_reporting(param));
+        //RUN(score_sequences_for_command_line_reporting(param));
 
         /* calibrate model parameters */
         RUN(free_parameters(param));

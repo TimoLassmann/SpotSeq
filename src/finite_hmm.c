@@ -275,7 +275,7 @@ int setup_model(struct fhmm* fhmm)
         /* I need to allocate tindex & convert probs to log space */
         init_logsum();
 
-        RUNP(fhmm->tindex = malloc_2d_int(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
+        RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
@@ -315,8 +315,8 @@ int alloc_dyn_matrices(struct fhmm* fhmm)
 
         fhmm->alloc_matrix_len = 1024;
 
-        RUNP(fhmm->F_matrix = malloc_2d_float(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
-        RUNP(fhmm->B_matrix = malloc_2d_float(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+        RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+        RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
         return OK;
 ERROR:
         return FAIL;
@@ -330,8 +330,8 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
                 while(fhmm->alloc_matrix_len < new_len){
                         fhmm->alloc_matrix_len = fhmm->alloc_matrix_len << 1;
                 }
-                RUNP(fhmm->F_matrix = malloc_2d_float(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
-                RUNP(fhmm->B_matrix = malloc_2d_float(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+                RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+                RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
         }
         return OK;
 ERROR:
@@ -462,23 +462,28 @@ void free_fhmm(struct fhmm* fhmm)
 {
         if(fhmm){
                 if(fhmm->F_matrix){
-                        free_2d((void**) fhmm->F_matrix);
+                        gfree(fhmm->F_matrix);
+                        //free_2d((void**) fhmm->F_matrix);
                 }
                 if(fhmm->B_matrix){
-                        free_2d((void**) fhmm->B_matrix);
+                        gfree(fhmm->B_matrix);
+                        //free_2d((void**) fhmm->B_matrix);
                 }
 
                 if(fhmm->e){
-                        free_2d((void**) fhmm->e);
+                        gfree(fhmm->e);
+                        //free_2d((void**) fhmm->e);
                 }
                 if(fhmm->t){
-                        free_2d((void**) fhmm->t);
+                        gfree(fhmm->t);
+                        //free_2d((void**) fhmm->t);
                 }
                 if(fhmm->background){
                         MFREE(fhmm->background);
                 }
                 if(fhmm->tindex){
-                        free_2d((void**)fhmm->tindex);
+                        gfree(fhmm->tindex);
+                        //free_2d((void**)fhmm->tindex);
                 }
 
                 MFREE(fhmm);

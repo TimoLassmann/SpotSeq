@@ -218,10 +218,9 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                 sb->sequences[i]->seq_len = j;
         }
 
-        free_2d((void**)   label);
-        free_2d((void**)   name);
-        free_2d((void**)   seq);
-
+        gfree(label);
+        gfree(name);
+        gfree(seq);
         return sb;
 ERROR:
         if(hdf5_data){
@@ -229,13 +228,13 @@ ERROR:
                 hdf5_free(hdf5_data);
         }
         if(label){
-                free_2d((void**)   label);
+                gfree(label);
         }
         if(name){
-                free_2d((void**)   name);
+                gfree(name);
         }
         if(seq){
-                free_2d((void**)   seq);
+                gfree(seq);
         }
 
 
@@ -269,7 +268,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
         }
         max_name_len+=1;
 
-        RUNP(name = malloc_2d_char(name, sb->num_seq, max_name_len, 0));
+        RUNP(name = galloc(name, sb->num_seq, max_name_len, 0));
         for(i = 0; i < sb->num_seq;i++){
                 len = strlen(sb->sequences[i]->name);
                 for (j = 0; j < len;j++){
@@ -279,7 +278,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
 
         /* make sequence matrix */
 
-        RUNP(seq = malloc_2d_char(seq, sb->num_seq, sb->max_len, -1));
+        RUNP(seq = galloc(seq, sb->num_seq, sb->max_len, -1));
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
                 for (j = 0; j < len;j++){
@@ -289,7 +288,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
 
         /* make  label matrix */
 
-        label = malloc_2d_int(label, sb->num_seq, sb->max_len, -1);
+        RUNP(label = galloc(label, sb->num_seq, sb->max_len, -1));
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
                 for (j = 0; j < len;j++){
@@ -367,10 +366,9 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
         hdf5_close_file(hdf5_data);
         hdf5_free(hdf5_data);
 
-        free_2d((void**)   label);
-        free_2d((void**)   name);
-        free_2d((void**)   seq);
-
+        gfree(label);
+        gfree(name);
+        gfree(seq);
         return OK;
 ERROR:
         if(hdf5_data){
@@ -378,13 +376,13 @@ ERROR:
                 hdf5_free(hdf5_data);
         }
         if(label){
-                free_2d((void**)   label);
+                gfree(label);
         }
         if(name){
-                free_2d((void**)   name);
+                gfree(name);
         }
         if(seq){
-                free_2d((void**)   seq);
+                gfree(seq);
         }
         return FAIL;
 }
@@ -412,7 +410,7 @@ int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float 
 
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
-        RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
+        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
 
         for(i = 0; i < k;i++){
                 sum = 0.0;
@@ -446,12 +444,12 @@ int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float 
                 }
         }
 
-        free_2d((void**) emission);
+        gfree(emission);
 
         return OK;
 ERROR:
         if(emission){
-                free_2d((void**) emission);
+                gfree(emission);
         }
         return FAIL;
 }
@@ -488,8 +486,8 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
 
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
-        RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
-        RUNP(transition = malloc_2d_float(transition, k+1,  k , 0.0f));
+        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
+        RUNP(transition = galloc(transition, k+1,  k , 0.0f));
 
         MMALLOC(tmp, sizeof(float) * k);
         //fprintf(stdout,"Emission\n");
@@ -579,17 +577,17 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         label[j] = 3;
                 }
                 }*/
-        free_2d((void**) emission);
-        free_2d((void**) transition );
+        gfree(emission);
+        gfree(transition);
         MFREE(tmp);
         return OK;
 ERROR:
         if(emission){
-                free_2d((void**) emission);
+                gfree(emission);
         }
 
         if(transition){
-                free_2d((void**) transition);
+                gfree(transition);
         }
         if(tmp){
                 MFREE(tmp);
@@ -973,7 +971,7 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
                 }
         }
         //DPRINTF1("max_len:%d",sb->max_len );
-        RUNP(dwb = malloc_2d_char(dwb, sb->max_len , 20, 0));
+        RUNP(dwb = galloc(dwb, sb->max_len , 20, 0));
         f_ptr = NULL;
         /* open file and write */
 
@@ -1044,15 +1042,14 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
                 RUN(translate_PROTEIN_to_internal(sb));
         }
 
-
-        free_2d((void**) dwb);
+        gfree(dwb);
         return OK;
 ERROR:
         if(f_ptr){
                 fclose(f_ptr);
         }
         if(dwb){
-                free_2d((void**) dwb);
+                gfree(dwb);
         }
         return FAIL;
 }
@@ -1173,7 +1170,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
 
         ASSERT(in_filename != NULL,"No input file specified - this should have been caught before!");
 
-        RUNP(digit_buffer = malloc_2d_char(digit_buffer,BLOCK_LEN,20,0 ) );
+        RUNP(digit_buffer = galloc(digit_buffer,BLOCK_LEN,20,0 ) );
 
 
         seq_p = 0;
@@ -1300,13 +1297,13 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
         sb->num_seq++;
         RUN(detect_alphabet(sb));
         RUN(add_background_to_sequence_buffer(sb));
-        free_2d((void**) digit_buffer);
+        gfree(digit_buffer);
         return sb;
 ERROR:
 
         free_ihmm_sequences(sb);
         if(digit_buffer){
-                free_2d((void**)digit_buffer);
+                gfree(digit_buffer);
         }
         if(f_ptr){
                 fclose(f_ptr);
@@ -1905,9 +1902,9 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models
 {
         ASSERT(sequence != NULL, "No sequence");
 
-        RUNP(sequence->u_arr = malloc_2d_float(sequence->u_arr, num_models, sequence->seq_len+1, 0.0));
+        RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, sequence->seq_len+1, 0.0));
 
-        RUNP(sequence->label_arr = malloc_2d_int(sequence->label_arr, num_models, sequence->seq_len+1, 0));
+        RUNP(sequence->label_arr = galloc(sequence->label_arr, num_models, sequence->seq_len+1, 0));
 
         return OK;
 ERROR:
@@ -2013,10 +2010,10 @@ void free_ihmm_sequence(struct ihmm_sequence* sequence)
                         MFREE(sequence->label);
                 }
                 if(sequence->u_arr){
-                        free_2d((void**) sequence->u_arr);
+                        gfree(sequence->u_arr);
                 }
                 if(sequence->label_arr ){
-                        free_2d((void**) sequence->label_arr);
+                        gfree(sequence->label_arr);
                 }
                 MFREE(sequence);
         }

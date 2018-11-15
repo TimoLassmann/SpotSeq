@@ -96,7 +96,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Simulate sequences.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->num_seq = 1000;
@@ -191,7 +191,7 @@ int run_sim_seq(struct parameters* param)
         RUNP(f_ptr = fopen(buffer, "w"));
         fclose(f_ptr);
 
-        tlog.set_logfile(buffer);
+        //tlog.set_logfile(buffer);
 
         // RUN(set_log_file(param->outdir,"sim_log"));
 
@@ -1072,8 +1072,8 @@ struct hmm* malloc_hmm(int num_states, int alphabet_len, int max_seq_len)
 
         MCALLOC(hmm->background, hmm->alphabet_len,sizeof(float));
 
-	        hmm->emissions = malloc_2d_float(hmm->emissions, hmm->num_states, hmm->alphabet_len, 0.0f);
-          hmm->transitions = malloc_2d_float(hmm->transitions, hmm->num_states, hmm->num_states,  0.0f);
+        RUNP(hmm->emissions = galloc(hmm->emissions, hmm->num_states, hmm->alphabet_len, 0.0f));
+        RUNP(hmm->transitions = galloc(hmm->transitions, hmm->num_states, hmm->num_states,  0.0f));
 
           return hmm;
 ERROR:
@@ -1085,9 +1085,8 @@ void free_hmm(struct hmm* hmm)
 {
 
         if(hmm){
-                free_2d((void**)hmm->emissions );
-                free_2d((void**)hmm->transitions );
-
+                gfree(hmm->emissions);
+                gfree(hmm->transitions);
                 MFREE(hmm->background);
                 MFREE(hmm);
         }

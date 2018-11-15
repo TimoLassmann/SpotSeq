@@ -36,8 +36,8 @@ int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha)
         }
 
 
-        fhmm->e = malloc_2d_float(fhmm->e, fhmm->K, fhmm->L, 0.0);
-        fhmm->t = malloc_2d_float(fhmm->t, fhmm->K, fhmm->K, 0.0);
+        RUNP(fhmm->e = galloc(fhmm->e, fhmm->K, fhmm->L, 0.0));
+        RUNP(fhmm->t = galloc(fhmm->t, fhmm->K, fhmm->K, 0.0));
         /* Fill with random counts... */
         /* First emission (cos easy...) */
 

@@ -64,7 +64,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Generates standard challenge motif benchmarks.");
 
         MMALLOC(param, sizeof(struct parameters));
 

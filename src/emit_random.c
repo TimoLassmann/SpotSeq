@@ -14,7 +14,7 @@ int main(const int argc, char * argv[])
         int c;
         int num_seq = 10000;
 
-        tlog.echo_build_config();
+        print_program_header(argv, "Emit random sequences.");
 
 
         while (1){

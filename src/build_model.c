@@ -178,8 +178,6 @@ int main (int argc, char *argv[])
 
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
-
-
         rk_save_testing();
 
         return EXIT_SUCCESS;

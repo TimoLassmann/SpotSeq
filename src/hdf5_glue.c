@@ -324,6 +324,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
 
         float* m1d_float = NULL;
         double* m1d_double = NULL;
+        ulong* m2d_ulong = NULL;
 
         char** m2d_char = NULL;
         int** m2d_int = NULL;
@@ -346,6 +347,15 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
 
            dataset class, order, size, rank and dimensions  */
         hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
+
+
+        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
+        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
+        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
+        int dim1 = hdf5_data->dim[0];
+        int dim2 = hdf5_data->dim[1];
+
+        hdf5_data->data = NULL;
         //printf ("H5Dget_type returns: %d\n", hdf5_data->datatype);
 
         //class     = H5Tget_class(hdf5_data->datatype);
@@ -357,6 +367,23 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
                 type =HDF5GLUE_CHAR;
         }else if(H5Tequal(hdf5_data->datatype ,H5T_NATIVE_INT) != 0){
                 type =HDF5GLUE_INT;
+
+        }else if(H5Tequal(hdf5_data->datatype ,H5T_NATIVE_ULONG) != 0){
+                if(hdf5_data->rank == 1){
+                        ulong* ptr = NULL;
+
+                        MMALLOC(ptr,sizeof(ulong)* dim1);
+                        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &ptr[0]);
+                        hdf5_data->data = ptr;
+
+                }
+                if(hdf5_data->rank == 2){
+                        ulong** ptr = NULL;
+                        RUNP(ptr = galloc(ptr,dim1,dim2,0));
+
+                        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &ptr[0][0]);
+                        hdf5_data->data = ptr;
+                }
         }else if(H5Tequal(hdf5_data->datatype ,H5T_NATIVE_USHORT) != 0){
                 type = HDF5GLUE_USHORT_INT;
         }else if(H5Tequal(hdf5_data->datatype ,H5T_NATIVE_FLOAT) != 0){
@@ -369,11 +396,6 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
         fprintf(stdout,"%s TYPE is %d   %d\n",dataset_name,   type,hdf5_data->datatype);
 
 
-        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
-        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
-        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
-
-        hdf5_data->data = NULL;
 
 
 

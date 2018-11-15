@@ -32,9 +32,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         /* check if there is enough space to hold new transitions... */
         /* This is slightly to generous as I am allocating memory for the
          * infinity state as well */
-        LOG_MSG("Number of states in model:%d", model->num_states);
         RUN(expand_ft_if_necessary(ft, model->num_states));
-        LOG_MSG("Number of states in ft:%d", ft->alloc_num_states );
 
         //LOG_MSG("size: %d %d",DIM1(ft->transition),DIM2(ft->transition));
         //RUN(expand_fast_hmm_param_if_necessary(ft, model->num_states *model->num_states  ));

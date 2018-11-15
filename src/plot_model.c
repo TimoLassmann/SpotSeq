@@ -182,11 +182,16 @@ int run_plot_ihmm(struct parameters* param)
         ASSERT(param!= NULL, "No parameters found.");
 
         RUNP(model = read_model_hdf5(param->input));
+        print_counts(model);
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+        RUN(print_fast_hmm_params(ft));
         RUN(fill_background_emission_from_model(ft,model));
         RUN(fill_fast_transitions_only_matrices(model,ft));
-        //RUN(print_fast_hmm_params(ft));
+        LOG_MSG("Last: %d",  ft->last_state);
+
+        RUN(print_fast_hmm_params(ft));
+        exit(0);
         RUN(make_dot_file( ft, model, param));
 
         free_fast_hmm_param(ft);

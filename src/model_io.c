@@ -92,7 +92,7 @@ struct ihmm_model* read_model_hdf5(char* filename)
         hdf5_free(hdf5_data);
         /* stretch matrices... */
         model->alloc_num_states = model->num_states;
-        //RUN(resize_ihmm_model(model, model->num_states+1));
+        RUN(resize_ihmm_model(model, model->num_states+1));
 
         WARNING_MSG("Each time a run is continued a new RNG seed is selected...");
         if(model->seed){

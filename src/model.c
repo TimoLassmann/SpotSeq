@@ -742,6 +742,8 @@ int print_counts(struct ihmm_model* ihmm)
 {
         int i,j;
         int sum;
+        fprintf(stdout,"States:%d\n",ihmm->num_states);
+
         fprintf(stdout,"Transition counts\n");
         for(i = 0; i < ihmm->num_states;i++){
                 fprintf(stdout,"s%3d", i );

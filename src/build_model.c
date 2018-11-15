@@ -180,9 +180,9 @@ int main (int argc, char *argv[])
 
 
 
-        //rk_save_testing();
+        rk_save_testing();
 
-        //return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
          * data */

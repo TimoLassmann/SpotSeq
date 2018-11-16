@@ -167,7 +167,7 @@ int hdf5_testing(struct parameters* param)
 {
 
         ASSERT(param != NULL, "No parameters");
-        RUN(write_model_hdf5(NULL,"TEST.h5"));
+        //RUN(write_model_hdf5(NULL,"TEST.h5"));
         return OK;
 ERROR:
         return FAIL;
@@ -181,7 +181,7 @@ int run_plot_ihmm(struct parameters* param)
         int initial_states = 10;
         ASSERT(param!= NULL, "No parameters found.");
 
-        RUNP(model = read_model_hdf5(param->input));
+        //RUNP(model = read_model_hdf5(param->input));
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
         RUN(print_fast_hmm_params(ft));
@@ -211,7 +211,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         FILE* fptr = NULL;
         ASSERT(param != NULL, "no parameters");
         RUNP(sb = get_sequences_from_hdf5_model(param->input));
-        RUNP(model = read_model_hdf5(param->input));
+        //RUNP(model = read_model_hdf5(param->input));
 
 
         RUNP(matrix = galloc(matrix, model->num_states , 251, 0.0f));
@@ -282,7 +282,7 @@ int plot_model_entropy(struct parameters* param)
         ASSERT(param!= NULL, "No parameters found.");
 
 
-        RUNP(model = read_model_hdf5(param->input));
+        //RUNP(model = read_model_hdf5(param->input));
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
         /* first index is state * letter ; second is sample (max = 100) */

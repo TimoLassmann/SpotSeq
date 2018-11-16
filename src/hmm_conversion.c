@@ -425,8 +425,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 
         ASSERT(h5file != NULL, "No parameters found.");
 
-
-        RUNP(model = read_model_hdf5(h5file));
+//RUNP(model = read_model_hdf5(h5file));
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 

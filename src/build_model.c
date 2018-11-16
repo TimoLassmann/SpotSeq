@@ -178,9 +178,9 @@ int main (int argc, char *argv[])
 
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
-        rk_save_testing();
+        //rk_save_testing();
 
-        return EXIT_SUCCESS;
+        //return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
          * data */
@@ -219,10 +219,18 @@ int run_build_ihmm(struct parameters* param)
         if(param->in_model){
                 /* PROBABLY need to re-alloc num_state_array */
                 //MMALLOC(num_state_array, sizeof(int)* param->num_models);
-                /*RUNP(model = read_model_hdf5(param->in_model));
-
+                RUNP(model_bag = read_model_bag_hdf5(param->in_model));
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
 
+
+                for(i = 0; i < model_bag->num_models;i++){
+                        num_state_array[i] = model_bag->models[i]->num_states;
+                }
+                //MFREE(num_state_array);
+                //free_ihmm_sequences(sb);
+                //free_model_bag(model_bag);
+                //return EXIT_SUCCESS;
+                /*
                 if(param->alpha != IHMM_PARAM_PLACEHOLDER){
                         model->alpha = param->alpha;
                         model->alpha_a = IHMM_PARAM_PLACEHOLDER;
@@ -301,14 +309,16 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
-
-
-
-
         RUN(run_beam_sampling(model_bag,ft_bag, sb,NULL,  param->num_iter,  param->num_threads));
 
+
+        RUN(write_model_bag_hdf5(model_bag,param->output));
+        RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
+        RUN(add_background_emission(param->output,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
+
+        RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
         //RUN(write_model(model, param->output));
-        for(i = 0; i < model_bag->num_models;i++){
+        /*for(i = 0; i < model_bag->num_models;i++){
                 char buffer[BUFFER_LEN];
                 snprintf(buffer, BUFFER_LEN, "%s_%d.h5", param->output,i);
                 RUN(write_model_hdf5(model_bag->models[i],buffer));
@@ -318,7 +328,7 @@ int run_build_ihmm(struct parameters* param)
                 RUN(add_sequences_to_hdf5_model(buffer, sb, i));
 
                 RUN(run_build_fhmm_file(buffer,0));
-        }
+                }*/
 //        RUN(add_annotation)
 
         //RUN(add_sequences_to_hdf5_model(param->output, sb));
@@ -387,7 +397,6 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         int c;
         int i;
         int limit;
-
 
         char buffer[BUFFER_LEN];
 

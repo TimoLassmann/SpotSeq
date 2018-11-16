@@ -15,7 +15,10 @@
 
 #define IHMM_PARAM_PLACEHOLDER -9999.99f
 
+
 struct seq_buffer;          /* forward declaration  */
+
+struct hdf5_data;               /* forward declaration`` */
 
 struct ihmm_model{
         float** transition_counts;
@@ -58,11 +61,14 @@ extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 
 /* Model IO */
+extern struct model_bag* read_model_bag_hdf5(char* filename);
+extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
 extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
 extern int add_background_emission(char* filename,float* background,int L);
 extern int add_annotation( char* filename, char* name, char* value);
-extern int write_model_hdf5(struct ihmm_model* model, char* filename);
-struct ihmm_model* read_model_hdf5(char* filename);
+
+//extern int write_model_hdf5(struct ihmm_model* model, char* filename);
+//struct ihmm_model* read_model_hdf5(char* filename);
 extern int write_model(struct ihmm_model* model, char* filename);
 extern struct ihmm_model* read_model( char* filename);
 

@@ -19,8 +19,7 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
 
-static int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models);
-
+static int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, int num_models);
 
 int shuffle_sequences_in_buffer(struct seq_buffer* sb)
 {
@@ -107,8 +106,9 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         int max_len;
         int max_name_len;
         int local_L;
-        int i,j;
-
+        int i,j,c;
+        int num_models;
+        int pos;
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
@@ -144,13 +144,16 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                 if(!strncmp("Alphabet", hdf5_data->attr[i]->attr_name, 8)){
                         local_L = hdf5_data->attr[i]->int_val;
                 }
+                if(!strncmp("NumModels", hdf5_data->attr[i]->attr_name, 9)){
+                        num_models = hdf5_data->attr[i]->int_val;
+                }
         }
 
         ASSERT(num_seq != -1, "No numseq");
         ASSERT(max_len != -1, "No maxlen");
         ASSERT(max_name_len != -1, "No maxnamelen");
         ASSERT(local_L != -1,"No Alphabet");
-
+        ASSERT(num_models > 0, "No models");
 
 
         hdf5_read_dataset("Names",hdf5_data);
@@ -195,6 +198,20 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                 }
         }
 
+        RUN(add_multi_model_label_and_u(sb, num_models));
+
+        /* copy stuff over */
+        for(i = 0; i < sb->num_seq;i++){
+                pos = 0;
+                for(c = 0; c < num_models;c++){
+                        for (j = 0; j < sb->max_len+1;j++){
+                                sb->sequences[i]->label_arr[c][j] = label[i][pos];
+                                pos++;
+                        }
+                }
+        }
+
+
         /* copy stuff over */
         for(i = 0; i < sb->num_seq;i++){
                 for (j = 0; j < max_name_len;j++){
@@ -213,7 +230,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                                 break;
                         }
                         sb->sequences[i]->seq[j] = seq[i][j];
-                        sb->sequences[i]->label[j] = label[i][j];
+                        //sb->sequences[i]->label[j] = label[i][j];
                 }
                 sb->sequences[i]->seq_len = j;
         }
@@ -242,11 +259,11 @@ ERROR:
 }
 
 /* I want to save the labelled sequences in the hdf5model file to be able to resume jobs.  */
-int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_index)
+int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_models)
 {
-
         struct hdf5_data* hdf5_data = NULL;
-        int i,j,len;
+        int i,j,c,len;
+        int pos;
 
         char** name = NULL;
         char** seq = NULL;
@@ -254,7 +271,6 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
 
         int max_name_len;
         int has_seq_info;
-
 
         ASSERT(sb!=NULL, "No sequence buffer");
 
@@ -288,11 +304,16 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
 
         /* make  label matrix */
 
-        RUNP(label = galloc(label, sb->num_seq, sb->max_len, -1));
+        RUNP(label = galloc(label, sb->num_seq, (sb->max_len+1)* num_models, -1));
+
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
-                for (j = 0; j < len;j++){
-                        label[i][j] = sb->sequences[i]->label_arr[model_index][j];
+                pos = 0;
+                for(c = 0; c < num_models;c++){
+                        for (j = 0; j < sb->max_len+1;j++){
+                                label[i][pos] = sb->sequences[i]->label_arr[c][j];
+                                pos++;
+                        }
                 }
         }
 
@@ -323,6 +344,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
         hdf5_add_attribute(hdf5_data, "MaxLen",     "", sb->max_len , 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "MaxNameLen", "", max_name_len, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "Alphabet",   "", sb->L       , 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "NumModels",   "", num_models  , 0.0f, HDF5GLUE_INT);
 
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
 
@@ -345,9 +367,9 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_
 
         hdf5_data->rank = 2;
         hdf5_data->dim[0] = sb->num_seq;
-        hdf5_data->dim[1] = sb->max_len;
+        hdf5_data->dim[1] = (sb->max_len+1)* num_models;
         hdf5_data->chunk_dim[0] = sb->num_seq;
-        hdf5_data->chunk_dim[1] = sb->max_len;
+        hdf5_data->chunk_dim[1] = (sb->max_len+1)* num_models;
         hdf5_data->native_type = H5T_NATIVE_INT;
         hdf5_write("Labels",&label[0][0], hdf5_data);
 
@@ -1891,20 +1913,20 @@ int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models)
         ASSERT(sb != NULL,"No sequence buffer");
 
         for(i = 0; i < sb->num_seq;i++){
-                RUN(alloc_multi_model_label_and_u(sb->sequences[i], num_models));
+                RUN(alloc_multi_model_label_and_u(sb->sequences[i],sb->max_len,   num_models));
         }
         return OK;
 ERROR:
         return FAIL;
 }
 
-int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence, int num_models)
+int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, int num_models)
 {
         ASSERT(sequence != NULL, "No sequence");
 
-        RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, sequence->seq_len+1, 0.0));
+        RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, max_len+1, 0.0));
 
-        RUNP(sequence->label_arr = galloc(sequence->label_arr, num_models, sequence->seq_len+1, 0));
+        RUNP(sequence->label_arr = galloc(sequence->label_arr, num_models, max_len+1, -1));
 
         return OK;
 ERROR:

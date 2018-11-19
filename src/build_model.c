@@ -205,7 +205,9 @@ int run_build_ihmm(struct parameters* param)
 
         struct seq_buffer* sb = NULL;
 
+        struct spotseq_thread_data** td = NULL;
 
+        struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
 
         //int initial_states;
@@ -222,10 +224,13 @@ int run_build_ihmm(struct parameters* param)
                 RUNP(model_bag = read_model_bag_hdf5(param->in_model));
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
 
-
                 for(i = 0; i < model_bag->num_models;i++){
                         num_state_array[i] = model_bag->models[i]->num_states;
                 }
+
+
+
+                RUNP(td = read_thread_data_to_hdf5(param->in_model));
                 //MFREE(num_state_array);
                 //free_ihmm_sequences(sb);
                 //free_model_bag(model_bag);
@@ -242,6 +247,13 @@ int run_build_ihmm(struct parameters* param)
                         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
                 }
                 */
+                /*RUN(write_model_bag_hdf5(model_bag,param->output));
+                RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
+                RUN(add_background_emission(param->output,  sb->background, sb->L));
+
+                RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
+                RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len,  model_bag->max_num_states));
+                return EXIT_SUCCESS;*/
         }else{
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -264,35 +276,43 @@ int run_build_ihmm(struct parameters* param)
                 RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,   param->seed));
 
 
-                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
+                RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
                 /* New label sequences  */
                 /* We need to label sequences somehow so that we can
                  * set the u arrays properly based on the initial
                  * model guess */
+                model_bag->max_num_states = 0;
                 for(i = 0; i < model_bag->num_models  ;i++){
                         RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                         //RUN(fill_counts(model_bag->models[i], sb,i));
                         RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                         RUN(fill_counts(model_bag->models[i], sb,i));
+                        model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
+
+
+
                         //print_counts(model_bag->models[i]);
 
 
                 }
-
-                //exit(0);
-
+                /* Set seed in sequence buffer */
+                sb->seed = rk_ulong(&model_bag->rndstate);
+                rk_seed(sb->seed, &sb->rndstate);
 
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
+
+                /* Allocating thread structure. */
+                RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+
+
         }
+
+        LOG_MSG("Will use %d threads.", param->num_threads);
+        if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+
         /* Set seed in sequence buffer */
-
-        sb->seed = rk_ulong(&model_bag->rndstate );
-        rk_seed(sb->seed, &sb->rndstate);
-
-        LOG_MSG("Read %d sequences.",sb->num_seq);
-
         RUNP(ft_bag = alloc_fast_param_bag(param->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */
@@ -309,7 +329,7 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
-        RUN(run_beam_sampling(model_bag,ft_bag, sb,NULL,  param->num_iter,  param->num_threads));
+        RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  param->num_iter,  param->num_threads));
 
 
         RUN(write_model_bag_hdf5(model_bag,param->output));
@@ -317,6 +337,8 @@ int run_build_ihmm(struct parameters* param)
         RUN(add_background_emission(param->output,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
 
         RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
+        RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len, model_bag->max_num_states));
+        //RUN(write_thread_data_to_)
         //RUN(write_model(model, param->output));
         /*for(i = 0; i < model_bag->num_models;i++){
                 char buffer[BUFFER_LEN];
@@ -340,14 +362,16 @@ int run_build_ihmm(struct parameters* param)
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-
+        free_spotseq_thread_data(td, param->num_threads);
+        thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
 ERROR:
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-
+        free_spotseq_thread_data(td, param->num_threads);
+        thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
 }

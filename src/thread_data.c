@@ -6,6 +6,7 @@
 
 
 
+
 struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K,rk_state* random)
 {
         struct spotseq_thread_data** td = NULL;
@@ -48,8 +49,15 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
                 td[i]->sb = NULL;
                 td[i]->thread_ID = i;
                 td[i]->num_threads = local_num_treads;
-                td[i]->seed =  rk_ulong(random);
-                rk_seed(td[i]->seed, &td[i]->rndstate);
+                if(random){
+                        td[i]->seed =  rk_ulong(random);
+                        rk_seed(td[i]->seed, &td[i]->rndstate);
+                }else{
+                        td[i]->seed = 42; /* placeholder! if no RNG
+                                           * given as argument a RNG
+                                           * statewill be readfrom
+                                           * hdf5 */
+                }
                 //fprintf(stdout,"thread:%d seed: %d\n",i, td[i]->seed);
 
 

@@ -46,6 +46,7 @@ struct model_bag{
         float* min_u;
         int max_num_states;
         int num_models;
+        unsigned int seed;      /* Starting value */
         rk_state rndstate;      /* main seed */
 };
 
@@ -71,6 +72,11 @@ extern int add_annotation( char* filename, char* name, char* value);
 //struct ihmm_model* read_model_hdf5(char* filename);
 extern int write_model(struct ihmm_model* model, char* filename);
 extern struct ihmm_model* read_model( char* filename);
+
+
+/* Write RNG states in threads to file to ensure reproducibility.... */
+struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename);
+int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int num_threads,int max_len,int max_K);
 
 /* Initialize number of states.  */
 extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K);

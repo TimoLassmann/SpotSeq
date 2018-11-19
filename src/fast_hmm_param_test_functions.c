@@ -14,6 +14,7 @@ int print_fast_hmm_params(struct fast_hmm_param* ft)
         ASSERT(ft != NULL, "No param");
 
         //RUNP(m = malloc_2d_float(m, ft->last_state+1,  ft->last_state+1, 0.0));
+        fprintf(stdout,"States: %d\n",ft->last_state+1 );
         fprintf(stdout,"Transitions:\n");
 
         m = ft->transition;

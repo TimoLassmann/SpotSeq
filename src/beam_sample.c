@@ -35,20 +35,20 @@ static int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_s
 static int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
 static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
 
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct thr_pool* pool, int iterations, int num_threads)
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
 {
         int i;
         int iter;
         //float min_u;
         //float max;
         //float** matrix = NULL;
-        struct thr_pool* local_pool = NULL;
-        struct spotseq_thread_data** td = NULL;
-        int need_local_pool;
+        //struct thr_pool* local_pool = NULL;
+        //struct spotseq_thread_data** td = NULL;
+        //int need_local_pool;
 
         int no_path;
 
-        struct ihmm_model* model = NULL;
+        //struct ihmm_model* model = NULL;
         struct fast_hmm_param* ft = NULL;
 
         ASSERT(model_bag != NULL, "no model.");
@@ -64,12 +64,12 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
         ft_bag->max_last_state = -1;
         for(i = 0; i < model_bag->num_models;i++){
                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
-                //print_fast_hmm_params(ft_bag->fast_params[i]);
+
                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
         }
-
+        print_fast_hmm_params(ft_bag->fast_params[0]);
         /* Threading setup...  */
-        need_local_pool = 0;
+        /*need_local_pool = 0;
         if(pool){
                 local_pool = pool;
         }else{
@@ -78,7 +78,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
         }
 
         RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  ,ft_bag->max_last_state, &model_bag->rndstate));
-        LOG_MSG("Will use %d threads.", num_threads);
+        LOG_MSG("Will use %d threads.", num_threads);*/
 
 
         //sb->org_num_seq = sb->num_seq;
@@ -91,6 +91,9 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
 
                 /* Set U */
                 RUN(set_u_multi(model_bag, ft_bag, sb));
+                for(i = 0; i < model_bag->num_models;i++){
+                        LOG_MSG("%d: min_u:%f",i, model_bag->min_u[i]);
+                }
 
                 //RUN(set_u(sb,model,ft, &min_u));
 
@@ -113,7 +116,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         td[i]->ft_bag = ft_bag;
                         td[i]->ft = ft;
                         td[i]->sb = sb;
-                        if(thr_pool_queue(local_pool,do_dynamic_programming,td[i]) == -1){
+                        if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){
                                 fprintf(stderr,"Adding job to queue failed.");
                         }
                         /* if(thr_pool_queue(local_pool,do_forward_backward,td[i]) == -1){ */
@@ -123,7 +126,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         /*         fprintf(stderr,"Adding job to queue failed."); */
                         /* } */
                 }
-                thr_pool_wait(local_pool);
+                thr_pool_wait(pool);
 
                 no_path = 0;
 
@@ -147,6 +150,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
                         ft_bag->max_last_state = -1;
+                        model_bag->max_num_states = -1;
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                                 RUN(fill_counts(model_bag->models[i], sb,i));
@@ -154,11 +158,12 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                                model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states, model_bag->models[i]->num_states);
                                 //print_model_parameters(model_bag->models[i]);
                         }
 
                 }
-
+                print_fast_hmm_params(ft_bag->fast_params[0]);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
                 //LOG_MSG("print %d\n",iter);
@@ -174,13 +179,13 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 }
         }
         //sb->num_seq = sb->org_num_seq;
-        if(need_local_pool){
-                thr_pool_destroy(local_pool);
-        }
-        free_spotseq_thread_data(td, num_threads);
+        //if(need_local_pool){
+        //        thr_pool_destroy(local_pool);
+        //}
+        //free_spotseq_thread_data(td, num_threads);
         return OK;
 ERROR:
-        free_spotseq_thread_data(td, num_threads);
+        //free_spotseq_thread_data(td, num_threads);
         return FAIL;
 }
 

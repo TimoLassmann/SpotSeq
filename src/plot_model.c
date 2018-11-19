@@ -184,7 +184,7 @@ int run_plot_ihmm(struct parameters* param)
         //RUNP(model = read_model_hdf5(param->input));
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
-        RUN(print_fast_hmm_params(ft));
+        //RUN(print_fast_hmm_params(ft));
         RUN(fill_background_emission_from_model(ft,model));
         RUN(fill_fast_transitions_only_matrices(model,ft));
         RUN(make_dot_file( ft, model, param));

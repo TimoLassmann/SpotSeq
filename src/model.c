@@ -433,6 +433,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         sum_M = supp[0];
         sum_N = supp[1];
 
+        LOG_MSG("%d %d  LAST:%d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos],last_state);
+
         total_M = 0.0f;
         for(i = 0; i < last_state;i++){
                 for(j = 0; j < last_state;j++){
@@ -442,9 +444,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                                 for(c = 1;c <= transition_counts[i][j];c++){
                                         if(rk_double( &model->rndstate) < (alpha *model->beta[j]) / (alpha * model->beta[j] + (float)c -1.0)){
                                                 M[i][j] = M[i][j] + 1; // number of times state i generated color j...
-                                                total_M = total_M + 1;
+                                                total_M = total_M + 1.0f;
                                         }
-                                        //M(j,k) = M(j,k) + (rand() < (ialpha0 * ibeta(k)) / (ialpha0 * ibeta(k) + l - 1));
                                 }
 
                         }
@@ -455,19 +456,23 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 //fprintf(stdout,"\n");
         }
         //fprintf(stdout,"\n");
+        LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
         sum = 0.0;
         model->beta[0] = 0;
         for(i = 1; i < last_state;i++){
+                LOG_MSG("sumM%d %f ",i,sum_M[i]);
                 model->beta[i] = rk_gamma(&model->rndstate, sum_M[i], 1.0);
+                 LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
                 sum += model->beta[i];
         }
-
         model->beta[last_state] =  rk_gamma(&model->rndstate, gamma, 1.0);
+        LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
         sum += model->beta[last_state] ;
         for(i = 0; i <= last_state;i++){
                 model->beta[i] /= sum;
         }
-
+        LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
+        LOG_MSG("%f %f %f %f %f %f %f", total_M, gamma,model->gamma_a,model->gamma_b,alpha,model->alpha_a,model->alpha_b);
         /* Only re-estimate alpha and gamma if vague priors are set...  */
         if(model->alpha_a != IHMM_PARAM_PLACEHOLDER){
                 /* ok done with beta now gamma and alpha  */
@@ -498,14 +503,16 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 /* Let's do gamma now...    */
                 mu = 0.0f;
                 pi_mu = 0.0f;
-
+                //LOG_MSG("%d %f %f %f", total_M, gamma,model->gamma_a,model->gamma_b );
                 for(j = 0;j < iterations;j++){
+                        //LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
                         mu =  rk_beta(&model->rndstate, gamma+1.0, total_M);
-                        pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + last_state -1.0));
+                        //LOG_MSG("%f mu",mu);
+                        pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + (float) last_state -1.0));
                         if(rk_double( &model->rndstate) < pi_mu){
-                                gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state, 1.0 / (model->gamma_b - log(mu)));
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (float) last_state, 1.0 / (model->gamma_b - log(mu)));
                         }else{
-                                gamma = rk_gamma(&model->rndstate, model->gamma_a + last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (float) last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
                         }
                 }
                 if(gamma >= model->gamma_limit){
@@ -554,9 +561,9 @@ int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma)
                 for(j = 0; j < model->num_states;j++){
                         model->beta[j] = (float)(model->num_states);
                 }
-                for(j = 0;j < 10;j++){
-                        RUN(iHmmHyperSample(model, 20));
-                }
+                //for(j = 0;j < 10;j++){
+                //        RUN(iHmmHyperSample(model, 20));
+                //}
                 //print_model_parameters(model);
         }
         return OK;
@@ -662,8 +669,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         }
         model->num_states = K;
 
-        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 100.0f));
-        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 100.0f));
+        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0f));
+        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0f));
 
         MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){

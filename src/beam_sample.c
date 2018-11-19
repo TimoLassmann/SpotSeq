@@ -60,14 +60,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
 
         init_logsum();
 
-        /* sample transitions / emission */
-        ft_bag->max_last_state = -1;
-        for(i = 0; i < model_bag->num_models;i++){
-                RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
-
-                ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-        }
-        print_fast_hmm_params(ft_bag->fast_params[0]);
         /* Threading setup...  */
         /*need_local_pool = 0;
         if(pool){
@@ -86,13 +78,41 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* shuffle and sub-sample sequences (or not...) */
                 //RUN(shuffle_sequences_in_buffer(sb));
+                /* sample transitions / emission */
+                LOG_MSG("%d %d %f %d",  model_bag->models[0]->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos] , model_bag->models[0]->rndstate.gauss, model_bag->models[0]->rndstate.has_gauss);
+                print_model_parameters(model_bag->models[0]);
+                ft_bag->max_last_state = -1;
+                model_bag->max_num_states = -1;
+                for(i = 0; i < model_bag->num_models;i++){
+                        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
+                        RUN(fill_counts(model_bag->models[i], sb,i));
+                        print_counts(model_bag->models[0]);
+                        RUN(iHmmHyperSample(model_bag->models[i], 20));
+                        LOG_MSG("%d %d", model_bag->models[0] ->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos]);
+
+
+
+
+
+
+                        model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
+
+                        RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+
+                        ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                }
+                //print_counts(model_bag->models[0]);
+                LOG_MSG("After sampling:");
+                print_model_parameters(model_bag->models[0]);
+                LOG_MSG("%d %d", model_bag->models[0] ->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos]);
+
 
                 //sb->num_seq = MACRO_MIN(100,sb->org_num_seq);
 
                 /* Set U */
                 RUN(set_u_multi(model_bag, ft_bag, sb));
                 for(i = 0; i < model_bag->num_models;i++){
-                        LOG_MSG("%d: min_u:%f",i, model_bag->min_u[i]);
+                        LOG_MSG("%d %f\n", i , model_bag->min_u[i]);
                 }
 
                 //RUN(set_u(sb,model,ft, &min_u));
@@ -112,6 +132,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 //LOG_MSG("Iteration %d (%d states) sampling %d ", iter, model->num_states,sb->num_seq);
                 //exit(0);
                 //dyn prog + labelling
+                LOG_MSG("THREADS: %d",num_threads);
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft_bag = ft_bag;
                         td[i]->ft = ft;
@@ -137,11 +158,11 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 if(no_path){
                         LOG_MSG("weird split must have happened. %d",iter);
 
-                        for(i = 0; i < model_bag->num_models;i++){
-                                RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+                        //for(i = 0; i < model_bag->num_models;i++){
+                        //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 
-                                ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                        }
+                        //      ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                        //}
 
 
                         //RUN(fill_fast_transitions(model,ft));
@@ -149,21 +170,21 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 }else{
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
-                        ft_bag->max_last_state = -1;
-                        model_bag->max_num_states = -1;
-                        for(i = 0; i < model_bag->num_models;i++){
-                                RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
-                                RUN(fill_counts(model_bag->models[i], sb,i));
-                                RUN(iHmmHyperSample(model_bag->models[i], 20));
-                                RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+                        //ft_bag->max_last_state = -1;
+                        //model_bag->max_num_states = -1;
+                        //for(i = 0; i < model_bag->num_models;i++){
+                        //        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
+                        //        RUN(fill_counts(model_bag->models[i], sb,i));
 
-                                ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                                model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states, model_bag->models[i]->num_states);
+                                //RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+
+                                //ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                        //        model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states, model_bag->models[i]->num_states);
                                 //print_model_parameters(model_bag->models[i]);
-                        }
+                        //}
 
                 }
-                print_fast_hmm_params(ft_bag->fast_params[0]);
+                //print_fast_hmm_params(ft_bag->fast_params[0]);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){
                 //LOG_MSG("print %d\n",iter);
@@ -386,7 +407,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         float* beta;
         float alpha;
         float gamma;
-        rk_state rndstate;
+        //rk_state rndstate;
 
         float sum,be,bg,pe,pg, a,b;
         int i,new_k;//,list_index;
@@ -400,7 +421,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         /* Sorting is only strictly necessary if this is called after another function re-sorted it */
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
 
-        rndstate = ihmm->rndstate;
+        //rndstate = ihmm->rndstate;
 
         //list_index = ft->num_items;
 
@@ -428,7 +449,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         /* fill out transition FROM new state  */
         sum = 0.0f;
         for(i = 0;i <= new_k;i++){
-                tmp_prob[i] =  rk_gamma(&rndstate, beta[i] * alpha, 1.0);
+                tmp_prob[i] =  rk_gamma(&ihmm->rndstate, beta[i] * alpha, 1.0);
                 if(i == IHMM_START_STATE){
                         tmp_prob[i] = 0.0f;
                 }
@@ -473,7 +494,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
           ft->num_items = list_index;*/
         //first get beta for new column
         be = beta[new_k];
-        bg = rk_beta(&rndstate, 1.0,gamma );
+        bg = rk_beta(&ihmm->rndstate, 1.0,gamma );
 
         beta[new_k] = bg*be;
         beta[new_k+1] = (1.0 - bg) *be;
@@ -521,9 +542,9 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         for(i = 0 ; i <= new_k;i++){
                 if(a < 1e-2 || b < 1e-2){     // % This is an approximation when a or b are really small.
-                        pg = rk_binomial(&rndstate, 1.0, a / (a+b));
+                        pg = rk_binomial(&ihmm->rndstate, 1.0, a / (a+b));
                 }else{
-                        pg = rk_beta(&rndstate, a, b);
+                        pg = rk_beta(&ihmm->rndstate, a, b);
                 }
                 pe = infinity[i]->t;
 
@@ -576,7 +597,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         /* add emission  */
         sum = 0.0;
         for(i = 0; i < ihmm->L;i++){
-                ft->emission[i][new_k] = rk_gamma(&rndstate, ft->background_emission[i], 1.0);
+                ft->emission[i][new_k] = rk_gamma(&ihmm->rndstate, ft->background_emission[i], 1.0);
                 sum += ft->emission[i][new_k];
         }
         for(i = 0; i < ihmm->L;i++){
@@ -587,7 +608,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         //MFREE(tmp_pg);
         //ft->num_items = list_index;
         ft->last_state = new_k+1;
-        ihmm->rndstate = rndstate;
+        //ihmm->rndstate = rndstate;
         MFREE(tmp_prob);
         return OK;
 ERROR:

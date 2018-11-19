@@ -30,13 +30,13 @@ struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename)
         ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
         //print_attributes(hdf5_data);
         for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("Nthreads", hdf5_data->attr[i]->attr_name, 8)){
+                if(!strcmp("Nthreads", hdf5_data->attr[i]->attr_name)){
                         num_threads = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Max_L", hdf5_data->attr[i]->attr_name, 5)){
+                if(!strcmp("Max_L", hdf5_data->attr[i]->attr_name)){
                         max_len = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Max_K", hdf5_data->attr[i]->attr_name, 5)){
+                if(!strcmp("Max_K", hdf5_data->attr[i]->attr_name)){
                         max_K = hdf5_data->attr[i]->int_val;
                 }
         }
@@ -138,13 +138,13 @@ struct model_bag* read_model_bag_hdf5(char* filename)
         print_attributes(hdf5_data);
 
         for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("MaxStates", hdf5_data->attr[i]->attr_name, 9)){
+                if(!strcmp("MaxStates", hdf5_data->attr[i]->attr_name)){
                         bag->max_num_states = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Number of models", hdf5_data->attr[i]->attr_name, 16)){
+                if(!strcmp("Number of models", hdf5_data->attr[i]->attr_name)){
                         bag->num_models = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Seed", hdf5_data->attr[i]->attr_name, 4)){
+                if(!strcmp("Seed", hdf5_data->attr[i]->attr_name)){
                         bag->seed = hdf5_data->attr[i]->int_val;
                 }
         }
@@ -262,10 +262,10 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         a = 0;
         b = 0;
         for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("Number of states", hdf5_data->attr[i]->attr_name, 16)){
+                if(!strcmp("Number of states", hdf5_data->attr[i]->attr_name)){
                         a = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
+                if(!strcmp("Number of letters", hdf5_data->attr[i]->attr_name)){
                         b = hdf5_data->attr[i]->int_val;
                 }
         }
@@ -276,34 +276,42 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         gfree(model->transition_counts);
         MFREE(model->beta);
         for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("Number of states", hdf5_data->attr[i]->attr_name, 16)){
-                        model->num_states = hdf5_data->attr[i]->int_val;}
-                if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
-                        model->L = hdf5_data->attr[i]->int_val;}
+                if(!strcmp("Number of states", hdf5_data->attr[i]->attr_name)){
+                        model->num_states = hdf5_data->attr[i]->int_val;
+                }
+                if(!strcmp("Number of letters", hdf5_data->attr[i]->attr_name)){
+                        model->L = hdf5_data->attr[i]->int_val;
+                }
 
-                if(!strncmp("Gamma", hdf5_data->attr[i]->attr_name, 5)){
+                if(!strcmp("Gamma", hdf5_data->attr[i]->attr_name)){
                         model->gamma = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("gamma_a", hdf5_data->attr[i]->attr_name, 7)){
+                if(!strcmp("gamma_a", hdf5_data->attr[i]->attr_name)){
                         model->gamma_a = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("gamma_b", hdf5_data->attr[i]->attr_name, 7)){
+                if(!strcmp("gamma_b", hdf5_data->attr[i]->attr_name)){
                         model->gamma_b = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("Alpha", hdf5_data->attr[i]->attr_name, 5)){
+                if(!strcmp("Alpha", hdf5_data->attr[i]->attr_name)){
                         model->alpha = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("alpha0_a", hdf5_data->attr[i]->attr_name, 8)){
+                if(!strcmp("alpha0_a", hdf5_data->attr[i]->attr_name)){
                         model->alpha_a = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("alpha0_b", hdf5_data->attr[i]->attr_name, 8)){
+                if(!strcmp("alpha0_b", hdf5_data->attr[i]->attr_name)){
                         model->alpha_b = hdf5_data->attr[i]->float_val;
                 }
-                if(!strncmp("Iteration", hdf5_data->attr[i]->attr_name, 9)){
+                if(!strcmp("Iteration", hdf5_data->attr[i]->attr_name)){
                         model->training_iterations = hdf5_data->attr[i]->int_val;
                 }
-                if(!strncmp("Seed", hdf5_data->attr[i]->attr_name, 4)){
+                if(!strcmp("Seed", hdf5_data->attr[i]->attr_name)){
                         model->seed = hdf5_data->attr[i]->int_val;
+                }
+                if(!strcmp("Alpha_limit", hdf5_data->attr[i]->attr_name)){
+                        model->alpha_limit =  hdf5_data->attr[i]->float_val;
+                }
+                if(!strcmp("Gamma_limit", hdf5_data->attr[i]->attr_name)){
+                        model->gamma_limit =  hdf5_data->attr[i]->float_val;
                 }
         }
 
@@ -326,7 +334,7 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         /* stretch matrices... */
         model->alloc_num_states = model->num_states;
         RUN(resize_ihmm_model(model, model->num_states+1));
-        
+
         snprintf(buffer, BUFFER_LEN , "%s/RNG", group);
         //LOG_MSG("Trying to create group: %s", buffer);
         RUN(read_RNG_state(hdf5_data, buffer,&model->rndstate));
@@ -450,10 +458,12 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_add_attribute(hdf5_data, "Number of letters", "", model->L, 0.0f, HDF5GLUE_INT);
 
         hdf5_add_attribute(hdf5_data, "Gamma", "", 0, model->gamma, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "Gamma_limit", "", 0, model->gamma_limit, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "gamma_a","",0, model->gamma_a, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "gamma_b","",0, model->gamma_b, HDF5GLUE_FLOAT);
 
         hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "Alpha_limit",    "",0, model->alpha_limit , HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha_a, HDF5GLUE_FLOAT);
         hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_FLOAT);
 
@@ -605,6 +615,20 @@ int read_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a)
         if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
 
 
+        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "has_gauss",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
+        //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
+        hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
+        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
+        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
+        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
+        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
+        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &a->has_gauss);
+        if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
+        if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
+
+
+
+
         if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "nsave",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
         //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
         hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
@@ -661,6 +685,14 @@ int add_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a)
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
         RUN(hdf5_write("has_binomial",&a->has_binomial, hdf5_data));
+
+
+        hdf5_data->rank = 1;
+        hdf5_data->dim[0] = 1;
+        hdf5_data->chunk_dim[0] = 1;
+        hdf5_data->native_type = H5T_NATIVE_INT;
+        RUN(hdf5_write("has_gauss",&a->has_gauss, hdf5_data));
+
 
         hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;

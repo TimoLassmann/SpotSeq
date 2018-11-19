@@ -287,12 +287,9 @@ int run_build_ihmm(struct parameters* param)
                         RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                         //RUN(fill_counts(model_bag->models[i], sb,i));
-                        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
-                        RUN(fill_counts(model_bag->models[i], sb,i));
-                        model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
 
 
-
+                        model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
                         //print_counts(model_bag->models[i]);
 
 
@@ -312,7 +309,6 @@ int run_build_ihmm(struct parameters* param)
         LOG_MSG("Will use %d threads.", param->num_threads);
         if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
-        /* Set seed in sequence buffer */
         RUNP(ft_bag = alloc_fast_param_bag(param->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */

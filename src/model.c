@@ -433,7 +433,7 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         sum_M = supp[0];
         sum_N = supp[1];
 
-        LOG_MSG("%d %d  LAST:%d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos],last_state);
+        //LOG_MSG("%d %d  LAST:%d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos],last_state);
 
         total_M = 0.0f;
         for(i = 0; i < last_state;i++){
@@ -456,23 +456,23 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                 //fprintf(stdout,"\n");
         }
         //fprintf(stdout,"\n");
-        LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
+        //LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
         sum = 0.0;
         model->beta[0] = 0;
         for(i = 1; i < last_state;i++){
-                LOG_MSG("sumM%d %f ",i,sum_M[i]);
+                //LOG_MSG("sumM%d %f ",i,sum_M[i]);
                 model->beta[i] = rk_gamma(&model->rndstate, sum_M[i], 1.0);
-                 LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
+                //LOG_MSG("%d %d %f %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos] , model->rndstate.gauss, model->rndstate.has_gauss);
                 sum += model->beta[i];
         }
         model->beta[last_state] =  rk_gamma(&model->rndstate, gamma, 1.0);
-        LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
+        //LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
         sum += model->beta[last_state] ;
         for(i = 0; i <= last_state;i++){
                 model->beta[i] /= sum;
         }
-        LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
-        LOG_MSG("%f %f %f %f %f %f %f", total_M, gamma,model->gamma_a,model->gamma_b,alpha,model->alpha_a,model->alpha_b);
+        //LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
+        //LOG_MSG("%f %f %f %f %f %f %f", total_M, gamma,model->gamma_a,model->gamma_b,alpha,model->alpha_a,model->alpha_b);
         /* Only re-estimate alpha and gamma if vague priors are set...  */
         if(model->alpha_a != IHMM_PARAM_PLACEHOLDER){
                 /* ok done with beta now gamma and alpha  */

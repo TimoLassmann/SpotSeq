@@ -290,7 +290,7 @@ int hdf5_free(struct hdf5_data* hdf5_data)
 
 int hdf5_open_file(char* filename,struct hdf5_data* hdf5_data)
 {
-        LOG_MSG("Opening: %s",filename);
+        //LOG_MSG("Opening: %s",filename);
 
         if((hdf5_data->file = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT)) == -1)ERROR_MSG("H5Fopen failed");
 
@@ -571,7 +571,7 @@ ERROR:
 
 int hdf5_close_file(struct hdf5_data* hdf5_data)
 {
-        LOG_MSG("close");
+        //LOG_MSG("close");
 
         if(hdf5_data->fapl){
                 if((hdf5_data->status = H5Pclose(hdf5_data->fapl)) < 0) ERROR_MSG("H5Pclose failed");

@@ -12,106 +12,6 @@ static struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* grou
 static int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char* group);
 
 
-struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename)
-{
-        struct spotseq_thread_data** td = NULL;
-        struct hdf5_data* hdf5_data = NULL;
-        char buffer[BUFFER_LEN];
-        int num_threads = 0;
-        int max_len = 0;
-        int max_K = 0;
-        int i;
-        RUNP(hdf5_data = hdf5_create());
-
-        hdf5_open_file(filename,hdf5_data);
-
-        hdf5_open_group("thread_data",hdf5_data);
-        hdf5_read_attributes(hdf5_data, hdf5_data->group);
-        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        //print_attributes(hdf5_data);
-        for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strcmp("Nthreads", hdf5_data->attr[i]->attr_name)){
-                        num_threads = hdf5_data->attr[i]->int_val;
-                }
-                if(!strcmp("Max_L", hdf5_data->attr[i]->attr_name)){
-                        max_len = hdf5_data->attr[i]->int_val;
-                }
-                if(!strcmp("Max_K", hdf5_data->attr[i]->attr_name)){
-                        max_K = hdf5_data->attr[i]->int_val;
-                }
-        }
-        ASSERT(num_threads!=0, "No threads???");
-        ASSERT(max_len!=0, "No len???");
-        ASSERT(max_K!=0, "No states???");
-
-         hdf5_close_group(hdf5_data);
-        RUNP(td = create_spotseq_thread_data(&num_threads, max_len, max_K, NULL));
-
-
-        for(i = 0 ;i < num_threads;i++){
-                snprintf(buffer, BUFFER_LEN , "thread_data/RNG%d",i);
-                //LOG_MSG("Trying to create group: %s", buffer);
-                RUN(read_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
-        }
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-        return td;
-ERROR:
-        return NULL;
-
-}
-
-
-int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int num_threads,int max_len,int max_K)
-{
-        struct hdf5_data* hdf5_data = NULL;
-        char buffer[BUFFER_LEN];
-        //unsigned int* seeds = NULL;
-        int i;
-
-        RUNP(hdf5_data = hdf5_create());
-
-        hdf5_open_file(filename,hdf5_data);
-
-
-        hdf5_data->num_attr = 0;
-
-        hdf5_add_attribute(hdf5_data, "Nthreads", "",num_threads, 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "Max_L", "",max_len, 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "Max_K", "",max_K, 0.0f, HDF5GLUE_INT);
-        hdf5_create_group("thread_data",hdf5_data);
-        hdf5_write_attributes(hdf5_data, hdf5_data->group);
-        hdf5_data->num_attr = 0;
-
-        hdf5_close_group(hdf5_data);
-
-
-        /* MMALLOC(seeds , sizeof(unsigned int)* num_threads); */
-        /* for(i = 0; i < num_threads;i++){ */
-        /*         seeds[i] = td[i]->seed; */
-        /* } */
-
-
-
-
-        for(i = 0; i < num_threads;i++){
-                snprintf(buffer, BUFFER_LEN , "thread_data/RNG%d",i);
-                //LOG_MSG("Trying to create group: %s", buffer);
-                RUN(add_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
-        }
-
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-        return OK;
-
-ERROR:
-        if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
-        }
-        return FAIL;
-}
-
 struct model_bag* read_model_bag_hdf5(char* filename)
 {
         char buffer[BUFFER_LEN];
@@ -161,7 +61,7 @@ struct model_bag* read_model_bag_hdf5(char* filename)
 
         for(i = 0; i < bag->num_models;i++){
                 bag->models[i] = NULL;
-                snprintf(buffer, BUFFER_LEN, "models/m%d",i);
+                snprintf(buffer, BUFFER_LEN, "models/m%d",i+1);
                 RUNP(bag->models[i] = read_model_hdf5(hdf5_data, buffer));
                 if(bag->max_num_states < bag->models[i]->num_states){
                         bag->max_num_states = bag->models[i]->num_states;
@@ -204,7 +104,7 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
         LOG_MSG("Create model group done.");
 
         for(model_i = 0; model_i < bag->num_models;model_i++){
-                snprintf(buffer, BUFFER_LEN, "models/m%d", model_i);
+                snprintf(buffer, BUFFER_LEN, "models/m%d", model_i+1);
                 LOG_MSG("Writing model %d.",model_i);
                 RUN(write_model_hdf5(hdf5_data, bag->models[model_i], buffer));
                 LOG_MSG("Done");
@@ -347,93 +247,6 @@ ERROR:
 
 
 
-int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
-{
-        struct hdf5_data* hdf5_data = NULL;
-        RUNP(hdf5_data = hdf5_create());
-
-        hdf5_open_file(filename,hdf5_data);
-
-        hdf5_create_group("fmodel",hdf5_data);
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = N;
-        hdf5_data->dim[1] = L;
-        hdf5_data->chunk_dim[0] = N;
-        hdf5_data->chunk_dim[1] = L;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
-        hdf5_write("emission",&emission[0][0], hdf5_data);
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = N;
-        hdf5_data->dim[1] = N;
-        hdf5_data->chunk_dim[0] = N;
-        hdf5_data->chunk_dim[1] = N;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
-        hdf5_write("transition",&transition[0][0], hdf5_data);
-
-        hdf5_close_group(hdf5_data);
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-        return OK;
-
-ERROR:
-        if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
-        }
-        return FAIL;
-}
-
-int add_background_emission(char* filename,float* background,int L)
-{
-        struct hdf5_data* hdf5_data = NULL;
-        RUNP(hdf5_data = hdf5_create());
-
-        hdf5_open_file(filename,hdf5_data);
-
-        hdf5_create_group("SequenceInformation",hdf5_data);
-
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = L;
-        hdf5_data->dim[1] = -1;
-        hdf5_data->chunk_dim[0] = L;
-        hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
-        hdf5_write("background",&background[0], hdf5_data);
-
-
-        hdf5_close_group(hdf5_data);
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-        return OK;
-ERROR:
-        if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
-        }
-        return FAIL;
-}
-
-int add_annotation( char* filename, char* name, char* value)
-{
-        struct hdf5_data* hdf5_data = NULL;
-        RUNP(hdf5_data = hdf5_create());
-        hdf5_add_attribute(hdf5_data, name, value, 0, 0.0f, HDF5GLUE_CHAR);
-        hdf5_open_file(filename,hdf5_data);
-        hdf5_write_attributes(hdf5_data, hdf5_data->file);
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-        return OK;
-ERROR:
-        if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
-        }
-        return FAIL;
-}
-
-
 int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char* group)
 {
         //struct hdf5_data* hdf5_data = NULL;
@@ -552,6 +365,204 @@ ERROR:
         //}
         return FAIL;
 }
+
+
+
+
+struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename)
+{
+        struct spotseq_thread_data** td = NULL;
+        struct hdf5_data* hdf5_data = NULL;
+        char buffer[BUFFER_LEN];
+        int num_threads = 0;
+        int max_len = 0;
+        int max_K = 0;
+        int i;
+        RUNP(hdf5_data = hdf5_create());
+
+        hdf5_open_file(filename,hdf5_data);
+
+        hdf5_open_group("thread_data",hdf5_data);
+        hdf5_read_attributes(hdf5_data, hdf5_data->group);
+        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
+        //print_attributes(hdf5_data);
+        for(i = 0; i < hdf5_data->num_attr;i++){
+                if(!strcmp("Nthreads", hdf5_data->attr[i]->attr_name)){
+                        num_threads = hdf5_data->attr[i]->int_val;
+                }
+                if(!strcmp("Max_L", hdf5_data->attr[i]->attr_name)){
+                        max_len = hdf5_data->attr[i]->int_val;
+                }
+                if(!strcmp("Max_K", hdf5_data->attr[i]->attr_name)){
+                        max_K = hdf5_data->attr[i]->int_val;
+                }
+        }
+        ASSERT(num_threads!=0, "No threads???");
+        ASSERT(max_len!=0, "No len???");
+        ASSERT(max_K!=0, "No states???");
+
+         hdf5_close_group(hdf5_data);
+        RUNP(td = create_spotseq_thread_data(&num_threads, max_len, max_K, NULL));
+
+
+        for(i = 0 ;i < num_threads;i++){
+                snprintf(buffer, BUFFER_LEN , "thread_data/RNG%d",i);
+                //LOG_MSG("Trying to create group: %s", buffer);
+                RUN(read_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
+        }
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return td;
+ERROR:
+        return NULL;
+
+}
+
+
+int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int num_threads,int max_len,int max_K)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        char buffer[BUFFER_LEN];
+        //unsigned int* seeds = NULL;
+        int i;
+
+        RUNP(hdf5_data = hdf5_create());
+
+        hdf5_open_file(filename,hdf5_data);
+
+
+        hdf5_data->num_attr = 0;
+
+        hdf5_add_attribute(hdf5_data, "Nthreads", "",num_threads, 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "Max_L", "",max_len, 0.0f, HDF5GLUE_INT);
+        hdf5_add_attribute(hdf5_data, "Max_K", "",max_K, 0.0f, HDF5GLUE_INT);
+        hdf5_create_group("thread_data",hdf5_data);
+        hdf5_write_attributes(hdf5_data, hdf5_data->group);
+        hdf5_data->num_attr = 0;
+
+        hdf5_close_group(hdf5_data);
+
+
+        /* MMALLOC(seeds , sizeof(unsigned int)* num_threads); */
+        /* for(i = 0; i < num_threads;i++){ */
+        /*         seeds[i] = td[i]->seed; */
+        /* } */
+
+
+
+
+        for(i = 0; i < num_threads;i++){
+                snprintf(buffer, BUFFER_LEN , "thread_data/RNG%d",i);
+                //LOG_MSG("Trying to create group: %s", buffer);
+                RUN(add_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
+        }
+
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+
+
+
+
+
+
+int add_fhmm(char* filename,float** transition,float** emission, int N, int L)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        RUNP(hdf5_data = hdf5_create());
+
+        hdf5_open_file(filename,hdf5_data);
+
+        hdf5_create_group("fmodel",hdf5_data);
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = N;
+        hdf5_data->dim[1] = L;
+        hdf5_data->chunk_dim[0] = N;
+        hdf5_data->chunk_dim[1] = L;
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("emission",&emission[0][0], hdf5_data);
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = N;
+        hdf5_data->dim[1] = N;
+        hdf5_data->chunk_dim[0] = N;
+        hdf5_data->chunk_dim[1] = N;
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("transition",&transition[0][0], hdf5_data);
+
+        hdf5_close_group(hdf5_data);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+int add_background_emission(char* filename,float* background,int L)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        RUNP(hdf5_data = hdf5_create());
+
+        hdf5_open_file(filename,hdf5_data);
+
+        hdf5_create_group("SequenceInformation",hdf5_data);
+
+        hdf5_data->rank = 1;
+        hdf5_data->dim[0] = L;
+        hdf5_data->dim[1] = -1;
+        hdf5_data->chunk_dim[0] = L;
+        hdf5_data->chunk_dim[1] = -1;
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("background",&background[0], hdf5_data);
+
+
+        hdf5_close_group(hdf5_data);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+int add_annotation( char* filename, char* name, char* value)
+{
+        struct hdf5_data* hdf5_data = NULL;
+        RUNP(hdf5_data = hdf5_create());
+        hdf5_add_attribute(hdf5_data, name, value, 0, 0.0f, HDF5GLUE_CHAR);
+        hdf5_open_file(filename,hdf5_data);
+        hdf5_write_attributes(hdf5_data, hdf5_data->file);
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
+        return OK;
+ERROR:
+        if(hdf5_data){
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }
+        return FAIL;
+}
+
+
+
 
 int read_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a)
 {

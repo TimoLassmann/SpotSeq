@@ -79,42 +79,20 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 /* shuffle and sub-sample sequences (or not...) */
                 //RUN(shuffle_sequences_in_buffer(sb));
                 /* sample transitions / emission */
-                LOG_MSG("%d %d %f %d",  model_bag->models[0]->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos] , model_bag->models[0]->rndstate.gauss, model_bag->models[0]->rndstate.has_gauss);
-                print_model_parameters(model_bag->models[0]);
                 ft_bag->max_last_state = -1;
                 model_bag->max_num_states = -1;
                 for(i = 0; i < model_bag->num_models;i++){
                         RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                         RUN(fill_counts(model_bag->models[i], sb,i));
-                        print_counts(model_bag->models[0]);
                         RUN(iHmmHyperSample(model_bag->models[i], 20));
-                        LOG_MSG("%d %d", model_bag->models[0] ->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos]);
-
-
-
-
-
-
                         model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
 
                         RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 
                         ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
                 }
-                //print_counts(model_bag->models[0]);
-                LOG_MSG("After sampling:");
-                print_model_parameters(model_bag->models[0]);
-                LOG_MSG("%d %d", model_bag->models[0] ->rndstate.pos, model_bag->models[0]->rndstate.key[model_bag->models[0]->rndstate.pos]);
-
-
-                //sb->num_seq = MACRO_MIN(100,sb->org_num_seq);
-
                 /* Set U */
                 RUN(set_u_multi(model_bag, ft_bag, sb));
-                for(i = 0; i < model_bag->num_models;i++){
-                        LOG_MSG("%d %f\n", i , model_bag->min_u[i]);
-                }
-
                 //RUN(set_u(sb,model,ft, &min_u));
 
                 //exit(0);
@@ -132,7 +110,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 //LOG_MSG("Iteration %d (%d states) sampling %d ", iter, model->num_states,sb->num_seq);
                 //exit(0);
                 //dyn prog + labelling
-                LOG_MSG("THREADS: %d",num_threads);
                 for(i = 0; i < num_threads;i++){
                         td[i]->ft_bag = ft_bag;
                         td[i]->ft = ft;

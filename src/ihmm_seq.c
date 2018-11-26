@@ -1869,6 +1869,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
 {
         struct ihmm_sequence* sequence = NULL;
         MMALLOC(sequence,sizeof(struct ihmm_sequence));
+        sequence->has_path = NULL;
         sequence->seq = NULL;
         sequence->u = NULL;
         sequence->label = NULL;
@@ -1882,6 +1883,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
         MMALLOC(sequence->name, sizeof(char) * 256);
         sequence->label_arr = NULL;
+        sequence->tmp_label_arr = NULL;
         sequence->u_arr = NULL;
 
 
@@ -1914,6 +1916,8 @@ int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models)
 
         for(i = 0; i < sb->num_seq;i++){
                 RUN(alloc_multi_model_label_and_u(sb->sequences[i],sb->max_len,   num_models));
+
+
         }
         return OK;
 ERROR:
@@ -1927,6 +1931,11 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, in
         RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, max_len+1, 0.0));
 
         RUNP(sequence->label_arr = galloc(sequence->label_arr, num_models, max_len+1, -1));
+
+        RUNP(sequence->tmp_label_arr = galloc(sequence->tmp_label_arr, num_models, max_len+1, -1));
+
+        MMALLOC(sequence->has_path,sizeof(uint8_t) * num_models);
+
 
         return OK;
 ERROR:
@@ -2019,6 +2028,9 @@ ERROR:
 void free_ihmm_sequence(struct ihmm_sequence* sequence)
 {
         if(sequence){
+                if(sequence->has_path){
+                        MFREE(sequence->has_path);
+                }
                 if(sequence->seq){
                         MFREE(sequence->seq);
                 }
@@ -2037,6 +2049,11 @@ void free_ihmm_sequence(struct ihmm_sequence* sequence)
                 if(sequence->label_arr ){
                         gfree(sequence->label_arr);
                 }
+
+                if(sequence->tmp_label_arr ){
+                        gfree(sequence->tmp_label_arr);
+                }
+
                 MFREE(sequence);
         }
 }

@@ -26,7 +26,6 @@
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 
-
 struct parameters{
         char* input;
         char* output;
@@ -186,7 +185,7 @@ int main (int argc, char *argv[])
          * data */
         //
 
-        //RUN(score_sequences_for_command_line_reporting(param));
+        RUN(score_sequences_for_command_line_reporting(param));
 
         /* calibrate model parameters */
         RUN(free_parameters(param));
@@ -327,10 +326,10 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  param->num_iter,  param->num_threads));
 
-
+        RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(write_model_bag_hdf5(model_bag,param->output));
         RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
-        RUN(add_background_emission(param->output,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
+        //RUN(add_background_emission(param->output,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
 
         RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
         RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len, model_bag->max_num_states));
@@ -345,7 +344,7 @@ int run_build_ihmm(struct parameters* param)
 
                 RUN(add_sequences_to_hdf5_model(buffer, sb, i));
 
-                RUN(run_build_fhmm_file(buffer,0));
+                RUN(run_build_fhmm_file(buffer,/models/m10));
                 }*/
 //        RUN(add_annotation)
 
@@ -410,8 +409,15 @@ ERROR:
 
 int score_sequences_for_command_line_reporting(struct parameters* param)
 {
+        struct model_bag* model_bag = NULL;
+
+        struct spotseq_thread_data** td = NULL;
+
+        struct thr_pool* pool = NULL;
+
         struct seq_buffer* sb = NULL;
-        struct fhmm* fhmm;
+        struct fhmm* fhmm = NULL;
+
         double s1,s2;
         int max = 1000;
         int c;
@@ -420,27 +426,40 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         char buffer[BUFFER_LEN];
 
-        for(c = 0; c < param->num_models;c++){
-                snprintf(buffer, BUFFER_LEN, "%s_%d.h5", param->output,c);
-                //RUN(run_build_fhmm_file(buffer,0));
-                /* Maybe runscoring on top X sequences to report if something was found... */
-                LOG_MSG("Loading model.");
-                RUNP(fhmm = init_fhmm(buffer));
 
-                /* load sequences.  */
-                LOG_MSG("Loading sequences.");
-                RUNP(sb =get_sequences_from_hdf5_model(buffer));
 
-                LOG_MSG("Read %d sequences.",sb->num_seq);
+        LOG_MSG("Reading models.");
+        RUNP(model_bag = read_model_bag_hdf5(param->output));
+        LOG_MSG("Done.");
 
-                RUN(run_score_sequences(fhmm,sb, param->num_threads));
+        LOG_MSG("Loading sequences.");
+
+        RUNP(sb =get_sequences_from_hdf5_model(param->output));
+
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
+        LOG_MSG("Starting thread pool.");
+       /* start threadpool  */
+        if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+
+
+        /* allocate data for threads; */
+        RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
+
+
+        LOG_MSG("Done.");
+
+        for(c = 0; c < model_bag->num_models  ;c++){
+                fhmm = model_bag->finite_models[c];
+                RUN(alloc_dyn_matrices(fhmm));
+                RUN(run_score_sequences(fhmm,sb,td, pool));
 
                 limit = MACRO_MIN(max, sb->num_seq);
 
                 s1 = 0.0;
                 s2 = 0.0;
                 for(i = 0; i < limit;i++){
-                        //sb_in->sequences[i]->seq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
+                        //sb_in->sequences[i]->senq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
                         s1 += sb->sequences[i]->score;
                         s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
                 }
@@ -451,13 +470,18 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
                 LOG_MSG("Model: %d Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",c,s1,s2,limit);
-
-                free_ihmm_sequences(sb);
-                free_fhmm(fhmm);
         }
+
+        free_spotseq_thread_data(td,param->num_threads);
+        thr_pool_destroy(pool);
+        free_ihmm_sequences(sb);
+        free_model_bag(model_bag);
+
 
         return OK;
 ERROR:
+        free_spotseq_thread_data(td,param->num_threads);
+        thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return FAIL;

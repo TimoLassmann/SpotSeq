@@ -8,8 +8,9 @@
 #include "global.h"
 #include "tldevel.h"
 #include "distributions.h"
+
+#include "finite_hmm.h"
 #include <math.h>
-#include <float.h>
 #include <stdint.h>
 
 
@@ -19,6 +20,7 @@
 struct seq_buffer;          /* forward declaration  */
 
 struct hdf5_data;               /* forward declaration`` */
+
 
 struct ihmm_model{
         float** transition_counts;
@@ -43,6 +45,7 @@ struct ihmm_model{
 
 struct model_bag{
         struct ihmm_model** models;
+        struct fhmm** finite_models;
         float* min_u;
         int max_num_states;
         int num_models;
@@ -64,7 +67,8 @@ extern void free_ihmm_model(struct ihmm_model* ihmm);
 /* Model IO */
 extern struct model_bag* read_model_bag_hdf5(char* filename);
 extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
-extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
+//extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
+extern int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group);
 extern int add_background_emission(char* filename,float* background,int L);
 extern int add_annotation( char* filename, char* name, char* value);
 

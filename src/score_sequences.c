@@ -30,6 +30,12 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
+
+        struct spotseq_thread_data** td = NULL;
+
+        struct thr_pool* pool = NULL;
+
+
         int i,c;
 
         print_program_header(argv, "Scores sequences.");
@@ -121,7 +127,16 @@ int main (int argc, char *argv[])
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
-        RUN(run_score_sequences(fhmm,sb, param->num_threads));
+
+        LOG_MSG("Starting thread pool.");
+       /* start threadpool  */
+        if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+
+
+        /* allocate data for threads; */
+        //RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
+
+        //RUN(run_score_sequences(fhmm,sb, td, pool));
          /* Print scores.. */
         RUNP(fptr = fopen(param->output, "w"));
         fprintf(fptr, "Name,Score_%s\n",  param->in_model);
@@ -129,6 +144,9 @@ int main (int argc, char *argv[])
                 fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
         }
         fclose(fptr);
+
+        free_spotseq_thread_data(td,param->num_threads);
+        thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         RUN(free_parameters(param));
@@ -137,6 +155,11 @@ ERROR:
         fprintf(stdout,"\n  Try run with  --help.\n\n");
         if(fptr){
                 fclose(fptr);
+        }
+
+        free_spotseq_thread_data(td,param->num_threads);
+        if(pool){
+                thr_pool_destroy(pool);
         }
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);

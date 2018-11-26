@@ -189,7 +189,7 @@ int run_lcs(struct parameters* param)
         /* I can do this later...  */
         RUNP(fhmm = alloc_fhmm());
         /* get HMM parameters  */
-        RUN(read_hmm_parameters(fhmm,param->input));
+        //RUN(read_fhmm_parameters(fhmm,param->input,NULL));
 
         int* array_rename = NULL;
 
@@ -334,7 +334,7 @@ int run_lcs(struct parameters* param)
                 /* I can do this later...  */
                 RUNP(fhmm = alloc_fhmm());
                 /* get HMM parameters  */
-                RUN(read_hmm_parameters(fhmm,param->input));
+                //RUN(read_fhmm_parameters(fhmm,param->input, NULL));
 
                 RUN(calculate_relative_entropy(res_motif, num_res_motif,fhmm));
 

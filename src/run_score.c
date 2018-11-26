@@ -2,27 +2,24 @@
 #include "run_score.h"
 
 
-int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_threads)
+int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool)
 {
-        struct thr_pool* pool = NULL;
-        struct spotseq_thread_data** td = NULL;
+
         int i;
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
 
-        /* start threadpool  */
-        if((pool = thr_pool_create(num_threads ,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+
 
 
         /* allocate dyn programming matrices.  */
         RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
 
-        /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K , &sb->rndstate));
+
 
         /* score sequences  */
 
-        for(i = 0; i < num_threads;i++){
+        for(i = 0; i <  td[0]->num_threads;i++){
                 td[i]->sb = sb;
                 td[i]->fhmm = fhmm;
                 if(thr_pool_queue(pool, do_score_sequences,td[i]) == -1){
@@ -31,13 +28,9 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
         }
         thr_pool_wait(pool);
 
-        free_spotseq_thread_data(td,num_threads);
-        thr_pool_destroy(pool);
-
         return OK;
 ERROR:
-        free_spotseq_thread_data(td,num_threads);
-        thr_pool_destroy(pool);
+
         return FAIL;
 }
 

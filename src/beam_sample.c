@@ -18,10 +18,12 @@ static int assign_posterior_probabilities_to_sampled_path(float** F,float** B,fl
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
 static int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb);
 static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u,int model_index);
+static int reset_u_if_no_path(struct fast_hmm_param* ft, float* u,int * label, int len, rk_state* rndstate);
 static int unset_u(struct seq_buffer* sb);
 
-static int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path);
 
+static int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path);
+static int reset_valid_path(struct seq_buffer* sb,int num_models);
 
 static int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag);
 static int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
@@ -30,7 +32,7 @@ static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
 static int dynamic_programming(struct spotseq_thread_data* data, int target);
-static int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,rk_state* random);
+static int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,uint8_t* has_path ,rk_state* random);
 static int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
 static int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
 static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
@@ -81,60 +83,102 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 /* sample transitions / emission */
                 ft_bag->max_last_state = -1;
                 model_bag->max_num_states = -1;
-                for(i = 0; i < model_bag->num_models;i++){
-                        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
-                        RUN(fill_counts(model_bag->models[i], sb,i));
-                        RUN(iHmmHyperSample(model_bag->models[i], 20));
-                        model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
-
-                        RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
-
-                        ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                }
-                /* Set U */
-                RUN(set_u_multi(model_bag, ft_bag, sb));
-                //RUN(set_u(sb,model,ft, &min_u));
-
-                //exit(0);
-                /* I only want to add states if the last iteration was successful */
                 if(!no_path){
-                        RUN(expand_ihmms(model_bag, ft_bag));
-                }
-
-                RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
-
-                for(i = 0; i < model_bag->num_models;i++){
-                        LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
-                }
-
-                //LOG_MSG("Iteration %d (%d states) sampling %d ", iter, model->num_states,sb->num_seq);
-                //exit(0);
-                //dyn prog + labelling
-                for(i = 0; i < num_threads;i++){
-                        td[i]->ft_bag = ft_bag;
-                        td[i]->ft = ft;
-                        td[i]->sb = sb;
-                        if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){
-                                fprintf(stderr,"Adding job to queue failed.");
+                        for(i = 0; i < model_bag->num_models;i++){
+                                RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
+                                RUN(fill_counts(model_bag->models[i], sb,i));
+                                RUN(iHmmHyperSample(model_bag->models[i], 20));
+                                model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
                         }
-                        /* if(thr_pool_queue(local_pool,do_forward_backward,td[i]) == -1){ */
-                        /*         fprintf(stderr,"Adding job to queue failed."); */
-                        /* } */
-                        /* if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){ */
-                        /*         fprintf(stderr,"Adding job to queue failed."); */
-                        /* } */
                 }
-                thr_pool_wait(pool);
 
-                no_path = 0;
+                no_path = 1;
+                int error_counter = 0;
+                while(no_path){
+                        no_path = 0;
+                        ft_bag->max_last_state = -1;
+                        for(i = 0; i < model_bag->num_models;i++){
+                                RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+                                ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
 
-                RUN(detect_valid_path(sb,model_bag->num_models, &no_path));
+                        }
+
+                        /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
+                        //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
+
+                        //      ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                        //}
+                        RUN(reset_valid_path(sb,model_bag->num_models));
+                        RUN(set_u_multi(model_bag, ft_bag, sb));
+
+                        //RUN(set_u(sb,model,ft, &min_u));
+
+                        //exit(0);
+                        /* I only want to add states if the last iteration was successful */
+                        //if(!no_path){
+                        RUN(expand_ihmms(model_bag, ft_bag));
+                                //}
+
+                        RUN(resize_spotseq_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
+
+                        /*for(i = 0; i < model_bag->num_models;i++){
+                          LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
+                          }*/
+
+                        //LOG_MSG("Iteration %d (%d states) sampling %d ", iter, model->num_states,sb->num_seq);
+                        //exit(0);
+                        //dyn prog + labelling
+                        for(i = 0; i < num_threads;i++){
+                                td[i]->ft_bag = ft_bag;
+                                td[i]->ft = ft;
+                                td[i]->sb = sb;
+                                if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){
+                                        fprintf(stderr,"Adding job to queue failed.");
+                                }
+                                /* if(thr_pool_queue(local_pool,do_forward_backward,td[i]) == -1){ */
+                                /*         fprintf(stderr,"Adding job to queue failed."); */
+                                /* } */
+                                /* if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){ */
+                                /*         fprintf(stderr,"Adding job to queue failed."); */
+                                /* } */
+                        }
+                        thr_pool_wait(pool);
+
+                        no_path = 0;
+
+
+                        RUN(detect_valid_path(sb,model_bag->num_models, &no_path));
+                        if(no_path){
+                                LOG_MSG("weird split must have happened. %d",iter);
+                                //exit(0);
+
+                                error_counter++;
+                                if(error_counter == 1000){
+                                        for(i = 0; i < model_bag->num_models;i++){
+                                                LOG_MSG("Model %d",i);
+                                                print_counts(model_bag->models[i]);
+                                                print_fast_hmm_params(ft_bag->fast_params[i]);
+                                        }
+                                        exit(0);
+                                }
+                                iterations++;
+                        }
+                }
+
+                /* swap tmp label with label */
+                int** tmp = NULL;
+
+                for(i = 0; i < sb->num_seq;i++){
+                        tmp= sb->sequences[i]->label_arr;
+                        sb->sequences[i]->label_arr = sb->sequences[i]->tmp_label_arr;
+                        sb->sequences[i]->tmp_label_arr = tmp;
+                }
 
                 /* if more than 1% of sequences don't have a path redo */
 
                 if(no_path){
                         LOG_MSG("weird split must have happened. %d",iter);
-
+                        //exit(0);
                         //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 
@@ -143,7 +187,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
 
 
                         //RUN(fill_fast_transitions(model,ft));
-                        iterations++;
+                        //iterations++;
                 }else{
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
@@ -172,7 +216,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         RUN(run_build_fhmm_file(tmp_buffer));
                         }*/
                 for(i = 0; i < model_bag->num_models;i++){
-                        LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
+                        //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         model_bag->models[i]->training_iterations++;
                 }
         }
@@ -195,15 +239,27 @@ int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path)
         *no_path = 0;
         for(i = 0; i < sb->num_seq;i++){
                 for(j = 0; j < num_models;j++){
-                        if(sb->sequences[i]->u_arr[j][0] == -1){
-                                *no_path = *no_path + 1;
-                                LOG_MSG("weird split must have happened in seq %d",i);
+                        if(sb->sequences[i]->has_path[j] == 0){
+                                //LOG_MSG("weird split must have happened in seq %d m%d",i,j);
+                                *no_path = 1;
+                                return OK;
                         }
                 }
         }
 
         return OK;
 
+}
+
+int reset_valid_path(struct seq_buffer* sb,int num_models)
+{
+        int i,j;
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->has_path[j] = 0;
+                }
+        }
+        return OK;
 }
 
 void* do_forward_backward(void *threadarg)
@@ -303,7 +359,7 @@ void* do_dynamic_programming(void *threadarg)
         int j;
         int num_threads;
         int thread_id;
-
+        //int safety = 10;
         data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
@@ -316,13 +372,22 @@ void* do_dynamic_programming(void *threadarg)
                         s = data->sb->sequences[i];
                         for(j = 0; j < data->ft_bag->num_models; j++){
                                 //LOG_MSG("Run seq: %d M:%d (thread%d)",i,j, data->thread_ID);
-                                RUN(dynamic_programming_clean(data->ft_bag->fast_params[j],
-                                                              data->dyn,
-                                                              s->seq,
-                                                              s->label_arr[j],
-                                                              s->u_arr[j],
-                                                              s->seq_len,
-                                                              &data->rndstate));
+                                //s->has_path[j] = 0;
+                                //safety = 10;
+                                //while(!s->has_path[j]){
+
+
+                                //if(!s->has_path[j]){
+                                        RUN(dynamic_programming_clean(data->ft_bag->fast_params[j],
+                                                                      data->dyn,
+                                                                      s->seq,
+                                                                      s->tmp_label_arr[j],
+                                                                      s->u_arr[j],
+                                                                      s->seq_len,
+                                                                      &s->has_path[j],
+                                                                      &data->rndstate));
+
+                                        //}
                         }
 
                         //LOG_MSG("Thread %d running sequence %d   %f %d",thread_id, i,data->sb->sequences[i]->score,data->seed);
@@ -330,7 +395,7 @@ void* do_dynamic_programming(void *threadarg)
                         //
 
                         /*while(data->sb->sequences[i]->score == -INFINITY){
-                                RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
+                          RUN(dynamic_programming(data->dyn,data->ft, data->sb->sequences[i]));
                                 }*/
                 }
         }
@@ -338,6 +403,12 @@ void* do_dynamic_programming(void *threadarg)
 ERROR:
         return NULL;
 }
+
+
+
+
+
+
 
 
 int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
@@ -994,7 +1065,7 @@ ERROR:
         return FAIL;
 }
 
-int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,rk_state* random)
+int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,uint8_t* has_path,rk_state* random)
 {
         struct fast_t_item** list = NULL;
         int i,j,boundary;
@@ -1071,7 +1142,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         sum += matrix[len-1][a];
                 }
         }
-        //fprintf(stdout,"SUM: %d \n", sum);
+
         if(sum != 0.0 && !isnan(sum)){
                 state = IHMM_END_STATE;
                 for(i = len-1; i >= 0; i--){
@@ -1084,7 +1155,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         for(j = 0; j < boundary;j++){
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(b == state){
+                                if(b == state && a != IHMM_START_STATE){
                                         tmp_row[a] = matrix[i][a];
                                         sum += matrix[i][a];
                                 }
@@ -1093,6 +1164,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
                         r = rk_double(random)*sum;
+
                         //r = random_float_zero_to_x_thread(sum, &data->seed);
                         for(j = 0; j < boundary;j++){
                                 //if(j == 0 && i == len-1){
@@ -1100,18 +1172,22 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                                 //}
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(list[j]->to == state){
+                                if(list[j]->to == state && a != IHMM_START_STATE){
                                         r -= tmp_row[a];
                                         if(r <= 0.0f){
                                                 state = a;
                                                 label[i] = a;
-                                                //fprintf(stdout,"pick: %d %d   %f %f\n", i,state,list[j]->t,tmp_r);
                                                 break;
                                         }
                                 }
                         }
                 }
+                *has_path = 1;
+        }else{
+                *has_path = 0;
+                //u[0] = -1.0f;
         }
+
         return OK;
 }
 
@@ -1371,6 +1447,21 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         return OK;
 ERROR:
         return FAIL;
+}
+
+int reset_u_if_no_path(struct fast_hmm_param* ft, float* u,int * label, int len, rk_state* rndstate)
+{
+        float x;
+        int j;
+        x = ft->transition[IHMM_START_STATE][label[0]];
+        u[0] = rk_double(rndstate) *x;
+        for (j = 1; j < len;j++){
+                x = ft->transition[label[j-1]][label[j]];
+                u[j] = rk_double(rndstate) * x;
+        }
+        x = ft->transition[label[len-1]][IHMM_END_STATE];
+        u[len] = rk_double(rndstate) * x;
+        return OK;
 }
 
 int unset_u(struct seq_buffer* sb)

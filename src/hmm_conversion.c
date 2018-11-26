@@ -1,5 +1,7 @@
 #include "hmm_conversion.h"
 
+static int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
+
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         float* tmp_prob = NULL;
@@ -15,7 +17,6 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         // delete old tree...
 
         if(ft->root){
-
                 free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
@@ -306,13 +307,39 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         int iterations = 1000;
         int iter,c,i,j;
 
+        int* used = NULL;
+        int local_num_states = 0;
+
+
+
         ASSERT(model != NULL, "No model");
+
+        MMALLOC(used, sizeof(int)* model->num_states);
+
+        for(i = 0; i < model->num_states;i++){
+                used[i] = -1;
+        }
+        local_num_states = 0;
+        used[0] = local_num_states;
+        local_num_states++;
+        used[1] = local_num_states;
+        local_num_states++;
+
+        for(j = 2; j < model->num_states;j++){
+                sum = 0.0;
+                for(i = 0; i < model->L;i++){
+                        sum += model->emission_counts[i][j];
+                }
+                if(sum){
+                        used[j] = local_num_states;
+                        local_num_states++;
+                }
+        }
+
 
         RUNP(fhmm = alloc_fhmm());
 
-
-
-        fhmm->K = model->num_states;
+        fhmm->K = local_num_states;//model->num_states;
         fhmm->L = model->L;
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
@@ -326,31 +353,41 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 fhmm->background[i] = ft->background_emission[i];
         }
 
+        /* Note: there is a possibility that un-visited states exist
+         * in the ihmm. These will have to be removed from the
+         * fhmm. */
+
         /* Set alphabet and number of states. */
 
-        RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
-        RUNP(s2_e = galloc(s2_e, model->num_states, model->L, 0.0));
+        RUNP(s1_e = galloc(s1_e, local_num_states, model->L, 0.0));
+        RUNP(s2_e = galloc(s2_e, local_num_states, model->L, 0.0));
 
-        RUNP(s1_t = galloc(s1_t, model->num_states, model->num_states, 0.0));
-        RUNP(s2_t = galloc(s2_t, model->num_states, model->num_states, 0.0));
+        RUNP(s1_t = galloc(s1_t, local_num_states, local_num_states, 0.0));
+        RUNP(s2_t = galloc(s2_t, local_num_states, local_num_states, 0.0));
 
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
                 for(i = 0;i < model->num_states;i++){
-                        for(c = 0; c < model->L;c++){
-                                s1_e[i][c] += ft->emission[c][i];
-                                s2_e[i][c] += (ft->emission[c][i] * ft->emission[c][i]);
+                        if(used[i] != -1){
+                                for(c = 0; c < model->L;c++){
+                                        s1_e[used[i]][c] += ft->emission[c][i];
+                                        s2_e[used[i]][c] += (ft->emission[c][i] * ft->emission[c][i]);
+                                }
                         }
                 }
                 for(i = 0;i < model->num_states;i++){
-                        for(c = 0;c < model->num_states;c++){
-                                s1_t[i][c] += ft->transition[i][c];
-                                s2_t[i][c] += (ft->transition[i][c] * ft->transition[i][c]);
+                        if(used[i] != -1){
+                                for(c = 0;c < model->num_states;c++){
+                                        if(used[c] != -1){
+                                                s1_t[used[i]][used[c]] += ft->transition[i][c];
+                                                s2_t[used[i]][used[c]] += (ft->transition[i][c] * ft->transition[i][c]);
+                                        }
+                                }
                         }
                 }
 
         }
-        for(i = 0; i < model->num_states;i++){
+        for(i = 0; i < local_num_states;i++){
                 sum = 0.0;
                 for(j = 0; j < model->L;j++){
                         s2_e[i][j] = sqrt(  ((double) iterations * s2_e[i][j] - s1_e[i][j] * s1_e[i][j])/ ((double) iterations * ((double) iterations -1.0)));
@@ -367,15 +404,17 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 }
 
                 sum = 0;
-                for(j = 0;j < model->num_states;j++){
+                for(j = 0;j < local_num_states;j++){
+
                         s2_t[i][j] = sqrt(  ((double) iterations * s2_t[i][j] - s1_t[i][j] * s1_t[i][j])/ ((double) iterations * ((double) iterations -1.0)));
                         s1_t[i][j] = s1_t[i][j] / (double) iterations;
                         sum+= s1_t[i][j];
+
                         //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                 }
                 if(sum){
                         //fprintf(stdout,"transition:%d\n",i);
-                        for(j = 0;j < model->num_states;j++){
+                        for(j = 0;j < local_num_states;j++){
                                 s1_t[i][j] /= sum;
                                 //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                         }
@@ -391,6 +430,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
 
+        MFREE(used);
         gfree(s2_e);
         gfree(s2_t);
         free_fast_hmm_param(ft);
@@ -405,6 +445,37 @@ ERROR:
         free_fast_hmm_param(ft);
 
         return NULL;
+}
+
+int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
+{
+        int i,j;
+        int miter;
+        ASSERT(model_bag != NULL," No models");
+
+        if(model_bag->finite_models){
+                WARNING_MSG("Finite hmm models exist - will over-write.");
+                for(i = 0; i < model_bag->num_models;i++){
+                        free_fhmm(model_bag->finite_models[i]);
+                        model_bag->finite_models[i] = NULL;
+                }
+                MFREE(model_bag->finite_models);
+                model_bag->finite_models = NULL;
+        }
+        //ASSERT(model_bag->finite_models == NULL, "Warning fhmm models already exist?");
+
+        MMALLOC(model_bag->finite_models, sizeof(struct fhmm*)* model_bag->num_models);
+        for(miter = 0; miter < model_bag->num_models;miter++){
+                model_bag->finite_models[miter] = NULL;
+
+                RUNP(model_bag->finite_models[miter] = build_finite_hmm_from_infinite_hmm(model_bag->models[miter]));
+        }
+
+
+
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 int run_build_fhmm_file(char* h5file, int allow_zero_counts)
@@ -425,7 +496,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 
         ASSERT(h5file != NULL, "No parameters found.");
 
-//RUNP(model = read_model_hdf5(h5file));
+        //RUNP(model = read_model_hdf5(h5file));
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
@@ -486,7 +557,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
                         //fprintf(stdout,"Emission:%d\n",i);
                         for(j = 0; j < model->L;j++){
                                 s1_e[i][j] /= sum;
-                                //        fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
+                                //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_e[i][j], s2_e[i][j]);
                         }
                 }
 
@@ -507,7 +578,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
         }
         LOG_MSG("Adding fhmm to %s",h5file);
 
-        RUN(add_fhmm(h5file,s1_t,s1_e, model->num_states, model->L  ));
+        //RUN(add_fhmm(h5file,s1_t,s1_e, model->num_states, model->L  ));
 
         gfree(s1_e);
         gfree(s1_t);

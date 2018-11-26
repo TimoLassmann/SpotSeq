@@ -49,7 +49,7 @@ int calibrate(char* model_file,int num_threads, double* mu, double* lambda)
         RUNP(fhmm = init_fhmm(model_file));
 
 
-        RUN(run_score_sequences(fhmm, sb,num_threads));
+        //RUN(run_score_sequences(fhmm, sb,num_threads));
 
         /* copy scores over */
         MMALLOC(scores, sizeof(double)* num_seq);

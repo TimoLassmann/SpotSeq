@@ -247,19 +247,20 @@ ERROR:
 struct fhmm* init_fhmm(char* filename)
 {
         struct fhmm* fhmm = NULL;
+        char model_name = NULL;
         ASSERT(filename!= NULL, "No filename");
         /* allocate finite hmm */
         RUNP(fhmm = alloc_fhmm());
 
         /* get HMM parameters  */
-        RUN(read_hmm_parameters(fhmm,filename));
+        //RUN(read_fhmm_parameters(fhmm,filename, model_name));
 
         /* alloc dyn matrices (now that I know how many states there are) */
         RUN(alloc_dyn_matrices(fhmm));
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
-        RUN(setup_model(fhmm));
+        //RUN(setup_model(fhmm));
 
         return fhmm;
 ERROR:
@@ -338,96 +339,65 @@ ERROR:
         return FAIL;
 }
 
-int read_hmm_parameters(struct fhmm* fhmm, char* filename)
+struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
 {
-
-        struct hdf5_data* hdf5_data = NULL;
-
+        struct fhmm* fhmm = NULL;
         float sum;
         int i,j;
 
-        ASSERT(fhmm!= NULL, "No model");
-        ASSERT(filename != NULL, "No filename");
-        ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
-        /* read in hdf5 file and get emission and transition matrix */
-        hdf5_data = hdf5_create();
+        ASSERT(hdf5_data != NULL, "No filename");
 
-        hdf5_open_file(filename,hdf5_data);
-
-        hdf5_read_attributes(hdf5_data,hdf5_data->file);
-        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        //print_attributes(hdf5_data);
-        get_group_names(hdf5_data);
-        /*fprintf(stdout,"Groups:\n");
-          for(i = 0; i < hdf5_data->grp_names->num_names;i++){
-          fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
-          }*/
-
-        hdf5_open_group("imodel",hdf5_data);
-        hdf5_read_attributes(hdf5_data,hdf5_data->group);
-        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        //print_attributes(hdf5_data);
-        for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("Number of states", hdf5_data->attr[i]->attr_name, 16)){
-                        fhmm->K = hdf5_data->attr[i]->int_val;
-                }
-
-                if(!strncmp("Number of letters", hdf5_data->attr[i]->attr_name, 17)){
-                        fhmm->L = hdf5_data->attr[i]->int_val;
-                }
-
-        }
-        hdf5_close_group(hdf5_data);
-
-        hdf5_open_group("SequenceInformation",hdf5_data);
-
-        hdf5_read_dataset("Background",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read transition_counts");
-        fhmm->background = (float*) hdf5_data->data;
-        hdf5_close_group(hdf5_data);
+        RUNP(fhmm = alloc_fhmm());
 
 
-        hdf5_open_group("fmodel",hdf5_data);
+        hdf5_open_group(group,hdf5_data);
+
+        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "K",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
+        //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
+        hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
+        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
+        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
+        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
+        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
+        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &fhmm->K);
+        if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
+        if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
+
+        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "K",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
+        //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
+        hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
+        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
+        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
+        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
+        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
+        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &fhmm->L);
+        if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
+        if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
+
 
         hdf5_read_dataset("emission",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
         fhmm->e = (float**) hdf5_data->data;
 
         hdf5_read_dataset("transition",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         fhmm->t = (float**) hdf5_data->data;
 
+        hdf5_read_dataset("transition_index",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_index");
+        fhmm->tindex = (float**) hdf5_data->data;
+
+
+        hdf5_read_dataset("background",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read transition_background");
+        fhmm->background = (float*) hdf5_data->data;
+
+
         hdf5_close_group(hdf5_data);
-
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-
-
-        /*for(i = 0; i < fhmm->K;i++){
-                sum = 0.0;
-                for(j =0; j < fhmm->L;j++){
-                        fprintf(stdout,"%f ",fhmm->e[i][j]);
-                        sum += fhmm->e[i][j];
-                }
-                fprintf(stdout,"sum:%f\n",sum);
-        }
-
-
-        for(i = 0; i < fhmm->K;i++){
-                sum = 0.0;
-                for(j =0; j < fhmm->K;j++){
-                        fprintf(stdout,"%f ",fhmm->t[i][j]);
-                        sum += fhmm->t[i][j];
-                }
-                fprintf(stdout,"sum:%f\n",sum);
-                }*/
-
-
-
-        return OK;
+        return fhmm;
 ERROR:
-        return FAIL;
+        return NULL;
 
 }
 

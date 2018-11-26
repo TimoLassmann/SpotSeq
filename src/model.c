@@ -582,6 +582,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, u
         MMALLOC(b, sizeof(struct model_bag));
 
         b->models = NULL;
+        b->finite_models = NULL;
         b->min_u = NULL;
         b->num_models = num_models;
         b->max_num_states = 0;
@@ -620,9 +621,14 @@ void free_model_bag(struct model_bag* b)
                                 if(b->models[i]){
                                         free_ihmm_model(b->models[i]);
                                 }
+                                if(b->finite_models[i]){
+                                        free_fhmm(b->finite_models[i]);
+                                }
                         }
+                        MFREE(b->finite_models);
                         MFREE(b->models);
                 }
+
                 if(b->min_u){
                         MFREE(b->min_u);
                 }

@@ -100,9 +100,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-
                         }
-
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 

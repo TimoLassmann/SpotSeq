@@ -244,6 +244,9 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 }
                 tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
                 sum += tmp_prob[last_state];
+                if(sum == 0.0){
+                        sum = 1.0;
+                }
 
                 for(j = 1; j < last_state;j++){
                         tmp = NULL;
@@ -277,6 +280,9 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 sum = 0.0f;
                 for(i = 0; i < model->L;i++){
                         sum += ft->emission[i][j];
+                }
+                if(sum == 0.0f){
+                        sum = 1.0f;
                 }
                 for(i = 0; i < model->L;i++){
                         ft->emission[i][j] /= sum;

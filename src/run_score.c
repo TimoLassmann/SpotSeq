@@ -9,7 +9,8 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct spotseq_
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
 
-
+        /* just to be 100% safe... */
+        init_logsum();
 
 
         /* allocate dyn programming matrices.  */
@@ -18,7 +19,6 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct spotseq_
 
 
         /* score sequences  */
-
         for(i = 0; i <  td[0]->num_threads;i++){
                 td[i]->sb = sb;
                 td[i]->fhmm = fhmm;
@@ -43,6 +43,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
 
+        init_logsum();
         /* start threadpool  */
         if((pool = thr_pool_create(num_threads ,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 

@@ -310,6 +310,34 @@ ERROR:
         return FAIL;
 }
 
+int convert_fhmm_scaled_to_prob(struct fhmm* fhmm)
+{
+        int i,j;
+        ASSERT(fhmm != NULL, "no model");
+        /* I need to allocate tindex & convert probs to log space */
+        init_logsum();
+        LOG_MSG("states:%d L:%d", fhmm->K, fhmm->L);
+        for(i = 0; i < fhmm->K;i++){
+                for(j = 0 ; j < fhmm->L;j++){
+                        fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
+                }
+        }
+
+        for(i = 0; i < fhmm->K;i++){
+                for(j = 0; j < fhmm->K;j++){
+                        fhmm->t[i][j] = scaledprob2prob(fhmm->t[i][j]);
+                }
+        }
+
+        for(i = 0; i < fhmm->L;i++){
+                fhmm->background[i] = scaledprob2prob(fhmm->background[i]);
+        }
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
 int alloc_dyn_matrices(struct fhmm* fhmm)
 {
         ASSERT(fhmm!= NULL, "No model");
@@ -327,6 +355,8 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
 {
         ASSERT(fhmm != NULL, "No model");
         ASSERT(new_len > 0, "newlen has to be > 0");
+        ASSERT(fhmm->alloc_matrix_len > 0, "No matrix allocated yet...");
+
         if(fhmm->alloc_matrix_len < new_len){
                 while(fhmm->alloc_matrix_len < new_len){
                         fhmm->alloc_matrix_len = fhmm->alloc_matrix_len << 1;
@@ -351,6 +381,7 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
         RUNP(fhmm = alloc_fhmm());
 
 
+
         hdf5_open_group(group,hdf5_data);
 
         if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "K",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
@@ -364,7 +395,7 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
         if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
         if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
 
-        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "K",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
+        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "L",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
         //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
         hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
         hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */

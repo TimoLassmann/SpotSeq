@@ -93,7 +93,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 }
 
                 no_path = 1;
-                int error_counter = 0;
                 while(no_path){
                         no_path = 0;
                         ft_bag->max_last_state = -1;
@@ -149,16 +148,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         if(no_path){
                                 LOG_MSG("weird split must have happened. %d",iter);
                                 //exit(0);
-
-                                error_counter++;
-                                if(error_counter == 1000){
-                                        for(i = 0; i < model_bag->num_models;i++){
-                                                LOG_MSG("Model %d",i);
-                                                print_counts(model_bag->models[i]);
-                                                print_fast_hmm_params(ft_bag->fast_params[i]);
-                                        }
-                                        exit(0);
-                                }
                                 iterations++;
                         }
                 }
@@ -174,8 +163,8 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
 
                 /* if more than 1% of sequences don't have a path redo */
 
-                if(no_path){
-                        LOG_MSG("weird split must have happened. %d",iter);
+                ///if(no_path){
+                //        LOG_MSG("weird split must have happened. %d",iter);
                         //exit(0);
                         //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
@@ -186,7 +175,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
 
                         //RUN(fill_fast_transitions(model,ft));
                         //iterations++;
-                }else{
+                //}else{
                         /* I am doing this as a pre-caution. I don't want the inital model
                          * contain states that are not visited.. */
                         //ft_bag->max_last_state = -1;
@@ -202,7 +191,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                                 //print_model_parameters(model_bag->models[i]);
                         //}
 
-                }
+                //}
                 //print_fast_hmm_params(ft_bag->fast_params[0]);
                 /* print out model - used for plotting  */
                 /*if((iter+1) % 10 == 0){

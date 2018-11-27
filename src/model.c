@@ -586,7 +586,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, u
         b->min_u = NULL;
         b->num_models = num_models;
         b->max_num_states = 0;
-
+        b->best_model = -1;
         b->seed = seed;
         /* Set seed in model */
         if(seed){

@@ -7,6 +7,7 @@
 #include <getopt.h>
 
 #include "tldevel.h"
+#include "model.h"
 #include "ihmm_seq.h"
 
 #include "finite_hmm.h"
@@ -119,8 +120,11 @@ int main (int argc, char *argv[])
 
 
         LOG_MSG("Loading model.");
-        RUNP(fhmm = init_fhmm(param->in_model));
 
+        int best = -1;
+        init_logsum();
+        RUNP(fhmm = read_best_fmodel(param->in_model, &best));
+        RUN(alloc_dyn_matrices(fhmm));
         /* load sequences.  */
         LOG_MSG("Loading sequences.");
         RUNP(sb = load_sequences(param->in_sequences));
@@ -128,15 +132,15 @@ int main (int argc, char *argv[])
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
 
-        LOG_MSG("Starting thread pool.");
        /* start threadpool  */
         if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
 
-        /* allocate data for threads; */
-        //RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
-        //RUN(run_score_sequences(fhmm,sb, td, pool));
+        /* allocate data for threads; */
+        RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
+
+        RUN(run_score_sequences(fhmm,sb, td, pool));
          /* Print scores.. */
         RUNP(fptr = fopen(param->output, "w"));
         fprintf(fptr, "Name,Score_%s\n",  param->in_model);

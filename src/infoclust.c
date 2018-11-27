@@ -3,6 +3,7 @@
 #include "finite_hmm.h"
 #include "label_suffix_array.h"
 #include "run_score.h"
+#include "model.h"
 #include <getopt.h>
 
 struct parameters{
@@ -179,19 +180,23 @@ int run_infoclust(struct parameters* param)
         RUNP(sb_temp = get_sequences_from_hdf5_model(param->input));
         ASSERT(sb_temp != NULL, "No sequence Buffer");
 
-        RUNP(fhmm_log = alloc_fhmm());
+        //RUNP(fhmm_log = alloc_fhmm());
         /* get HMM parameters  */
+        RUNP(fhmm_log =  read_best_fmodel(param->input, &c));
+
         //RUN(read_fhmm_parameters(fhmm_log,param->input, NULL));
 
-        RUNP(fhmm = alloc_fhmm());
+        //RUNP(fhmm = alloc_fhmm());
 
+        RUNP(fhmm =  read_best_fmodel(param->input, &c));
+        RUN(convert_fhmm_scaled_to_prob(fhmm));
         /* get HMM parameters  */
         //RUN(read_fhmm_parameters(fhmm,param->input, NULL));
 
         RUN(alloc_dyn_matrices(fhmm));
         RUN(realloc_dyn_matrices(fhmm, param->maxlen));
 
-        RUN(setup_model(fhmm_log));
+        //RUN(setup_model(fhmm_log));
 
         RUN(clean_sequence_labelling(fhmm_log,fhmm, sb));
 
@@ -210,7 +215,7 @@ int run_infoclust(struct parameters* param)
                 total_len += s->seq_len;
                 //fprintf(stdout,"\n");
         }
-
+        //exit(0);
         RUNP(sa = build_sa(sb));
         /* Now I can set up */
 
@@ -221,7 +226,7 @@ int run_infoclust(struct parameters* param)
         m = init_motif_list(sb->num_seq);
 
 
-        for(target_len = 15; target_len >= 6;target_len--){
+        for(target_len = 15; target_len >= 8;target_len--){
                 LOG_MSG("Targeting %d.",target_len);
                 start = 0;
                 stop = -1;
@@ -230,7 +235,6 @@ int run_infoclust(struct parameters* param)
                         for(i = 0; i < target_len;i++){
                                 if(sa->lcs[start]->str[i] == -1){
                                         start++;
-
                                         go = 0;
                                         break;
                                 }
@@ -1469,6 +1473,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                                         score = fhmm->F_matrix[a->len][b->len];
 
                                         if(score < best_score){
+
                                                 best_score = score;
                                                 best_i = i;
                                                 best_j = j;

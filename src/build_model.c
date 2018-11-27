@@ -308,7 +308,7 @@ int run_build_ihmm(struct parameters* param)
         LOG_MSG("Will use %d threads.", param->num_threads);
         if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
-        RUNP(ft_bag = alloc_fast_param_bag(param->num_models, num_state_array, sb->L));
+        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */
         RUN(fill_background_emission(ft_bag->fast_params[0], sb));
@@ -419,6 +419,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         struct fhmm* fhmm = NULL;
 
         double s1,s2;
+        double best_score;
         int max = 1000;
         int c;
         int i;
@@ -449,7 +450,9 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         LOG_MSG("Done.");
 
-        for(c = 0; c < model_bag->num_models  ;c++){
+        model_bag->best_model = -1;
+        best_score = -100.0;
+        for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
                 RUN(alloc_dyn_matrices(fhmm));
                 RUN(run_score_sequences(fhmm,sb,td, pool));
@@ -470,8 +473,14 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
                 LOG_MSG("Model: %d Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",c,s1,s2,limit);
+                if(s1 > best_score){
+                        best_score = s1;
+                        model_bag->best_model = c;
+                }
         }
 
+        LOG_MSG("Best Model: %d",model_bag->best_model);
+        RUN(write_best_model(param->output, &model_bag->best_model));
         free_spotseq_thread_data(td,param->num_threads);
         thr_pool_destroy(pool);
         free_ihmm_sequences(sb);

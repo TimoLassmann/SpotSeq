@@ -47,6 +47,7 @@ struct model_bag{
         struct ihmm_model** models;
         struct fhmm** finite_models;
         float* min_u;
+        int best_model;
         int max_num_states;
         int num_models;
         unsigned int seed;      /* Starting value */
@@ -65,6 +66,9 @@ extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 
 /* Model IO */
+extern struct ihmm_model* read_best_imodel(char* filename, int* best_model);
+extern struct fhmm* read_best_fmodel(char* filename, int* best_model);
+
 extern struct model_bag* read_model_bag_hdf5(char* filename);
 extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
 //extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
@@ -77,6 +81,7 @@ extern int add_annotation( char* filename, char* name, char* value);
 extern int write_model(struct ihmm_model* model, char* filename);
 extern struct ihmm_model* read_model( char* filename);
 
+extern int write_best_model(char* filename, int best_model);
 
 /* Write RNG states in threads to file to ensure reproducibility.... */
 struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename);

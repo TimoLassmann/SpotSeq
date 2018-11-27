@@ -67,7 +67,7 @@ struct parameters{
 
 static int run_plot_ihmm(struct parameters* param);
 static int run_plot_positional_state_distribution(struct parameters* param);
-static int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param);
+static int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters* param);
 
 static int plot_model_entropy(struct parameters* param);
 
@@ -177,20 +177,30 @@ int run_plot_ihmm(struct parameters* param)
 {
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
+        struct fhmm* fhmm = NULL;
+
 
         int initial_states = 10;
+        int best = 0;
         ASSERT(param!= NULL, "No parameters found.");
 
+        RUNP(fhmm = read_best_fmodel(param->input, &best));
+        RUNP(model = read_best_imodel(param->input, &best));
+
+        RUN(convert_fhmm_scaled_to_prob(fhmm));
         //RUNP(model = read_model_hdf5(param->input));
 
-        RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
-        //RUN(print_fast_hmm_params(ft));
-        RUN(fill_background_emission_from_model(ft,model));
-        RUN(fill_fast_transitions_only_matrices(model,ft));
-        RUN(make_dot_file( ft, model, param));
 
-        free_fast_hmm_param(ft);
+        //RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+        //RUN(print_fast_hmm_params(ft));
+        //RUN(fill_background_emission_from_model(ft,model));
+        //RUN(fill_fast_transitions_only_matrices(model,ft));
+        RUN(make_dot_file( fhmm, model, param));
+
+
         free_ihmm_model(model);
+        free_fast_hmm_param(ft);
+
         return OK;
 ERROR:
         free_fast_hmm_param(ft);
@@ -209,10 +219,11 @@ int run_plot_positional_state_distribution(struct parameters* param)
         float l;
 
         FILE* fptr = NULL;
+        int best = 0;
         ASSERT(param != NULL, "no parameters");
         RUNP(sb = get_sequences_from_hdf5_model(param->input));
         //RUNP(model = read_model_hdf5(param->input));
-
+        RUNP(model = read_best_imodel(param->input, &best));
 
         RUNP(matrix = galloc(matrix, model->num_states , 251, 0.0f));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
@@ -223,7 +234,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         for(i = 0; i < sb->num_seq;i++){
                 l = (float) sb->sequences[i]->seq_len;
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
-                        c = (float) sb->sequences[i]->label[j];
+                        c = (float) sb->sequences[i]->label_arr[best][j];
                         index = roundf(250.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
                         state_sums[c] += 1.0f;
@@ -271,6 +282,7 @@ int plot_model_entropy(struct parameters* param)
         struct fast_hmm_param* ft = NULL;
         struct ihmm_model* model = NULL;
 
+
         int initial_states = 10;
         int iter;
         int i,j,c;
@@ -279,9 +291,11 @@ int plot_model_entropy(struct parameters* param)
 
         int iterations = 1000;
 
+        int best = -1;
         ASSERT(param!= NULL, "No parameters found.");
 
 
+        RUNP(model = read_best_imodel(param->input, &best));
         //RUNP(model = read_model_hdf5(param->input));
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
@@ -289,7 +303,6 @@ int plot_model_entropy(struct parameters* param)
 
         RUNP(s1 = galloc(s1, model->num_states, model->L, 0.0));
         RUNP(s2 = galloc(s2, model->num_states, model->L, 0.0));
-
 
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
@@ -311,7 +324,6 @@ int plot_model_entropy(struct parameters* param)
         gfree(s1);
         gfree(s2);
 
-
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         return OK;
@@ -321,7 +333,7 @@ ERROR:
         return FAIL;
 }
 
-int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct parameters* param)
+int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters* param)
 {
         FILE* f_ptr = NULL;
 
@@ -339,11 +351,11 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
         int max_stack_height = 128;
 
-        ASSERT(ft != NULL, "No input matrix.");
+        ASSERT(fhmm != NULL, "No input matrix.");
 
-        MMALLOC(tmp_sum, sizeof(float) * ft->L);
+        MMALLOC(tmp_sum, sizeof(float) * fhmm->L);
         MMALLOC(total_counts, sizeof(int) * model->num_states);
-        background = ft->background_emission;
+        background = fhmm->background;
 
 
         RUNP(f_ptr = fopen(param->output, "w"));
@@ -358,7 +370,7 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
         for(i = 0;i< 4;i++){
                 IC = 0.0;
 
-                for(j = 0; j < ft->L;j++){
+                for(j = 0; j < fhmm->L;j++){
                         if(j ==i){
                                 tmp_prob = 1.0;
                         }else{
@@ -388,26 +400,38 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
-                        total_counts[j] += model->emission_counts[i][j];
+                        total_counts[j] +=   model->emission_counts[i][j];
                 }
         }
         for(j = 2; j < model->num_states;j++){
                 if(total_counts[j] >  sum_usage){
                         sum_usage = total_counts[j];
                 }
-                //        fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
+                //fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
         }
         //fprintf(stdout,"%f\n",sum_usage);
 
+        c = 2;
+        for(j = 2; j < model->num_states;j++){
+                if(total_counts[j]){
+                        total_counts[c] = total_counts[j];
+                        c++;
+                }
 
+        }
+
+        //for(j = 2; j < model->num_states;j++){
+        //        fprintf(stdout,"%d: %d\n",j,  total_counts[j]);
+        //}
 
         /* print nodes...  */
-        for(i = 2; i < model->num_states;i++){
-                if(total_counts[i] >= param->node_count_cutoff){
+        //LOG_MSG("%d %d ", model->num_states, fhmm->K);
+        for(i = 2; i <  fhmm->K;i++){
+                //if(total_counts[i] >= param->node_count_cutoff){
                         IC = 0.0;
 
-                        for(j = 0; j < ft->L;j++){
-                                IC += ft->emission[j][i] * log2(ft->emission[j][i] / background[j]);
+                        for(j = 0; j < fhmm->L;j++){
+                                IC +=  fhmm->e[i][j] * log2(fhmm->e[i][j] / background[j]);
 
                                 //                    fprintf(stdout,"%f\t%f\t%f\n", matrix->matrix[j][i],  background[j],log2( matrix->matrix[j][i] / background[j]));
                         }
@@ -421,9 +445,9 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                         //LOG_MSG("Len:%d %d",ft->L,model->num_states);
 
                         //ncol =0;
-                        for(j = 0; j < ft->L;j++){
+                        for(j = 0; j < fhmm->L;j++){
 
-                                tmp_sum[j] =  ft->emission[j][i] * tmp_prob  ;
+                                tmp_sum[j] = fhmm->e[i][j]  * tmp_prob  ;
                                 //fprintf(stdout,"%d %c %f\n", i,"ACDEFGHIKLMNPQRSTVWY"[j],ft->emission[j][i]  );
                                 //LOG_MSG("i:%d j:%d  %d  (wetfg%d)",i,j,ft->L, ncol);
                                 //ncol++;
@@ -435,16 +459,29 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
                         fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
 
+
+                        //c = 0;
+                        //for(j = 0; j < model->num_states;j++){
+//
+                        //        if(total_counts[j]){
+                        //                if(i == c){
+                        //                       break;
+                        //               }
+                        //               c++;
+                        //       }
+                        //}
+
+
                         fprintf(f_ptr,"<TR>\n");
                         fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
                         fprintf(f_ptr,"</TR>\n");
 
 
-                        if(ft->L == ALPHABET_DNA){
-                                for(c = 0; c < ft->L;c++){
+                        if(fhmm->L == ALPHABET_DNA){
+                                for(c = 0; c < fhmm->L;c++){
                                         max_IC = -100;
                                         out_letter = -1;
-                                        for(j = 0; j < ft->L;j++){
+                                        for(j = 0; j < fhmm->L;j++){
                                                 if(max_IC < (int)tmp_sum[j]){
                                                         max_IC = (int)tmp_sum[j];
                                                         out_letter = j;
@@ -456,11 +493,11 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
                                         tmp_sum[out_letter] = -1;
                                 }
 
-                        }else if(ft->L == ALPHABET_PROTEIN ){
-                                for(c = 0; c < ft->L;c++){
+                        }else if(fhmm->L == ALPHABET_PROTEIN ){
+                                for(c = 0; c < fhmm->L;c++){
                                         max_IC = -100;
                                         out_letter = -1;
-                                        for(j = 0; j < ft->L;j++){
+                                        for(j = 0; j < fhmm->L;j++){
                                                 if(max_IC < (int)tmp_sum[j]){
                                                         max_IC = (int)tmp_sum[j];
                                                         out_letter = j;
@@ -479,25 +516,25 @@ int make_dot_file(struct fast_hmm_param* ft, struct ihmm_model* model, struct pa
 
                         fprintf(f_ptr,"</TABLE>>];\n");
                         //LOG_MSG("i:%d",i);
-                }
+                        //}
         }
         fprintf(f_ptr,"\n\n");
         /* print edges */
 
 
-        for(i = 0;i < ft->last_state;i++){
-                if(total_counts[i] >= param->node_count_cutoff){
-                        for(j = 0;j < ft->last_state;j++){
-                                if(total_counts[j] >= param->node_count_cutoff){
-                                        if(ft->transition[i][j] >= param->edge_threshold ){
-                                                RUN(get_color(color_buffer,ft->transition[i][j], 0.0f,1.0f ));
-                                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  ft->transition[i][j] , color_buffer, (int) (ft->transition[i][j] *10)+1 );
-                                        }
-                                }
-
+        for(i = 0;i < fhmm->K;i++){
+                //if(total_counts[i] >= param->node_count_cutoff){
+                for(j = 0;j < fhmm->K;j++){
+                        //if(total_counts[j] >= param->node_count_cutoff){
+                        if(fhmm->t[i][j] >= param->edge_threshold ){
+                                RUN(get_color(color_buffer,fhmm->t[i][j], 0.0f,1.0f ));
+                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , color_buffer, (int) (fhmm->t[i][j] *10)+1 );
                         }
+                        //}//
 
                 }
+
+                //}
         }
 
         /* print end of dot file  */

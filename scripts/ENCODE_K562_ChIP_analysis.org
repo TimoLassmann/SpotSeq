@@ -7,7 +7,7 @@
 #+OPTIONS: H:4
 #+LATEX_CMD: xelatex
 
-* Emacs version
+* Versions 
   #+BEGIN_SRC emacs-lisp -n :exports both :eval yes
     (princ (concat
             (format "Emacs version: %s\n"
@@ -37,6 +37,18 @@
   Apply iHMM to top peaks to see if we can: 
   a) recover known motifs 
   b) see if sequences under peaks contain additional signal 
+
+* Spotseq
+
+  install with: 
+  #+BEGIN_EXAMPLE sh 
+  git clone https://github.com/timolassmann/spotseq.git
+  ./autogen.sh 
+  ./configure --bindir  /data/Projects/spotseq/bin 
+  make
+  make install 
+  #+END_EXAMPLE
+
 
 * Data 
   Downloaded 4812 ChIP-seqbed files. These contain data mapped to hg19
@@ -937,3 +949,59 @@
   | Working | on | NFE2-human            |
   | Working | on | POLR2AphosphoS2-human |
 
+
+* Slurm script 
+#+BEGIN_SRC sh :tangle model_sequences.sh :shebang #!/usr/bin/env bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=16
+
+
+export PATH=/data/Projects/spotseq/bin:$PATH
+
+INPUT=
+NITER=
+
+function usage()
+{
+    cat <<EOF
+usage: $0  -i <path to fasta files>  -n <number of iterations>
+EOF
+    exit 1;
+}
+
+while getopts i:s:n:r: opt
+do
+    case ${opt} in
+        i) INPUT=${OPTARG};;
+        n) NUMITER=${OPTARG};;
+        *) usage;;
+    esac
+done
+
+if [ "${INPUT}" = "" ]; then usage; fi
+
+#
+#   Sanity check
+#
+
+programs=(spotseq_model spotseq_plot spotseq_score)
+
+printf "Running Sanity checks:\n";
+
+for item in ${programs[*]}
+do
+    if which $item >/dev/null; then
+        printf "%15s found...\n"  $item;
+    else
+        printf "\nERROR: %s not found!\n\n" $item;
+        exit 1;
+    fi
+done
+
+echo "All dependencies found."
+OUTMODEL=$INPUT".h5"
+echo "spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42 "
+spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42
+
+#+END_SRC 

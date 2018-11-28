@@ -136,6 +136,7 @@ int write_best_model(char* filename, int best_model)
 {
         struct hdf5_data* hdf5_data = NULL;
         int i;
+        void *ptr;
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
@@ -148,10 +149,10 @@ int write_best_model(char* filename, int best_model)
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
-
+        ptr = (void*) &best_model;
         RUN(hdf5_open_group("/",hdf5_data));
         if((hdf5_data->dataset = H5Dopen(hdf5_data->group,"BestModel",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
-        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,hdf5_data->native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, (void*)best_model)) < 0) ERROR_MSG("H5Dwrite failed");
+        if((hdf5_data->status  = H5Dwrite(hdf5_data->dataset,hdf5_data->native_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, ptr)) < 0) ERROR_MSG("H5Dwrite failed");
         RUN(hdf5_close_group(hdf5_data));
 
         hdf5_close_file(hdf5_data);

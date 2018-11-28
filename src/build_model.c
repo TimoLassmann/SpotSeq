@@ -78,7 +78,7 @@ int main (int argc, char *argv[])
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
                         {"nthreads",required_argument,0,'t'},
-                        {"nmodel",required_argument,0, OPT_NUM_MODELS},
+                        {"nmodels",required_argument,0, OPT_NUM_MODELS},
                         {"niter",required_argument,0,'n'},
                         {"model",required_argument,0,'m'},
                         {"alpha",required_argument,0,'a'},
@@ -425,7 +425,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         int i;
         int limit;
 
-        char buffer[BUFFER_LEN];
+        //char buffer[BUFFER_LEN];
 
 
 
@@ -480,11 +480,16 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         }
 
         LOG_MSG("Best Model: %d",model_bag->best_model);
-        RUN(write_best_model(param->output, &model_bag->best_model));
+        RUN(write_best_model(param->output, model_bag->best_model));
+        //LOG_MSG("Got past writing");
         free_spotseq_thread_data(td,param->num_threads);
+        //LOG_MSG("Got past free thread data ");
         thr_pool_destroy(pool);
+        //LOG_MSG("Got past poolfree");
         free_ihmm_sequences(sb);
+        //LOG_MSG("Got past seq free");
         free_model_bag(model_bag);
+        //LOG_MSG("Got past model bag free");
 
 
         return OK;
@@ -516,6 +521,7 @@ int print_help(char **argv)
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nmodels","Number of models to train." ,"[10]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--model","Continue training model <>." ,"[]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--niter","Number of iterations." ,"[1000]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--alpha","Alpha hyper parameter." ,"[NA]"  );

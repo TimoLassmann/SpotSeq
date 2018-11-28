@@ -512,496 +512,74 @@
   #+RESULTS:
   [[file:get_all_top_1000_seq.sh]]
   
+
   Run command 
-#+BEGIN_SRC sh 
+  #+BEGIN_SRC sh 
     chmod 700 get_all_top_1000_seq.sh 
     ./get_all_top_1000_seq.sh 
   #+END_SRC 
 
-  #+RESULTS:
+* Run spotseq
 
-  | Working | on | YY1-human             |
-  | Working | on | FOXA1-human           |
-  | Working | on | ZEB2-human            |
-  | Working | on | eGFP-ATF1-human       |
-  | Working | on | RBBP5-human           |
-  | Working | on | FOXK2-human           |
-  | Working | on | PYGO2-human           |
-  | Working | on | eGFP-ZBTB40-human     |
-  | Working | on | JUND-human            |
-  | Working | on | SMAD5-human           |
-  | Working | on | SNIP1-human           |
-  | Working | on | eGFP-CEBPB-human      |
-  | Working | on | POLR2A-human          |
-  | Working | on | ELF1-human            |
-  | Working | on | ZZZ3-human            |
-  | Working | on | MAFK-human            |
-  | Working | on | ZNF24-human           |
-  | Working | on | HNRNPUL1-human        |
-  | Working | on | RBM39-human           |
-  | Working | on | GATA2-human           |
-  | Working | on | 3xFLAG-ATF1-human     |
-  | Working | on | MCM7-human            |
-  | Working | on | MXI1-human            |
-  | Working | on | FOXM1-human           |
-  | Working | on | ZNF316-human          |
-  | Working | on | RFX5-human            |
-  | Working | on | BCLAF1-human          |
-  | Working | on | TRIP13-human          |
-  | Working | on | ESRRA-human           |
-  | Working | on | ZEB2-human            |
-  | Working | on | RLF-human             |
-  | Working | on | IRF1-human            |
-  | Working | on | NCOR1-human           |
-  | Working | on | ZNF592-human          |
-  | Working | on | IRF2-human            |
-  | Working | on | BCLAF1-human          |
-  | Working | on | eGFP-KLF1-human       |
-  | Working | on | NCOA1-human           |
-  | Working | on | KDM4B-human           |
-  | Working | on | POLR2AphosphoS5-human |
-  | Working | on | eGFP-ZNF644-human     |
-  | Working | on | CEBPZ-human           |
-  | Working | on | GATA1-human           |
-  | Working | on | JUN-human             |
-  | Working | on | USF1-human            |
-  | Working | on | SAFB2-human           |
-  | Working | on | POLR2B-human          |
-  | Working | on | POLR2G-human          |
-  | Working | on | RBM17-human           |
-  | Working | on | KDM4B-human           |
-  | Working | on | EHMT2-human           |
-  | Working | on | MCM5-human            |
-  | Working | on | ZNF282-human          |
-  | Working | on | ZNF280A-human         |
-  | Working | on | MLLT1-human           |
-  | Working | on | HDAC1-human           |
-  | Working | on | ZNF318-human          |
-  | Working | on | eGFP-ZNF24-human      |
-  | Working | on | ETV6-human            |
-  | Working | on | UBTF-human            |
-  | Working | on | HDAC6-human           |
-  | Working | on | MCM7-human            |
-  | Working | on | ZNF274-human          |
-  | Working | on | MTA3-human            |
-  | Working | on | HDGF-human            |
-  | Working | on | E2F1-human            |
-  | Working | on | U2AF2-human           |
-  | Working | on | PCBP1-human           |
-  | Working | on | NCOR1-human           |
-  | Working | on | HCFC1-human           |
-  | Working | on | eGFP-ZNF395-human     |
-  | Working | on | HDGF-human            |
-  | Working | on | eGFP-CUX1-human       |
-  | Working | on | eGFP-NR4A1-human      |
-  | Working | on | MYC-human             |
-  | Working | on | CC2D1A-human          |
-  | Working | on | eGFP-ZBTB11-human     |
-  | Working | on | PTBP1-human           |
-  | Working | on | STAT1-human           |
-  | Working | on | CHAMP1-human          |
-  | Working | on | ARNT-human            |
-  | Working | on | MBD2-human            |
-  | Working | on | RCOR1-human           |
-  | Working | on | MCM2-human            |
-  | Working | on | EP300-human           |
-  | Working | on | NCOA4-human           |
-  | Working | on | MYC-human             |
-  | Working | on | KDM5B-human           |
-  | Working | on | eGFP-ADNP-human       |
-  | Working | on | NONO-human            |
-  | Working | on | SKIL-human            |
-  | Working | on | eGFP-IRF9-human       |
-  | Working | on | ZNF24-human           |
-  | Working | on | NR3C1-human           |
-  | Working | on | TARDBP-human          |
-  | Working | on | SMARCE1-human         |
-  | Working | on | NCOA2-human           |
-  | Working | on | MCM7-human            |
-  | Working | on | MITF-human            |
-  | Working | on | BHLHE40-human         |
-  | Working | on | PHF8-human            |
-  | Working | on | XRCC3-human           |
-  | Working | on | SMARCA4-human         |
-  | Working | on | ZBTB5-human           |
-  | Working | on | ETV6-human            |
-  | Working | on | NRF1-human            |
-  | Working | on | TAF7-human            |
-  | Working | on | AFF1-human            |
-  | Working | on | BRD9-human            |
-  | Working | on | eGFP-PYGO2-human      |
-  | Working | on | NCOA2-human           |
-  | Working | on | CHAMP1-human          |
-  | Working | on | THRA-human            |
-  | Working | on | eGFP-CREB3-human      |
-  | Working | on | UBTF-human            |
-  | Working | on | ZBTB7A-human          |
-  | Working | on | MIER1-human           |
-  | Working | on | ASH1L-human           |
-  | Working | on | ZNF143-human          |
-  | Working | on | JUNB-human            |
-  | Working | on | TAF1-human            |
-  | Working | on | eGFP-PBX2-human       |
-  | Working | on | SMARCB1-human         |
-  | Working | on | FOXK2-human           |
-  | Working | on | eGFP-HDAC8-human      |
-  | Working | on | TARDBP-human          |
-  | Working | on | TBL1XR1-human         |
-  | Working | on | GABPB1-human          |
-  | Working | on | HNRNPH1-human         |
-  | Working | on | POU5F1-human          |
-  | Working | on | E2F8-human            |
-  | Working | on | STAT2-human           |
-  | Working | on | eGFP-GATA2-human      |
-  | Working | on | CBX5-human            |
-  | Working | on | SMARCA4-human         |
-  | Working | on | RFX1-human            |
-  | Working | on | RNF2-human            |
-  | Working | on | SMARCA5-human         |
-  | Working | on | NR2F6-human           |
-  | Working | on | BACH1-human           |
-  | Working | on | eGFP-ID3-human        |
-  | Working | on | ATF4-human            |
-  | Working | on | RNF2-human            |
-  | Working | on | CEBPB-human           |
-  | Working | on | HDAC1-human           |
-  | Working | on | eGFP-PTTG1-human      |
-  | Working | on | JUN-human             |
-  | Working | on | CUX1-human            |
-  | Working | on | CDC5L-human           |
-  | Working | on | MNT-human             |
-  | Working | on | RBM14-human           |
-  | Working | on | HDAC2-human           |
-  | Working | on | SIN3A-human           |
-  | Working | on | ZC3H11A-human         |
-  | Working | on | NFIC-human            |
-  | Working | on | TAF15-human           |
-  | Working | on | GTF2F1-human          |
-  | Working | on | eGFP-IRF1-human       |
-  | Working | on | NR2F1-human           |
-  | Working | on | GTF2F1-human          |
-  | Working | on | eGFP-GTF2A2-human     |
-  | Working | on | AFF1-human            |
-  | Working | on | MGA-human             |
-  | Working | on | MYC-human             |
-  | Working | on | PML-human             |
-  | Working | on | ZMYM3-human           |
-  | Working | on | NR3C1-human           |
-  | Working | on | TBP-human             |
-  | Working | on | HNRNPLL-human         |
-  | Working | on | NFATC3-human          |
-  | Working | on | CREB3L1-human         |
-  | Working | on | POLR2A-human          |
-  | Working | on | ZBTB11-human          |
-  | Working | on | TCF12-human           |
-  | Working | on | PHF21A-human          |
-  | Working | on | HMBOX1-human          |
-  | Working | on | RFX1-human            |
-  | Working | on | TCF7L2-human          |
-  | Working | on | eGFP-ILK-human        |
-  | Working | on | eGFP-ZKSCAN8-human    |
-  | Working | on | ZSCAN29-human         |
-  | Working | on | YY1-human             |
-  | Working | on | eGFP-BACH1-human      |
-  | Working | on | ZBTB5-human           |
-  | Working | on | ZKSCAN1-human         |
-  | Working | on | ZFP36-human           |
-  | Working | on | BCOR-human            |
-  | Working | on | YBX1-human            |
-  | Working | on | eGFP-HINFP-human      |
-  | Working | on | MCM2-human            |
-  | Working | on | GATAD2A-human         |
-  | Working | on | ZNF274-human          |
-  | Working | on | TARDBP-human          |
-  | Working | on | RBM34-human           |
-  | Working | on | MEIS2-human           |
-  | Working | on | SNRNP70-human         |
-  | Working | on | 3xFLAG-PBX2-human     |
-  | Working | on | MLLT1-human           |
-  | Working | on | TCF7-human            |
-  | Working | on | COPS2-human           |
-  | Working | on | eGFP-ETS2-human       |
-  | Working | on | MCM5-human            |
-  | Working | on | HES1-human            |
-  | Working | on | DNMT1-human           |
-  | Working | on | eGFP-ZNF83-human      |
-  | Working | on | TAL1-human            |
-  | Working | on | SMARCC2-human         |
-  | Working | on | SAP30-human           |
-  | Working | on | AGO1-human            |
-  | Working | on | POLR2A-human          |
-  | Working | on | SMAD1-human           |
-  | Working | on | LEF1-human            |
-  | Working | on | NFRKB-human           |
-  | Working | on | TBL1XR1-human         |
-  | Working | on | C11orf30-human        |
-  | Working | on | BRCA1-human           |
-  | Working | on | ARID3A-human          |
-  | Working | on | ZMIZ1-human           |
-  | Working | on | SMAD2-human           |
-  | Working | on | RBFOX2-human          |
-  | Working | on | ZBTB40-human          |
-  | Working | on | PCBP2-human           |
-  | Working | on | REST-human            |
-  | Working | on | CBX1-human            |
-  | Working | on | EGR1-human            |
-  | Working | on | eGFP-ATF3-human       |
-  | Working | on | MYNN-human            |
-  | Working | on | eGFP-NFE2L1-human     |
-  | Working | on | PRPF4-human           |
-  | Working | on | MTA1-human            |
-  | Working | on | ZFP91-human           |
-  | Working | on | GABPA-human           |
-  | Working | on | TRIM28-human          |
-  | Working | on | NONO-human            |
-  | Working | on | ZHX1-human            |
-  | Working | on | ZSCAN29-human         |
-  | Working | on | TRIM24-human          |
-  | Working | on | POLR2A-human          |
-  | Working | on | eGFP-TFDP1-human      |
-  | Working | on | eGFP-GABPA-human      |
-  | Working | on | CBX8-human            |
-  | Working | on | E2F1-human            |
-  | Working | on | NCOA6-human           |
-  | Working | on | DDX20-human           |
-  | Working | on | ZBED1-human           |
-  | Working | on | CCAR2-human           |
-  | Working | on | YY1-human             |
-  | Working | on | ZNF407-human          |
-  | Working | on | E2F6-human            |
-  | Working | on | KAT8-human            |
-  | Working | on | THRAP3-human          |
-  | Working | on | ZNF24-human           |
-  | Working | on | eGFP-DDX20-human      |
-  | Working | on | ZNF639-human          |
-  | Working | on | JUN-human             |
-  | Working | on | DEAF1-human           |
-  | Working | on | MCM3-human            |
-  | Working | on | NCOA1-human           |
-  | Working | on | GATAD2B-human         |
-  | Working | on | NBN-human             |
-  | Working | on | U2AF1-human           |
-  | Working | on | CBFA2T2-human         |
-  | Working | on | NUFIP1-human          |
-  | Working | on | MEF2A-human           |
-  | Working | on | ARID1B-human          |
-  | Working | on | MTA2-human            |
-  | Working | on | ARNT-human            |
-  | Working | on | LEF1-human            |
-  | Working | on | SMC3-human            |
-  | Working | on | eGFP-MAFG-human       |
-  | Working | on | SRSF3-human           |
-  | Working | on | EGR1-human            |
-  | Working | on | YBX3-human            |
-  | Working | on | eGFP-TSC22D4-human    |
-  | Working | on | SETDB1-human          |
-  | Working | on | CTCF-human            |
-  | Working | on | RB1-human             |
-  | Working | on | GMEB1-human           |
-  | Working | on | CTCFL-human           |
-  | Working | on | MAX-human             |
-  | Working | on | eGFP-ZNF354B-human    |
-  | Working | on | HNRNPK-human          |
-  | Working | on | FUS-human             |
-  | Working | on | MYBL2-human           |
-  | Working | on | ARNT-human            |
-  | Working | on | IKZF1-human           |
-  | Working | on | ZNF184-human          |
-  | Working | on | eGFP-TAF7-human       |
-  | Working | on | REST-human            |
-  | Working | on | ARID2-human           |
-  | Working | on | HDAC1-human           |
-  | Working | on | KDM1A-human           |
-  | Working | on | NR0B1-human           |
-  | Working | on | eGFP-RELA-human       |
-  | Working | on | RBM25-human           |
-  | Working | on | SMARCA4-human         |
-  | Working | on | IRF1-human            |
-  | Working | on | CBX3-human            |
-  | Working | on | TAL1-human            |
-  | Working | on | NFRKB-human           |
-  | Working | on | eGFP-ZNF148-human     |
-  | Working | on | TAF9B-human           |
-  | Working | on | eGFP-ZNF512-human     |
-  | Working | on | JUN-human             |
-  | Working | on | STAT5A-human          |
-  | Working | on | MYC-human             |
-  | Working | on | GATA1-human           |
-  | Working | on | CTCF-human            |
-  | Working | on | NR2F2-human           |
-  | Working | on | CREM-human            |
-  | Working | on | NCOA1-human           |
-  | Working | on | FOSL1-human           |
-  | Working | on | KDM1A-human           |
-  | Working | on | XRCC5-human           |
-  | Working | on | CBFA2T3-human         |
-  | Working | on | ARHGAP35-human        |
-  | Working | on | RNF2-human            |
-  | Working | on | RAD51-human           |
-  | Working | on | DPF2-human            |
-  | Working | on | NR2C1-human           |
-  | Working | on | HDAC1-human           |
-  | Working | on | BRD4-human            |
-  | Working | on | eGFP-MEF2D-human      |
-  | Working | on | JUN-human             |
-  | Working | on | ZNF830-human          |
-  | Working | on | MITF-human            |
-  | Working | on | ELF4-human            |
-  | Working | on | eGFP-GTF2E2-human     |
-  | Working | on | FIP1L1-human          |
-  | Working | on | BMI1-human            |
-  | Working | on | PHB2-human            |
-  | Working | on | SP1-human             |
-  | Working | on | IKZF1-human           |
-  | Working | on | PKNOX1-human          |
-  | Working | on | ZNF184-human          |
-  | Working | on | eGFP-CEBPG-human      |
-  | Working | on | ELK1-human            |
-  | Working | on | HDAC2-human           |
-  | Working | on | ZBTB33-human          |
-  | Working | on | ATF3-human            |
-  | Working | on | eGFP-HDAC8-human      |
-  | Working | on | TRIM24-human          |
-  | Working | on | NRF1-human            |
-  | Working | on | eGFP-ZNF584-human     |
-  | Working | on | PRDM10-human          |
-  | Working | on | NR2C2-human           |
-  | Working | on | POLR2A-human          |
-  | Working | on | THAP1-human           |
-  | Working | on | E4F1-human            |
-  | Working | on | eGFP-NR4A1-human      |
-  | Working | on | ZNF830-human          |
-  | Working | on | HNRNPL-human          |
-  | Working | on | POLR2A-human          |
-  | Working | on | SIN3A-human           |
-  | Working | on | eGFP-ZFX-human        |
-  | Working | on | ATF7-human            |
-  | Working | on | eGFP-ELF1-human       |
-  | Working | on | eGFP-VEZF1-human      |
-  | Working | on | KLF16-human           |
-  | Working | on | RUNX1-human           |
-  | Working | on | TRIM28-human          |
-  | Working | on | NFYA-human            |
-  | Working | on | ELF1-human            |
-  | Working | on | eGFP-ZNF639-human     |
-  | Working | on | RUNX1-human           |
-  | Working | on | MAFF-human            |
-  | Working | on | eGFP-ZNF740-human     |
-  | Working | on | STAT1-human           |
-  | Working | on | CTCF-human            |
-  | Working | on | eGFP-ZNF507-human     |
-  | Working | on | ATF3-human            |
-  | Working | on | eGFP-ZNF740-human     |
-  | Working | on | EWSR1-human           |
-  | Working | on | NFYB-human            |
-  | Working | on | HDAC2-human           |
-  | Working | on | L3MBTL2-human         |
-  | Working | on | SRSF7-human           |
-  | Working | on | RBM22-human           |
-  | Working | on | eGFP-NR2C2-human      |
-  | Working | on | SUZ12-human           |
-  | Working | on | ZNF639-human          |
-  | Working | on | IRF1-human            |
-  | Working | on | ZBTB2-human           |
-  | Working | on | ZNF263-human          |
-  | Working | on | SIX5-human            |
-  | Working | on | TEAD4-human           |
-  | Working | on | E2F7-human            |
-  | Working | on | ILF3-human            |
-  | Working | on | TRIM28-human          |
-  | Working | on | eGFP-TEAD2-human      |
-  | Working | on | ATF2-human            |
-  | Working | on | NEUROD1-human         |
-  | Working | on | SIN3B-human           |
-  | Working | on | MYC-human             |
-  | Working | on | POLR2A-human          |
-  | Working | on | HDAC3-human           |
-  | Working | on | ZNF407-human          |
-  | Working | on | NCOR1-human           |
-  | Working | on | USF2-human            |
-  | Working | on | PHF20-human           |
-  | Working | on | eGFP-ZNF589-human     |
-  | Working | on | MNT-human             |
-  | Working | on | eGFP-KLF13-human      |
-  | Working | on | STAT1-human           |
-  | Working | on | SAFB-human            |
-  | Working | on | ZNF318-human          |
-  | Working | on | eGFP-PTRF-human       |
-  | Working | on | eGFP-NFE2-human       |
-  | Working | on | ZBTB8A-human          |
-  | Working | on | NFXL1-human           |
-  | Working | on | eGFP-NR2C1-human      |
-  | Working | on | TCF12-human           |
-  | Working | on | MAX-human             |
-  | Working | on | HDAC2-human           |
-  | Working | on | RNF2-human            |
-  | Working | on | CTBP1-human           |
-  | Working | on | SREBF1-human          |
-  | Working | on | ZNF384-human          |
-  | Working | on | SOX6-human            |
-  | Working | on | eGFP-DIDO1-human      |
-  | Working | on | GTF2F1-human          |
-  | Working | on | DACH1-human           |
-  | Working | on | eGFP-POLR2H-human     |
-  | Working | on | ZNF316-human          |
-  | Working | on | DPF2-human            |
-  | Working | on | NFATC3-human          |
-  | Working | on | NFE2-human            |
-  | Working | on | POLR2AphosphoS2-human |
+#+BEGIN_SRC sh
+  for filename in ../input_fasta/*.fa; do
+    echo "sbatch ./model_sequences.sh -i $filename -n 1000"
+  done
 
 
+#+END_SRC
 * Slurm script 
-#+BEGIN_SRC sh :tangle model_sequences.sh :shebang #!/usr/bin/env bash
+  #+BEGIN_SRC sh :tangle model_sequences.sh :shebang #!/usr/bin/env bash
 
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=16
+    #SBATCH --nodes=1
+    #SBATCH --ntasks-per-node=16
 
 
-export PATH=/data/Projects/spotseq/bin:$PATH
+    export PATH=/data/Projects/spotseq/bin:$PATH
 
-INPUT=
-NITER=
+    INPUT=
+    NITER=
 
-function usage()
-{
-    cat <<EOF
-usage: $0  -i <path to fasta files>  -n <number of iterations>
-EOF
-    exit 1;
-}
-
-while getopts i:s:n:r: opt
-do
-    case ${opt} in
-        i) INPUT=${OPTARG};;
-        n) NUMITER=${OPTARG};;
-        *) usage;;
-    esac
-done
-
-if [ "${INPUT}" = "" ]; then usage; fi
-
-#
-#   Sanity check
-#
-
-programs=(spotseq_model spotseq_plot spotseq_score)
-
-printf "Running Sanity checks:\n";
-
-for item in ${programs[*]}
-do
-    if which $item >/dev/null; then
-        printf "%15s found...\n"  $item;
-    else
-        printf "\nERROR: %s not found!\n\n" $item;
+    function usage()
+    {
+        cat <<EOF
+ usage: $0  -i <path to fasta files>  -n <number of iterations>
+ EOF
         exit 1;
-    fi
-done
+    }
 
-echo "All dependencies found."
-OUTMODEL=$INPUT".h5"
-echo "spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42 "
-spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42
+    while getopts i:s:n:r: opt
+    do
+        case ${opt} in
+            i) INPUT=${OPTARG};;
+            n) NUMITER=${OPTARG};;
+            ,*) usage;;
+        esac
+    done
 
-#+END_SRC 
+    if [ "${INPUT}" = "" ]; then usage; fi
+
+    #
+    #   Sanity check
+    #
+
+    programs=(spotseq_model spotseq_plot spotseq_score)
+
+    printf "Running Sanity checks:\n";
+
+    for item in ${programs[*]}
+    do
+        if which $item >/dev/null; then
+            printf "%15s found...\n"  $item;
+        else
+            printf "\nERROR: %s not found!\n\n" $item;
+            exit 1;
+        fi
+    done
+
+    echo "All dependencies found."
+    OUTMODEL=$INPUT".h5"
+    echo "spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42 "
+    spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42
+
+  #+END_SRC 

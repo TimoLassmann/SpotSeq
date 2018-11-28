@@ -539,7 +539,6 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         a = alpha * beta[new_k];
         b = 0.0;
         for(i = 0; i <= new_k;i++){
-
                 b += beta[i];
         }
         b = alpha * (1.0 - b);

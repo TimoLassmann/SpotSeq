@@ -282,7 +282,7 @@ int run_build_ihmm(struct parameters* param)
                  * set the u arrays properly based on the initial
                  * model guess */
                 model_bag->max_num_states = 0;
-                for(i = 0; i < model_bag->num_models  ;i++){
+                for(i = 0; i < model_bag->num_models;i++){
                         RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                         //RUN(fill_counts(model_bag->models[i], sb,i));

@@ -413,7 +413,7 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
 
 
                 RUN(get_max_to_last_state_transition(ft, &max));
-                while(max >= min_u && model->num_states < 1000 && max > 0.0 ){//}sb->max_len){
+                while(max >= min_u && model->num_states < MAX_NUM_STATES && max > 0.0 ){//}sb->max_len){
                         //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));

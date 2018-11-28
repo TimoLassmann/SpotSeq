@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 
-#define IHMM_PARAM_PLACEHOLDER -9999.99f
+
 
 
 struct seq_buffer;          /* forward declaration  */

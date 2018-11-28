@@ -1679,8 +1679,10 @@ static int shrink_grow_integration_test(void)
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
 
-        RUNP(model = alloc_ihmm_model(initial_states, 4));
+        RUNP(model = alloc_ihmm_model(initial_states, 4,42));
+
         RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
+        add_multi_model_label_and_u(iseq, 1);
         RUN(random_label_ihmm_sequences(iseq, initial_states * 10,0.3));
         RUN(fill_counts(model,iseq));
         /* I am doing this as a pre-caution. I don't want the inital model

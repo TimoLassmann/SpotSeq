@@ -821,7 +821,7 @@ int main(const int argc,const char * argv[])
         RUN(random_label_ihmm_sequences(iseq, 10, 0.3));
 
 
-        RUNP(ihmm = alloc_ihmm_model(20, 4+3));
+        RUNP(ihmm = alloc_ihmm_model(20, 4+3,42));
         /* Need to set alpha_[a/b] and gamma[a/b] manually before calling
          * hyper */
         RUN(resize_ihmm_model(ihmm, 16+3));
@@ -829,15 +829,18 @@ int main(const int argc,const char * argv[])
 
         /* At this stage there are no counts AND the model parameters are not
          * initialized. */
-        RUN(fill_counts(ihmm,iseq));
+        RUN(add_multi_model_label_and_u(iseq, 0));
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
 
 
 
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
-        RUN(remove_unused_states_labels(ihmm, iseq));
-        RUN(fill_counts(ihmm,iseq));
+
+
+        RUN(remove_unused_states_labels(ihmm, iseq,0));
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
         /* Now there are counts but no model parameters. */
         ihmm->alpha_a = 4.0f;
@@ -850,8 +853,8 @@ int main(const int argc,const char * argv[])
         /* Now I should have everything ready to go.  */
         RUN(print_model_parameters(ihmm));
         /* Just to verify if everything works..  */
-        RUN(remove_unused_states_labels(ihmm, iseq));
-        RUN(fill_counts(ihmm,iseq));
+        RUN(remove_unused_states_labels(ihmm, iseq,0));
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
 
         /* Verify (by eye!) if the estimation of the hyperparameters works  */
@@ -880,20 +883,23 @@ int main(const int argc,const char * argv[])
 
 
         RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUNP(ihmm = alloc_ihmm_model(20, 4+3));
+        RUNP(ihmm = alloc_ihmm_model(20, 4+3,42));
+        RUN(add_multi_model_label_and_u(iseq, 0));
         LOG_MSG("Alpha = 100");
         RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,100));
-        RUN(fill_counts(ihmm,iseq));
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
 
         LOG_MSG("Alpha = 1.0");
         RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,1.0));
-        RUN(fill_counts(ihmm,iseq));
+
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
 
         LOG_MSG("Alpha = 0.3");
         RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,0.3));
-        RUN(fill_counts(ihmm,iseq));
+
+        RUN(fill_counts(ihmm,iseq,0));
         RUN(print_counts(ihmm));
 
 

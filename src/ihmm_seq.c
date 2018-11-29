@@ -643,6 +643,45 @@ ERROR:
 
 }
 
+int check_labels(struct seq_buffer* sb, int num_models)
+{
+        int i,j,c;
+        int* label;
+        int len;
+
+        ASSERT(sb != NULL, "No sequences");
+
+        for(c = 0; c < num_models;c++){
+                for(i = 0;i< sb->num_seq;i++){
+
+                        label = sb->sequences[i]->label_arr[c];
+
+                        len = sb->sequences[i]->seq_len;
+                        for(j = 0;j < len;j++){
+                                if(label[j] == -1){
+                                        ERROR_MSG("m:%d s:%d p:%d is -1",c,i,j);
+                                }
+                        }
+                        /*label = sb->sequences[i]->tmp_label_arr[c];
+                        len = sb->sequences[i]->seq_len;
+                        for(j = 0;j < len;j++){
+                                if(label[j] == -1){
+                                        ERROR_MSG("m:%d s:%d p:%d is -1",c,i,j);
+                                }
+                                }*/
+
+                }
+        }
+
+
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
+
+
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
 {
         int* label;

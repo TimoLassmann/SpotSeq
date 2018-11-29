@@ -37,7 +37,7 @@ static int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_s
 static int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
 static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
 
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
 {
         int i;
         int iter;
@@ -83,6 +83,10 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                 /* sample transitions / emission */
                 ft_bag->max_last_state = -1;
                 model_bag->max_num_states = -1;
+
+                //LOG_MSG("Check labelling at start..(%d)", iter);
+                //RUN(check_labels(sb,model_bag->num_models ));
+                //LOG_MSG("Done");
                 if(!no_path){
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
@@ -141,6 +145,9 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag,
                         }
                         thr_pool_wait(pool);
 
+                        //LOG_MSG("Check labelling after dyn (%d).",iter);
+                        //RUN(check_labels(sb,model_bag->num_models ));
+                        //LOG_MSG("Done");
                         no_path = 0;
 
 
@@ -1060,7 +1067,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
         float sum;
         float* emission;
         float* tmp_row;
-        float r;
+        float r, tmp_r;
         int K;
 
         K = ft->last_state;
@@ -1150,7 +1157,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
                         r = rk_double(random)*sum;
-
+                        tmp_r = r;
                         //r = random_float_zero_to_x_thread(sum, &data->seed);
                         for(j = 0; j < boundary;j++){
                                 //if(j == 0 && i == len-1){
@@ -1160,14 +1167,17 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                                 b = list[j]->to;
                                 if(list[j]->to == state && a != IHMM_START_STATE){
                                         r -= tmp_row[a];
-                                        if(r <= 0.0f){
+
+                                        label[i] = a;
+                                        if(r <= FLT_EPSILON){
                                                 state = a;
-                                                label[i] = a;
                                                 break;
                                         }
                                 }
                         }
+
                 }
+                /* sanitycheck!  */
                 *has_path = 1;
         }else{
                 *has_path = 0;
@@ -1175,6 +1185,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
         }
 
         return OK;
+
 }
 
 int dynamic_programming(struct spotseq_thread_data* data, int target)

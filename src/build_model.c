@@ -293,6 +293,8 @@ int run_build_ihmm(struct parameters* param)
 
 
                 }
+
+                RUN(check_labels(sb,model_bag->num_models ));
                 /* Set seed in sequence buffer */
                 sb->seed = rk_ulong(&model_bag->rndstate);
                 rk_seed(sb->seed, &sb->rndstate);

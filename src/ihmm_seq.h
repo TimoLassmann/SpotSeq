@@ -50,7 +50,7 @@ struct seq_buffer{
 extern struct ihmm_sequence* alloc_ihmm_seq(void);
 
 extern int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models);
-
+extern int check_labels(struct seq_buffer* sb, int num_models);
 
 
 

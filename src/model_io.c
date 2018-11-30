@@ -528,7 +528,6 @@ int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int
         char buffer[BUFFER_LEN];
         //unsigned int* seeds = NULL;
         int i;
-
         RUNP(hdf5_data = hdf5_create());
 
         hdf5_open_file(filename,hdf5_data);

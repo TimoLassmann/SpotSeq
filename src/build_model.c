@@ -326,13 +326,14 @@ int run_build_ihmm(struct parameters* param)
 
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
+        /* Main function */
         RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  param->num_iter,  param->num_threads));
 
+
+        /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(write_model_bag_hdf5(model_bag,param->output));
         RUN(add_annotation(param->output, "spotseq_model_cmd", param->cmd_line));
-        //RUN(add_background_emission(param->output,ft_bag->fast_params[0]->background_emission,ft_bag->fast_params[0]->L));
-
         RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
         RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len, model_bag->max_num_states));
         //RUN(write_thread_data_to_)

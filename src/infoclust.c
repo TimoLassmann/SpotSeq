@@ -155,6 +155,7 @@ ERROR:
 
 int run_infoclust(struct parameters* param)
 {
+        char buffer[BUFFER_LEN];
         struct seq_buffer* sb = NULL;
         struct seq_buffer* sb_temp = NULL;
         struct ihmm_sequence* s = NULL;
@@ -223,8 +224,11 @@ int run_infoclust(struct parameters* param)
         int occ_cutoff = (int) sqrtf((float) sb->num_seq);
         int target_len = 12;
 
-        m = init_motif_list(sb->num_seq);
 
+        float log_odds_threshold = 5.0;
+
+
+        m = init_motif_list(sb->num_seq);
 
         for(target_len = 15; target_len >= 8;target_len--){
                 LOG_MSG("Targeting %d.",target_len);
@@ -265,7 +269,7 @@ int run_infoclust(struct parameters* param)
                                         //RUN(calculate_log_likelihood(fhmm_log,sb,p,sa,sb_temp));
                                         float measure = (float) p->num_present_in_seq/ (float)(stop-start) * (float) p->num_present_in_seq;
 
-                                        if(p->log_likelihood > 5.0 && measure >= occ_cutoff){
+                                        if(p->log_likelihood > log_odds_threshold && measure >= occ_cutoff){
                                                 //fprintf(stdout,"occ:%d %f in %d seq ic:%f\n", stop-start,p->log_likelihood,p->num_present_in_seq, p->total);
                                                 RUN(insert_motif(m,p,fhmm,sb));
                                         }else{
@@ -283,13 +287,18 @@ int run_infoclust(struct parameters* param)
 
         LOG_MSG("Found %d proto-motifs",m->num_items);
 
+
         qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_likelihood);
 
         RUN(hierarchal_merge_motif( m,fhmm ,sb));
 
+
+
+
         RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
 
-        RUN(write_meme_output("motif.meme",m,fhmm));
+        snprintf(buffer, BUFFER_LEN, "%s.meme",param->out );
+        RUN(write_meme_output(buffer,m,fhmm));
 
         free_fhmm(fhmm);
         free_fhmm(fhmm_log);
@@ -1176,8 +1185,10 @@ int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm)
         float sum;
         ASSERT(filename != NULL, "No file name");
         ASSERT(m != NULL, "No motifs");
+
         if(fhmm->L == ALPHABET_DNA){
                 RUNP(fptr = fopen(filename, "w"));
+
                 fprintf(fptr,"MEME version 4\n");
                 fprintf(fptr,"\n");
                 fprintf(fptr,"ALPHABET= ACGT\n");
@@ -1252,22 +1263,27 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
 
         hdf5_write_attributes(hdf5_data, hdf5_data->file);
 
-
         RUN(hdf5_create_group("MotifData",hdf5_data));
 
+
+        hdf5_data->rank = 1;
+        hdf5_data->dim[0] = fhmm->L;
+        hdf5_data->dim[1] = -1;
+        hdf5_data->chunk_dim[0] = fhmm->L;
+        hdf5_data->chunk_dim[1] = -1;
+        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_write("Background",&fhmm->background[0], hdf5_data);
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
                 if(p){
                         RUNP(tmp = galloc(tmp, p->len, fhmm->L, 0.0));
 
-
                         for(j = 0 ; j < p->len;j++){
                                 for(c = 0; c < fhmm->L;c++){
                                         tmp[j][c] =  p->count_matrix[j][c];//   fhmm->e[p->state_sequence[j]][c];// p->matrix[j][c];//
                                 }
                         }
-
 
                         hdf5_data->rank = 2;
                         hdf5_data->dim[0] = p->len;
@@ -1457,15 +1473,17 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         float score, best_score;
         int allowed_overlap;
         int num_random = 10000;
+        int limit;
         /* all pairwise comparisons... */
+        limit = MACRO_MIN(250, m->num_items);
         best_i = -1;
         best_j = -1;
 
         best_score = 1000000;
-        for(i = 0; i < m->num_items-1;i++){
+        for(i = 0; i < limit-1;i++){
                 if(m->plist[i]){
                         a = m->plist[i];
-                        for(j = i+1; j <m->num_items;j++){
+                        for(j = i+1; j <limit;j++){
                                 if(m->plist[j]){
                                         b = m->plist[j];
                                         allowed_overlap = MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);

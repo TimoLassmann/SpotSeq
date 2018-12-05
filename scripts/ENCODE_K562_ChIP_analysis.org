@@ -520,7 +520,7 @@
   #+END_SRC 
 
 * Run spotseq
-
+** modelling: 
 #+BEGIN_SRC sh
   for filename in ../input_fasta/*.fa; do
     echo "sbatch ./model_sequences.sh -i $filename -n 1000"
@@ -528,7 +528,20 @@
 
 
 #+END_SRC
-* Slurm script 
+
+** infoclust 
+#+BEGIN_SRC sh
+
+  for filename in ../input_fasta/*_top_1000_regions.fa.h5; do
+      echo "sbatch ./infoclust.sh -m $filename "
+      sbatch ./infoclust.sh -m $filename
+  done
+
+
+#+END_SRC
+* Slurm scripts 
+
+** model sequences 
   #+BEGIN_SRC sh :tangle model_sequences.sh :shebang #!/usr/bin/env bash
 
     #SBATCH --nodes=1
@@ -583,3 +596,61 @@
     spotseq_model -i $INPUT -nthreads 16 -o $OUTMODEL -niter $NUMITER -seed 42
 
   #+END_SRC 
+
+** infoclust 
+
+   #+BEGIN_SRC sh :tangle infoclust.sh :shebang #!/usr/bin/env bash 
+
+     #SBATCH --nodes=1
+     #SBATCH --ntasks-per-node=16
+
+
+     export PATH=/data/Projects/spotseq/bin:$PATH
+
+     INPUT=
+     NITER=
+
+     function usage()
+     {
+         cat <<EOF
+usage: $0  -m <path to model hdf5 file>  
+EOF
+         exit 1;
+     }
+
+     while getopts m: opt
+     do
+         case ${opt} in
+             m) INPUT=${OPTARG};;
+             ,*) usage;;
+         esac
+     done
+
+     if [ "${INPUT}" = "" ]; then usage; fi
+
+     #
+     #   Sanity check
+     #
+
+     programs=(spotseq_model spotseq_plot spotseq_score spotseq_iclu)
+
+     printf "Running Sanity checks:\n";
+
+     for item in ${programs[*]}
+     do
+         if which $item >/dev/null; then
+             printf "%15s found...\n"  $item;
+         else
+             printf "\nERROR: %s not found!\n\n" $item;
+             exit 1;
+         fi
+     done
+
+     echo "All dependencies found."
+     OUTPUT=$INPUT"motif.h5"
+     echo "spotseq_iclu -m $INPUT -out $OUTPUT "
+     spotseq_iclu -m $INPUT -out $OUTPUT
+
+
+
+   #+END_SRC 

@@ -10,129 +10,129 @@
 * Introduction 
   
 
-#+BEGIN_SRC R :session one :results none
-library(reshape2)
-library(ggplot2)
-dat = read.csv("test.csv",header= TRUE, row.names= 1)
-sum = colSums(dat);
+  #+BEGIN_SRC R :session one :results none
+    library(reshape2)
+    library(ggplot2)
+    dat = read.csv("test.csv",header= TRUE, row.names= 1)
+    sum = colSums(dat);
 
-max_count = max(dat)
-min_count = min(dat)
-x = melt(t(dat))
-sum = colSums(dat);
-
-
-head(x)
+    max_count = max(dat)
+    min_count = min(dat)
+    x = melt(t(dat))
+    sum = colSums(dat);
 
 
-  cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
-            colorRampPalette(c("yellow", "red"))(30))
-
-  ggplot(x, aes(y=Var1, x=Var2, fill=value)) + 
-    geom_tile(colour="white", linewidth=2, 
-              width=.9, height=.9) + theme_minimal() +
-      scale_fill_gradientn(colours=cols, limits=c(min_count, max_count),
-                          breaks=seq(min_count, max_count, by=1), 
-                          na.value=rgb(246, 246, 246, max=255),
-                          guide=guide_colourbar(ticks=T, nbin=10,
-                                 barheight=2, label=T, 
-                                 barwidth=2)) 
-#+END_SRC  
-
-#+RESULTS:
-
-#+BEGIN_SRC R :session one
-
-d <- scale(t(dat2))
-ord <- hclust( dist(d, method = "euclidean"), method = "ward.D" )$order
-x = melt(t(dat2))
-
-pd.m <- melt( pd, id.vars = "Time", variable.name = "Gene" )
-
-pd.m$Gene <- factor( pd.m$Gene, levels = colnames(data), labels = seq_along( colnames(data) ) )
-pd.m$Time <- factor( pd.m$Time, levels = rownames(data)[ord],  labels = c("0h", "0.25h", "0.5h","1h","2h","3h","6h","12h","24h","48h") )
+    head(x)
 
 
-  ggplot(x, aes(x=Var2, y=value, group=Var1, color=Var1))+
-    geom_line() + theme_minimal()+ facet_grid(Var1 ~ .)
+    cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
+              colorRampPalette(c("yellow", "red"))(30))
 
-#+END_SRC  
+    ggplot(x, aes(y=Var1, x=Var2, fill=value)) + 
+        geom_tile(colour="white", linewidth=2, 
+                  width=.9, height=.9) + theme_minimal() +
+        scale_fill_gradientn(colours=cols, limits=c(min_count, max_count),
+                             breaks=seq(min_count, max_count, by=1), 
+                             na.value=rgb(246, 246, 246, max=255),
+                             guide=guide_colourbar(ticks=T, nbin=10,
+                                                   barheight=2, label=T, 
+                                                   barwidth=2)) 
+  #+END_SRC  
+
+  #+RESULTS:
+
+  #+BEGIN_SRC R :session one
+
+    d <- scale(t(dat2))
+    ord <- hclust( dist(d, method = "euclidean"), method = "ward.D" )$order
+    x = melt(t(dat2))
+
+    pd.m <- melt( pd, id.vars = "Time", variable.name = "Gene" )
+
+    pd.m$Gene <- factor( pd.m$Gene, levels = colnames(data), labels = seq_along( colnames(data) ) )
+    pd.m$Time <- factor( pd.m$Time, levels = rownames(data)[ord],  labels = c("0h", "0.25h", "0.5h","1h","2h","3h","6h","12h","24h","48h") )
+
+
+    ggplot(x, aes(x=Var2, y=value, group=Var1, color=Var1))+
+        geom_line() + theme_minimal()+ facet_grid(Var1 ~ .)
+
+  #+END_SRC  
 
 * plotting LOGOs
 
 ** gglogo
-#+BEGIN_SRC R :session one 
-library(ggplot2)
-library(gglogo)
-library(gridextra)
-data(sequences)
-ggplot(data = ggfortify(sequences, "peptide")) +      
-  geom_logo(aes(x=position, y=bits, group=element, 
-     label=element, fill=interaction(Polarity, Water)),
-     alpha = 0.6)  +
-  scale_fill_brewer(palette="Paired") +
-  theme(legend.position = "bottom")
-#+END_SRC
+   #+BEGIN_SRC R :session one 
+     library(ggplot2)
+     library(gglogo)
+     library(gridextra)
+     data(sequences)
+     ggplot(data = ggfortify(sequences, "peptide")) +      
+         geom_logo(aes(x=position, y=bits, group=element, 
+                       label=element, fill=interaction(Polarity, Water)),
+                   alpha = 0.6)  +
+         scale_fill_brewer(palette="Paired") +
+         theme(legend.position = "bottom")
+   #+END_SRC
 
 
 ** ggseqlogo
 
-#+BEGIN_SRC R :session one 
-  library("rhdf5")
-  require(ggplot2)
-  require(ggseqlogo)
+   #+BEGIN_SRC R :session one 
+     library("rhdf5")
+     require(ggplot2)
+     require(ggseqlogo)
 
-  x = h5dump("../motif.h5")
+     x = h5dump("../motif.h5")
 
-  add_rowname <- function(x){
-      rownames(x) = c("A","C","G","T");
-      return(x);
-  }
-  nplot = min(length(x$MotifData),24);
-  x$MotifData = lapply(x$MotifData,add_rowname)
-  p = ggseqlogo(x$MotifData[1:nplot], ncol=3)
+     add_rowname <- function(x){
+         rownames(x) = c("A","C","G","T");
+         return(x);
+     }
+     nplot = min(length(x$MotifData),24);
+     x$MotifData = lapply(x$MotifData,add_rowname)
+     p = ggseqlogo(x$MotifData[1:nplot], ncol=3)
 
-  ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 18,width=18,limitsize = TRUE )
+     ggsave("motif_out.jpg",p, dpi= 300,units="cm", height = 18,width=18,limitsize = TRUE )
 
 
 
-#+END_SRC
-#+RESULTS:
+   #+END_SRC
+   #+RESULTS:
 
 * Testing rhdf5 
 
-#+BEGIN_SRC R :session one
+  #+BEGIN_SRC R :session one
 
-library("rhdf5")
+    library("rhdf5")
 
-h5ls("../src/test.h5")
+    h5ls("../src/test.h5")
 
-#+END_SRC
+  #+END_SRC
 
 * Plot distribution of scores
 
 
-#+BEGIN_SRC R :session one :results none 
-library(extRemes)
-library(reshape2)
-library(ggplot2)
-library(tidyverse)
-tmp = read.csv("../scores.csv",header= TRUE, row.names= 1)
+  #+BEGIN_SRC R :session one :results none 
+    library(extRemes)
+    library(reshape2)
+    library(ggplot2)
+    library(tidyverse)
+    tmp = read.csv("../scores.csv",header= TRUE, row.names= 1)
 
-dat= as.tibble(tmp); 
-colnames(dat) = c("Scores")
+    dat= as.tibble(tmp); 
+    colnames(dat) = c("Scores")
 
-plot(hist(dat$Scores,breaks = 100));
+    plot(hist(dat$Scores,breaks = 100));
 
-dat = as.data.frame(dat) 
+    dat = as.data.frame(dat) 
 
-fit0 <- fevd(Scores, dat, type="Gumbel", units="deg C") 
-plot(fit0)
-
-
+    fit0 <- fevd(Scores, dat, type="Gumbel", units="deg C") 
+    plot(fit0)
 
 
-#+END_SRC
+
+
+  #+END_SRC
 
 ** pos/ neg comparison 
 
@@ -168,3 +168,294 @@ plot(fit0)
               grid.col=c("green", "red"), max.auc.polygon=TRUE,)
 
    #+END_SRC
+** TFBS benchmark script 
+
+   1) create some tfbs sets 
+   #+BEGIN_SRC bash 
+
+     tfbs_bench -o ~/tmp/ERROR0/ -e 0 
+     tfbs_bench -o ~/tmp/ERROR1/ -e 1
+     tfbs_bench -o ~/tmp/ERROR2/ -e 2
+     tfbs_bench -o ~/tmp/ERROR3/ -e 3
+     tfbs_bench -o ~/tmp/ERROR4/ -e 4
+
+
+     tfbs_bench -o ~/tmp/ERROR0L10/ -e 0 -l 10
+     tfbs_bench -o ~/tmp/ERROR1L10/ -e 1 -l 10
+     tfbs_bench -o ~/tmp/ERROR2L10/ -e 2 -l 10
+     tfbs_bench -o ~/tmp/ERROR3L10/ -e 3 -l 10
+     tfbs_bench -o ~/tmp/ERROR4L10/ -e 4 -l 10
+
+
+
+   #+END_SRC
+
+   2) run model 
+
+   #+BEGIN_SRC bash 
+
+     spotseq_model -i ~/tmp/ERROR0/train.fa -o ~/tmp/ERROR0/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR1/train.fa -o ~/tmp/ERROR1/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR2/train.fa -o ~/tmp/ERROR2/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR3/train.fa -o ~/tmp/ERROR3/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR4/train.fa -o ~/tmp/ERROR4/train.h5 -nthreads 4 --niter 10000
+
+
+     spotseq_model -i ~/tmp/ERROR0L10/train.fa -o ~/tmp/ERROR0L10/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR1L10/train.fa -o ~/tmp/ERROR1L10/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR2L10/train.fa -o ~/tmp/ERROR2L10/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR3L10/train.fa -o ~/tmp/ERROR3L10/train.h5 -nthreads 4 --niter 10000
+     spotseq_model -i ~/tmp/ERROR4L10/train.fa -o ~/tmp/ERROR4L10/train.h5 -nthreads 4 --niter 10000
+
+   #+END_SRC
+
+   3) score test and negsequences 
+
+   #+BEGIN_SRC bash 
+     spotseq_score -m ~/tmp/ERROR0/train.h5 -i ~/tmp/ERROR0/neg.fa -o ~/tmp/ERROR0/neg.csv
+     spotseq_score -m ~/tmp/ERROR1/train.h5 -i ~/tmp/ERROR1/neg.fa -o ~/tmp/ERROR1/neg.csv
+     spotseq_score -m ~/tmp/ERROR2/train.h5 -i ~/tmp/ERROR2/neg.fa -o ~/tmp/ERROR2/neg.csv
+     spotseq_score -m ~/tmp/ERROR3/train.h5 -i ~/tmp/ERROR3/neg.fa -o ~/tmp/ERROR3/neg.csv
+     spotseq_score -m ~/tmp/ERROR4/train.h5 -i ~/tmp/ERROR4/neg.fa -o ~/tmp/ERROR4/neg.csv
+
+     spotseq_score -m ~/tmp/ERROR0/train.h5 -i ~/tmp/ERROR0/test.fa -o ~/tmp/ERROR0/pos.csv
+     spotseq_score -m ~/tmp/ERROR1/train.h5 -i ~/tmp/ERROR1/test.fa -o ~/tmp/ERROR1/pos.csv
+     spotseq_score -m ~/tmp/ERROR2/train.h5 -i ~/tmp/ERROR2/test.fa -o ~/tmp/ERROR2/pos.csv
+     spotseq_score -m ~/tmp/ERROR3/train.h5 -i ~/tmp/ERROR3/test.fa -o ~/tmp/ERROR3/pos.csv
+     spotseq_score -m ~/tmp/ERROR4/train.h5 -i ~/tmp/ERROR4/test.fa -o ~/tmp/ERROR4/pos.csv
+
+
+     spotseq_score -m ~/tmp/ERROR0L10/train.h5 -i ~/tmp/ERROR0L10/neg.fa -o ~/tmp/ERROR0L10/neg.csv
+     spotseq_score -m ~/tmp/ERROR1L10/train.h5 -i ~/tmp/ERROR1L10/neg.fa -o ~/tmp/ERROR1L10/neg.csv
+     spotseq_score -m ~/tmp/ERROR2L10/train.h5 -i ~/tmp/ERROR2L10/neg.fa -o ~/tmp/ERROR2L10/neg.csv
+     spotseq_score -m ~/tmp/ERROR3L10/train.h5 -i ~/tmp/ERROR3L10/neg.fa -o ~/tmp/ERROR3L10/neg.csv
+     spotseq_score -m ~/tmp/ERROR4L10/train.h5 -i ~/tmp/ERROR4L10/neg.fa -o ~/tmp/ERROR4L10/neg.csv
+
+     spotseq_score -m ~/tmp/ERROR0L10/train.h5 -i ~/tmp/ERROR0L10/test.fa -o ~/tmp/ERROR0L10/pos.csv
+     spotseq_score -m ~/tmp/ERROR1L10/train.h5 -i ~/tmp/ERROR1L10/test.fa -o ~/tmp/ERROR1L10/pos.csv
+     spotseq_score -m ~/tmp/ERROR2L10/train.h5 -i ~/tmp/ERROR2L10/test.fa -o ~/tmp/ERROR2L10/pos.csv
+     spotseq_score -m ~/tmp/ERROR3L10/train.h5 -i ~/tmp/ERROR3L10/test.fa -o ~/tmp/ERROR3L10/pos.csv
+     spotseq_score -m ~/tmp/ERROR4L10/train.h5 -i ~/tmp/ERROR4L10/test.fa -o ~/tmp/ERROR4L10/pos.csv
+
+   #+END_SRC
+
+
+
+   4) make ROC curves... 
+
+
+
+   #+BEGIN_SRC R :tangle makeROC.R :shebang #!/usr/bin/env Rscript 
+     library(optparse) 
+     sessionInfo()
+     option_list = list(
+         make_option(c("-p", "--positive"),
+                     type="character",
+                     default=NULL,
+                     help="input - path to saved singleR object.", 
+                     metavar="character"),
+         make_option(c("-n", "--negative"),
+                     type="character",
+                     default=NULL,
+                     help="input - path to saved singleR object.", 
+                     metavar="character"),
+         make_option(c("-e", "--experimentname"),
+                     type="character",
+                     default=NULL,
+                     help="input - path to saved singleR object.", 
+                     metavar="character")
+
+     ); 
+
+     opt_parser <- OptionParser(option_list=option_list,
+                                description = "\nLoad singleR object and make plots.",
+                                epilogue = "Example:\n\n  Blah  \n\n");
+     opt <- parse_args(opt_parser);
+
+     if (is.null(opt$positive)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+     if (is.null(opt$negative)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+
+     posname <- opt$positive
+     negname <- opt$negative
+     name <- opt$experimentname
+     pos = read.csv(posname,header = T,row.names= 1) 
+     neg = read.csv(negname,header = T,row.names= 1) 
+
+     library(pROC)
+
+     response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
+     predictor = c(pos[,1],neg[,1])
+
+     roc = roc(response,predictor)
+     outname = paste0("ROC_",name,".jpg");
+     jpeg(outname)
+
+     plot.roc(roc,print.auc=TRUE, auc.polygon=TRUE, grid=c(0.1, 0.1),
+              grid.col=c("green", "red"), max.auc.polygon=TRUE,)
+
+     dev.off()
+
+   #+END_SRC
+
+
+   5) run script
+   #+BEGIN_SRC bash 
+     ./makeROC.R -p ~/tmp/ERROR0/pos.csv -n ~/tmp/ERROR0/neg.csv -e ERROR0
+     ./makeROC.R -p ~/tmp/ERROR1/pos.csv -n ~/tmp/ERROR1/neg.csv -e ERROR1
+     ./makeROC.R -p ~/tmp/ERROR2/pos.csv -n ~/tmp/ERROR2/neg.csv -e ERROR2
+     ./makeROC.R -p ~/tmp/ERROR3/pos.csv -n ~/tmp/ERROR3/neg.csv -e ERROR3
+     ./makeROC.R -p ~/tmp/ERROR4/pos.csv -n ~/tmp/ERROR4/neg.csv -e ERROR4
+
+     ./makeROC.R -p ~/tmp/ERROR0L10/pos.csv -n ~/tmp/ERROR0L10/neg.csv -e ERROR0L10
+     ./makeROC.R -p ~/tmp/ERROR1L10/pos.csv -n ~/tmp/ERROR1L10/neg.csv -e ERROR1L10
+     ./makeROC.R -p ~/tmp/ERROR2L10/pos.csv -n ~/tmp/ERROR2L10/neg.csv -e ERROR2L10
+     ./makeROC.R -p ~/tmp/ERROR3L10/pos.csv -n ~/tmp/ERROR3L10/neg.csv -e ERROR3L10
+     ./makeROC.R -p ~/tmp/ERROR4L10/pos.csv -n ~/tmp/ERROR4L10/neg.csv -e ERROR4L10
+
+   #+END_SRC
+
+   #+RESULTS:
+
+   ./makeROC.R -p ~/tmp/ERROR4/pos.csv -n ~/tmp/ERROR4/neg.csv -e ERROR4
+ 
+ 6) make silly boxplot 
+
+
+#+BEGIN_SRC R :session one 
+theme_black = function(base_size = 12, base_family = "") {
+ 
+  theme_grey(base_size = base_size, base_family = base_family) %+replace%
+ 
+    theme(
+      # Specify axis options
+      axis.line = element_blank(),  
+      axis.text.x = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.text.y = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
+      axis.ticks = element_line(color = "white", size  =  0.2),  
+      axis.title.x = element_text(size = base_size, color = "white", margin = margin(0, 10, 0, 0)),  
+      axis.title.y = element_text(size = base_size, color = "white", angle = 90, margin = margin(0, 10, 0, 0)),  
+      axis.ticks.length = unit(0.3, "lines"),   
+      # Specify legend options
+      legend.background = element_rect(color = NA, fill = "black"),  
+      legend.key = element_rect(color = "white",  fill = "black"),  
+      legend.key.size = unit(1.2, "lines"),  
+      legend.key.height = NULL,  
+      legend.key.width = NULL,      
+      legend.text = element_text(size = base_size*0.8, color = "white"),  
+      legend.title = element_text(size = base_size*0.8, face = "bold", hjust = 0, color = "white"),  
+      legend.position = "right",  
+      legend.text.align = NULL,  
+      legend.title.align = NULL,  
+      legend.direction = "vertical",  
+      legend.box = NULL, 
+      # Specify panel options
+      panel.background = element_rect(fill = "black", color  =  NA),  
+      panel.border = element_rect(fill = NA, color = "white"),  
+      panel.grid.major = element_line(color = "grey35"),  
+      panel.grid.minor = element_line(color = "grey20"),  
+      panel.margin = unit(0.5, "lines"),   
+      # Specify facetting options
+      strip.background = element_rect(fill = "grey30", color = "grey10"),  
+      strip.text.x = element_text(size = base_size*0.8, color = "white"),  
+      strip.text.y = element_text(size = base_size*0.8, color = "white",angle = -90),  
+      # Specify plot options
+      plot.background = element_rect(color = "black", fill = "black"),  
+      plot.title = element_text(size = base_size*1.2, color = "white"),  
+      plot.margin = unit(rep(1, 4), "lines")
+ 
+    )
+ 
+}
+#+END_SRC
+
+#+RESULTS:
+
+
+
+
+#+BEGIN_SRC R :session one 
+  library(ggplot2) 
+  library(reshape2)
+library(tikzDevice)
+
+  readlogOdds <-function(filename,mat, name){
+     tmp <- read.csv(filename,header = T,row.names= 1)
+     names(tmp)[1] <- name
+     x <- melt(tmp);
+   mat= rbind(mat,x);
+   return(mat)
+  }
+
+mat = matrix(, nrow = 0, ncol = 2)
+mat = readlogOdds("~/tmp/ERROR0/pos.csv",mat,"0");
+mat = readlogOdds("~/tmp/ERROR1/pos.csv",mat,"1");
+mat = readlogOdds("~/tmp/ERROR2/pos.csv",mat,"2");
+mat = readlogOdds("~/tmp/ERROR3/pos.csv",mat,"3");
+mat = readlogOdds("~/tmp/ERROR4/pos.csv",mat,"4");
+mat$mode = "F"
+mat2 = matrix(, nrow = 0, ncol = 2)
+mat2 = readlogOdds("~/tmp/ERROR0L10/pos.csv",mat2,"0");
+mat2 = readlogOdds("~/tmp/ERROR1L10/pos.csv",mat2,"1");
+mat2 = readlogOdds("~/tmp/ERROR2L10/pos.csv",mat2,"2");
+mat2 = readlogOdds("~/tmp/ERROR3L10/pos.csv",mat2,"3");
+mat2 = readlogOdds("~/tmp/ERROR4L10/pos.csv",mat2,"4");
+mat2$mode = "L"
+
+
+
+mat3 = matrix(, nrow = 0, ncol = 2)
+mat3 = readlogOdds("~/tmp/ERROR0/neg.csv",mat3,"0");
+mat3 = readlogOdds("~/tmp/ERROR1/neg.csv",mat3,"1");
+mat3 = readlogOdds("~/tmp/ERROR2/neg.csv",mat3,"2");
+mat3 = readlogOdds("~/tmp/ERROR3/neg.csv",mat3,"3");
+mat3 = readlogOdds("~/tmp/ERROR4/neg.csv",mat3,"4");
+mat3$mode = "C"
+
+
+
+names(mat) = c("Error","logoddsscore","mode")
+names(mat2) = c("Error","logoddsscore","mode")
+names(mat3) = c("Error","logoddsscore","mode")
+ p <- ggplot(mat, aes(x=Error, y=logoddsscore)) + geom_boxplot(fill=rgb(0,0,20,maxColorValue = 255),color=rgb(220,210,200,maxColorValue = 255))
+
+p  <-  p + xlab("Errors")
+p  <-  p + ylab(expression(paste(log[2],frac(P(x/H),P(x/R)), sep = "")))
+p <- p + theme_classic() + theme(
+panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255), colour = NA),
+text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+ rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+ axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+)
+p
+
+options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+tikz('error_vs_log_odds.tex',width = 4, height = 3)
+p
+dev.off()
+
+#+END_SRC
+
+#+RESULTS:
+: 2
+
+
+\definecolor{foreground}{RGB}{220,210,200}
+\definecolor{background}{RGB}{0,0,20}
+\definecolor{darkgrey}{RGB}{88,88,108}
+\definecolor{red}{RGB}{255,20,10}
+#+RESULTS:
+
+  ~/tmp/ERROR0/pos.csv 
+  ~/tmp/ERROR1/pos.csv 
+  ~/tmp/ERROR2/pos.csv 
+  ~/tmp/ERROR3/pos.csv
+  ~/tmp/ERROR4/pos.csv

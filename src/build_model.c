@@ -23,6 +23,7 @@
 
 #include "init_seq_label.h"
 
+
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 
@@ -321,6 +322,16 @@ int run_build_ihmm(struct parameters* param)
                 }
 
         }
+        /*for(i = 0; i < 1000000;i++){
+
+                long a = rk_random(&model_bag->rndstate) >> 9, b = rk_random(&model_bag->rndstate) >> 4;
+                float test = a / 8388609.0f;
+                if(test < 0.00001 || test > 0.9999){
+                        fprintf(stdout,"%ld %ld  %f\n ",a,b, test);
+                }
+
+        }
+        exit(0);*/
 
         /* Do a random score */
 

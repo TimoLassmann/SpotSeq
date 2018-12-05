@@ -210,7 +210,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         RUN(run_build_fhmm_file(tmp_buffer));
                         }*/
                 for(i = 0; i < model_bag->num_models;i++){
-                        //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
+                        LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         model_bag->models[i]->training_iterations++;
                 }
         }
@@ -1156,25 +1156,43 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         //r =  random_float_zero_to_x(sum);
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
-                        r = rk_double(random)*sum;
-                        tmp_r = r;
-                        //r = random_float_zero_to_x_thread(sum, &data->seed);
-                        for(j = 0; j < boundary;j++){
-                                //if(j == 0 && i == len-1){
-                                //        fprintf(stdout,"%f thread: %f  %f \n",random_float_zero_to_x(sum), random_float_zero_to_x_thread(sum, &seed) , rand_r(&seed) / (float) RAND_MAX);
-                                //}
-                                a = list[j]->from;
-                                b = list[j]->to;
-                                if(list[j]->to == state && a != IHMM_START_STATE){
-                                        r -= tmp_row[a];
-
-                                        label[i] = a;
-                                        if(r <= FLT_EPSILON){
-                                                state = a;
-                                                break;
+                        //while(label[i] == -1){ /* Hack if random number generator spits out a 1.0 weird things happen due to precision */
+                                r = rk_double(random)*sum;
+                                tmp_r = r;
+                                //r = random_float_zero_to_x_thread(sum, &data->seed);
+                                for(j = 0; j < boundary;j++){
+                                        //if(j == 0 && i == len-1){
+                                        //        fprintf(stdout,"%f thread: %f  %f \n",random_float_zero_to_x(sum), random_float_zero_to_x_thread(sum, &seed) , rand_r(&seed) / (float) RAND_MAX);
+                                        //}
+                                        a = list[j]->from;
+                                        b = list[j]->to;
+                                        if(b == state && a != IHMM_START_STATE){
+                                                r -= tmp_row[a];
+                                                if(r <= FLT_EPSILON){
+                                                        state = a;
+                                                        label[i] = a;
+                                                        break;
+                                                }
                                         }
                                 }
-                        }
+                                //}
+                        /*if(label[i] == -1){
+                                WARNING_MSG("path is negative!!!!, %e %e u:%e sum: %f",r,tmp_r,u[i+1],sum);
+                                r = tmp_r;
+                                for(j = 0; j < boundary;j++){
+                                        a = list[j]->from;
+                                        b = list[j]->to;
+
+                                        if(list[j]->to == state && a != IHMM_START_STATE){
+                                                r -= tmp_row[a];
+                                                WARNING_MSG("pos: %d (len: %d) cur: %d %d -> %d : %f \n", i,len, state,a,b, tmp_row[a]);
+
+                                        }
+                                }
+
+                                        ERROR_MSG("path is negative!!!!, %e %e",r,tmp_r);
+
+                                        }*/
 
                 }
                 /* sanitycheck!  */
@@ -1185,7 +1203,8 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
         }
 
         return OK;
-
+ERROR:
+        return FAIL;
 }
 
 int dynamic_programming(struct spotseq_thread_data* data, int target)

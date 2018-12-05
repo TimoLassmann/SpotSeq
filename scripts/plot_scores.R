@@ -74,3 +74,4 @@ p <- p + theme(axis.text.x = element_text(angle = 90, size=4,hjust = 1))
 ggsave(outname,p, dpi= 300,units="cm", height = 12,width=24,limitsize = TRUE )
 
 
+n

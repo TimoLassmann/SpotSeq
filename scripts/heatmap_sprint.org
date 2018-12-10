@@ -138,8 +138,8 @@
 
 
    #+BEGIN_SRC R :session one :results none 
-     pos = read.csv("pos.csv",header = T,row.names= 1) 
-     neg = read.csv("neg.csv",header = T,row.names= 1) 
+     pos = read.csv("~/tmp/ERROR4/pos.csv",header = T,row.names= 1) 
+     neg = read.csv("~/tmp/ERROR4/neg.csv",header = T,row.names= 1) 
 
      dpos = density(pos[,1]);
      dneg = density(neg[,1]);
@@ -159,16 +159,44 @@
 
    #+BEGIN_SRC R :session one :results none 
      library(pROC)
+     library(ggplot2)
+     library(plotROC)
 
      response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
      predictor = c(pos[,1],neg[,1])
 
-     roc = roc(response,predictor)
-     plot.roc(roc,print.auc=TRUE, auc.polygon=TRUE, grid=c(0.1, 0.1),
-              grid.col=c("green", "red"), max.auc.polygon=TRUE,)
+     x = cbind(response,predictor) 
+     x = as.data.frame(x) 
+     p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE,
+                                                                 fill=rgb(0,0,20,maxColorValue = 255),
+                                                                 color=rgb(220,210,200,maxColorValue = 255))
+ p <- p + style_roc()
+
+ p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0)) 
+  p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0)) 
+
+     p <- p + annotate("text",
+                       color=rgb(220,210,200,maxColorValue = 255),
+                       x = .75,
+                       y = .25, 
+                       label = paste("AUC =", round(calc_auc(p)$AUC, 4))) 
+     p <- p + theme_classic() + theme(
+                                    panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255), colour = NA),
+                                    text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+                                    rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+                                    line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+                                    axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+                                    axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+                                    axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+
+                                    )
+
+     p
+
 
    #+END_SRC
-** TFBS benchmark script 
+
+** TODO TFBS benchmark script 
 
    1) create some tfbs sets 
    #+BEGIN_SRC bash 
@@ -287,25 +315,71 @@
      pos = read.csv(posname,header = T,row.names= 1) 
      neg = read.csv(negname,header = T,row.names= 1) 
 
-     library(pROC)
+    # library(pROC)
+ library(ggplot2)
+     library(plotROC)
+library(tikzDevice)
 
      response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
      predictor = c(pos[,1],neg[,1])
 
-     roc = roc(response,predictor)
-     outname = paste0("ROC_",name,".jpg");
-     jpeg(outname)
+     #roc = roc(response,predictor)
 
-     plot.roc(roc,print.auc=TRUE, auc.polygon=TRUE, grid=c(0.1, 0.1),
-              grid.col=c("green", "red"), max.auc.polygon=TRUE,)
+
+
+     x = cbind(response,predictor) 
+     x = as.data.frame(x) 
+     p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE,
+                                                                 fill=rgb(0,0,20,maxColorValue = 255),
+                                                                 color=rgb(220,210,200,maxColorValue = 255))
+
+p <- p + geom_abline(intercept = 0, slope = 1, color=rgb(220,210,200,maxColorValue = 255))
+ p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0)) 
+  p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0)) 
+
+     p <- p + annotate("text",
+                       color=rgb(220,210,200,maxColorValue = 255),
+                       x = .75,
+                       y = .25, 
+                       label = paste("AUC =", round(calc_auc(p)$AUC, 4))) 
+p  <-  p + xlab("1-Specificity (FPR)")
+p  <-  p + ylab("Sensitivity (TPR)")
+
+     p <- p + theme_classic() + theme(
+                                    panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255), colour = rgb(0,0,20,maxColorValue = 255)),
+                                    text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+                                    rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+                                    line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+                                    axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+                                    axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
+                                    axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+
+                                    )
+
+     
+outname = paste0("ROC_",name,".jpg");
+     jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+p
+ #    plot.roc(roc,print.auc=TRUE, auc.polygon=TRUE, grid=c(0.1, 0.1),
+  #            grid.col=c("green", "red"), max.auc.polygon=TRUE,)
+
+
+
+
+
 
      dev.off()
+options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     outname = paste0("ROC_",name,".tex");
+tikz(outname,width = 2, height = 2)
+p
+dev.off()
 
    #+END_SRC
 
 
    5) run script
-   #+BEGIN_SRC bash 
+   #+BEGIN_SRC bash :results none 
      ./makeROC.R -p ~/tmp/ERROR0/pos.csv -n ~/tmp/ERROR0/neg.csv -e ERROR0
      ./makeROC.R -p ~/tmp/ERROR1/pos.csv -n ~/tmp/ERROR1/neg.csv -e ERROR1
      ./makeROC.R -p ~/tmp/ERROR2/pos.csv -n ~/tmp/ERROR2/neg.csv -e ERROR2
@@ -319,64 +393,8 @@
      ./makeROC.R -p ~/tmp/ERROR4L10/pos.csv -n ~/tmp/ERROR4L10/neg.csv -e ERROR4L10
 
    #+END_SRC
-
-   #+RESULTS:
-
-   ./makeROC.R -p ~/tmp/ERROR4/pos.csv -n ~/tmp/ERROR4/neg.csv -e ERROR4
  
  6) make silly boxplot 
-
-
-#+BEGIN_SRC R :session one 
-theme_black = function(base_size = 12, base_family = "") {
- 
-  theme_grey(base_size = base_size, base_family = base_family) %+replace%
- 
-    theme(
-      # Specify axis options
-      axis.line = element_blank(),  
-      axis.text.x = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
-      axis.text.y = element_text(size = base_size*0.8, color = "white", lineheight = 0.9),  
-      axis.ticks = element_line(color = "white", size  =  0.2),  
-      axis.title.x = element_text(size = base_size, color = "white", margin = margin(0, 10, 0, 0)),  
-      axis.title.y = element_text(size = base_size, color = "white", angle = 90, margin = margin(0, 10, 0, 0)),  
-      axis.ticks.length = unit(0.3, "lines"),   
-      # Specify legend options
-      legend.background = element_rect(color = NA, fill = "black"),  
-      legend.key = element_rect(color = "white",  fill = "black"),  
-      legend.key.size = unit(1.2, "lines"),  
-      legend.key.height = NULL,  
-      legend.key.width = NULL,      
-      legend.text = element_text(size = base_size*0.8, color = "white"),  
-      legend.title = element_text(size = base_size*0.8, face = "bold", hjust = 0, color = "white"),  
-      legend.position = "right",  
-      legend.text.align = NULL,  
-      legend.title.align = NULL,  
-      legend.direction = "vertical",  
-      legend.box = NULL, 
-      # Specify panel options
-      panel.background = element_rect(fill = "black", color  =  NA),  
-      panel.border = element_rect(fill = NA, color = "white"),  
-      panel.grid.major = element_line(color = "grey35"),  
-      panel.grid.minor = element_line(color = "grey20"),  
-      panel.margin = unit(0.5, "lines"),   
-      # Specify facetting options
-      strip.background = element_rect(fill = "grey30", color = "grey10"),  
-      strip.text.x = element_text(size = base_size*0.8, color = "white"),  
-      strip.text.y = element_text(size = base_size*0.8, color = "white",angle = -90),  
-      # Specify plot options
-      plot.background = element_rect(color = "black", fill = "black"),  
-      plot.title = element_text(size = base_size*1.2, color = "white"),  
-      plot.margin = unit(rep(1, 4), "lines")
- 
-    )
- 
-}
-#+END_SRC
-
-#+RESULTS:
-
-
 
 
 #+BEGIN_SRC R :session one 
@@ -459,3 +477,4 @@ dev.off()
   ~/tmp/ERROR2/pos.csv 
   ~/tmp/ERROR3/pos.csv
   ~/tmp/ERROR4/pos.csv
+ 

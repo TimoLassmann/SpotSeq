@@ -397,7 +397,8 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
         for(i = 0; i < model->num_states;i++){
                 total_counts[i] = 0;
         }
-
+        total_counts[IHMM_START_STATE] = 100000;
+        total_counts[IHMM_END_STATE] = 100000;
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
                         total_counts[j] +=   model->emission_counts[i][j];
@@ -427,7 +428,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
         /* print nodes...  */
         //LOG_MSG("%d %d ", model->num_states, fhmm->K);
         for(i = 2; i <  fhmm->K;i++){
-                //if(total_counts[i] >= param->node_count_cutoff){
+                if(total_counts[i] >= param->node_count_cutoff){
                         IC = 0.0;
 
                         for(j = 0; j < fhmm->L;j++){
@@ -516,25 +517,25 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 
                         fprintf(f_ptr,"</TABLE>>];\n");
                         //LOG_MSG("i:%d",i);
-                        //}
+                        }
         }
         fprintf(f_ptr,"\n\n");
         /* print edges */
 
 
         for(i = 0;i < fhmm->K;i++){
-                //if(total_counts[i] >= param->node_count_cutoff){
+                if(total_counts[i] >= param->node_count_cutoff){
                 for(j = 0;j < fhmm->K;j++){
-                        //if(total_counts[j] >= param->node_count_cutoff){
+                        if(total_counts[j] >= param->node_count_cutoff){
                         if(fhmm->t[i][j] >= param->edge_threshold ){
                                 RUN(get_color(color_buffer,fhmm->t[i][j], 0.0f,1.0f ));
                                 fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , color_buffer, (int) (fhmm->t[i][j] *10)+1 );
                         }
-                        //}//
+                        }//
 
                 }
 
-                //}
+                }
         }
 
         /* print end of dot file  */

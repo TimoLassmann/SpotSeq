@@ -89,8 +89,11 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 //LOG_MSG("Done");
                 if(!no_path){
                         for(i = 0; i < model_bag->num_models;i++){
+                                LOG_MSG("removing unused states");
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
+                                LOG_MSG("fill counts");
                                 RUN(fill_counts(model_bag->models[i], sb,i));
+                                LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
                         }
@@ -103,6 +106,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                                print_fast_hmm_params(ft_bag->fast_params[i]);
                         }
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
@@ -1088,9 +1092,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
         sum = 0;
         emission = ft->emission[seq[0]];
         for(i = 0; i < K;i++){
-
                 matrix[0][i] *=  emission[i];
-
                 sum += matrix[0][i];
         }
         for(i = 0; i < K;i++){
@@ -1120,13 +1122,9 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                 for(j = 0; j < K;j++){
                         matrix[i][j] /= sum;
                 }
-
         }
-
-
         sum = 0.0f;
         //float tmp_r;
-
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
@@ -1141,7 +1139,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                 for(i = len-1; i >= 0; i--){
                         //fprintf(stdout,"pick: %d %d\n", i,state);
                         for(j = 0; j < K;j++){
-                                tmp_row[j] = -1.0;
+                                tmp_row[j] = 0.0;
                         }
                         sum = 0.0f;
                         boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
@@ -1153,12 +1151,26 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                                         sum += matrix[i][a];
                                 }
                         }
+                        tmp_row[0] /= sum;
+                        for(j = 1; j < K;j++){
+                                tmp_row[j] /= sum;
+                                tmp_row[j] += tmp_row[j-1];
+                        }
+
+                        tmp_row[K-1] = 1.0f;
                         //r =  random_float_zero_to_x(sum);
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
                         //while(label[i] == -1){ /* Hack if random number generator spits out a 1.0 weird things happen due to precision */
-                                r = rk_double(random)*sum;
-                                tmp_r = r;
+                        r = rk_double(random);//*sum;
+                        for(j = 0; j < K;j++){
+                                if(tmp_row[j] > r){
+                                        state = j;
+                                        label[i] = j;
+                                        break;
+                                }
+                        }
+                        /*       tmp_r = r;
                                 //r = random_float_zero_to_x_thread(sum, &data->seed);
                                 for(j = 0; j < boundary;j++){
                                         //if(j == 0 && i == len-1){
@@ -1174,7 +1186,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                                                         break;
                                                 }
                                         }
-                                }
+                                        }*/
                                 //}
                         /*if(label[i] == -1){
                                 WARNING_MSG("path is negative!!!!, %e %e u:%e sum: %f",r,tmp_r,u[i+1],sum);

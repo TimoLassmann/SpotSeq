@@ -14,16 +14,19 @@
     library(reshape2)
     library(ggplot2)
     dat = read.csv("test.csv",header= TRUE, row.names= 1)
-    sum = colSums(dat);
+    dat2 <- apply(dat, 2, function(i) i/sum(i))
+    dat2 <- dat2[, 1:(ncol(dat2)-2)]
+    dat2 <- dat2[, !"State16", with=F]
+    dat2 <- log(dat2 + 0.01)
+    sum = colSums(dat2);
 
-    max_count = max(dat)
-    min_count = min(dat)
-    x = melt(t(dat))
-    sum = colSums(dat);
+    max_count = max(dat2)
+    min_count = min(dat2)
+    x = melt(t(dat2))
+    sum = colSums(dat2);
 
 
     head(x)
-
 
     cols <- c(colorRampPalette(c("white", "cornflowerblue"))(10),
               colorRampPalette(c("yellow", "red"))(30))
@@ -36,7 +39,7 @@
                              na.value=rgb(246, 246, 246, max=255),
                              guide=guide_colourbar(ticks=T, nbin=10,
                                                    barheight=2, label=T, 
-                                                   barwidth=2)) 
+                                                   barwidth=2))  
   #+END_SRC  
 
   #+RESULTS:

@@ -223,7 +223,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         //RUNP(model = read_model_hdf5(param->input));
         RUNP(model = read_best_imodel(param->input, &best));
 
-        RUNP(matrix = galloc(matrix, model->num_states , 251, 0.0f));
+        RUNP(matrix = galloc(matrix, model->num_states , 1001, 0.0f));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
         for(i = 0; i < model->num_states;i++){
                 state_sums[i] = 0.0f;
@@ -233,7 +233,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 l = (float) sb->sequences[i]->seq_len;
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
                         c = (float) sb->sequences[i]->label_arr[best][j];
-                        index = roundf(250.0f * ((float) j / l));
+                        index = roundf(1000.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
                         state_sums[c] += 1.0f;
                 }
@@ -248,7 +248,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
                 }
         }
         fprintf(fptr,"\n");
-        for(j = 0; j < 250;j++){
+        for(j = 0; j < 1000;j++){
                 fprintf(fptr, "%d",j);
                 for(i = 2; i < model->num_states;i++){
                         if(state_sums[i]){
@@ -351,7 +351,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 
         ASSERT(fhmm != NULL, "No input matrix.");
 
-        MMALLOC(tmp_sum, sizeof(float) * fhmm->L);
+        MMALLOC(tmp_sum, sizeof(double) * fhmm->L);
         MMALLOC(total_counts, sizeof(int) * model->num_states);
         background = fhmm->background;
 

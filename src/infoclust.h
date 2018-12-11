@@ -9,17 +9,17 @@ struct hit{
 
 struct paraclu_cluster{
         struct hit** hits;
-        float** freq_matrix;
-        float** count_matrix;
+        double** freq_matrix;
+        double** count_matrix;
         int* state_sequence;
         int* present_in_seq;
         int num_present_in_seq;
 
         int num_seq;
-        float min_density;
-        float max_density;
-        float total;
-        float log_likelihood;
+        double min_density;
+        double max_density;
+        double total;
+        double log_likelihood;
         int start_in_sa;
         int end_in_sa;
         int seq_id;

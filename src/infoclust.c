@@ -9,7 +9,7 @@
 struct parameters{
         char* input;
         char* out;
-        float min_d_increase;
+        double min_d_increase;
         unsigned long seed;
         int maxlen;
 };
@@ -20,8 +20,8 @@ static int run_infoclust(struct parameters* param);
 
 int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq_buffer* sb);
 
-int calculate_information_content(float** freq_matrix,float* background,int len,int L,float* ic);
-int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy);
+int calculate_information_content(double** freq_matrix,double* background,int len,int L,double* ic);
+int calc_per_state_rel_entrophy(struct fhmm* fhmm, double* rel_entropy);
 
 int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm);
 
@@ -38,17 +38,17 @@ int insert_motif(struct motif_list*m, struct paraclu_cluster* p,struct fhmm* fhm
 
 int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_buffer *sb);
 
-static int randomize_freq_matrix(float** m,int len, int L);
+static int randomize_freq_matrix(double** m,int len, int L);
 
-int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div);
-int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b,float* score);
+int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* kl_div);
+int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b,double* score);
 int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struct paraclu_cluster* b,struct paraclu_cluster* new_motif);
-static int motif_dyn_programming(struct fhmm* fhmm,float** e_a, float** e_b, int len_a, int len_b,int min_aln_len);
-int pick_state(float* a, float* b, int len, int* pick);
+static int motif_dyn_programming(struct fhmm* fhmm,double** e_a, double** e_b, int len_a, int len_b,int min_aln_len);
+int pick_state(double* a, double* b, int len, int* pick);
 int merge_motif(struct paraclu_cluster* a,struct paraclu_cluster* b);
 int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm);
-int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,float* jac);
+int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,double* jac);
 static int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif);
 int add_hit_locations(struct sa* sa, struct paraclu_cluster* p);
 static int remove_overlapping_hits( struct paraclu_cluster* p);
@@ -61,10 +61,10 @@ void free_paraclu_cluster(struct paraclu_cluster* p);
 
 int sort_paraclu_cluster_based_on_likelihood(const void *a, const void *b);
 int sort_paraclu_cluster_based_on_hits(const void *a, const void *b);
-int float_cmp(const void *a, const void *b);
-int max_score_segment(float* x , int start ,int end, int min_len,float min_density,struct motif_list* m);
-float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix);
-void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix);
+int double_cmp(const void *a, const void *b);
+int max_score_segment(double* x , int start ,int end, int min_len,double min_density,struct motif_list* m);
+double weakestPrefix(double* x , int start ,int end, int* min_prefix_pos, double* min_prefix);
+void weakestSuffix(double* x , int start ,int end, int* min_suffix_pos, double* min_suffix);
 int free_parameters(struct parameters* param);
 int print_help(char **argv);
 
@@ -166,7 +166,7 @@ int run_infoclust(struct parameters* param)
         struct motif_list* t = NULL;
         struct sa* sa = NULL;
 
-        float* rel_entropy = NULL;
+        double* rel_entropy = NULL;
 
         int total_len = 0;
         int i,j,c;
@@ -174,22 +174,25 @@ int run_infoclust(struct parameters* param)
         ASSERT(param != NULL, "No parameters.");
 
         /* read in sequences */
-        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        LOG_MSG("Load sequences");
+        RUNP(sb = get_sequences_from_hdf5_model(param->input, IHMM_SEQ_READ_ONLY_SEQ));
         ASSERT(sb != NULL, "No sequence Buffer");
 
         /* read sequences in again but this time only as temp storage... */
-        RUNP(sb_temp = get_sequences_from_hdf5_model(param->input));
+        LOG_MSG("Load sequences (tmp) ");
+        RUNP(sb_temp = get_sequences_from_hdf5_model(param->input, IHMM_SEQ_READ_ONLY_SEQ));
         ASSERT(sb_temp != NULL, "No sequence Buffer");
 
         //RUNP(fhmm_log = alloc_fhmm());
         /* get HMM parameters  */
+        LOG_MSG("Read best model");
         RUNP(fhmm_log =  read_best_fmodel(param->input, &c));
 
         //RUN(read_fhmm_parameters(fhmm_log,param->input, NULL));
 
         //RUNP(fhmm = alloc_fhmm());
-
-        RUNP(fhmm =  read_best_fmodel(param->input, &c));
+        LOG_MSG("Read best model (again)");
+        RUNP(fhmm = read_best_fmodel(param->input, &c));
         RUN(convert_fhmm_scaled_to_prob(fhmm));
         /* get HMM parameters  */
         //RUN(read_fhmm_parameters(fhmm,param->input, NULL));
@@ -201,7 +204,7 @@ int run_infoclust(struct parameters* param)
 
         RUN(clean_sequence_labelling(fhmm_log,fhmm, sb));
 
-        MMALLOC(rel_entropy, sizeof(float) * fhmm->K);
+        MMALLOC(rel_entropy, sizeof(double) * fhmm->K);
 
         /* Step one: calculate relative entropy for each state */
         RUN(calc_per_state_rel_entrophy(fhmm, rel_entropy));
@@ -221,11 +224,11 @@ int run_infoclust(struct parameters* param)
         /* Now I can set up */
 
         int start, stop;
-        int occ_cutoff = (int) sqrtf((float) sb->num_seq);
+        int occ_cutoff = (int) sqrtf((double) sb->num_seq);
         int target_len = 12;
 
 
-        float log_odds_threshold = 5.0;
+        double log_odds_threshold = 5.0;
 
 
         m = init_motif_list(sb->num_seq);
@@ -267,7 +270,7 @@ int run_infoclust(struct parameters* param)
                                         RUN(calculate_information_content(p->freq_matrix, fhmm->background, p->len, fhmm->L, &p->total));
                                         RUN(calculate_log_likelihood_based_on_hits(fhmm_log,sb,p,sa,sb_temp));
                                         //RUN(calculate_log_likelihood(fhmm_log,sb,p,sa,sb_temp));
-                                        float measure = (float) p->num_present_in_seq/ (float)(stop-start) * (float) p->num_present_in_seq;
+                                        double measure = (double) p->num_present_in_seq/ (double)(stop-start) * (double) p->num_present_in_seq;
 
                                         if(p->log_likelihood > log_odds_threshold && measure >= occ_cutoff){
                                                 //fprintf(stdout,"occ:%d %f in %d seq ic:%f\n", stop-start,p->log_likelihood,p->num_present_in_seq, p->total);
@@ -440,7 +443,7 @@ int run_infoclust(struct parameters* param)
         for(i = 0 ; i < MACRO_MIN(1000000, m->num_items);i++){
                 p = m->plist[i];
 
-                if(p->num_present_in_seq < (int)sqrtf((float) sb->num_seq)){
+                if(p->num_present_in_seq < (int)sqrt((double) sb->num_seq)){
                         free_paraclu_cluster(p);
                         m->plist[i] = 0;
                 }else{
@@ -494,7 +497,7 @@ int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq
         int* array_rename = NULL;
 
         int i,j,c;
-        float sum;
+        double sum;
 
         ASSERT(fhmm_log != NULL, "No finite hmm model.");
         ASSERT(fhmm != NULL, "No finite hmm model.");
@@ -534,7 +537,7 @@ int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq
         }
         for(i = 2; i < fhmm->K-1;i++){
                 for(j = i+1; j < fhmm->K-1;j++){
-                        float x,y;
+                        double x,y;
                         x = 0.0;
                         y = 0.0;
                         for(c = 0; c < fhmm->L;c++){
@@ -715,8 +718,8 @@ ERROR:
 
 int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif)
 {
-        float beta = 0.1;
-        float sum = 0.0;
+        double beta = 0.1;
+        double sum = 0.0;
         int i,j;
         int c;
         int seq;
@@ -782,7 +785,7 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
         struct ihmm_sequence* s = NULL;
         int i,j;
         int offset;
-        float sum = 0;
+        double sum = 0;
 
         ASSERT(sb != NULL, "No sequences");
         ASSERT(motif!= NULL, "No motif");
@@ -819,12 +822,12 @@ int calculate_log_likelihood_based_on_hits(struct fhmm*  fhmm,struct seq_buffer*
         int i,j,c;
         int offset;
         int w;
-        float occur;
-        float a,b,cc;
-        float local_p;
+        double occur;
+        double a,b,cc;
+        double local_p;
 
-        float lambda_0;         /* background prior */
-        float lambda_1;         /* motif prior */
+        double lambda_0;         /* background prior */
+        double lambda_1;         /* motif prior */
 
         struct ihmm_sequence* s = NULL;
 
@@ -874,7 +877,7 @@ int calculate_log_likelihood_based_on_hits(struct fhmm*  fhmm,struct seq_buffer*
 
         //
 
-        occur = 0.0f;
+        occur = 0.0;
         for( i = 0; i < sb_temp->num_seq;i++){
                 s = sb_temp->sequences[i];
                 for(j = 0; j < s->seq_len-w;j++){
@@ -941,12 +944,12 @@ int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct pa
         int offset;
         int w;
         int state;
-        float occur;
-        float a,b,cc;
-        float local_p;
+        double occur;
+        double a,b,cc;
+        double local_p;
 
-        float lambda_0;         /* background prior */
-        float lambda_1;         /* motif prior */
+        double lambda_0;         /* background prior */
+        double lambda_1;         /* motif prior */
 
         struct ihmm_sequence* s = NULL;
 
@@ -996,7 +999,7 @@ int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct pa
 
         //
 
-        occur = 0.0f;
+        occur = 0.0;
         for( i = 0; i < sb_temp->num_seq;i++){
                 s = sb_temp->sequences[i];
                 for(j = 0; j < s->seq_len-w;j++){
@@ -1018,7 +1021,7 @@ int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct pa
         //c /= 4;
 
 
-        occur = sqrtf(sb_temp->num_seq);
+        occur = sqrt(sb_temp->num_seq);
 
         lambda_1 = (occur) / cc;
         lambda_0 = 1.0 - lambda_1;
@@ -1147,8 +1150,8 @@ int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm)
 {
         int i,j,c,s;
         struct paraclu_cluster* p =  NULL;
-        float* background = NULL;
-        float x;
+        double* background = NULL;
+        double x;
 
         ASSERT(m != NULL, "No rbtree");
         ASSERT(fhmm != NULL, "No fhmm");
@@ -1157,7 +1160,7 @@ int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm)
         for(i = 0; i < m->num_items;i++){
                 p = m->plist[i];
 
-                x = 0.0f;
+                x = 0.0;
                 for(j = 0; j < p->len;j++){
                         s = p->state_sequence[j];
 
@@ -1167,7 +1170,7 @@ int calculate_relative_entropy(struct motif_list* m, struct fhmm* fhmm)
                                 }
                         }
                 }
-                x = x / (float) p->len;
+                x = x / (double) p->len;
                 p->total = x;
 
         }
@@ -1182,7 +1185,7 @@ int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm)
         struct paraclu_cluster* p =  NULL;
         FILE* fptr = NULL;
         int i,j,c;
-        float sum;
+        double sum;
         ASSERT(filename != NULL, "No file name");
         ASSERT(m != NULL, "No motifs");
 
@@ -1240,7 +1243,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
         char buffer[BUFFER_LEN];
         struct hdf5_data* hdf5_data = NULL;
         struct paraclu_cluster* p =  NULL;
-        float** tmp = NULL;
+        double** tmp = NULL;
         int i,j,c;
 
 
@@ -1271,7 +1274,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = fhmm->L;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("Background",&fhmm->background[0], hdf5_data);
 
         for(i = 0 ; i < m->num_items;i++){
@@ -1290,7 +1293,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
                         hdf5_data->dim[1] = fhmm->L;
                         hdf5_data->chunk_dim[0] = p->len;
                         hdf5_data->chunk_dim[1] = fhmm->L;
-                        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+                        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
                         snprintf(buffer, BUFFER_LEN, "M%03d", i+1);
                         hdf5_write(buffer,&tmp[0][0], hdf5_data);
 
@@ -1313,18 +1316,18 @@ ERROR:
 
 
 
-int calc_per_state_rel_entrophy(struct fhmm* fhmm, float* rel_entropy)
+int calc_per_state_rel_entrophy(struct fhmm* fhmm, double* rel_entropy)
 {
         int i,j;
-        float* background = NULL;
-        float x;
+        double* background = NULL;
+        double x;
         ASSERT(rel_entropy != NULL, "No entropy array malloced");
         ASSERT(fhmm != NULL, "No fhmm");
         background = fhmm->background;
         for(i = 0; i < fhmm->K;i++){
-                x = 0.0f;
+                x = 0.0;
                 for(j = 0; j < fhmm->L;j++){
-                        if(fhmm->e[i][j] > 0.0f){
+                        if(fhmm->e[i][j] > 0.0){
                                 x += fhmm->e[i][j] * log2f(fhmm->e[i][j] / background[j]);
                         }
                 }
@@ -1340,10 +1343,10 @@ ERROR:
         return FAIL;
 }
 
-int randomize_freq_matrix(float** m,int len, int L)
+int randomize_freq_matrix(double** m,int len, int L)
 {
         int i,j,c;
-        float tmp;
+        double tmp;
 
         /* column wise  */
         for(i = 0; i < len-1; i++){
@@ -1366,7 +1369,7 @@ int randomize_freq_matrix(float** m,int len, int L)
                         m[i][c] = tmp;
                 }
         }
-        /*float sum = 0.0f;
+        /*double sum = 0.0f;
         float average = 0.0f;
         float k,l;
         float a[4];
@@ -1436,22 +1439,23 @@ int randomize_freq_matrix(float** m,int len, int L)
 //        exit(0);
 }
 
-int calculate_information_content(float** freq_matrix,float* background,int len,int L,float* ic)
+int calculate_information_content(double** freq_matrix,double* background,int len,int L,double* ic)
 {
-        float tmp;
+        double tmp;
 
         int i;
         int j;
 
         ASSERT(freq_matrix!= NULL, "No matrix");
         ASSERT(background != NULL, "No background");
+        tmp = 0.0;
         for(i = 0; i < len;i++){
                 for(j = 0; j < L;j++){
                         tmp += freq_matrix[i][j] * log2f( freq_matrix[i][j] / background[j]);
                 }
         }
 
-        tmp = tmp /(float)len;
+        tmp = tmp /(double)len;
         *ic = tmp;
 
         return OK;
@@ -1465,12 +1469,12 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         struct paraclu_cluster* a;
         struct paraclu_cluster* b;
         struct paraclu_cluster* new_motif = NULL;
-        float** rand_freq_matrix = NULL;
-        float* background_scores = NULL;
+        double** rand_freq_matrix = NULL;
+        double* background_scores = NULL;
         int i,j;
         int best_i;
         int best_j;
-        float score, best_score;
+        double score, best_score;
         int allowed_overlap;
         int num_random = 10000;
         int limit;
@@ -1510,7 +1514,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                                 rand_freq_matrix[i][j] = a->freq_matrix[i][j];
                         }
                 }
-                MMALLOC(background_scores, sizeof(float) * num_random);
+                MMALLOC(background_scores, sizeof(double) * num_random);
 
                 for(j = 0; j < num_random;j++){
                         RUN(randomize_freq_matrix(rand_freq_matrix, a->len,fhmm->L));
@@ -1520,7 +1524,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                         background_scores[j] = fhmm->F_matrix[a->len][b->len];
                 }
                 gfree(rand_freq_matrix);
-                qsort(background_scores, num_random, sizeof(float),float_cmp);
+                qsort(background_scores, num_random, sizeof(double),double_cmp);
 
 
                 i = 0;
@@ -1583,7 +1587,7 @@ ERROR:
         return FAIL;
 }
 
-int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,float *jac)
+int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,double *jac)
 {
         int intersection;
         int only_a;
@@ -1639,7 +1643,7 @@ int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,in
                 only_a += len_a - a;
         }
         //fprintf(stdout,"i:%d a:%d b:%d    entries: %d %d Jaccard :%f\n", intersection,only_a,only_b, len_a,len_b  ,  (float) intersection / (float)(intersection + only_a + only_b));
-        *jac = MACRO_MAX((float) intersection /(float)(len_a),(float) intersection / (float)(len_b));// (float) intersection / (float)(intersection + only_a + only_b);
+        *jac = MACRO_MAX((double) intersection /(double)(len_a),(double) intersection / (double)(len_b));// (double) intersection / (double)(intersection + only_a + only_b);
         return OK;
 }
 
@@ -1672,7 +1676,7 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
         int pos_b = 0;
 
         uint8_t* path = NULL;
-        float** t;
+        double** t;
         int* new_state_sequence = NULL;
 
         //float** new_count_matrix = NULL;
@@ -1944,7 +1948,7 @@ ERROR:
         return FAIL;
 
 }
-int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* score)
+int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* score)
 {
 
         int allowed_overlap;
@@ -2011,14 +2015,14 @@ ERROR:
 }
 
 
-int pick_state(float* a, float* b, int len, int* pick)
+int pick_state(double* a, double* b, int len, int* pick)
 {
-        float ma,mb;
+        double ma,mb;
         int i;
 
         *pick = 0;
-        ma = -1.0f;
-        mb = -1.0f;
+        ma = -1.0;
+        mb = -1.0;
         for(i = 0; i < len;i++){
                 if(a[i] > ma){
                         ma = a[i];
@@ -2040,13 +2044,13 @@ int pick_state(float* a, float* b, int len, int* pick)
 }
 
 
-int motif_dyn_programming(struct fhmm* fhmm, float** e_a, float** e_b, int len_a, int len_b,int min_aln_len)
+int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len_a, int len_b,int min_aln_len)
 {
-        //float** e = fhmm->e;
-        float** m;
-        float** t;
+        //double** e = fhmm->e;
+        double** m;
+        double** t;
         int i,j,c;
-        float x,y;
+        double x,y;
         m = fhmm->F_matrix;
         t = fhmm->B_matrix;
         /* Step 1: fill matrix */
@@ -2121,10 +2125,10 @@ int motif_dyn_programming(struct fhmm* fhmm, float** e_a, float** e_b, int len_a
 }
 
 /* just compare - decision what to do later */
-int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, float* kl_div)
+int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* kl_div)
 {
-        float x;
-        float y;
+        double x;
+        double y;
         int i,j,c;
 
         struct paraclu_cluster* temp = NULL;
@@ -2271,14 +2275,14 @@ void free_paraclu_cluster(struct paraclu_cluster* p)
         }
 }
 
-int max_score_segment(float* x , int start ,int end, int min_len, float min_density,struct motif_list* m)
+int max_score_segment(double* x , int start ,int end, int min_len, double min_density,struct motif_list* m)
 {
         struct paraclu_cluster* p;
-        float max_density;
-        float new_min_density;
-        float min_prefix;
-        float min_suffix;
-        float total;
+        double max_density;
+        double new_min_density;
+        double min_prefix;
+        double min_suffix;
+        double total;
         int min_prefix_pos;
         int min_suffix_pos;
         int mid;
@@ -2328,14 +2332,14 @@ ERROR:
         return FAIL;
 }
 
-float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* min_prefix)
+double weakestPrefix(double* x , int start ,int end, int* min_prefix_pos, double* min_prefix)
 {
         int origin = start;
-        float density  = 0.0;
+        double density  = 0.0;
         //minPrefix = beg;
         *min_prefix = 1e100;
-        float totalValue = x[start];
-        density = totalValue / (float)(start  - origin);
+        double totalValue = x[start];
+        density = totalValue / (double)(start  - origin);
         if (density < *min_prefix) {
                 *min_prefix_pos = start;
                 *min_prefix = density;
@@ -2343,8 +2347,8 @@ float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* m
         ++start;
 
         while (start < end) {
-                //fprintf(stderr,"%d	%d	%f\n",origin, start,  totalValue / (float)(start  - origin));
-                density = totalValue / (float)(start  - origin);
+                //fprintf(stderr,"%d	%d	%f\n",origin, start,  totalValue / (double)(start  - origin));
+                density = totalValue / (double)(start  - origin);
                 if (density < *min_prefix) {
                         *min_prefix_pos = start;
                         *min_prefix = density;
@@ -2356,19 +2360,19 @@ float weakestPrefix(float* x , int start ,int end, int* min_prefix_pos, float* m
         return totalValue;
 }
 
-void weakestSuffix(float* x , int start ,int end, int* min_suffix_pos, float* min_suffix)
+void weakestSuffix(double* x , int start ,int end, int* min_suffix_pos, double* min_suffix)
 {
 
         --end;
         int origin = end;
-        float density  = 0.0;
+        double density  = 0.0;
         //minSuffix = end + 1;
         *min_suffix = 1e100;
-        float totalValue = x[end];
+        double totalValue = x[end];
 
         while (end > start) {
                 --end;
-                //fprintf(stderr,"%d	%d	%f\n",origin, end,  totalValue / (float)( origin-end));
+                //fprintf(stderr,"%d	%d	%f\n",origin, end,  totalValue / (double)( origin-end));
                 density = totalValue / (origin - end);
                 if (density < *min_suffix) {
                         *min_suffix_pos = end + 1;
@@ -2458,10 +2462,10 @@ int sort_hit_positions(const void *a, const void *b)
 }
 
 
-int float_cmp(const void *a, const void *b)
+int double_cmp(const void *a, const void *b)
 {
-    const float *ia = (const float *)a;
-    const float *ib = (const float *)b;
+    const double *ia = (const double *)a;
+    const double *ib = (const double *)b;
     if(*ia > *ib ){
             return 1;
     }else{

@@ -63,7 +63,7 @@ struct seq_buffer* concatenate_sequences(struct seq_buffer* sb)
 
         sb_concat->background = NULL;
 
-        MMALLOC(sb_concat->background, sizeof(float)*  sb->L);
+        MMALLOC(sb_concat->background, sizeof(double)*  sb->L);
         for(i = 0;i < sb->L;i++){
                 sb_concat->background[i] = sb->background[i];
         }
@@ -93,14 +93,14 @@ ERROR:
 }
 
 
-struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
+struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
 {
         struct hdf5_data* hdf5_data = NULL;
         struct seq_buffer* sb = NULL;
         char** name = NULL;
         char** seq = NULL;
         int** label = NULL;
-        float* background;
+        double* background;
 
         int num_seq;
         int max_len;
@@ -128,6 +128,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
         max_len = -1;
         max_name_len = -1;
         local_L = -1;
+        num_models = -1;
         for(i = 0; i < hdf5_data->num_attr;i++){
                 if(!strncmp("NumSeq", hdf5_data->attr[i]->attr_name, 6)){
                         num_seq = hdf5_data->attr[i]->int_val;
@@ -168,14 +169,18 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
 
         hdf5_read_dataset("Background",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read background");
-        background = (float*)hdf5_data->data;
+        background = (double*)hdf5_data->data;
 
-        hdf5_read_dataset("Labels",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
-        label = (int**)hdf5_data->data;
-        hdf5_close_group(hdf5_data);
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        if(mode == IHMM_SEQ_READ_ALL){
+                hdf5_read_dataset("Labels",hdf5_data);
+                ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
+                label = (int**)hdf5_data->data;
+                hdf5_close_group(hdf5_data);
+                hdf5_close_file(hdf5_data);
+                hdf5_free(hdf5_data);
+        }else{
+                label= NULL;
+        }
 
 
         MMALLOC(sb,sizeof(struct seq_buffer));
@@ -197,20 +202,20 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                         RUN(realloc_ihmm_seq(sb->sequences[i]));
                 }
         }
+        if(mode == IHMM_SEQ_READ_ALL){
+                RUN(add_multi_model_label_and_u(sb, num_models));
 
-        RUN(add_multi_model_label_and_u(sb, num_models));
-
-        /* copy stuff over */
-        for(i = 0; i < sb->num_seq;i++){
-                pos = 0;
-                for(c = 0; c < num_models;c++){
-                        for (j = 0; j < sb->max_len+1;j++){
-                                sb->sequences[i]->label_arr[c][j] = label[i][pos];
-                                pos++;
+                /* copy stuff over */
+                for(i = 0; i < sb->num_seq;i++){
+                        pos = 0;
+                        for(c = 0; c < num_models;c++){
+                                for (j = 0; j < sb->max_len+1;j++){
+                                        sb->sequences[i]->label_arr[c][j] = label[i][pos];
+                                        pos++;
+                                }
                         }
                 }
         }
-
 
         /* copy stuff over */
         for(i = 0; i < sb->num_seq;i++){
@@ -234,8 +239,9 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename)
                 }
                 sb->sequences[i]->seq_len = j;
         }
-
-        gfree(label);
+        if(mode == IHMM_SEQ_READ_ALL){
+                gfree(label);
+        }
         gfree(name);
         gfree(seq);
         return sb;
@@ -381,7 +387,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         hdf5_data->dim[1] = 0;
         hdf5_data->chunk_dim[0] = sb->L;
         hdf5_data->chunk_dim[1] = 0;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("Background",&sb->background[0], hdf5_data);
 
         hdf5_close_group(hdf5_data);
@@ -414,17 +420,17 @@ ERROR:
  * probabilities samples from a dirichlet distribution. Labels will be chiosen
  * by sampling from the distributions samples by the dirichlets. */
 
-int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha)
+int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, double alpha)
 {
-        float** emission = NULL;
+        double** emission = NULL;
         int i,j,c;
         uint8_t* seq;
         int* label;
         int len;
         rk_state rndstate;
-        float sum = 0;
+        double  sum = 0;
 
-        float r;
+        double r;
 
         ASSERT(sb != NULL, "No sequence buffer");
 
@@ -479,20 +485,20 @@ ERROR:
 
 
 
-int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha)
+int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, double alpha)
 {
-        float** transition = NULL;
-        float** emission = NULL;
-        float* tmp = NULL;
+        double** transition = NULL;
+        double** emission = NULL;
+        double* tmp = NULL;
         int i,j,c;
         uint8_t* seq;
         int* label;
         int len;
         rk_state rndstate;
-        float sum = 0;
-        float sanity;
+        double sum = 0;
+        double sanity;
 
-        float r;
+        double r;
         int n;
         int cur_state;
 
@@ -508,18 +514,18 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
 
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
-        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
-        RUNP(transition = galloc(transition, k+1,  k , 0.0f));
+        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0));
+        RUNP(transition = galloc(transition, k+1,  k , 0.0));
 
-        MMALLOC(tmp, sizeof(float) * k);
+        MMALLOC(tmp, sizeof(double) * k);
         //fprintf(stdout,"Emission\n");
         for(i = 0; i < k;i++){
                 sum = 0.0;
                 for(j = 0;j < n;j++){
-                        emission[i][j] = rk_gamma(&rndstate,alpha + 1.0 + ((float)i) / (float)(k)*10.0f, 1.0);
+                        emission[i][j] = rk_gamma(&rndstate,alpha + 1.0 + ((double)i) / (double)(k)*10.0, 1.0);
                         sum += emission[i][j];
                 }
-                sanity = 0.0f;
+                sanity = 0.0;
                 for(j = 0;j < n;j++){
                         emission[i][j] /= sum;
                         emission[k][j] += emission[i][j]; /* Last row has sums of all emissions of Letter 0, 1, 2, .. L  *\/ */
@@ -540,7 +546,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                         //}
                         sum += transition[i][j];
                 }
-                sanity = 0.0f;
+                sanity = 0.0;
                 for(j = 0; j < k;j++){
                         transition[i][j] /= sum;
                         transition[k][j] += transition[i][j];
@@ -562,7 +568,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                 r = rk_double(&rndstate) * emission[k][seq[0]];//  random_float_zero_to_x(emission[k][seq[0]]);
                 for(c = 0; c < k;c++){
                         r -= emission[c][seq[0]];
-                        if(r <= 0.0f){
+                        if(r <= 0.0){
                                 label[0] = c+2;
                                 cur_state = c;
                                 break;
@@ -571,7 +577,7 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float 
                 }
 
                 for(j = 1;j < len;j++){
-                        sum = 0.0f;
+                        sum = 0.0;
                         for(c = 0; c < k;c++){
                                 tmp[c] = transition[cur_state][c] * emission[c][seq[j]];
                                 sum += tmp[c];
@@ -682,13 +688,13 @@ ERROR:
 
 
 
-int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
+int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
 {
         int* label;
         int i,j,c;
         int len;
-        float* state_prob = NULL;
-        float sum,r;
+        double* state_prob = NULL;
+        double sum,r;
         rk_state rndstate;
 
         ASSERT(alpha > 0.0,"alpha should not be zero");
@@ -696,7 +702,7 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha)
 
         ASSERT(sb != NULL,"No sequences");
         rk_randomseed(&rndstate);
-        MMALLOC(state_prob, sizeof(float) * k);
+        MMALLOC(state_prob, sizeof(double) * k);
 
         sum = 0.0;
         for(i = 0; i< k; i++){
@@ -794,7 +800,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
                                 break;
                                 }*/
                         sequence->seq[c] = seq[i][j];
-                        sequence->u[c] = 1.0f;
+                        sequence->u[c] = 1.0;
                         sequence->label[c] = 2;
                         c++;
                         if(c == sequence->malloc_len){
@@ -937,13 +943,13 @@ ERROR:
 int add_background_to_sequence_buffer(struct seq_buffer* sb)
 {
         int i,j;
-        float sum = 0.0f;
+        double sum = 0.0;
         ASSERT(sb!= NULL, "No sequence buffer");
         ASSERT(sb->L != 0, "No alphabet detected");
 
-        MMALLOC(sb->background, sizeof(float)* sb->L);
+        MMALLOC(sb->background, sizeof(double)* sb->L);
         for(i = 0; i < sb->L;i++){
-               sb->background[i] = 0.0f;
+               sb->background[i] = 0.0;
         }
 
         for(i = 0; i < sb->num_seq;i++){
@@ -1436,9 +1442,9 @@ int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest)
 int print_states_per_sequence(struct seq_buffer* sb)
 {
 
-        float* counts = NULL;
+        double* counts = NULL;
         int num_states;
-        float sum;
+        double sum;
         int i,j;
         ASSERT(sb != NULL, "No sequence buffer");
         num_states = 0;
@@ -1453,7 +1459,7 @@ int print_states_per_sequence(struct seq_buffer* sb)
 
         num_states++;
 
-        MMALLOC(counts, sizeof(float) * num_states);
+        MMALLOC(counts, sizeof(double) * num_states);
         for(i =0; i < sb->num_seq;i++){
                 sum = 0;
                 for(j = 0; j < num_states;j++){
@@ -1918,7 +1924,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->score = 1.0f;
         sequence->r_score = 1.0f;
         MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
-        MMALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
+        MMALLOC(sequence->u, sizeof(double) * (sequence->malloc_len+1));
         MMALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
         MMALLOC(sequence->name, sizeof(char) * 256);
         sequence->label_arr = NULL;
@@ -1938,7 +1944,7 @@ int realloc_ihmm_seq(struct ihmm_sequence* sequence)
 
         sequence->malloc_len = sequence->malloc_len << 1;
         MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
-        MREALLOC(sequence->u, sizeof(float) * (sequence->malloc_len+1));
+        MREALLOC(sequence->u, sizeof(double) * (sequence->malloc_len+1));
         MREALLOC(sequence->label , sizeof(int) * sequence->malloc_len);
 
         return OK;

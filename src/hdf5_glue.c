@@ -139,7 +139,7 @@ ERROR:
 }
 
 
-int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char* string, int int_val, float float_val, int type)
+int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char* string, int int_val, double double_val, int type)
 {
         int n = hdf5_data->num_attr;
 
@@ -156,7 +156,7 @@ int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char* string
                 snprintf(hdf5_data->attr[n]->string, HDF5GLUE_MAX_CONTENT_LEN,"%s", string);
         }
         hdf5_data->attr[n]->int_val = int_val;
-        hdf5_data->attr[n]->float_val = float_val;
+        hdf5_data->attr[n]->double_val = double_val;
 
 
         hdf5_data->num_attr++;
@@ -198,8 +198,8 @@ int hdf5_read_attributes(struct hdf5_data* hdf5_data,hid_t target)
                         hdf5_data->status = H5Aread(hdf5_data->attribute_id, H5T_NATIVE_INT, &hdf5_data->attr[i]->int_val);
                 }
                 if(type_class == H5T_FLOAT){
-                        hdf5_data->attr[i]->type = HDF5GLUE_FLOAT;
-                        hdf5_data->status = H5Aread(hdf5_data->attribute_id, H5T_NATIVE_FLOAT, &hdf5_data->attr[i]->float_val);
+                        hdf5_data->attr[i]->type = HDF5GLUE_DOUBLE;
+                        hdf5_data->status = H5Aread(hdf5_data->attribute_id, H5T_NATIVE_DOUBLE, &hdf5_data->attr[i]->double_val);
                 }
 
                 hdf5_data->num_attr++;
@@ -250,11 +250,11 @@ int hdf5_write_attributes(struct hdf5_data* hdf5_data,hid_t target)
                         hdf5_data->status = H5Aclose(attr);
 
                         break;
-                case HDF5GLUE_FLOAT:
+                case HDF5GLUE_DOUBLE:
                         aid  = H5Screate(H5S_SCALAR);
-                        attr = H5Acreate2(target,hdf5_data->attr[i]->attr_name, H5T_NATIVE_FLOAT, aid,  H5P_DEFAULT, H5P_DEFAULT);
+                        attr = H5Acreate2(target,hdf5_data->attr[i]->attr_name, H5T_NATIVE_DOUBLE, aid,  H5P_DEFAULT, H5P_DEFAULT);
 
-                        hdf5_data->status = H5Awrite(attr, H5T_NATIVE_FLOAT, &hdf5_data->attr[i]->float_val);
+                        hdf5_data->status = H5Awrite(attr, H5T_NATIVE_DOUBLE, &hdf5_data->attr[i]->double_val);
                         hdf5_data->status = H5Sclose(aid);
                         hdf5_data->status = H5Aclose(attr);
                         break;
@@ -1434,7 +1434,7 @@ int print_attributes(struct hdf5_data* hdf5_data)
                                 fprintf(stdout,"%s => %d\n", hdf5_data->attr[i]->attr_name, hdf5_data->attr[i]->int_val);
                                 break;
                         case HDF5GLUE_FLOAT:
-                                fprintf(stdout,"%s => %f\n", hdf5_data->attr[i]->attr_name, hdf5_data->attr[i]->float_val);
+                                fprintf(stdout,"%s => %f\n", hdf5_data->attr[i]->attr_name, hdf5_data->attr[i]->double_val);
                                 break;
                         default:
                                 break;

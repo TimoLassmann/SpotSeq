@@ -35,7 +35,7 @@ int calibrate(char* model_file,int num_threads, double* mu, double* lambda)
         /* Step 1: emit sequences with same background and length
          * distribution as training sequences */
         LOG_MSG("Generating random sequences.");
-        RUNP(sb_in = get_sequences_from_hdf5_model(model_file));
+        RUNP(sb_in = get_sequences_from_hdf5_model(model_file, IHMM_SEQ_READ_ONLY_SEQ));
 
         RUNP(sb = emit_sequences_from_random_model(sb_in, num_seq));
         free_ihmm_sequences(sb_in);

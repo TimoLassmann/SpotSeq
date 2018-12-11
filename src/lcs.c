@@ -182,7 +182,7 @@ int run_lcs(struct parameters* param)
         }
 
 
-        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        RUNP(sb = get_sequences_from_hdf5_model(param->input, IHMM_SEQ_READ_ONLY_SEQ));
 
         ASSERT(sb != NULL, "No sequence Buffer");
 
@@ -316,7 +316,7 @@ int run_lcs(struct parameters* param)
         /* remove old sequence buffer and load a fresh one from file  */
         free_ihmm_sequences(sb);
         sb = NULL;
-        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        RUNP(sb = get_sequences_from_hdf5_model(param->input, IHMM_SEQ_READ_ONLY_SEQ));
         for(i = 0; i < sb->num_seq;i++){
                 for(j = 0; j < sb->sequences[i]->seq_len;j++){
                         sb->sequences[i]->label[j] = array_rename[sb->sequences[i]->label[j]];
@@ -460,7 +460,7 @@ int analyze_label_sequences_with_pst(char* filename, int min_pattern_len, float 
 
 
         /* first challenge: build suffix array from labels  */
-        RUNP(sb = get_sequences_from_hdf5_model(filename));
+        RUNP(sb = get_sequences_from_hdf5_model(filename, IHMM_SEQ_READ_ONLY_SEQ));
 
         ASSERT(sb != NULL, "No sequence Buffer");
         sa = build_sa(sb);

@@ -68,7 +68,7 @@ int main(const int argc, char * argv[])
                 ERROR_MSG("No sequences requested...! use -n XXXX ");
         }
 
-        RUNP(sb_in = get_sequences_from_hdf5_model(in));
+        RUNP(sb_in = get_sequences_from_hdf5_model(in, IHMM_SEQ_READ_ONLY_SEQ));
         RUNP(sb = emit_sequences_from_random_model(sb_in, num_seq));
 
         RUN( write_ihmm_sequences_fasta(sb, out));

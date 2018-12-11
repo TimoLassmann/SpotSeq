@@ -23,20 +23,20 @@ struct hdf5_data;               /* forward declaration`` */
 
 
 struct ihmm_model{
-        float** transition_counts;
-        float** emission_counts;
-        float* beta;
+        double** transition_counts;
+        double** emission_counts;
+        double* beta;
         unsigned int seed;
         rk_state rndstate;
-        float gamma;
-        float alpha;
-        float alpha_a;
-        float alpha_b;
-        float gamma_a;
-        float gamma_b;
-        float log_likelihood;
-        float alpha_limit;
-        float gamma_limit;
+        double gamma;
+        double alpha;
+        double alpha_a;
+        double alpha_b;
+        double gamma_a;
+        double gamma_b;
+        double log_likelihood;
+        double alpha_limit;
+        double gamma_limit;
         int num_states;         /* this excludes the start and stop states (0,1) */
         int alloc_num_states;
         int L;
@@ -46,7 +46,7 @@ struct ihmm_model{
 struct model_bag{
         struct ihmm_model** models;
         struct fhmm** finite_models;
-        float* min_u;
+        double* min_u;
         int best_model;
         int max_num_states;
         int num_models;
@@ -71,9 +71,9 @@ extern struct fhmm* read_best_fmodel(char* filename, int* best_model);
 
 extern struct model_bag* read_model_bag_hdf5(char* filename);
 extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
-//extern int add_fhmm(char* filename,float** transition,float** emission, int N, int L);
+//extern int add_fhmm(char* filename,double** transition,double** emission, int N, int L);
 extern int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group);
-extern int add_background_emission(char* filename,float* background,int L);
+extern int add_background_emission(char* filename,double* background,int L);
 extern int add_annotation( char* filename, char* name, char* value);
 
 //extern int write_model_hdf5(struct ihmm_model* model, char* filename);
@@ -97,7 +97,7 @@ extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffe
 
 
 /* set hyperparameters  */
-extern int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma);
+extern int set_model_hyper_parameters(struct model_bag* b, double alpha, double gamma);
 /* re-estimate hyper parameters */
 extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 

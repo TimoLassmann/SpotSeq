@@ -19,24 +19,28 @@
 
 #define BLOCK_LEN 70
 
+#define IHMM_SEQ_READ_ALL 0
+
+#define IHMM_SEQ_READ_ONLY_SEQ 1
+
 struct ihmm_sequence{
         uint8_t* seq;
         uint8_t* has_path;
-        float** u_arr;
+        double** u_arr;
         int** label_arr;
         int** tmp_label_arr;
-        float* u;
+        double* u;
         int* label;
         char* name;
-        float score;
-        float r_score;
+        double score;
+        double r_score;
         int malloc_len;
         int seq_len;
 };
 
 struct seq_buffer{
         struct ihmm_sequence** sequences;
-        float* background;
+        double* background;
 
         rk_state rndstate;
         int seed;
@@ -57,16 +61,16 @@ extern int check_labels(struct seq_buffer* sb, int num_models);
 
 extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 
-extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename);
+extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename,int mode);
 extern int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int model_index);
 extern int random_label_based_on_multiple_models(struct seq_buffer* sb, int K, int model_index, rk_state* random);
-extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k,float alpha);
+extern int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha);
 
 extern int shuffle_sequences_in_buffer(struct seq_buffer* sb);
 
 extern struct seq_buffer* concatenate_sequences(struct seq_buffer* sb);
-extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, float alpha);
-extern int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, float alpha);
+extern int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, double alpha);
+extern int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, double alpha);
 
 extern int print_states_per_sequence(struct seq_buffer* sb);
 extern struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq);

@@ -179,8 +179,6 @@ int run_plot_ihmm(struct parameters* param)
         struct ihmm_model* model = NULL;
         struct fhmm* fhmm = NULL;
 
-
-        int initial_states = 10;
         int best = 0;
         ASSERT(param!= NULL, "No parameters found.");
 
@@ -221,7 +219,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         FILE* fptr = NULL;
         int best = 0;
         ASSERT(param != NULL, "no parameters");
-        RUNP(sb = get_sequences_from_hdf5_model(param->input));
+        RUNP(sb = get_sequences_from_hdf5_model(param->input,IHMM_SEQ_READ_ALL));
         //RUNP(model = read_model_hdf5(param->input));
         RUNP(model = read_best_imodel(param->input, &best));
 
@@ -337,10 +335,10 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 {
         FILE* f_ptr = NULL;
 
-        float* tmp_sum = NULL;
+        double* tmp_sum = NULL;
         int* total_counts = NULL;
 
-        float* background;
+        double* background;
         char color_buffer[BUFFER_LEN];
         double IC;
         double max_IC;

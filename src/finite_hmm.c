@@ -1,12 +1,12 @@
 
 #include "finite_hmm.h"
 
-int random_model_score(float* b, float* ret_score,  uint8_t* a, int len, int expected_len)
+int random_model_score(double* b, double* ret_score,  uint8_t* a, int len, int expected_len)
 {
         int i;
-        float score;
-        float r;                /* self transition */
-        float e;                /* 1- r (exit) */
+        double score;
+        double r;                /* self transition */
+        double e;                /* 1- r (exit) */
 
         ASSERT(b != NULL, "No background probabilities");
         ASSERT(a != NULL, "No sequence");
@@ -34,15 +34,15 @@ ERROR:
         return FAIL;
 }
 
-int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
+int forward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
 
-        float* last= 0;
-        float* cur = 0;
-        const float* trans = 0;
+        double* last= 0;
+        double* cur = 0;
+        const double* trans = 0;
 
-        float tmp = 0;
+        double tmp = 0;
 
         ASSERT(fhmm != NULL, "No model");
         ASSERT(matrix != NULL, "No dyn programming  matrix");
@@ -55,7 +55,7 @@ int forward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int 
         for(j = 0; j < fhmm->K;j++){
                 cur[j]  = -INFINITY;
         }
-        cur[IHMM_START_STATE] = 0.0f;
+        cur[IHMM_START_STATE] = 0.0;
 
         for(i = 1; i < len+1;i++){
                 last = cur;
@@ -94,13 +94,13 @@ ERROR:
         return FAIL;
 }
 
-int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
+int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
 
-        float* next= 0;
-        float* cur = 0;
-        const float* trans = 0;
+        double* next= 0;
+        double* cur = 0;
+        const double* trans = 0;
 
         ASSERT(fhmm != NULL, "No model");
         ASSERT(matrix != NULL, "No dyn programming  matrix");
@@ -159,22 +159,22 @@ ERROR:
 }
 
 
-int posterior_decoding(struct fhmm* fhmm,float** Fmatrix, float** Bmatrix,float score,uint8_t* a, int len,int* path)
+int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path)
 {
         int i,j,c,f,best;
         int state;
 
-        float* this_F = 0;
-        float* this_B = 0;
+        double* this_F = 0;
+        double* this_B = 0;
 
         ASSERT(fhmm != NULL, "No model");
         ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
 
-        //const float* trans = 0;
-        float max = prob2scaledprob(0.0);
-        float total = score;
+        //const double* trans = 0;
+        double max = prob2scaledprob(0.0);
+        double total = score;
 
         for(i = 1; i <= len;i++){
                 //last_F = Fmatrix[i-1];
@@ -247,7 +247,7 @@ ERROR:
 struct fhmm* init_fhmm(char* filename)
 {
         struct fhmm* fhmm = NULL;
-        char model_name = NULL;
+        //char model_name = NULL;
         ASSERT(filename!= NULL, "No filename");
         /* allocate finite hmm */
         RUNP(fhmm = alloc_fhmm());
@@ -372,7 +372,7 @@ ERROR:
 struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
 {
         struct fhmm* fhmm = NULL;
-        float sum;
+        double sum;
         int i,j;
 
 
@@ -409,20 +409,20 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
 
         hdf5_read_dataset("emission",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
-        fhmm->e = (float**) hdf5_data->data;
+        fhmm->e = (double**) hdf5_data->data;
 
         hdf5_read_dataset("transition",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
-        fhmm->t = (float**) hdf5_data->data;
+        fhmm->t = (double**) hdf5_data->data;
 
         hdf5_read_dataset("transition_index",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_index");
-        fhmm->tindex = (float**) hdf5_data->data;
+        fhmm->tindex = (int**) hdf5_data->data;
 
 
         hdf5_read_dataset("background",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read transition_background");
-        fhmm->background = (float*) hdf5_data->data;
+        fhmm->background = (double*) hdf5_data->data;
 
 
         hdf5_close_group(hdf5_data);

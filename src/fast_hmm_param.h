@@ -16,7 +16,7 @@
 
 
 struct fast_t_item{
-        float t;
+        double t;
         uint16_t from;
         uint16_t to;
 };
@@ -25,9 +25,9 @@ struct fast_hmm_param{
         struct fast_t_item** list;
         struct fast_t_item** infinity;
         struct rbtree_root* root;
-        float** transition;
-        float** emission;
-        float* background_emission;
+        double** transition;
+        double** emission;
+        double* background_emission;
         int last_state;
         int alloc_items;
         int num_items;
@@ -74,7 +74,7 @@ extern int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b);
 
 /* return index of first element < x i.e. we can then do for(i =0; i < return;i++) */
 
-extern int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, float x);
+extern int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, double x);
 
 /* These functions return the first and last+1 entry in list that has value of x */
 extern int fast_hmm_param_binarySearch_to_lower_bound(struct fast_hmm_param* ft, int x);

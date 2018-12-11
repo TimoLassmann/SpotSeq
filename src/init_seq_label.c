@@ -6,11 +6,11 @@ int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha)
         struct fhmm* fhmm = NULL;
         int i,j;
         rk_state rndstate;
-        float sum;
+        double sum;
         int expected_len;
-        float s;                /* self transition */
-        float e;                /* 1- r (exit) */
-        float pseudocount = 0.0f; /* just to make sure everything is
+        double s;                /* self transition */
+        double e;                /* 1- r (exit) */
+        double pseudocount = 0.0f; /* just to make sure everything is
                                    * connected; otherwise there is a
                                    * chance that the hmm model is
                                    * invalid (no path from start to
@@ -30,7 +30,7 @@ int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha)
 
         fhmm->K = k + 2;
         fhmm->L = sb->L;
-        MMALLOC(fhmm->background, sizeof(float)* sb->L);
+        MMALLOC(fhmm->background, sizeof(double)* sb->L);
         for(i = 0; i < sb->L;i++){
                 fhmm->background[i] = sb->background[i];
         }

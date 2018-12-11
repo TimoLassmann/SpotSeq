@@ -10,24 +10,24 @@
 #include "hdf5_glue.h"
 
 struct fhmm{
-        float** F_matrix;
-        float** B_matrix;
-        float** e;
-        float** t;
+        double** F_matrix;
+        double** B_matrix;
+        double** e;
+        double** t;
         int** tindex;
-        float* background;
-        float f_score;
-        float b_score;
-        float r_score;
+        double* background;
+        double f_score;
+        double b_score;
+        double r_score;
         int alloc_matrix_len;
         int K;
         int L;
 };
 
-extern int random_model_score(float* b, float* ret_score, uint8_t* a, int len, int expected_len);
-extern int forward(struct fhmm* fhmm,float** matrix,float* ret_score, uint8_t* a, int len);
-extern int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len);
-extern int posterior_decoding(struct fhmm* fhmm,float** Fmatrix, float** Bmatrix,float score,uint8_t* a, int len,int* path);
+extern int random_model_score(double* b, double* ret_score, uint8_t* a, int len, int expected_len);
+extern int forward(struct fhmm* fhmm,double** matrix,double* ret_score, uint8_t* a, int len);
+extern int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len);
+extern int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path);
 
 //extern int read_fhmm_parameters(struct fhmm* fhmm, char* filename, char* model_name);
 struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group);

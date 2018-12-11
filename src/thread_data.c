@@ -17,12 +17,12 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
         local_num_treads = *num_threads;
 
 
-        mem_needed = sizeof(float) * local_num_treads * max_len * K;
+        mem_needed = sizeof(double) * local_num_treads * max_len * K;
 
         while(mem_needed  > GB){
                 local_num_treads--;
                 ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
-                mem_needed = sizeof(float) * local_num_treads * max_len * K;
+                mem_needed = sizeof(double) * local_num_treads * max_len * K;
 
         }
 
@@ -37,9 +37,9 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
                 td[i]->e = NULL;
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0f));
-                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0));
+                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0));
+                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0));
 
                 RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
                 RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
@@ -82,12 +82,12 @@ int resize_spotseq_thread_data(struct spotseq_thread_data** td,int* num_threads,
         local_num_treads = *num_threads;
         cur_threads =  *num_threads;
 
-        mem_needed = sizeof(float) * local_num_treads * max_len * K;
+        mem_needed = sizeof(double) * local_num_treads * max_len * K;
 
         while(mem_needed  > GB){
                 local_num_treads--;
                 ASSERT(local_num_treads != 0, "No space! %d asked for but the limit is %d",mem_needed,GB);
-                mem_needed = sizeof(float) * local_num_treads * max_len * K;
+                mem_needed = sizeof(double) * local_num_treads * max_len * K;
         }
 
 
@@ -99,10 +99,10 @@ int resize_spotseq_thread_data(struct spotseq_thread_data** td,int* num_threads,
 
         //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
         for(i = 0; i < local_num_treads;i++){
-                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0f));
+                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0));
 
-                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0f));
-                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0f));
+                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0));
+                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0));
 
                 RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
                 RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));

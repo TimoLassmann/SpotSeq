@@ -4,12 +4,12 @@ static int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int 
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
-        float* tmp_prob = NULL;
+        double* tmp_prob = NULL;
         int i,j;
         //int list_index;
         //int last_index;
         int last_state;
-        float sum;
+        double sum;
 
         ASSERT(model != NULL, "No model");
         ASSERT(ft != NULL,"No fast_hmm_param structure");
@@ -26,7 +26,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
                 }
         }
 
-        MMALLOC(tmp_prob, sizeof(float) *(model->num_states));
+        MMALLOC(tmp_prob, sizeof(double) *(model->num_states));
 
         last_state = model->num_states -1;
         //fprintf(stdout,"%d last state\n",last_state);
@@ -47,7 +47,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         /* Disallow Start to start transitions */
         ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0;
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
-        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0f;
+        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
                 tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
@@ -70,9 +70,9 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
          * end are zero. I am not sure if this matters in my dyn prig. code but
          * why not! */
         for(i = 0; i < last_state;i++){
-                ft->transition[IHMM_END_STATE][i] = 0.0f;
+                ft->transition[IHMM_END_STATE][i] = 0.0;
         }
-        ft->transition[IHMM_END_STATE][last_state] = 0.0f;
+        ft->transition[IHMM_END_STATE][last_state] = 0.0;
 
         for(i = 2; i < last_state;i++){
                 /* Remeber where I started filling...  */
@@ -105,7 +105,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         }
 
         for(j = 0; j < last_state;j++){
-                sum = 0.0f;
+                sum = 0.0;
                 for(i = 0; i < model->L;i++){
                         sum += ft->emission[i][j];
                 }
@@ -126,12 +126,12 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         struct fast_t_item* tmp = NULL;
         struct fast_t_item** infinity = NULL;
-        float* tmp_prob = NULL;
+        double* tmp_prob = NULL;
         int i,j;
         //int list_index;
         //int last_index;
         int last_state;
-        float sum;
+        double sum;
 
         ASSERT(model != NULL, "No model");
         ASSERT(ft != NULL,"No fast_hmm_param structure");
@@ -148,7 +148,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 }
         }
 
-        MMALLOC(tmp_prob, sizeof(float) *(model->num_states));
+        MMALLOC(tmp_prob, sizeof(double) *(model->num_states));
         last_state = model->num_states -1;
 
         /* check if there is enough space to hold new transitions... */
@@ -171,7 +171,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         MMALLOC(tmp, sizeof(struct fast_t_item));
         tmp->from = IHMM_START_STATE;
         tmp->to = IHMM_START_STATE;
-        tmp->t =  0.0f;
+        tmp->t =  0.0;
         ft->root->tree_insert(ft->root,tmp);
         // insert into transition matrix.
 
@@ -183,10 +183,10 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         MMALLOC(tmp, sizeof(struct fast_t_item));
         tmp->from = IHMM_START_STATE;
         tmp->to = IHMM_END_STATE;
-        tmp->t =  0.0f;
+        tmp->t =  0.0;
         ft->root->tree_insert(ft->root,tmp);
 
-        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0f;
+        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
                 tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
@@ -223,14 +223,14 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 MMALLOC(tmp, sizeof(struct fast_t_item));
                 tmp->from = IHMM_END_STATE;
                 tmp->to = i;
-                tmp->t = 0.0f;
+                tmp->t = 0.0;
                 ft->root->tree_insert(ft->root,tmp);
-                ft->transition[IHMM_END_STATE][i] = 0.0f;
+                ft->transition[IHMM_END_STATE][i] = 0.0;
         }
         infinity[IHMM_END_STATE]->from = IHMM_END_STATE;
         infinity[IHMM_END_STATE]->to = last_state;
-        infinity[IHMM_END_STATE]->t = 0.0f;
-        ft->transition[IHMM_END_STATE][last_state] = 0.0f;
+        infinity[IHMM_END_STATE]->t = 0.0;
+        ft->transition[IHMM_END_STATE][last_state] = 0.0;
 
 
         for(i = 2; i < last_state;i++){
@@ -277,12 +277,12 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 
 
         for(j = 0; j < last_state;j++){
-                sum = 0.0f;
+                sum = 0.0;
                 for(i = 0; i < model->L;i++){
                         sum += ft->emission[i][j];
                 }
-                if(sum == 0.0f){
-                        sum = 1.0f;
+                if(sum == 0.0){
+                        sum = 1.0;
                 }
                 for(i = 0; i < model->L;i++){
                         ft->emission[i][j] /= sum;
@@ -302,14 +302,14 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         struct fhmm* fhmm = NULL;
         struct fast_hmm_param* ft = NULL;
 
-        float** s1_e = NULL;
-        float** s2_e = NULL;
+        double** s1_e = NULL;
+        double** s2_e = NULL;
 
-        float** s1_t = NULL;
-        float** s2_t = NULL;
+        double** s1_t = NULL;
+        double** s2_t = NULL;
 
         int initial_states = 10;
-        float sum;
+        double sum;
         int iterations = 1000;
         int iter,c,i,j;
 
@@ -354,9 +354,9 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         /* copy background probabilitys into fhmm */
 
-        MMALLOC(fhmm->background, sizeof(float) * fhmm->L);
+        MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
         for (i = 0; i < fhmm->L; i++){
-                fhmm->background[i] = ft->background_emission[i];
+                fhmm->background[i] = (double) ft->background_emission[i];
         }
 
         /* Note: there is a possibility that un-visited states exist
@@ -376,7 +376,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 for(i = 0;i < model->num_states;i++){
                         if(used[i] != -1){
                                 for(c = 0; c < model->L;c++){
-                                        s1_e[used[i]][c] += ft->emission[c][i];
+                                        s1_e[used[i]][c] +=  ft->emission[c][i];
                                         s2_e[used[i]][c] += (ft->emission[c][i] * ft->emission[c][i]);
                                 }
                         }
@@ -393,6 +393,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 }
 
         }
+
         for(i = 0; i < local_num_states;i++){
                 sum = 0.0;
                 for(j = 0; j < model->L;j++){
@@ -492,12 +493,12 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
         int initial_states = 10;
         int iter;
         int i,j,c;
-        float** s1_e = NULL;
-        float** s2_e = NULL;
+        double** s1_e = NULL;
+        double** s2_e = NULL;
 
-        float** s1_t = NULL;
-        float** s2_t = NULL;
-        float sum;
+        double** s1_t = NULL;
+        double** s2_t = NULL;
+        double sum;
         int iterations = 1000;
 
         ASSERT(h5file != NULL, "No parameters found.");
@@ -607,11 +608,11 @@ int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_mo
 
 
         int i,j;
-        float sum = 0.0f;
+        double sum = 0.0;
         ASSERT(ft != NULL, "No parameters");
         ASSERT(model != NULL, "No model ");
         for(i = 0; i < ft->L;i++){
-                ft->background_emission[i] = 0.0f;
+                ft->background_emission[i] = 0.0;
         }
 
         for(i = 0; i < model->L;i++){
@@ -621,7 +622,7 @@ int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_mo
                 }
         }
 
-        ASSERT(sum != 0.0f,"No sequence counts found");
+        ASSERT(sum != 0.0,"No sequence counts found");
         for(i = 0; i < ft->L;i++){
                 ft->background_emission[i] /= sum;
         }
@@ -635,13 +636,13 @@ int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
 {
 
         int i,j;
-        float sum = 0.0f;
+        double sum = 0.0;
 
         ASSERT(ft != NULL, "No parameters");
         ASSERT(sb != NULL, "No sequences");
 
         for(i = 0; i < ft->L;i++){
-                ft->background_emission[i] = 0.0f;
+                ft->background_emission[i] = 0.0;
         }
 
         for(i = 0; i < sb->num_seq;i++){
@@ -650,7 +651,7 @@ int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
                         sum++;
                 }
         }
-        ASSERT(sum != 0.0f,"No sequence counts found");
+        ASSERT(sum != 0.0,"No sequence counts found");
         for(i = 0; i < ft->L;i++){
                 ft->background_emission[i] /= sum;
         }

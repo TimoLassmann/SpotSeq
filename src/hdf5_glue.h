@@ -21,7 +21,7 @@ struct hdf5_attribute{
         char attr_name[HDF5GLUE_MAX_NAME_LEN];
         char string[HDF5GLUE_MAX_CONTENT_LEN];
         int int_val;
-        float float_val;
+        double double_val;
         int type;
 };
 
@@ -76,7 +76,7 @@ extern int hdf5_create_group(char* groupname,struct hdf5_data* hdf5_data);
 extern int hdf5_close_group(struct hdf5_data* hdf5_data);
 extern int hdf5_close_file(struct hdf5_data* hdf5_data);
 
-extern int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char* string, int int_val, float float_val, int type);
+extern int hdf5_add_attribute(struct hdf5_data* hdf5_data,char* attr_name, char* string, int int_val, double double_val, int type);
 
 extern int hdf5_write_attributes(struct hdf5_data* hdf5_data,hid_t target);
 extern int hdf5_read_attributes(struct hdf5_data* hdf5_data,hid_t target);

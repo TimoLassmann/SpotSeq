@@ -6,7 +6,7 @@
 
 int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
 
-int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, float alpha);
+int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha);
 int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
 {
         int i;
@@ -88,9 +88,9 @@ int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
 {
 
         int i,j;
-        float l;
-        float* tmp = NULL;
-        float sum = 0;
+        double l;
+        double* tmp = NULL;
+        double sum = 0;
         double r = 0;
         ASSERT(model != NULL, "No model.");
         ASSERT(sb != NULL, "No sequences");
@@ -103,7 +103,7 @@ int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
         }
         RUN(fill_counts(model,sb,0));
 
-        MMALLOC(tmp, sizeof(float) * model->num_states);
+        MMALLOC(tmp, sizeof(double) * model->num_states);
         l = 0;
         for(i = 0; i < model->num_states;i++){
                 sum = 0.0;
@@ -170,7 +170,7 @@ ERROR:
 int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
 {
         int i,j;
-        float sum;
+        double sum;
         int len;
         int* relabel = NULL;
         int* used = NULL;
@@ -358,9 +358,9 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
 {
         int* label = NULL;
         uint8_t* seq = NULL;
-        float** e = NULL;
-        float** m = NULL;
-        float score = 0.0;
+        double** e = NULL;
+        double** m = NULL;
+        double score = 0.0;
         //float* u = NULL;
         //float r;
         int len;
@@ -405,18 +405,18 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
 {
         int i,j,c;
         int last_state;
-        float** transition_counts = NULL;
-        float** M = NULL;
-        float** supp = NULL;
-        float* sum_M = NULL;
-        float* sum_N = NULL;
-        float* w = NULL;
-        float* p = NULL;
-        float* s = NULL;
-        float total_M = 0.0f;
-        float alpha;
-        float gamma;
-        float sum, sum_s, sum_w, mu, pi_mu;
+        double** transition_counts = NULL;
+        double** M = NULL;
+        double** supp = NULL;
+        double* sum_M = NULL;
+        double* sum_N = NULL;
+        double* w = NULL;
+        double* p = NULL;
+        double* s = NULL;
+        double total_M = 0.0;
+        double alpha;
+        double gamma;
+        double sum, sum_s, sum_w, mu, pi_mu;
 
         ASSERT(model != NULL, "No model");
         ASSERT(iterations > 0, "No iterations");
@@ -424,8 +424,8 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         last_state = model->num_states-1;
 
         /* alloc auxillary data structures  */
-        RUNP(M = galloc(M, model->num_states,model->num_states, 0.0f));
-        RUNP(supp = galloc(supp, 5,model->num_states, 0.0f));
+        RUNP(M = galloc(M, model->num_states,model->num_states, 0.0));
+        RUNP(supp = galloc(supp, 5,model->num_states, 0.0));
 
         //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
@@ -445,9 +445,9 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                                 M[i][j] = 0;
                         }else{
                                 for(c = 1;c <= transition_counts[i][j];c++){
-                                        if(rk_double( &model->rndstate) < (alpha *model->beta[j]) / (alpha * model->beta[j] + (float)c -1.0)){
+                                        if(rk_double( &model->rndstate) < (alpha * model->beta[j]) / (alpha * model->beta[j] + (double)c -1.0)){
                                                 M[i][j] = M[i][j] + 1; // number of times state i generated color j...
-                                                total_M = total_M + 1.0f;
+                                                total_M = total_M + 1.0;
                                         }
                                 }
 
@@ -511,11 +511,11 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
                         //LOG_MSG("%d %d",  model->rndstate.pos, model->rndstate.key[model->rndstate.pos]);
                         mu =  rk_beta(&model->rndstate, gamma+1.0, total_M);
                         //LOG_MSG("%f mu",mu);
-                        pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + (float) last_state -1.0));
+                        pi_mu = 1.0 / (1.0 + (total_M * ( model->gamma_b - log(mu) )) / (model->gamma_a + (double) last_state -1.0));
                         if(rk_double( &model->rndstate) < pi_mu){
-                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (float) last_state, 1.0 / (model->gamma_b - log(mu)));
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (double) last_state, 1.0 / (model->gamma_b - log(mu)));
                         }else{
-                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (float) last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
+                                gamma = rk_gamma(&model->rndstate, model->gamma_a + (double) last_state-1.0, 1.0 / (model->gamma_b - log(mu)));
                         }
                 }
                 if(gamma >= model->gamma_limit){
@@ -536,7 +536,7 @@ ERROR:
 }
 
 
-int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma)
+int set_model_hyper_parameters(struct model_bag* b, double alpha, double gamma)
 {
         struct ihmm_model* model = NULL;
         int i,j;
@@ -545,24 +545,24 @@ int set_model_hyper_parameters(struct model_bag* b, float alpha, float gamma)
         for(i = 0; i < b->num_models;i++){
                 model = b->models[i];
                 if(alpha == IHMM_PARAM_PLACEHOLDER){
-                        model->alpha_a = 6.0f;
-                        model->alpha_b = 15.0f;
+                        model->alpha_a = 6.0;
+                        model->alpha_b = 15.0;
                         model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
                 }else{
                         model->alpha = alpha;
                 }
 
                 if(gamma == IHMM_PARAM_PLACEHOLDER){
-                        model->gamma_a = 16.0f;
-                        model->gamma_b = 4.0f;
+                        model->gamma_a = 16.0;
+                        model->gamma_b = 4.0;
                         model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
                 }else{
                         model->gamma = gamma;
                 }
-                model->gamma_limit = 50.0f;
-                model->alpha_limit = 2.0f;
+                model->gamma_limit = 50.0;
+                model->alpha_limit = 2.0;
                 for(j = 0; j < model->num_states;j++){
-                        model->beta[j] = (float)(model->num_states);
+                        model->beta[j] = (double)(model->num_states);
                 }
                 //for(j = 0;j < 10;j++){
                 //        RUN(iHmmHyperSample(model, 20));
@@ -598,7 +598,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, u
                 rk_randomseed(&b->rndstate);
         }
         MMALLOC(b->models, sizeof(struct ihmm_model*)* b->num_models);
-        MMALLOC(b->min_u , sizeof(float) * b->num_models);
+        MMALLOC(b->min_u , sizeof(double) * b->num_models);
 
         for(i = 0; i < b->num_models;i++){
                 /* set seed in each model based on RNG in main model bag */
@@ -663,8 +663,8 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         model->gamma = IHMM_PARAM_PLACEHOLDER;
         model->gamma_a = IHMM_PARAM_PLACEHOLDER;
         model->gamma_b = IHMM_PARAM_PLACEHOLDER;
-        model->alpha_limit = FLT_MAX;
-        model->gamma_limit = FLT_MAX;
+        model->alpha_limit = DBL_MAX;
+        model->gamma_limit = DBL_MAX;
 
         model->seed = seed;
         if(seed){
@@ -678,12 +678,12 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         }
         model->num_states = K;
 
-        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0f));
-        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0f));
+        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0));
+        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0));
 
-        MMALLOC(model->beta,sizeof(float) * model->alloc_num_states);
+        MMALLOC(model->beta,sizeof(double) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){
-                model->beta[i] = 0.0f;
+                model->beta[i] = 0.0;
         }
 
         return model;
@@ -705,12 +705,12 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
                         ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
                 }
                 //LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
-                RUNP(ihmm->transition_counts = galloc(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0f));
-                RUNP(ihmm->emission_counts = galloc(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0f));
+                RUNP(ihmm->transition_counts = galloc(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0));
+                RUNP(ihmm->emission_counts = galloc(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0));
 
-                MREALLOC(ihmm->beta,sizeof(float) * ihmm->alloc_num_states);
+                MREALLOC(ihmm->beta,sizeof(double) * ihmm->alloc_num_states);
                 for(i = old_size;i < ihmm->alloc_num_states;i++){
-                        ihmm->beta[i] = -1;
+                        ihmm->beta[i] = -1.0;
                 }
         }
         return OK;
@@ -790,7 +790,7 @@ int print_counts(struct ihmm_model* ihmm)
 int print_model_parameters(struct ihmm_model* ihmm)
 {
         int i;
-        float sum = 0.0;
+        double sum = 0.0;
         fprintf(stdout,"NUMBER of STATES: %d\n", ihmm->num_states);
         fprintf(stdout,"%3.3f alpha\t%3.3f beta",ihmm->alpha , ihmm->gamma);
         for(i = 0; i < ihmm->num_states;i++){

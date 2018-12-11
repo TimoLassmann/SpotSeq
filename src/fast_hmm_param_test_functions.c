@@ -5,9 +5,9 @@
 int print_fast_hmm_params(struct fast_hmm_param* ft)
 {
         int i,j;
-        float** m = NULL;
+        double** m = NULL;
 
-        float sum = 0.0;
+        double sum = 0.0;
 
 
 

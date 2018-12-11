@@ -84,7 +84,7 @@ struct model_bag* read_model_bag_hdf5(char* filename)
 
 
         MMALLOC(bag->finite_models, sizeof(struct fhmm*)* bag->num_models);
-        MMALLOC(bag->min_u , sizeof(float) * bag->num_models);
+        MMALLOC(bag->min_u , sizeof(double) * bag->num_models);
 
         //get_group_names(hdf5_data);
         //fprintf(stdout,"Groups:\n");
@@ -287,22 +287,22 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
                 }
 
                 if(!strcmp("Gamma", hdf5_data->attr[i]->attr_name)){
-                        model->gamma = hdf5_data->attr[i]->float_val;
+                        model->gamma = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("gamma_a", hdf5_data->attr[i]->attr_name)){
-                        model->gamma_a = hdf5_data->attr[i]->float_val;
+                        model->gamma_a = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("gamma_b", hdf5_data->attr[i]->attr_name)){
-                        model->gamma_b = hdf5_data->attr[i]->float_val;
+                        model->gamma_b = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("Alpha", hdf5_data->attr[i]->attr_name)){
-                        model->alpha = hdf5_data->attr[i]->float_val;
+                        model->alpha = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("alpha0_a", hdf5_data->attr[i]->attr_name)){
-                        model->alpha_a = hdf5_data->attr[i]->float_val;
+                        model->alpha_a = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("alpha0_b", hdf5_data->attr[i]->attr_name)){
-                        model->alpha_b = hdf5_data->attr[i]->float_val;
+                        model->alpha_b = hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("Iteration", hdf5_data->attr[i]->attr_name)){
                         model->training_iterations = hdf5_data->attr[i]->int_val;
@@ -311,24 +311,24 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
                         model->seed = hdf5_data->attr[i]->int_val;
                 }
                 if(!strcmp("Alpha_limit", hdf5_data->attr[i]->attr_name)){
-                        model->alpha_limit =  hdf5_data->attr[i]->float_val;
+                        model->alpha_limit =  hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("Gamma_limit", hdf5_data->attr[i]->attr_name)){
-                        model->gamma_limit =  hdf5_data->attr[i]->float_val;
+                        model->gamma_limit =  hdf5_data->attr[i]->double_val;
                 }
         }
 
         hdf5_read_dataset("Beta",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read beta");
-        model->beta = (float*)hdf5_data->data;
+        model->beta = (double*)hdf5_data->data;
 
         hdf5_read_dataset("transition_counts",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
-        model->transition_counts = (float**)hdf5_data->data;
+        model->transition_counts = (double**)hdf5_data->data;
 
         hdf5_read_dataset("emission_counts",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
-        model->emission_counts = (float**)hdf5_data->data;
+        model->emission_counts = (double**)hdf5_data->data;
 
         hdf5_close_group(hdf5_data);
 
@@ -354,7 +354,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
 {
         //struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];
-        float** tmp = NULL;
+        double** tmp = NULL;
         int i,j;
 
         //RUNP(hdf5_data = hdf5_create());
@@ -373,15 +373,15 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_add_attribute(hdf5_data, "Number of states", "", model->num_states, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "Number of letters", "", model->L, 0.0f, HDF5GLUE_INT);
 
-        hdf5_add_attribute(hdf5_data, "Gamma", "", 0, model->gamma, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "Gamma_limit", "", 0, model->gamma_limit, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "gamma_a","",0, model->gamma_a, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "gamma_b","",0, model->gamma_b, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "Gamma", "", 0, model->gamma, HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "Gamma_limit", "", 0, model->gamma_limit, HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "gamma_a","",0, model->gamma_a, HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "gamma_b","",0, model->gamma_b, HDF5GLUE_DOUBLE);
 
-        hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "Alpha_limit",    "",0, model->alpha_limit , HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha_a, HDF5GLUE_FLOAT);
-        hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_FLOAT);
+        hdf5_add_attribute(hdf5_data, "Alpha",    "",0, model->alpha, HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "Alpha_limit",    "",0, model->alpha_limit , HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "alpha0_a", "",0, model->alpha_a, HDF5GLUE_DOUBLE);
+        hdf5_add_attribute(hdf5_data, "alpha0_b", "",0, model->alpha_b, HDF5GLUE_DOUBLE);
 
         hdf5_add_attribute(hdf5_data, "Iteration", "",model->training_iterations, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "Seed", "",model->seed, 0.0f, HDF5GLUE_INT);
@@ -395,7 +395,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = model->num_states;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         RUN(hdf5_write("Beta",&model->beta[0], hdf5_data));
 
         RUNP(tmp = galloc(tmp,  model->num_states,  model->num_states, 0.0));
@@ -409,7 +409,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_data->dim[1] = model->num_states;
         hdf5_data->chunk_dim[0] = model->num_states;
         hdf5_data->chunk_dim[1] = model->num_states;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         RUN(hdf5_write("transition_counts",&tmp[0][0], hdf5_data));
 
         gfree(tmp);
@@ -426,7 +426,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_data->dim[1] = model->num_states;
         hdf5_data->chunk_dim[0] = model->L;
         hdf5_data->chunk_dim[1] = model->num_states;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         RUN(hdf5_write("emission_counts",&tmp[0][0], hdf5_data));
 
         gfree(tmp);
@@ -592,7 +592,7 @@ int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
         hdf5_data->dim[1] = fhmm->L;
         hdf5_data->chunk_dim[0] = fhmm->K;
         hdf5_data->chunk_dim[1] = fhmm->L;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("emission",  &fhmm->e[0][0], hdf5_data);
 
         hdf5_data->rank = 2;
@@ -600,7 +600,7 @@ int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
         hdf5_data->dim[1] = fhmm->K;
         hdf5_data->chunk_dim[0] = fhmm->K;
         hdf5_data->chunk_dim[1] = fhmm->K;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("transition", &fhmm->t[0][0] , hdf5_data);
 
         hdf5_data->rank = 2;
@@ -608,7 +608,7 @@ int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
         hdf5_data->dim[1] = fhmm->K+1;
         hdf5_data->chunk_dim[0] = fhmm->K;
         hdf5_data->chunk_dim[1] = fhmm->K+1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_INT;
         hdf5_write("transition_index", &fhmm->tindex[0][0] , hdf5_data);
 
         hdf5_data->rank = 1;
@@ -616,7 +616,7 @@ int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = fhmm->L;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("background", &fhmm->background[0], hdf5_data);
 
         hdf5_close_group(hdf5_data);
@@ -630,7 +630,7 @@ ERROR:
         return FAIL;
 }
 
-int add_background_emission(char* filename,float* background,int L)
+int add_background_emission(char* filename,double* background,int L)
 {
         struct hdf5_data* hdf5_data = NULL;
         RUNP(hdf5_data = hdf5_create());
@@ -644,7 +644,7 @@ int add_background_emission(char* filename,float* background,int L)
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = L;
         hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_FLOAT;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         hdf5_write("background",&background[0], hdf5_data);
 
 
@@ -910,29 +910,29 @@ struct ihmm_model* read_model(char* filename)
         RUNP(model = alloc_ihmm_model(a, b,0));
         model->num_states = a;
 
-        fscanf(f_ptr,"Gamma: %f\n", &model->gamma);
-        fscanf(f_ptr,"gamma_a: %f\n", &model->gamma_a);
-        fscanf(f_ptr,"gamma_b: %f\n", &model->gamma_b);
+        fscanf(f_ptr,"Gamma: %lf\n", &model->gamma);
+        fscanf(f_ptr,"gamma_a: %lf\n", &model->gamma_a);
+        fscanf(f_ptr,"gamma_b: %lf\n", &model->gamma_b);
 
-        fscanf(f_ptr,"alpha: %f\n", &model->alpha);
-        fscanf(f_ptr,"alpha0_a: %f\n", &model->alpha_a);
-        fscanf(f_ptr,"alpha0_b: %f\n", &model->alpha_b);
+        fscanf(f_ptr,"alpha: %lf\n", &model->alpha);
+        fscanf(f_ptr,"alpha0_a: %lf\n", &model->alpha_a);
+        fscanf(f_ptr,"alpha0_b: %lf\n", &model->alpha_b);
 
 
         fscanf(f_ptr, "%*[^\n]\n");
         for(i = 0; i < model->num_states;i++){
-                fscanf(f_ptr,"%f\n", &model->beta[i]);
+                fscanf(f_ptr,"%lf\n", &model->beta[i]);
         }
         fscanf(f_ptr, "%*[^\n]\n");
         for(i = 0; i < model->num_states;i++){
                 for(j = 0; j < model->num_states;j++){
-                        fscanf(f_ptr,"%f\n", &model->transition_counts[i][j]);
+                        fscanf(f_ptr,"%lf\n", &model->transition_counts[i][j]);
                 }
         }
         fscanf(f_ptr, "%*[^\n]\n");
          for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
-                        fscanf(f_ptr,"%f\n", &model->emission_counts[i][j]);
+                        fscanf(f_ptr,"%lf\n", &model->emission_counts[i][j]);
                 }
         }
         rk_randomseed(&model->rndstate);

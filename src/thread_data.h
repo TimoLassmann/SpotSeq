@@ -13,11 +13,11 @@ struct spotseq_thread_data{
         struct fast_hmm_param* ft;
         struct seq_buffer* sb;
         struct fhmm* fhmm;
-        float** dyn;
-        float** F_matrix;
-        float** B_matrix;
-        float** t;
-        float** e;
+        double** dyn;
+        double** F_matrix;
+        double** B_matrix;
+        double** t;
+        double** e;
         int thread_ID;
         int num_threads;
         unsigned int seed;

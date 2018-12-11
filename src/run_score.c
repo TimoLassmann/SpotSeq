@@ -83,8 +83,8 @@ void* do_score_sequences(void* threadarg)
         int num_threads;
         int thread_id;
         int expected_len;
-        float f_score;
-        float r_score;
+        double f_score;
+        double r_score;
         data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
@@ -120,8 +120,8 @@ void* do_label_sequences(void* threadarg)
         int i;
         int num_threads;
         int thread_id;
-        float f_score;
-        float b_score;
+        double f_score;
+        double b_score;
         data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;

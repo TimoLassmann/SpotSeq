@@ -18,6 +18,9 @@
 
 #define MAX_NUM_STATES 1000
 
-#define IHMM_PARAM_PLACEHOLDER -9999.99f
+#define IHMM_PARAM_PLACEHOLDER -9999.99
+
+extern int double_logsum_init(void);
+extern double double_logsum (double a, double b);
 
 #endif

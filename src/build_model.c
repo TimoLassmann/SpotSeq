@@ -32,8 +32,8 @@ struct parameters{
         char* output;
         char* in_model;
         char* cmd_line;
-        float alpha;
-        float gamma;
+        double alpha;
+        double gamma;
         unsigned long seed;
         int num_iter;
         int local;
@@ -45,7 +45,7 @@ struct parameters{
 
 static int run_build_ihmm(struct parameters* param);
 
-static int random_score_sequences(struct seq_buffer* sb,float* background );
+static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
 
 static int print_help(char **argv);
@@ -222,7 +222,7 @@ int run_build_ihmm(struct parameters* param)
                 /* PROBABLY need to re-alloc num_state_array */
                 //MMALLOC(num_state_array, sizeof(int)* param->num_models);
                 RUNP(model_bag = read_model_bag_hdf5(param->in_model));
-                RUNP(sb = get_sequences_from_hdf5_model(param->in_model));
+                RUNP(sb = get_sequences_from_hdf5_model(param->in_model,IHMM_SEQ_READ_ALL));
 
                 for(i = 0; i < model_bag->num_models;i++){
                         num_state_array[i] = model_bag->models[i]->num_states;
@@ -385,17 +385,17 @@ ERROR:
         return FAIL;
 }
 
-int random_score_sequences(struct seq_buffer* sb,float* background )
+int random_score_sequences(struct seq_buffer* sb,double* background )
 {
         struct ihmm_sequence* s;
-        float* back = NULL;
+        double* back = NULL;
         int expected_len;
         int i;
 
         ASSERT(sb!=NULL, "No sequences");
         ASSERT(background != NULL, "No background");
 
-        MMALLOC(back, sizeof(float) * sb->L);
+        MMALLOC(back, sizeof(double) * sb->L);
         for(i= 0; i < sb->L;i++){
                 back[i] = prob2scaledprob(background[i]);
         }
@@ -449,7 +449,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         LOG_MSG("Loading sequences.");
 
-        RUNP(sb =get_sequences_from_hdf5_model(param->output));
+        RUNP(sb =get_sequences_from_hdf5_model(param->output, IHMM_SEQ_READ_ONLY_SEQ  ));
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
 

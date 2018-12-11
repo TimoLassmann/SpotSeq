@@ -32,8 +32,8 @@ static int resolve_default(void* ptr_a,void* ptr_b)
 
 long int compare_transition(void* keyA, void* keyB)
 {
-        float* num1 = (float*)keyA;
-        float* num2 = (float*)keyB;
+        double* num1 = (double*)keyA;
+        double* num2 = (double*)keyB;
 
         if(*num1 == *num2){
                 return 0;
@@ -138,14 +138,14 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 
         ft->root = NULL;
 
-        MMALLOC(ft->background_emission, sizeof(float) * L  );
+        MMALLOC(ft->background_emission, sizeof(double) * L  );
 
         for(i = 0; i < L; i++){
-                ft->background_emission[i] = 0.0f;
+                ft->background_emission[i] = 0.0;
         }
 
-        RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
-        RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
+        RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
+        RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
 
         fp_get = &get_transition;
         fp_cmp = &compare_transition;
@@ -162,7 +162,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
                 MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
                 ft->infinity[i]->from = -1;
                 ft->infinity[i]->to = -1;
-                ft->infinity[i]->t = 0.0f;
+                ft->infinity[i]->t = 0.0;
         }
         return ft;
 ERROR:
@@ -181,8 +181,8 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
                 while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
                 }
-                RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0f));
-                RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0f));
+                RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
+                RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
 
                 MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
                 for(i = num_old_item; i < ft->alloc_num_states;i++){
@@ -190,7 +190,7 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
                         MMALLOC(ft->infinity[i], sizeof(struct fast_t_item));
                         ft->infinity[i]->from = -1;
                         ft->infinity[i]->to = -1;
-                        ft->infinity[i]->t = 0.0f;
+                        ft->infinity[i]->t = 0.0;
                 }
         }
         return OK;
@@ -337,7 +337,7 @@ int fast_hmm_param_cmp_by_to_asc(const void *a, const void *b)
 }
 
 /* Selects item so that 0 .. return value is greater than x */
-int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, float x)
+int fast_hmm_param_binarySearch_t(struct fast_hmm_param* ft, double x)
 {
         struct fast_t_item** list = NULL;
         int l,r;

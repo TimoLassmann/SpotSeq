@@ -7,18 +7,18 @@ static void* do_sample_path_and_posterior(void* threadarg);
 static void* do_dynamic_programming(void *threadarg);
 static void* do_forward_backward(void *threadarg);
 
-int approximatelyEqual(float a, float b, float epsilon);
+int approximatelyEqual(double a, double b, double epsilon);
 
 static int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K);
 
-static int transfer_counts(struct ihmm_model* ihmm, float** t, float** e);
+static int transfer_counts(struct ihmm_model* ihmm, double** t, double** e);
 
-static int assign_posterior_probabilities_to_sampled_path(float** F,float** B,float** E, struct ihmm_sequence* ihmm_seq );
+static int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq );
 
-//static int set_u(struct seq_buffer* sb, struct ihmm_model* model, float* min_u);
+//static int set_u(struct seq_buffer* sb, struct ihmm_model* model, double* min_u);
 static int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb);
-static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u,int model_index);
-static int reset_u_if_no_path(struct fast_hmm_param* ft, float* u,int * label, int len, rk_state* rndstate);
+static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u,int model_index);
+static int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len, rk_state* rndstate);
 static int unset_u(struct seq_buffer* sb);
 
 
@@ -28,14 +28,14 @@ static int reset_valid_path(struct seq_buffer* sb,int num_models);
 static int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag);
 static int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
 
-static int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max);
+static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max);
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
 static int dynamic_programming(struct spotseq_thread_data* data, int target);
-static int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,uint8_t* has_path ,rk_state* random);
-static int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
-static int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score);
-static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, float total);
+static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path ,rk_state* random);
+static int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+static int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
 int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
 {
@@ -89,13 +89,14 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 //LOG_MSG("Done");
                 if(!no_path){
                         for(i = 0; i < model_bag->num_models;i++){
-                                LOG_MSG("removing unused states");
+                                //LOG_MSG("removing unused states");
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
-                                LOG_MSG("fill counts");
+                                //LOG_MSG("fill counts");
                                 RUN(fill_counts(model_bag->models[i], sb,i));
-                                LOG_MSG("hyper");
+                                //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
+                                //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         }
                 }
 
@@ -106,7 +107,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                                print_fast_hmm_params(ft_bag->fast_params[i]);
+                                //print_fast_hmm_params(ft_bag->fast_params[i]);
                         }
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
@@ -238,6 +239,7 @@ int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path)
         for(i = 0; i < sb->num_seq;i++){
                 for(j = 0; j < num_models;j++){
                         if(sb->sequences[i]->has_path[j] == 0){
+
                                 //LOG_MSG("weird split must have happened in seq %d m%d",i,j);
                                 *no_path = 1;
                                 return OK;
@@ -267,8 +269,8 @@ void* do_forward_backward(void *threadarg)
         int num_threads;
         int thread_id;
 
-        float f_score;
-        float b_score;
+        double f_score;
+        double b_score;
         data = (struct spotseq_thread_data *) threadarg;
 
         num_threads = data->num_threads;
@@ -314,9 +316,9 @@ void* do_sample_path_and_posterior(void* threadarg)
         int i;
         int num_threads;
         int thread_id;
-        float f_score;
-        float b_score;
-        float r_score;
+        double f_score;
+        double b_score;
+        double r_score;
 
         data = (struct spotseq_thread_data *) threadarg;
 
@@ -414,8 +416,8 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
         struct ihmm_model* model = NULL;
         struct fast_hmm_param* ft = NULL;
         int i;
-        float max;
-        float min_u;
+        double max;
+        double min_u;
         for(i = 0; i < model_bag->num_models;i++){
 
                 min_u = model_bag->min_u[i];
@@ -448,14 +450,14 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 {
         struct fast_t_item** infinity = NULL;
         struct fast_t_item* tmp = NULL;
-        float* tmp_prob = NULL;
+        double* tmp_prob = NULL;
 
-        float* beta;
-        float alpha;
-        float gamma;
+        double* beta;
+        double alpha;
+        double gamma;
         //rk_state rndstate;
 
-        float sum,be,bg,pe,pg, a,b;
+        double sum,be,bg,pe,pg, a,b;
         int i,new_k;//,list_index;
         //intl,r;
 
@@ -483,7 +485,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         ihmm->num_states = ihmm->num_states + 1;
         RUN(expand_ft_if_necessary(ft, ihmm->num_states));
 
-        MMALLOC(tmp_prob, sizeof(float) *(ihmm->num_states));
+        MMALLOC(tmp_prob, sizeof(double) *(ihmm->num_states));
 
         beta = ihmm->beta;
         alpha = ihmm->alpha;
@@ -493,11 +495,11 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         infinity = ft->infinity;
         //fprintf(stdout,"LAST: %d\n",new_k);
         /* fill out transition FROM new state  */
-        sum = 0.0f;
+        sum = 0.0;
         for(i = 0;i <= new_k;i++){
                 tmp_prob[i] =  rk_gamma(&ihmm->rndstate, beta[i] * alpha, 1.0);
                 if(i == IHMM_START_STATE){
-                        tmp_prob[i] = 0.0f;
+                        tmp_prob[i] = 0.0;
                 }
                 sum += tmp_prob[i];
         }
@@ -667,15 +669,15 @@ ERROR:
 }
 
 
-int transfer_counts(struct ihmm_model* ihmm, float** t, float** e)
+int transfer_counts(struct ihmm_model* ihmm, double** t, double** e)
 {
-        float* used_states = NULL;
-        float sum;
+        double* used_states = NULL;
+        double sum;
         int K = ihmm->num_states;
         int new_K;
         int i,j,a,b;
 
-        MMALLOC(used_states, sizeof(float) * K);
+        MMALLOC(used_states, sizeof(double) * K);
         for(i = 0; i < K;i++){
                 used_states[i] = 0.0;
         }
@@ -786,20 +788,21 @@ int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_th
 
 
 
-int approximatelyEqual(float a, float b, float epsilon)
+int approximatelyEqual(double a, double b, double epsilon)
 {
+
         return fabs(a - b) <= ( (fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * epsilon);
 }
 
 
-int assign_posterior_probabilities_to_sampled_path(float** F,float** B,float** E, struct ihmm_sequence* ihmm_seq )
+int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq )
 {
         /* got through path assign emission probs, store in u... */
-        float* emission = NULL;
+        double* emission = NULL;
         int* label = NULL;
-        float* u = NULL;
+        double* u = NULL;
         uint8_t* seq = NULL;
-        float total = 0.0;
+        double total = 0.0;
         int i,l,len;
 
         u = ihmm_seq->u;
@@ -823,17 +826,17 @@ int assign_posterior_probabilities_to_sampled_path(float** F,float** B,float** E
 
 
 
-int collect_slice(struct spotseq_thread_data * data,struct ihmm_sequence* ihmm_seq, float total)
+int collect_slice(struct spotseq_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
 {
-        float** e = data->e;
-        float** t = data->t;
-        float** F = data->F_matrix;
-        float** B = data->B_matrix;
-        float* emission = NULL;
+        double** e = data->e;
+        double** t = data->t;
+        double** F = data->F_matrix;
+        double** B = data->B_matrix;
+        double* emission = NULL;
 
         struct fast_hmm_param* ft = data->ft;
         struct fast_t_item** list = NULL;
-        float* u = NULL;
+        double* u = NULL;
         uint8_t* seq = NULL;
         int i,j,a,b,l,len,boundary;
 
@@ -892,14 +895,14 @@ int collect_slice(struct spotseq_thread_data * data,struct ihmm_sequence* ihmm_s
 }
 
 
-int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score)
+int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score)
 {
         struct fast_t_item** list = NULL;
-        float* u = NULL;
+        double* u = NULL;
         uint8_t* seq = NULL;
-        float* emission = NULL;
-        float* cur = NULL;
-        float* last = NULL;
+        double* emission = NULL;
+        double* cur = NULL;
+        double* last = NULL;
 
 
 
@@ -961,7 +964,7 @@ int forward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence
 
         /* First let's check if there is a path! i.e. end is reachable.  */
 
-        *score = prob2scaledprob(0.0f);
+        *score = prob2scaledprob(0.0);
 
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         for(j = 0; j < boundary;j++){
@@ -979,14 +982,14 @@ ERROR:
         return FAIL;
 }
 
-int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, float* score)
+int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score)
 {
         struct fast_t_item** list = NULL;
-        float* u = NULL;
+        double* u = NULL;
         uint8_t* seq = NULL;
-        float* emission = NULL;
-        float* cur = NULL;
-        float* next = NULL;
+        double* emission = NULL;
+        double* cur = NULL;
+        double* next = NULL;
 
         int i,j,len,boundary;
         int l;
@@ -1045,7 +1048,7 @@ int backward_slice(float** matrix,struct fast_hmm_param* ft, struct ihmm_sequenc
 
         /* First let's check if there is a path! i.e. end is reachable.  */
 
-        *score = prob2scaledprob(0.0f);
+        *score = prob2scaledprob(0.0);
 
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         for(j = 0; j < boundary;j++){
@@ -1062,16 +1065,16 @@ ERROR:
         return FAIL;
 }
 
-int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t* seq,int* label,float* u,int len,uint8_t* has_path,rk_state* random)
+int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path,rk_state* random)
 {
         struct fast_t_item** list = NULL;
         int i,j,boundary;
         int state;
         int a,b;
-        float sum;
-        float* emission;
-        float* tmp_row;
-        float r, tmp_r;
+        double sum;
+        double* emission;
+        double* tmp_row;
+        double r, tmp_r;
         int K;
 
         K = ft->last_state;
@@ -1081,7 +1084,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
 
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         for(i = 0; i < K;i++){
-                matrix[0][i] = 0.0f;
+                matrix[0][i] = 0.0;
         }
         //fill first row.
         for(j = 0; j < boundary;j++){
@@ -1101,7 +1104,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < K;j++){
-                        matrix[i][j] = 0.0f;
+                        matrix[i][j] = 0.0;
                 }
 
                 boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
@@ -1123,7 +1126,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         matrix[i][j] /= sum;
                 }
         }
-        sum = 0.0f;
+        sum = 0.0;
         //float tmp_r;
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         for(j = 0; j < boundary;j++){
@@ -1141,7 +1144,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                         for(j = 0; j < K;j++){
                                 tmp_row[j] = 0.0;
                         }
-                        sum = 0.0f;
+                        sum = 0.0;
                         boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
                         for(j = 0; j < boundary;j++){
                                 a = list[j]->from;
@@ -1157,7 +1160,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  float** matrix,uint8_t
                                 tmp_row[j] += tmp_row[j-1];
                         }
 
-                        tmp_row[K-1] = 1.0f;
+                        tmp_row[K-1] = 1.0;
                         //r =  random_float_zero_to_x(sum);
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
@@ -1221,20 +1224,20 @@ ERROR:
 
 int dynamic_programming(struct spotseq_thread_data* data, int target)
 {
-        float** matrix = NULL;
+        double** matrix = NULL;
         struct fast_hmm_param* ft = NULL;
         struct ihmm_sequence* ihmm_seq = NULL;
 
         int i,j,len,boundary;
-        float* u = NULL;
+        double* u = NULL;
         uint8_t* seq = NULL;
         int* label = NULL;
         int a,b;
-        float score;
-        float sum;
-        float* emission;
-        float* tmp_row;
-        float r;
+        double score;
+        double sum;
+        double* emission;
+        double* tmp_row;
+        double r;
         int l;
         struct fast_t_item** list = NULL;
 
@@ -1257,7 +1260,7 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
 
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         for(i = 0; i < l;i++){
-                matrix[0][i] = 0.0f;
+                matrix[0][i] = 0.0;
         }
         //fill first row.
         for(j = 0; j < boundary;j++){
@@ -1287,7 +1290,7 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < ft->last_state;j++){
-                        matrix[i][j] = 0.0f;
+                        matrix[i][j] = 0.0;
                 }
 
                 boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
@@ -1323,9 +1326,9 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
         l = IHMM_END_STATE;
         /* First let's check if there is a path! i.e. end is reachable.  */
 
-        sum = 0.0f;
+        sum = 0.0;
 
-        score = prob2scaledprob(1.0f);
+        score = prob2scaledprob(1.0);
 
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         for(j = 0; j < boundary;j++){
@@ -1343,7 +1346,7 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
                         for(j = 0; j < ft->last_state;j++){
                                 tmp_row[j] = -1.0;
                         }
-                        sum = 0.0f;
+                        sum = 0.0;
                         boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
                         for(j = 0; j < boundary;j++){
                                 a = list[j]->from;
@@ -1366,7 +1369,7 @@ int dynamic_programming(struct spotseq_thread_data* data, int target)
                                 b = list[j]->to;
                                 if(list[j]->to == l){
                                         r -= tmp_row[a];
-                                        if(r <= 0.0f){
+                                        if(r <= 0.0){
                                                 l = a;
                                                 score = score + prob2scaledprob(list[j]->t);
                                                 break;
@@ -1402,16 +1405,16 @@ ERROR:
         return FAIL;
 }
 
-int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, float* min_u, int model_index)
+int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u, int model_index)
 {
         int i,j;
-        float* u = 0;
+        double* u = 0;
         int* label =0;
-        float x;
-        //float r;
+        double x;
+        //double r;
         int len;
 
-        float local_min_u = 1.0;
+        double local_min_u = 1.0;
         ASSERT(sb != NULL, "No sequences.");
         ASSERT(model != NULL, "No model.");
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
@@ -1477,9 +1480,9 @@ ERROR:
         return FAIL;
 }
 
-int reset_u_if_no_path(struct fast_hmm_param* ft, float* u,int * label, int len, rk_state* rndstate)
+int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len, rk_state* rndstate)
 {
-        float x;
+        double x;
         int j;
         x = ft->transition[IHMM_START_STATE][label[0]];
         u[0] = rk_double(rndstate) *x;
@@ -1495,7 +1498,7 @@ int reset_u_if_no_path(struct fast_hmm_param* ft, float* u,int * label, int len,
 int unset_u(struct seq_buffer* sb)
 {
         int i,j;
-        float* u = 0;
+        double* u = 0;
         int len;
 
         ASSERT(sb != NULL, "No sequences.");
@@ -1507,7 +1510,7 @@ int unset_u(struct seq_buffer* sb)
                 len = sb->sequences[i]->seq_len;
                 for (j = 0; j < len;j++){
 
-                        u[j] = 0.0f;
+                        u[j] = 0.0;
                 }
 
         }
@@ -1517,15 +1520,15 @@ ERROR:
 }
 
 
-int get_max_to_last_state_transition(struct fast_hmm_param*ft,float* max)
+int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max)
 {
 
         int i;
-        float local_max;
+        double local_max;
 
         ASSERT(ft != NULL, "No fast hmm parameters.");
 
-        local_max = -1.0f;
+        local_max = -1.0;
 
 
         for(i = 0; i< ft->last_state;i++){
@@ -1604,10 +1607,10 @@ int full_run_test(void)
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
 
-        model->alpha_a = 6.0f;
-        model->alpha_b = 15.0f;
-        model->gamma_a = 16.0f;
-        model->gamma_b = 4.0f;
+        model->alpha_a = 6.0;
+        model->alpha_b = 15.0;
+        model->gamma_a = 16.0;
+        model->gamma_b = 4.0;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 
@@ -1671,10 +1674,10 @@ int full_run_test_protein(void)
         RUNP(model = alloc_ihmm_model(initial_states, sb->L));
         rk_randomseed(&model->rndstate);
 
-        model->alpha_a = 6.0f;
-        model->alpha_b = 15.0f;
-        model->gamma_a = 16.0f;
-        model->gamma_b = 4.0f;
+        model->alpha_a = 6.0;
+        model->alpha_b = 15.0;
+        model->gamma_a = 16.0;
+        model->gamma_b = 4.0;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
         model->gamma = IHMM_PARAM_PLACEHOLDER;
 

@@ -22,6 +22,16 @@ AC_MSG_ERROR([ASFSAF])
 fi
 
 
+PKG_PROG_PKG_CONFIG([0.25]) # check and set $PKG_CONFIG
+
+PKG_CHECK_MODULES([CAIRO],    [cairo],    [enable_cairo=yes],    [AS_IF([test "$enable_cairo" = "yes"],
+      [AC_MSG_ERROR([cairo required for plotting, but not found.])],
+      [enable_cairo=no])])
+AM_CONDITIONAL([ENABLE_CAIRO], [test "$enable_cairo" = "yes"])
+
+
+$(GTK_CFLAGS)
+ $(GTK_LIBS)
 
 # FIXME: Replace `main' with a function in `-lm':
 AC_CHECK_LIB([m], [log])
@@ -29,6 +39,7 @@ AC_CHECK_LIB([m], [log])
 AC_CHECK_LIB([pthread], [pthread_create])
 
 AC_CHECK_HEADERS([stdlib.h string.h float.h limits.h stddef.h stdlib.h sys/time.h sys/timeb.h unistd.h])
+
 
 
 LIB_TLDEVELDIR="tldevel"
@@ -120,9 +131,7 @@ sudo dnf install hdf5 hdf5-devel
 
 ])
 fi
-AC_MSG_RESULT($with_hdf5)
 
- echo "HDF5 support:  $with_hdf5"
 
 ac_configure_args="$ac_configure_args PACKAGE_VERSION=$PACKAGE_VERSION   PACKAGE_NAME=$PACKAGE_NAME"
 

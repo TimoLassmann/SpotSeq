@@ -51,7 +51,7 @@ int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 int compare_hit_positions(struct hit** list_a, struct hit** list_b, int len_a,int len_b, int w,double* jac);
 static int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_cluster* motif);
 int add_hit_locations(struct sa* sa, struct paraclu_cluster* p);
-static int remove_overlapping_hits( struct paraclu_cluster* p);
+int remove_overlapping_hits( struct paraclu_cluster* p);
 struct motif_list* init_motif_list(int initial_len);
 int extend_motif_list(struct motif_list* m);
 void free_motif_list(struct motif_list* m);

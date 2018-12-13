@@ -286,7 +286,7 @@ int run_build_ihmm(struct parameters* param)
                 for(i = 0; i < model_bag->num_models;i++){
                         RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
-                        //RUN(fill_counts(model_bag->models[i], sb,i));
+                        RUN(fill_counts(model_bag->models[i], sb,i));
 
 
                         model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);

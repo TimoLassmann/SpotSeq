@@ -3,23 +3,23 @@
 
 #include "fast_hmm_param_test_functions.h"
 
-static void* do_sample_path_and_posterior(void* threadarg);
-static void* do_dynamic_programming(void *threadarg);
-static void* do_forward_backward(void *threadarg);
+void* do_sample_path_and_posterior(void* threadarg);
+void* do_dynamic_programming(void *threadarg);
+void* do_forward_backward(void *threadarg);
 
 int approximatelyEqual(double a, double b, double epsilon);
 
-static int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K);
+int sum_counts_from_multiple_threads(struct spotseq_thread_data** td,int* num_threads,int K);
 
-static int transfer_counts(struct ihmm_model* ihmm, double** t, double** e);
+int transfer_counts(struct ihmm_model* ihmm, double** t, double** e);
 
 static int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq );
 
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, double* min_u);
 static int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb);
 static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u,int model_index);
-static int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len, rk_state* rndstate);
-static int unset_u(struct seq_buffer* sb);
+int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len, rk_state* rndstate);
+int unset_u(struct seq_buffer* sb);
 
 
 static int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path);
@@ -31,11 +31,11 @@ static int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm
 static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max);
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
-static int dynamic_programming(struct spotseq_thread_data* data, int target);
+int dynamic_programming(struct spotseq_thread_data* data, int target);
 static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path ,rk_state* random);
-static int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
-static int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
-static int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
+int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+int collect_slice(struct spotseq_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
 int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
 {
@@ -1074,7 +1074,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         double sum;
         double* emission;
         double* tmp_row;
-        double r, tmp_r;
+        double r;
         int K;
 
         K = ft->last_state;
@@ -1154,42 +1154,43 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                                         sum += matrix[i][a];
                                 }
                         }
-                        tmp_row[0] /= sum;
+                        /*tmp_row[0] /= sum;
                         for(j = 1; j < K;j++){
                                 tmp_row[j] /= sum;
                                 tmp_row[j] += tmp_row[j-1];
                         }
 
-                        tmp_row[K-1] = 1.0;
+                        tmp_row[K-1] = 1.0;*/
                         //r =  random_float_zero_to_x(sum);
                         //r = rand_r(&seed) / (float) RAND_MAX *sum;
                         //tmp_r = rk_double(random);
                         //while(label[i] == -1){ /* Hack if random number generator spits out a 1.0 weird things happen due to precision */
-                        r = rk_double(random);//*sum;
+                        /*r = rk_double(random);*sum;
                         for(j = 0; j < K;j++){
                                 if(tmp_row[j] > r){
                                         state = j;
                                         label[i] = j;
                                         break;
                                 }
-                        }
-                        /*       tmp_r = r;
+                                }*/
+                        // tmp_r = r;
                                 //r = random_float_zero_to_x_thread(sum, &data->seed);
-                                for(j = 0; j < boundary;j++){
-                                        //if(j == 0 && i == len-1){
-                                        //        fprintf(stdout,"%f thread: %f  %f \n",random_float_zero_to_x(sum), random_float_zero_to_x_thread(sum, &seed) , rand_r(&seed) / (float) RAND_MAX);
-                                        //}
-                                        a = list[j]->from;
-                                        b = list[j]->to;
-                                        if(b == state && a != IHMM_START_STATE){
-                                                r -= tmp_row[a];
-                                                if(r <= FLT_EPSILON){
-                                                        state = a;
-                                                        label[i] = a;
-                                                        break;
-                                                }
+                        r = rk_double(random)*sum;
+                        for(j = 0; j < boundary;j++){
+                                //if(j == 0 && i == len-1){
+                                //        fprintf(stdout,"%f thread: %f  %f \n",random_float_zero_to_x(sum), random_float_zero_to_x_thread(sum, &seed) , rand_r(&seed) / (float) RAND_MAX);
+                                //}
+                                a = list[j]->from;
+                                b = list[j]->to;
+                                if(b == state && a != IHMM_START_STATE){
+                                        r -= tmp_row[a];
+                                        if(r <= DBL_EPSILON){
+                                                state = a;
+                                                label[i] = a;
+                                                break;
                                         }
-                                        }*/
+                                }
+                        }
                                 //}
                         /*if(label[i] == -1){
                                 WARNING_MSG("path is negative!!!!, %e %e u:%e sum: %f",r,tmp_r,u[i+1],sum);
@@ -1218,8 +1219,6 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         }
 
         return OK;
-ERROR:
-        return FAIL;
 }
 
 int dynamic_programming(struct spotseq_thread_data* data, int target)

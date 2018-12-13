@@ -456,7 +456,8 @@ ERROR:
 
 int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
 {
-        int i,j;
+        int i;
+
         int miter;
         ASSERT(model_bag != NULL," No models");
 

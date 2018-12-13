@@ -77,6 +77,8 @@
          theme(legend.position = "bottom")
    #+END_SRC
 
+   #+RESULTS:
+
 
 ** ggseqlogo
 

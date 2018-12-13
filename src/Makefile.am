@@ -10,14 +10,13 @@ CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.l
 AM_LDFLAGS = @DEAD_STRIP@
 AM_LDFLAGS += -Wno-undef
 
-
 MYLIBDIRS = ../tldevel/libtldevel.a
 
 
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
             -I${top_srcdir}/${LIB_TLDEVELDIR}
 
-LIBS = -lm -lpthread
+LIBS = -lm -lpthread ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 #     AC_SUBST(HDF5_CFLAGS)
@@ -25,7 +24,7 @@ LIBS = -lm -lpthread
 #     AC_SUBST(HDF5_LDFLAGS)
 #     AC_SUBST(HDF5_LIBS)
 
-AM_CPPFLAGS=${MYINCDIRS} ${HDF5_CPPFLAGS}
+AM_CPPFLAGS=${MYINCDIRS} ${HDF5_CPPFLAGS} 
 
 
 RANDOMKIT_FILES = distributions.h \
@@ -59,7 +58,15 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 FINITEHMM = finite_hmm.c finite_hmm.h
 
 
-bin_PROGRAMS = build_ihmm sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
+bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
+
+if ENABLE_CAIRO
+bin_PROGRAMS +=  cairo_test
+AM_CPPFLAGS += $(CAIRO_CFLAGS)
+cairo_test_LDADD = $(CAIRO_LIBS)
+endif
+
+cairo_test_SOURCES = cairo_test.c
 
 cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
 cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
@@ -67,27 +74,27 @@ cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_plot_SOURCES = \
 plot_model.c  $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
-spotseq_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_model_SOURCES = \
 build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
-spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_score_SOURCES = \
 score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
-spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 spotseq_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
-spotseq_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 spotseq_iclu_SOURCES = $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) label_suffix_array.h label_suffix_array.c  infoclust.c infoclust.h
-spotseq_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 spotseq_emit_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
 
-spotseq_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#spotseq_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 sim_seq_SOURCES = \
@@ -108,7 +115,7 @@ create_TFBS_benchmark_datasets.c
 
 tfbs_bench_LDADD =  ${MYLIBDIRS}
 
-build_ihmm_SOURCES = \
+#build_ihmm_SOURCES = \
 model_nuc_seq.c \
 matrix_io.h \
 matrix_io.c \
@@ -119,16 +126,16 @@ outdir.c \
 make_dot_file.h \
 make_dot_file.c
 
-build_ihmm_LDADD =  ${MYLIBDIRS}  libihmm.a
+#build_ihmm_LDADD =  ${MYLIBDIRS}  libihmm.a
 
 
 
-noinst_LIBRARIES = libihmm.a
+#noinst_LIBRARIES = libihmm.a
 
 # AUTOMAKE_OPTIONS = subdir-objects
-libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
+#libihmm_a_SOURCES = $(RANDOMKIT_FILES) ihmm.h ihmm.c
 
-libihmm_a_LIBADD  =  ${MYLIBDIRS}
+#libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
 #TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
@@ -174,4 +181,17 @@ beam_ITEST_LDADD = $(libihmm_a_LIBADD) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 pst_ITEST_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
 pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTLST
 pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+
+
+
+
+
+
+
+
+
+
+
+
 

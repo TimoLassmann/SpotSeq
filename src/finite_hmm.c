@@ -372,9 +372,6 @@ ERROR:
 struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
 {
         struct fhmm* fhmm = NULL;
-        double sum;
-        int i,j;
-
 
         ASSERT(hdf5_data != NULL, "No filename");
 

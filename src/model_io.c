@@ -135,7 +135,7 @@ ERROR:
 int write_best_model(char* filename, int best_model)
 {
         struct hdf5_data* hdf5_data = NULL;
-        int i;
+
         void *ptr;
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);

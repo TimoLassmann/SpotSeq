@@ -30,8 +30,6 @@ PKG_CHECK_MODULES([CAIRO],    [cairo],    [enable_cairo=yes],    [AS_IF([test "$
 AM_CONDITIONAL([ENABLE_CAIRO], [test "$enable_cairo" = "yes"])
 
 
-$(GTK_CFLAGS)
- $(GTK_LIBS)
 
 # FIXME: Replace `main' with a function in `-lm':
 AC_CHECK_LIB([m], [log])
@@ -140,3 +138,15 @@ src/Makefile])
 AC_CONFIG_SUBDIRS([tldevel])
 
 AC_OUTPUT
+
+
+
+if test "$enable_cairo" = no; then
+echo "------------------------------------------"
+echo " Unable to find cairo  on this system.    "
+echo " Motif plotting code will not be built.   "
+echo " To install cairo:     "
+echo " Fedora: sudo dnf install cairo-devel     "
+echo "------------------------------------------"
+fi
+

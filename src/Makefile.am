@@ -16,7 +16,7 @@ MYLIBDIRS = ../tldevel/libtldevel.a
 MYINCDIRS = -I${top_builddir}/${LIB_TLDEVELDIR} \
             -I${top_srcdir}/${LIB_TLDEVELDIR}
 
-LIBS = -lm -lpthread ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+LIBS = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS) -lpthread
 
 
 #     AC_SUBST(HDF5_CFLAGS)
@@ -24,7 +24,7 @@ LIBS = -lm -lpthread ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 #     AC_SUBST(HDF5_LDFLAGS)
 #     AC_SUBST(HDF5_LIBS)
 
-AM_CPPFLAGS=${MYINCDIRS} ${HDF5_CPPFLAGS} 
+AM_CPPFLAGS=${MYINCDIRS} ${HDF5_CPPFLAGS}
 
 
 RANDOMKIT_FILES = distributions.h \
@@ -63,7 +63,7 @@ bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spo
 if ENABLE_CAIRO
 bin_PROGRAMS +=  cairo_test
 AM_CPPFLAGS += $(CAIRO_CFLAGS)
-cairo_test_LDADD = $(CAIRO_LIBS)
+cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
 cairo_test_SOURCES = cairo_test.c

@@ -62,12 +62,12 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
         }
         thr_pool_wait(pool);
 
-        free_spotseq_thread_data(td,num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
 
         return OK;
 ERROR:
-        free_spotseq_thread_data(td,num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
         return FAIL;
 }

@@ -1223,7 +1223,8 @@ int main (int argc,char * argv[])
                                 fprintf(stdout,"\n");
                         }
                         fprintf(stdout,"\n");
-                        free_2d((void**) ptr);
+                        gfree(ptr);
+                        //free_2d((void**) ptr);
                 }
         }
 
@@ -1241,7 +1242,8 @@ int main (int argc,char * argv[])
                                 fprintf(stdout,"\n");
                         }
                         fprintf(stdout,"\n");
-                        free_2d((void**) ptr);
+                        gfree(ptr);
+                        //free_2d((void**) ptr);
                 }
         }
 

@@ -2,7 +2,7 @@
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@
 
 
-CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.lfa libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5
+CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.lfa libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5 test1.h5 test2.h5
 
 # top_builddir = @top_builddir@
 
@@ -102,7 +102,9 @@ outdir.h \
 outdir.c \
 matrix_io.h \
 matrix_io.c \
-sim_seq.c
+sim_seq.c \
+make_dot_file.h \
+make_dot_file.c
 
 sim_seq_LDADD =  ${MYLIBDIRS}
 
@@ -138,16 +140,16 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-#TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = pst_ITEST libihmm_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
 
-libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
-libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
-libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
+#libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
+#libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+#libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 
 iseq_ITEST_SOURCES = $(ISEQSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)

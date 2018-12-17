@@ -149,7 +149,7 @@ int main (int argc, char *argv[])
         }
         fclose(fptr);
 
-        free_spotseq_thread_data(td,param->num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
@@ -161,7 +161,7 @@ ERROR:
                 fclose(fptr);
         }
 
-        free_spotseq_thread_data(td,param->num_threads);
+        free_spotseq_thread_data(td);
         if(pool){
                 thr_pool_destroy(pool);
         }

@@ -757,6 +757,8 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
         sb->max_len = 0;
         sb->L = -1;
         sb->background = NULL;
+
+
         while(sb->malloc_num <= numseq){
                 sb->malloc_num = sb->malloc_num << 1;
         }

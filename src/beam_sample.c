@@ -1547,43 +1547,55 @@ ERROR:
 #ifdef ITESTBEAM
 /* These are test functions. */
 
-static int add_state_integration_test(void);
-static int shrink_grow_integration_test(void);
-static int full_run_test(void);
-static int full_run_test_protein(void);
+//static int add_state_integration_test(void);
+//static int shrink_grow_integration_test(void);
+static int full_run_test_dna(char* output,int niter);
+//static int full_run_test_protein(void);
 
 
 int main(const int argc,const char * argv[])
 {
         RUN(print_program_header((char * const*)argv,"Integration Test"));
         LOG_MSG("Start add state test");
-        RUN(add_state_integration_test());
+        //RUN(add_state_integration_test());
 
         LOG_MSG("DONE add state test");
 
         LOG_MSG("Start shrink / grow test");
-        RUN(shrink_grow_integration_test());
+        //RUN(shrink_grow_integration_test());
 
         LOG_MSG("DONE shrink / grow test");
 
         LOG_MSG("START run full test");
-        RUN(full_run_test());
+        RUN(full_run_test_dna("test1.h5",100));
+        RUN(full_run_test_dna("test2.h5",100));
         LOG_MSG("DONE run full test");
 
         LOG_MSG("START run full test (protein)");
-        RUN(full_run_test_protein());
+        //RUN(full_run_test_protein());
         LOG_MSG("DONE run full test");
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;
 }
 
-int full_run_test(void)
+int full_run_test_dna(char* output,int niter)
 {
 
-        struct fast_hmm_param* ft = NULL;
-        struct ihmm_model* model = NULL;
+        struct fast_param_bag* ft_bag = NULL;
+
+        struct model_bag* model_bag = NULL;
+
         struct seq_buffer* sb = NULL;
+
+        struct spotseq_thread_data** td = NULL;
+
+        struct thr_pool* pool = NULL;
+        int* num_state_array = NULL;
+        int num_models = 4;
+        int num_threads = 4;
+
+
         char *tmp_seq[8] = {
                 "ACAGGCTAAAGGAGGGGGCAGTCCCCA",
                 "AGGCTAAAGGAGGGGGCAGTCCCCACC",
@@ -1596,49 +1608,98 @@ int full_run_test(void)
 
         int numseq = 8;
         int initial_states = 8;
-        int i;
+        int i,j;
 
+        init_logsum();
 
+        MMALLOC(num_state_array, sizeof(int)* num_models);
         /* First initialize beam param struct.  */
 
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,numseq));
+        LOG_MSG("Maxlen:%d",sb->max_len);
+        num_state_array[0] = 10;
+        for(i = 1; i < num_models;i++){
+                num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
+        }
+        RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, num_models, 1802));
 
-        RUNP(model = alloc_ihmm_model(initial_states, sb->L));
-        rk_randomseed(&model->rndstate);
 
-        model->alpha_a = 6.0;
-        model->alpha_b = 15.0;
-        model->gamma_a = 16.0;
-        model->gamma_b = 4.0;
-        model->alpha = IHMM_PARAM_PLACEHOLDER;
-        model->gamma = IHMM_PARAM_PLACEHOLDER;
+        RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
+        //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
+        /* New label sequences  */
+        /* We need to label sequences somehow so that we can
+         * set the u arrays properly based on the initial
+         * model guess */
+        model_bag->max_num_states = 0;
+        for(i = 0; i < model_bag->num_models;i++){
+                RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
-        RUN(inititalize_model(model, sb,initial_states));// initial_states) );
-        for(i = 0;i < 10;i++){
-                RUN(iHmmHyperSample(model, 20));
+                RUN(fill_counts(model_bag->models[i], sb,i));
+
+
+                model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
+                //print_counts(model_bag->models[i]);
+
+
         }
 
-        RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-        RUN(fill_background_emission(ft, sb));
+        RUN(check_labels(sb,model_bag->num_models ));
+        /* Set seed in sequence buffer */
+        sb->seed = rk_ulong(&model_bag->rndstate);
+        rk_seed(sb->seed, &sb->rndstate);
 
-        RUN(run_beam_sampling( model, sb, ft,NULL, 10, 2));
+        RUN(set_model_hyper_parameters(model_bag, IHMM_PARAM_PLACEHOLDER,IHMM_PARAM_PLACEHOLDER));
+
+        /* Allocating thread structure. */
+        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+
+        LOG_MSG("Will use %d threads.", num_threads);
+        if((pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+
+        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
+        //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
+        /* fill background of first fast hmm param struct  */
+        RUN(fill_background_emission(ft_bag->fast_params[0], sb));
+        /* Now copy remaining 1:N first fast hmm param structs */
+        for(i = 1; i < ft_bag->num_models;i++){
+                for(j = 0; j < sb->L;j++){
+                        ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
+                }
+
+        }
+
+        //RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
+
+        /* Main function */
+        RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  niter,  num_threads));
 
 
-        //sb, num thread, guess for aplha and gamma.. iterations.
-
-
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
+        /* Write results */
+        RUN(convert_ihmm_to_fhmm_models(model_bag));
+        RUN(write_model_bag_hdf5(model_bag,output));
+        RUN(add_annotation(output, "spotseq_model_cmd", "Testing"));
+        RUN(add_sequences_to_hdf5_model(output, sb,  model_bag->num_models));
+        RUN(write_thread_data_to_hdf5(output, td, td[0]->num_threads, sb->max_len, model_bag->max_num_states));
         free_ihmm_sequences(sb);
+        free_model_bag(model_bag);
+        free_fast_param_bag(ft_bag);
+        free_spotseq_thread_data(td);
+        thr_pool_destroy(pool);
+        MFREE(num_state_array);
         return OK;
 ERROR:
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
         free_ihmm_sequences(sb);
+        free_model_bag(model_bag);
+        free_fast_param_bag(ft_bag);
+        free_spotseq_thread_data(td);
+        thr_pool_destroy(pool);
+        MFREE(num_state_array);
         return FAIL;
 }
 
-int full_run_test_protein(void)
+
+
+/*int full_run_test_protein(void)
 {
 
         struct fast_hmm_param* ft = NULL;
@@ -1704,184 +1765,6 @@ ERROR:
         return FAIL;
 }
 
-
-static int shrink_grow_integration_test(void)
-{
-        struct fast_hmm_param* ft = NULL;
-        struct ihmm_model* model = NULL;
-        struct seq_buffer* iseq = NULL;
-
-        char *tmp_seq[4] = {
-                "ACGT",
-                "ACGT",
-                "ACGT",
-                "ACGT"};
-
-        int initial_states = 4;
-        int i;
-
-        RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
-
-        RUNP(model = alloc_ihmm_model(initial_states, 4,42));
-
-        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        add_multi_model_label_and_u(iseq, 1);
-        RUN(random_label_ihmm_sequences(iseq, initial_states * 10,0.3));
-        RUN(fill_counts(model,iseq));
-        /* I am doing this as a pre-caution. I don't want the inital model
-         * contain states that are not visited.. */
-        RUN(remove_unused_states_labels(model, iseq));;
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-
-        model->alpha_a = 4.0f;
-        model->alpha_b = 2.0f;
-        model->gamma_a = 3.0f;
-        model->gamma_b = 6.0f;
-        model->alpha = IHMM_PARAM_PLACEHOLDER;
-        model->gamma = IHMM_PARAM_PLACEHOLDER;
-        RUN(iHmmHyperSample(model, 10));
-        RUN(print_model_parameters(model));
-
-        RUN(random_label_ihmm_sequences(iseq, 2,0.3));
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-
-        RUN(iHmmHyperSample(model, 10));
-
-        RUN(print_model_parameters(model));
-        LOG_MSG("Fill transitions 1");
-        RUN(fill_fast_transitions(model,ft));
-        RUN(print_fast_hmm_params(ft));
-        LOG_MSG("Fill transitions 2");
-        RUN(fill_fast_transitions(model,ft));
-        RUN(print_fast_hmm_params(ft));
-        LOG_MSG("Fill transitions 3");
-
-        RUN(fill_fast_transitions(model,ft));
-        RUN(print_fast_hmm_params(ft));
-        LOG_MSG("Add 10 states");
-        for(i = 0;i < 10;i++){
-                RUN(add_state_from_fast_hmm_param(model,ft));
-        }
-        RUN(print_model_parameters(model));
-        RUN(print_fast_hmm_params(ft));
-
-        LOG_MSG("Fill transitions 4");
-        RUN(random_label_ihmm_sequences(iseq, 2,0.3));
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-        RUN(fill_fast_transitions(model,ft));
-        RUN(print_fast_hmm_params(ft));
-
-
-        RUN(make_flat_param_list(ft));
-        //for(i = 0; i< 10;i++){
-        //       fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
-        //
-
-        int test = fast_hmm_param_binarySearch_t(ft, ft->list[3]->t);
-        fprintf(stdout,"Selected for > %f\n",ft->list[3]->t);
-        for(i = 0; i< test;i++){
-                fprintf(stdout,"%d->%d: %f\n", ft->list[i]->from,ft->list[i]->to,ft->list[i]->t);
-        }
-
-        RUN(random_label_ihmm_sequences(iseq, 6,0.3));
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-        RUN(iHmmHyperSample(model, 10));
-
-        RUN(print_model_parameters(model));
-
-
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(iseq);
-
-        return OK;
-ERROR:
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(iseq);
-        return FAIL;
-}
-
-static int add_state_integration_test(void)
-{
-        struct fast_hmm_param* ft = NULL;
-        struct ihmm_model* model = NULL;
-        struct seq_buffer* iseq = NULL;
-
-        char *tmp_seq[4] = {
-                "ACGT",
-                "ACGT",
-                "ACGT",
-                "ACGT"};
-
-
-        int initial_states = 4;
-
-
-
-        /* Let's start allocating all structures  */
-        RUNP(ft = alloc_fast_hmm_param(initial_states,initial_states));
-
-        RUNP(model = alloc_ihmm_model(initial_states, 4));
-        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUN(random_label_ihmm_sequences(iseq, initial_states,0.3));
-
-
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-
-        /* I am doing this as a pre-caution. I don't want the inital model
-         * contain states that are not visited.. */
-        RUN(remove_unused_states_labels(model, iseq));
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-        /* Now there are counts but no model parameters. */
-        model->alpha_a = 4.0f;
-        model->alpha_b = 2.0f;
-        model->gamma_a = 3.0f;
-        model->gamma_b = 6.0f;
-        model->alpha = IHMM_PARAM_PLACEHOLDER;
-        model->gamma = IHMM_PARAM_PLACEHOLDER;
-        RUN(iHmmHyperSample(model, 10));
-
-        /* Now I should have everything ready to go.  */
-        RUN(print_model_parameters(model));
-        /* Just to verify if everything works..  */
-        RUN(remove_unused_states_labels(model, iseq));
-        RUN(fill_counts(model,iseq));
-        RUN(print_counts(model));
-        RUN(print_model_parameters(model));
-
-        LOG_MSG("Fill transitions from counts.");
-        RUN(fill_fast_transitions(model,ft));
-        RUN(print_fast_hmm_params(ft));
-        RUN(print_model_parameters(model));
-        LOG_MSG("Add a state.");
-        RUN(add_state_from_fast_hmm_param(model,ft));
-        RUN(print_model_parameters(model));
-        RUN(print_fast_hmm_params(ft));
-
-        LOG_MSG("Add a state.");
-        RUN(add_state_from_fast_hmm_param(model,ft));
-        RUN(print_model_parameters(model));
-        RUN(print_fast_hmm_params(ft));
-
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(iseq);
-
-
-        return OK;
-ERROR:
-        free_fast_hmm_param(ft);
-        free_ihmm_model(model);
-        free_ihmm_sequences(iseq);
-        return FAIL;
-}
-
+*/
 #endif
 

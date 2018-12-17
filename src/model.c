@@ -806,7 +806,7 @@ int print_model_parameters(struct ihmm_model* ihmm)
 int main(const int argc,const char * argv[])
 {
         struct ihmm_model* ihmm = NULL;
-        struct seq_buffer* iseq = NULL;
+        struct seq_buffer* sb = NULL;
         int i;
         char *tmp_seq[4] = {
                 "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
@@ -820,11 +820,13 @@ int main(const int argc,const char * argv[])
         RUN(print_program_header((char * const*)argv,"GAGA"));
 
 
-        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUN(random_label_ihmm_sequences(iseq, 10, 0.3));
+        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4));
+        RUN(random_label_ihmm_sequences(sb, 10, 0.3));
+        rk_seed(1802, &sb->rndstate);
 
 
-        RUNP(ihmm = alloc_ihmm_model(20, 4+3,42));
+
+        RUNP(ihmm = alloc_ihmm_model(20, 4,42));
         /* Need to set alpha_[a/b] and gamma[a/b] manually before calling
          * hyper */
         RUN(resize_ihmm_model(ihmm, 16+3));
@@ -832,82 +834,27 @@ int main(const int argc,const char * argv[])
 
         /* At this stage there are no counts AND the model parameters are not
          * initialized. */
-        RUN(add_multi_model_label_and_u(iseq, 0));
-        RUN(fill_counts(ihmm,iseq,0));
-        RUN(print_counts(ihmm));
 
+        RUN(add_multi_model_label_and_u(sb, 1));
+        RUN(random_label_based_on_multiple_models(sb, 10, 0, &sb->rndstate));
+        RUN(fill_counts(ihmm,sb,0));
+        RUN(print_counts(ihmm));
+        LOG_MSG("%d %d", sb->L, sb->num_seq);
 
 
         /* I am doing this as a pre-caution. I don't want the inital model
          * contain states that are not visited.. */
+        LOG_MSG("remove unused states");
 
-
-        RUN(remove_unused_states_labels(ihmm, iseq,0));
-        RUN(fill_counts(ihmm,iseq,0));
-        RUN(print_counts(ihmm));
-        /* Now there are counts but no model parameters. */
-        ihmm->alpha_a = 4.0f;
-        ihmm->alpha_b = 2.0f;
-        ihmm->gamma_a = 3.0f;
-        ihmm->gamma_b = 6.0f;
-        ihmm->alpha = IHMM_PARAM_PLACEHOLDER;
-        ihmm->gamma = IHMM_PARAM_PLACEHOLDER;
-        RUN(iHmmHyperSample(ihmm, 10));
-        /* Now I should have everything ready to go.  */
-        RUN(print_model_parameters(ihmm));
-        /* Just to verify if everything works..  */
-        RUN(remove_unused_states_labels(ihmm, iseq,0));
-        RUN(fill_counts(ihmm,iseq,0));
-        RUN(print_counts(ihmm));
-
-        /* Verify (by eye!) if the estimation of the hyperparameters works  */
-        for(i = 0; i < 10;i++){
-                ihmm->alpha_a = 4.0f;
-                ihmm->alpha_b = 2.0f;
-                ihmm->gamma_a = 3.0f;
-                ihmm->gamma_b = 6.0f;
-                ihmm->alpha = IHMM_PARAM_PLACEHOLDER;
-                ihmm->gamma = IHMM_PARAM_PLACEHOLDER;
-                RUN(iHmmHyperSample(ihmm, 10));
-                RUN(print_model_parameters(ihmm));
-        }
-        RUN(print_counts(ihmm));
-        RUN(write_model(ihmm, "test_model_file.txt"));
-        free_ihmm_model(ihmm);
-
-        RUNP(ihmm = read_model("test_model_file.txt"));
-        LOG_MSG("After reading:");
-        RUN(print_model_parameters(ihmm));
-        RUN(print_counts(ihmm));
-
-        free_ihmm_model(ihmm);
-        free_ihmm_sequences(iseq);
-
-
-
-        RUNP(iseq = create_ihmm_sequences_mem(tmp_seq ,4));
-        RUNP(ihmm = alloc_ihmm_model(20, 4+3,42));
-        RUN(add_multi_model_label_and_u(iseq, 0));
-        LOG_MSG("Alpha = 100");
-        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,100));
-        RUN(fill_counts(ihmm,iseq,0));
-        RUN(print_counts(ihmm));
-
-        LOG_MSG("Alpha = 1.0");
-        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,1.0));
-
-        RUN(fill_counts(ihmm,iseq,0));
-        RUN(print_counts(ihmm));
-
-        LOG_MSG("Alpha = 0.3");
-        RUN(dirichlet_emission_label_ihmm_sequences(iseq, 4,0.3));
-
-        RUN(fill_counts(ihmm,iseq,0));
+        RUN(remove_unused_states_labels(ihmm, sb,0));
+        RUN(fill_counts(ihmm,sb,0));
         RUN(print_counts(ihmm));
 
 
         free_ihmm_model(ihmm);
-        free_ihmm_sequences(iseq);
+        free_ihmm_sequences(sb);
+
+
 
 
 

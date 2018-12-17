@@ -67,7 +67,7 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
 
         return td;
 ERROR:
-        free_spotseq_thread_data(td, *num_threads);
+        free_spotseq_thread_data(td);
         return NULL;
 }
 
@@ -116,10 +116,11 @@ ERROR:
 }
 
 
-void free_spotseq_thread_data(struct spotseq_thread_data** td, int num_threads)
+void free_spotseq_thread_data(struct spotseq_thread_data** td)
 {
         int i;
         if(td){
+                int num_threads = td[0]->num_threads;
                 for(i = 0; i < num_threads;i++){
                         gfree(td[i]->dyn);
                         gfree(td[i]->F_matrix);

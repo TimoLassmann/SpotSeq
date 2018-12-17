@@ -181,9 +181,9 @@ int main (void)
                 {	0,	1,	0 ,	1},
                 {	3, 	2 ,	3 ,	9},
                 { 4,	7 ,	2 ,	4},
-                { 9,	6 ,	1 ,	1},
+                { 9,	68 ,	1 ,	1},
                 { 4,	3 ,	7 ,	3},
-                { 6,	3 ,	1 ,	7}
+                { 6,	33 ,	13 ,	7}
         };
 
         /* alloc */
@@ -202,7 +202,10 @@ int main (void)
         }
         /* normalize etc.. */
         double entropy, sum, e, height;
-        e = 1.0 / log(2.0) * ((double)(m_L-1.0) / (2.0*total));
+
+        e = 1.0 / log(2.0) * ((double)(logo->L-1.0) / (2.0*total));
+
+
 
         for(i = 0; i < m_len;i++){
                 sum = 0.0;
@@ -224,13 +227,11 @@ int main (void)
                 entropy = fabs(entropy);
 
 
-                height =  log2(4.0) - (entropy + e);
+                height =  log2((double) logo->L ) - (entropy + e);
                 //fprintf(stdout,"entropy: %f error:%f   height :%f \n",entropy,e, log2(4.0) - (entropy + e));
                 for(j = 0; j < m_L;j++){
                         logo->letters[i][j]->scale = logo->letters[i][j]->freq* height * 2.0;
                         //logo->letters[i][j]->scale = round(logo->letters[i][j]->scale* 100.0) / 100.0;
-
-
                         //fprintf(stdout,"%0.3f ", logo->letters[i][j]->scale);
                 }
                 //fprintf(stdout,"\n");
@@ -263,7 +264,7 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
                                                        WIDTH, HEIGHT, STRIDE);
 
         cr = cairo_create (surface);
-        cairo_select_font_face (cr, "monospace", 0, 0);
+        cairo_select_font_face (cr, "monospace", 0, CAIRO_FONT_WEIGHT_BOLD);
         cairo_set_font_size (cr, BASE_FONT_SIZE);
         cairo_text_extents (cr, "C", &extents);
         cairo_font_extents(cr, &font_extents);
@@ -333,7 +334,7 @@ int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc)
 
         scale= MACRO_MAX(0.01, scale);
         //fprintf(stdout,"Height: %f\n",y );
-        cairo_select_font_face (cr, "monospace", 0, 0);
+        cairo_select_font_face (cr, "monospace", 0, CAIRO_FONT_WEIGHT_BOLD);
         cairo_set_font_size (cr, BASE_FONT_SIZE);
 
         if(nuc){

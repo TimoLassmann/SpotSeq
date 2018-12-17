@@ -26,6 +26,6 @@ struct spotseq_thread_data{
 
 extern  struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K,rk_state* random);
 extern int resize_spotseq_thread_data(struct spotseq_thread_data** td,int* num_threads, int max_len, int K);
-extern void free_spotseq_thread_data(struct spotseq_thread_data** td, int num_threads);
+extern void free_spotseq_thread_data(struct spotseq_thread_data** td);
 
 #endif

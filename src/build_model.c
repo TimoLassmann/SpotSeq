@@ -218,6 +218,7 @@ int run_build_ihmm(struct parameters* param)
 
 
         MMALLOC(num_state_array, sizeof(int)* param->num_models);
+
         if(param->in_model){
                 /* PROBABLY need to re-alloc num_state_array */
                 //MMALLOC(num_state_array, sizeof(int)* param->num_models);
@@ -371,7 +372,7 @@ int run_build_ihmm(struct parameters* param)
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_spotseq_thread_data(td, param->num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
@@ -379,7 +380,7 @@ ERROR:
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_spotseq_thread_data(td, param->num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
@@ -496,7 +497,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         LOG_MSG("Best Model: %d",model_bag->best_model);
         RUN(write_best_model(param->output, model_bag->best_model));
         //LOG_MSG("Got past writing");
-        free_spotseq_thread_data(td,param->num_threads);
+        free_spotseq_thread_data(td);
         //LOG_MSG("Got past free thread data ");
         thr_pool_destroy(pool);
         //LOG_MSG("Got past poolfree");
@@ -508,7 +509,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         return OK;
 ERROR:
-        free_spotseq_thread_data(td,param->num_threads);
+        free_spotseq_thread_data(td);
         thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);

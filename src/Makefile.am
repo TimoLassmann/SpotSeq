@@ -61,10 +61,14 @@ FINITEHMM = finite_hmm.c finite_hmm.h
 bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
 
 if ENABLE_CAIRO
-bin_PROGRAMS +=  cairo_test
+bin_PROGRAMS +=  cairo_test spotseq_pplot
 AM_CPPFLAGS += $(CAIRO_CFLAGS)
 cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+spotseq_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+
 endif
+
+spotseq_pplot_SOURCES = pplot.c dijkstra.c $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 
 cairo_test_SOURCES = cairo_test.c
 
@@ -140,16 +144,21 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+TESTS = dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 #libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
+
+
+dijkstra_ITEST_SOURCES = dijkstra.c
+dijkstra_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
+dijkstra_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 
 iseq_ITEST_SOURCES = $(ISEQSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE)

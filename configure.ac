@@ -43,6 +43,8 @@ AC_CHECK_HEADERS([stdlib.h string.h float.h limits.h stddef.h stdlib.h sys/time.
 LIB_TLDEVELDIR="tldevel"
 AC_SUBST(LIB_TLDEVELDIR)
 
+AC_FUNC_ERROR_AT_LINE
+
 AC_TYPE_SIZE_T
 
 AC_TYPE_INT8_T

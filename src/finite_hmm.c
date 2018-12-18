@@ -316,9 +316,10 @@ int convert_fhmm_scaled_to_prob(struct fhmm* fhmm)
         ASSERT(fhmm != NULL, "no model");
         /* I need to allocate tindex & convert probs to log space */
         init_logsum();
-        LOG_MSG("states:%d L:%d", fhmm->K, fhmm->L);
+        //LOG_MSG("states:%d L:%d", fhmm->K, fhmm->L);
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
+                        // LOG_MSG("%d %d %f",i,j,fhmm->e[i][j]);
                         fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
                 }
         }

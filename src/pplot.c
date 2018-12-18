@@ -1,10 +1,24 @@
 
-#include <cairo.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <getopt.h>
+#include <string.h>
+#include <inttypes.h>
+#include <ctype.h>
+#include <cairo.h>
 #include "tldevel.h"
+
+#include "ihmm_seq.h"
+
+//#include "beam_sample.h"
+#include "model.h"
+#include "fast_hmm_param.h"
+#include "hmm_conversion.h"
+
 
 /*char* protein_colors[ALPHABET_PROTEIN] = {
         "#FF9966",
@@ -87,10 +101,209 @@ struct logo_data{
         int L;
 };
 
+struct parameters{
+        char* input;
+        char* output;
+        float edge_threshold;
+        int node_count_cutoff;
+};
+
+int free_parameters(struct parameters* param);
+
+int print_help(char **argv);
+
+
+int run_pplot_ihmm(struct parameters* param);
+int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters* param);
 unsigned char image[STRIDE*HEIGHT];
 int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc);
 int  run_draw_logo(struct logo_data* logo, char* outname);
 int get_rgb_color(int color, double*r, double *g, double *b);
+
+
+
+int main (int argc, char *argv[])
+{
+        struct parameters* param = NULL;
+        int c;
+
+        print_program_header(argv, "Generates iHMM image using a <.dot> file and motif png's.");
+
+        MMALLOC(param, sizeof(struct parameters));
+        param->input = NULL;
+        param->output = NULL;
+        param->edge_threshold = 0.5f;
+        param->node_count_cutoff = 0;
+        while (1){
+                static struct option long_options[] ={
+                        {"model",required_argument,0,'m'},
+                        {"out",required_argument,0,'o'},
+                        {"ethres",required_argument,0,'e'},
+                        {"nthres",required_argument,0,'n'},
+                        {"help",0,0,'h'},
+                        {0, 0, 0, 0}
+                };
+                int option_index = 0;
+                c = getopt_long_only (argc, argv,"hm:o:e:n:",long_options, &option_index);
+
+                if (c == -1){
+                        break;
+                }
+                switch(c) {
+                case 'n':
+                        param->node_count_cutoff = atoi(optarg);
+                        break;
+                case 'e':
+                        param->edge_threshold = atof(optarg);
+                        break;
+                case 'm':
+                        param->input = optarg;
+                        break;
+                case 'o':
+                        param->output = optarg;
+                        break;
+                case 'h':
+                        RUN(print_help(argv));
+                        MFREE(param);
+                        exit(EXIT_SUCCESS);
+                        break;
+                default:
+                        ERROR_MSG("not recognized");
+                        break;
+                }
+        }
+
+        LOG_MSG("Starting run");
+
+        if(!param->input){
+                RUN(print_help(argv));
+                ERROR_MSG("No input file! use --in <blah.fa>");
+
+        }else{
+                if(!my_file_exists(param->input)){
+                        RUN(print_help(argv));
+                        ERROR_MSG("The file <%s> does not exist.",param->input);
+                }
+        }
+
+        if(!param->output){
+                RUN(print_help(argv));
+                ERROR_MSG("No output file! use --out <blah.fa>");
+        }else{
+                if(my_file_exists(param->output)){
+                        WARNING_MSG("Will overwrite: %s.",param->output);
+                }
+        }
+        init_logsum();
+
+        RUN(run_pplot_ihmm(param));
+
+        //RUN(plot_model_entropy(param));
+
+        //RUN(run_plot_positional_state_distribution(param));
+
+        RUN(free_parameters(param));
+        return EXIT_SUCCESS;
+ERROR:
+        fprintf(stdout,"\n  Try run with  --help.\n\n");
+        free_parameters(param);
+        return EXIT_FAILURE;
+}
+
+int run_pplot_ihmm(struct parameters* param)
+{
+        struct fast_hmm_param* ft = NULL;
+        struct ihmm_model* model = NULL;
+        struct fhmm* fhmm = NULL;
+
+        int best = 0;
+        ASSERT(param!= NULL, "No parameters found.");
+
+        RUNP(fhmm = read_best_fmodel(param->input, &best));
+        RUNP(model = read_best_imodel(param->input, &best));
+
+        RUN(convert_fhmm_scaled_to_prob(fhmm));
+        //RUNP(model = read_model_hdf5(param->input));
+
+
+        //RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
+        //RUN(print_fast_hmm_params(ft));
+        //RUN(fill_background_emission_from_model(ft,model));
+        //RUN(fill_fast_transitions_only_matrices(model,ft));
+        RUN( make_pretty_plot_file( fhmm, model, param));
+
+        free_fhmm(fhmm);
+        free_ihmm_model(model);
+        free_fast_hmm_param(ft);
+
+        return OK;
+ERROR:
+        free_fast_hmm_param(ft);
+        free_ihmm_model(model);
+        return FAIL;
+}
+
+int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters* param)
+{
+        int i,j,a,b;
+
+        double sum;
+        double max;
+        double threshold;
+
+        /* check if incoming edges are skewed towards one state */
+
+
+        for(j =0; j < fhmm->K;j++){
+                sum = 0.0;
+                for(i =0; i < fhmm->K;i++){
+                        sum +=  fhmm->t[i][j];
+                }
+                max= 0.0;
+
+                for(i =0; i < fhmm->K;i++){
+                        if(fhmm->t[i][j] / sum > max){
+                                max = fhmm->t[i][j] / sum;
+                                a = i;
+                                b = j;
+                        }
+                }
+                if(max > 0.7){
+                        fprintf(stdout,"State %d -> %d \n",a,b);
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+int free_parameters(struct parameters* param)
+{
+        ASSERT(param != NULL, " No param found - free'd already???");
+
+        MFREE(param);
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
+int print_help(char **argv)
+{
+        const char usage[] = " -m <input model> -o <output dot file>";
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
+        fprintf(stdout,"Options:\n\n");
+
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthres","Distance between seeds." ,"[0]"  );
+
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--ethres","Edge threshold." ,"[0.5]"  );
+        return OK;
+}
+
+
+
+
 
 int get_rgb_color(int color, double*r, double *g, double *b)
 {
@@ -161,7 +374,7 @@ void free_logo(struct logo_data* logo)
 
 }
 
-int main (void)
+/*int main (void)
 {
         struct logo_data* logo = NULL;
         int i,j;
@@ -186,11 +399,11 @@ int main (void)
                 { 6,	33 ,	13 ,	7}
         };
 
-        /* alloc */
+
         RUNP(logo = alloc_logo(m_len, m_L));
 
 
-        /* fill */
+
         double total;
         total = 0;
         for(i = 0; i < m_len;i++){
@@ -200,7 +413,7 @@ int main (void)
                         total += motif[i][j];
                 }
         }
-        /* normalize etc.. */
+
         double entropy, sum, e, height;
 
         e = 1.0 / log(2.0) * ((double)(logo->L-1.0) / (2.0*total));
@@ -237,10 +450,7 @@ int main (void)
                 //fprintf(stdout,"\n");
 
                 qsort(logo->letters[i], 4,  sizeof(struct logo_letter*),sort_logo_letter_by_height);
-                /*for(j = 0; j < m_L;j++){
-                        fprintf(stdout,"%0.3f(%c) ", logo->letters[i][j]->scale,logo->letters[i][j]->c );
-                }
-                fprintf(stdout,"\n");*/
+
         }
         run_draw_logo(logo,"text.png");
 
@@ -249,7 +459,7 @@ int main (void)
 ERROR:
         return EXIT_FAILURE;
 }
-
+*/
 int  run_draw_logo(struct logo_data* logo, char* outname)
 {
         int i,j;

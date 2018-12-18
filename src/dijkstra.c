@@ -1,29 +1,35 @@
-#include "ssrdt_net.h"
+
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#include "tldevel.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
- 
+#include <float.h>
+
 typedef struct {
         int vertex;
-        float weight;
+        double weight;
 } edge_t;
- 
+
 typedef struct {
         edge_t **edges;
         int edges_len;
         int edges_size;
-        float dist;		/* needed for dij */
+        double dist;		/* needed for dij */
         int prev;		/* needed for dij */
         int visited;		/* needed for dij */
 } vertex_t;
- 
+
 typedef struct {
         vertex_t **vertices;
         int vertices_len;
         int vertices_size;
 } graph_t;
- 
+
 typedef struct {
         int *data;
         int *prio;
@@ -32,22 +38,33 @@ typedef struct {
         int size;
 } heap_t;
 
+
+typedef struct {
+        int* path;
+        int len;
+        double score;
+} dpath_t;
+
+dpath_t* print_path (graph_t *g, int i);
+
+void free_dijkstra_path(dpath_t* p);
+
 void add_vertex (graph_t *g, int i);
 
-void add_edge (graph_t *g, int a, int b, float w);
+void add_edge (graph_t *g, int a, int b, double w);
 
 void remove_edge(graph_t *g, int a, int b);
 
 void dijkstra (graph_t *g, int a, int b);
-void dijkstra_local (graph_t *g, int a, int b,float max_distance);
+void dijkstra_local (graph_t *g, int a, int b,double max_distance);
 
 
-graph_t * make_graph(struct rbtree_edge_struct** list,int num_edges);
+//graph_t * make_graph(struct rbtree_edge_struct** list,int num_edges);
 
 void free_graph(graph_t* g);
 
 
-int calculate_connectivity(graph_t* g, float* connectivity);
+int calculate_connectivity(graph_t* g, double* connectivity);
 
 
 int progress_bar(float x);
@@ -70,7 +87,7 @@ int progress_bar(float x);
   11: Return H=(V,F)
 */
 
-int prune_edges_naive(struct rbtree_edge_struct** list,int num_edges,float gamma)
+/*int prune_edges_naive(struct rbtree_edge_struct** list,int num_edges,float gamma)
 {
         struct rbtree_edge_struct* e = NULL;
         graph_t *g = NULL;
@@ -78,19 +95,19 @@ int prune_edges_naive(struct rbtree_edge_struct** list,int num_edges,float gamma
         int a,b;
         int num_remove;
         int removed;
-	
+
         RUNP(g = make_graph(list,num_edges));
         num_remove =  (int)(gamma * (float)(num_edges - (g->vertices_len-1)));
-	
+
         LOG_MSG("Pruning.");
         LOG_MSG("%d edges.", num_edges);
         LOG_MSG("will remove %d edges.",num_remove);
-	
+
         ///DECLARE_TIMER(t1);
         removed = 0;
         for(i = num_edges-1 ; i >= 0;i--){
                 e = (struct rbtree_edge_struct*) list[i];
-	         
+
                 a = e->key >> 32ULL;
                 b = e->key & 0xFFFFFFFF;
                 //fprintf(stdout,"%d\t%d\t%f\n",a,b,e->dist);
@@ -106,23 +123,23 @@ int prune_edges_naive(struct rbtree_edge_struct** list,int num_edges,float gamma
                                 e->dist = -1;
                                 //		fprintf(stdout,"%d\t%d\t%f removed...\n",a,b,e->dist);
                                 removed++;
-				
-					
+
+
                         }
-		
+
                 }
                 if(removed == num_remove){
-                        break;
+n                        break;
                 }
         }
-	
+
         free_graph(g);
 
         return OK;
 ERROR:
         return FAIL;
 }
-
+*/
 
 
 
@@ -155,7 +172,7 @@ ERROR:
   22:   F←F\{elargest}
   23: Return H=(V,F)
 */
-
+/*
 int prune_edges_path_simplification(struct rbtree_edge_struct** list,int num_edges,float gamma)
 {
         struct rbtree_edge_struct* e = NULL;
@@ -164,18 +181,18 @@ int prune_edges_path_simplification(struct rbtree_edge_struct** list,int num_edg
         int a,b;
         int num_remove;
         int remove_target;
-        float q_s;		/* path quality without edge */
-        float q_e;		/* path quality with edge...  */
+        float q_s;
+        float q_e;
         float min_k;
         float k;
-        
+
         RUNP(g = make_graph(list,num_edges));
         num_remove =  (int)(gamma * (float)(num_edges - (g->vertices_len-1)));
-	
+
         LOG_MSG("Pruning.");
         LOG_MSG("%d edges.", num_edges);
         LOG_MSG("will remove %d edges.",num_remove);
-	
+
         DECLARE_TIMER(t1);
         //num_remove = 2;
         for(i = 0; i < num_remove;i++){
@@ -190,21 +207,21 @@ int prune_edges_path_simplification(struct rbtree_edge_struct** list,int num_edg
                         if(e->dist != -1){
                                 dijkstra_local(g, a,b,1.0);
                                 q_e = g->vertices[b]->dist;
-				
+
                                 // remove
                                 remove_edge(g,a,b);
-				
+
                                 // calculate new connectivity
                                 dijkstra_local(g, a,b,1.0);
                                 q_s = g->vertices[b]->dist;
 
                                 //fprintf(stdout,"testing %d %d; org %f new %f. ",a,b,q_e,q_s);
-					
+
                                 if(q_s <= q_e){
                                         //	fprintf(stdout,"remove immediately\n");
                                         // remove immediately
                                         e->dist = -1;
-			
+
                                         remove_target = -1;
 
                                         break;
@@ -213,39 +230,39 @@ int prune_edges_path_simplification(struct rbtree_edge_struct** list,int num_edg
                                 if(q_s != -FLT_MAX){
                                         k = q_s / q_e;
                                         if(k < min_k){
-						
+
                                                 //fprintf(stdout,"new candidate\n");
                                                 remove_target = j;
                                                 min_k = k;
                                         }else{
-						
+
                                                 //		fprintf(stdout,"\n");
                                         }
                                 }
                                 add_edge(g,a,b, e->dist );
                         }
-			
+
                         RUN(progress_bar( (float)(j+1)/ (float) num_edges));
                 }
                 if(remove_target != -1){
                         e = (struct rbtree_edge_struct*) list[remove_target];
                         a = e->key >> 32ULL;
                         b = e->key & 0xFFFFFFFF;
-		
+
                         e->dist = -1;
                         remove_edge(g,a,b);
                 }
                 STOP_TIMER(t1);
-	
+
                 LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
         }
-	
+
         free_graph(g);
         return OK;
 ERROR:
         return FAIL;
 }
-
+*/
 
 /*
   Algorithm 2.
@@ -273,7 +290,7 @@ ERROR:
   17: Return H=(V,F)
 */
 
-
+ /*
 int prune_edges_brute_force(struct rbtree_edge_struct** list,int num_edges,float gamma)
 {
         struct rbtree_edge_struct* e = NULL;
@@ -288,17 +305,17 @@ int prune_edges_brute_force(struct rbtree_edge_struct** list,int num_edges,float
 
         RUNP(g = make_graph(list,num_edges));
         num_remove =  (int)(gamma * (float)(num_edges - (g->vertices_len-1)));
-	
-		
+
+
         // 2: n ← γ ( |E| − ( |V| − 1))
         LOG_MSG("Pruning.");
         LOG_MSG("%d edges.", num_edges);
         LOG_MSG("will remove %d edges.",num_remove);
 
         DECLARE_TIMER(t1);
-	
-	
-	
+
+
+
         //num_remove = 2;
         for(i = 0; i < num_remove;i++){
                 START_TIMER(t1);
@@ -326,31 +343,31 @@ int prune_edges_brute_force(struct rbtree_edge_struct** list,int num_edges,float
                                 }
                                 add_edge(g,a,b, e->dist );
                         }
-			
+
                         RUN(progress_bar( (float)(j+1)/ (float) num_edges));
                 }
                 e = (struct rbtree_edge_struct*) list[remove_target];
                 a = e->key >> 32ULL;
                 b = e->key & 0xFFFFFFFF;
-		
+
                 e->dist = -1;
                 remove_edge(g,a,b);
-		
+
                 STOP_TIMER(t1);
-	
+
                 LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
         }
 
 
 
 
-	
+
         free_graph(g);
         return OK;
 ERROR:
         return FAIL;
 }
-
+ */
 int progress_bar(float x)
 {
         int barWidth = 70;
@@ -362,100 +379,40 @@ int progress_bar(float x)
 
                 } else if (i == pos){
                         fprintf(stdout,">");
-	
+
                 }else{
                         fprintf(stdout," ");
                 }
         }
 
-	
+
         fprintf(stdout,"] %d \r", (int)(x * 100.0f));
         fflush(stdout);
         return OK;
 }
- 
-int calculate_connectivity(graph_t* g, float* connectivity)
+
+int calculate_connectivity(graph_t* g, double* connectivity)
 {
         int i,j;
         int len = g->vertices_len;
-        float c = 0;
+        double c = 0;
         for(i = 0; i < len-1;i++){
                 for(j = i+1;j < len;j++){
                         dijkstra(g, i,j);
-                        if(g->vertices[j]->dist == FLT_MAX){
-                                *connectivity = FLT_MAX;
+                        if(g->vertices[j]->dist == DBL_MAX){
+                                *connectivity = DBL_MAX;
                                 return OK;
                         }
                         c += g->vertices[j]->dist;
                 }
         }
-        c =  2.0 / ((float)(len *(len-1))) * c;
+        c =  2.0 / ((double)(len *(len-1))) * c;
 
         *connectivity = c;
         return OK;
 }
 
-graph_t * make_graph(struct rbtree_edge_struct** list,int num_edges)
-{
-        struct rbtree_edge_struct* e = NULL;
 
-        uint32_t* count_v = NULL;
-        graph_t *g = NULL;
-
-        int num_vertices = -1;
-        int max = -1;
-
-        int i;
-        int a,b;
-        RUNP(count_v = make_bitvector(num_edges*2));
-        for(i = 0;i < num_edges;i++){
-                e = (struct rbtree_edge_struct*) list[i];
-                a = (uint32_t)(e->key >> 32ull);
-                b = (uint32_t)(e->key & 0xFFFFFFFFull);
-
-                bit_set(count_v,a);
-                bit_set(count_v,b);
-		
-                if(a > max){
-                        max = a;
-                }
-                if(b > max){
-                        max = b;
-                }
-        }
-        num_vertices = 0;
-        for(i = 0; i <= max;i++){
-                if(bit_test(count_v,i)){
-                        num_vertices++;
-                }
-        }
-	
-        // build while graph..
-        g = calloc(1, sizeof (graph_t));
-
-        for(i = 0; i <= max;i++){
-                if(bit_test(count_v,i)){
-                        add_vertex(g,i);
-                }else{
-                        LOG_MSG("%d not found!!!\n",i);
-			       
-                }
-        }
-
-        for(i = 0;i < num_edges;i++){
-                e = (struct rbtree_edge_struct*) list[i];
-                a = e->key >> 32ULL;
-                b = e->key & 0xFFFFFFFF;
-                add_edge(g, a, b, e->dist );
-        }
-        MFREE(count_v);
-
-        return g;
-ERROR:
-        return NULL;
-		
-	       
-}
 
 void free_graph(graph_t* g)
 {
@@ -468,7 +425,7 @@ void free_graph(graph_t* g)
                 }
                 free(v->edges);
                 free(v);
-		
+
         }
         free(g->vertices);
         free(g);
@@ -491,8 +448,8 @@ void add_vertex (graph_t *g, int i)
                 g->vertices_len++;
         }
 }
- 
-void add_edge (graph_t *g, int a, int b, float w)
+
+void add_edge (graph_t *g, int a, int b, double w)
 {
 
         vertex_t *v = NULL; //a = a - 'a';
@@ -500,17 +457,8 @@ void add_edge (graph_t *g, int a, int b, float w)
         //b = b - 'a';
         //add_vertex(g, a);
         //add_vertex(g, b);
-	
+
         v = g->vertices[a];
-        /*c = -1;
-          for(i = 0; i < v->edges_len;i++){
-          if(v->edges[i]->vertex == b){
-          v->edges[i]->weight += w;
-          c = i;
-          break;
-          }
-          }*/
-        //if(c == -1){
         if (v->edges_len >= v->edges_size) {
                 v->edges_size = v->edges_size ? v->edges_size * 2 : 4;
                 v->edges = realloc(v->edges, v->edges_size * sizeof (edge_t *));
@@ -519,28 +467,6 @@ void add_edge (graph_t *g, int a, int b, float w)
         e->vertex = b;
         e->weight = w;
         v->edges[v->edges_len++] = e;
-        //}
-        //v = g->vertices[b];
-        /*c = -1;
-          for(i = 0; i < v->edges_len;i++){
-          if(v->edges[i]->vertex == a){
-          v->edges[i]->weight += w;
-          c = i;
-          break;
-          }
-          }
-          if(c == -1){
-        */
-        //if (v->edges_len >= v->edges_size) {
-        //        v->edges_size = v->edges_size ? v->edges_size * 2 : 4;
-        //        v->edges = realloc(v->edges, v->edges_size * sizeof (edge_t *));
-        //}
-        //e = calloc(1, sizeof (edge_t));
-        //e->vertex = a;
-        //e->weight = w;
-        //v->edges[v->edges_len++] = e;
-        //}
-	
 }
 
 void remove_edge(graph_t *g, int a, int b)
@@ -559,7 +485,6 @@ void remove_edge(graph_t *g, int a, int b)
                         c = i;
                         break;
                 }
-		
         }
         if(c == -1){
                 fprintf(stdout,"V not found!!!!\n");
@@ -567,25 +492,8 @@ void remove_edge(graph_t *g, int a, int b)
         free(v->edges[c]);
         v->edges[c] = v->edges[v->edges_len-1];
         v->edges_len--;
-
-        /*c = -1;
-        v = g->vertices[b];
-        for(i = 0; i < v->edges_len;i++){
-                if(v->edges[i]->vertex == a){
-                        //fprintf(stdout,"found v\n");
-                        c = i;
-                        break;
-                }
-		
-        }
-        if(c == -1){
-                fprintf(stdout,"V not found!!!!\n");
-        }
-        free(v->edges[c]);
-        v->edges[c] = v->edges[v->edges_len-1];
-        v->edges_len--;*/
 }
- 
+
 heap_t *create_heap (int n) {
         heap_t *h = calloc(1, sizeof (heap_t));
         h->data = calloc(n + 1, sizeof (int));
@@ -604,7 +512,7 @@ void free_heap(heap_t* h)
         }
 }
 
- 
+
 void push_heap (heap_t *h, int v, int p) {
         int i = h->index[v] == 0 ? ++h->len : h->index[v];
         int j = i / 2;
@@ -622,7 +530,7 @@ void push_heap (heap_t *h, int v, int p) {
         h->prio[i] = p;
         h->index[v] = i;
 }
- 
+
 int min (heap_t *h, int i, int j, int k) {
         int m = i;
         if (j <= h->len && h->prio[j] < h->prio[m])
@@ -631,7 +539,7 @@ int min (heap_t *h, int i, int j, int k) {
                 m = k;
         return m;
 }
- 
+
 int pop_heap (heap_t *h) {
         int v = h->data[1];
         int i = 1;
@@ -651,14 +559,14 @@ int pop_heap (heap_t *h) {
         h->len--;
         return v;
 }
- 
+
 void dijkstra (graph_t *g, int a, int b) {
         int i, j;
         //a = a - 'a';
         //b = b - 'a';
         for (i = 0; i < g->vertices_len; i++) {
                 vertex_t *v = g->vertices[i];
-                v->dist = FLT_MAX;
+                v->dist = DBL_MAX;
                 v->prev = 0;
                 v->visited = 0;
         }
@@ -666,7 +574,6 @@ void dijkstra (graph_t *g, int a, int b) {
         v->dist = 0;
         heap_t *h = create_heap(g->vertices_len);
         push_heap(h, a, v->dist);
-	
         while (h->len) {
                 i = pop_heap(h);
                 if (i == b){
@@ -677,7 +584,6 @@ void dijkstra (graph_t *g, int a, int b) {
                 for (j = 0; j < v->edges_len; j++) {
                         edge_t *e = v->edges[j];
                         vertex_t *u = g->vertices[e->vertex];
-			
                         if (!u->visited && v->dist + e->weight <= u->dist) {
                                 u->prev = i;
                                 u->dist = v->dist + e->weight;
@@ -689,81 +595,63 @@ void dijkstra (graph_t *g, int a, int b) {
         free_heap(h);
 }
 
-void dijkstra_local (graph_t *g, int a, int b,float max_distance)
-{
-        int i, j;
-        //a = a - 'a';
-        //b = b - 'a';
-        for (i = 0; i < g->vertices_len; i++) {
-                vertex_t *v = g->vertices[i];
-                v->dist = FLT_MAX;
-                //v->prev = 0;
-                v->visited = 0;
-        }
-        vertex_t *v = g->vertices[a];
-        v->dist = 0;
-        heap_t *h = create_heap(g->vertices_len);
-        push_heap(h, a, v->dist);
-	
-        while (h->len) {
-                i = pop_heap(h);
-                if (i == b){
-                        break;
-                }
-                v = g->vertices[i];
-                v->visited = 1;
-                for (j = 0; j < v->edges_len; j++) {
-                        edge_t *e = v->edges[j];
-                        vertex_t *u = g->vertices[e->vertex];
-                        if(v->dist + e->weight <= max_distance){
-                                if (!u->visited && v->dist + e->weight <= u->dist) {
-                                        u->prev = i;
-                                        u->dist = v->dist + e->weight;
-
-                                        push_heap(h, e->vertex, u->dist);
-                                }
-                        }
-                }
-        }
-        free_heap(h);
-}
-
-
-int print_path (graph_t *g, int i) {
+dpath_t* print_path (graph_t *g, int i) {
         int n, j;
         vertex_t *v, *u;
+        //int *path = NULL;
+        dpath_t* dpath = NULL;
         //i = i - 'a';
         v = g->vertices[i];
-        /*if (v->dist == INT_MAX) {
-                printf("no path\n");
-                return 0;
-        }
-        int c = 0;
-        for (n = 1, u = v; u->dist; u = g->vertices[u->prev], n++){
-                fprintf(stdout,"%d ", u->prev);
-                c++;
-                if(c > 30){
-                        fprintf(stdout,"\n");
-                        exit(0);
-                }
-        }
-        fprintf(stdout,"\n");*/
-        /*char *path = malloc(n);
-        path[n - 1] = 'a' + i;
-        for (j = 0, u = v; u->dist; u = g->vertices[u->prev], j++){
-                path[n - j - 2] = 'a' + u->prev;
+
+
+        MMALLOC(dpath, sizeof(dpath_t));
+        dpath->len = 0;
+        dpath->path = NULL;
+        dpath->score = v->dist;
+
+        if (v->dist == DBL_MAX) {
+
+                dpath->score = -1.0;
+                return dpath;
         }
 
-        printf("%d %.*s\n", v->dist, n, path);
-        free(path);*/
-        return v->dist;
+        for (n = 1, u = v; u->dist; u = g->vertices[u->prev], n++){
+        }
+
+        dpath->len = n;
+        MMALLOC(dpath->path, sizeof(int) *dpath->len );
+
+        dpath->path[n-1] = i;
+        for (j = 0, u = v; u->dist; u = g->vertices[u->prev], j++){
+
+                dpath->path[n - j - 2] =  u->prev;
+        }
+
+        return dpath;
+ERROR:
+
+        return NULL;//DBL_MAX;
 }
+
+void free_dijkstra_path(dpath_t* p)
+{
+        if(p){
+                if(p->path){
+                        MFREE(p->path);
+                }
+                MFREE(p);
+        }
+}
+
 
 
 #ifdef ITEST
 int main () {
         graph_t *g = calloc(1, sizeof (graph_t));
-        int i,j;
+
+        dpath_t* path = NULL;
+        int i,j,c;
+
         char nodes[] = "abcdef";
         int num_nodes = 6;
         for(i = 0; i < num_nodes;i++){
@@ -775,7 +663,7 @@ int main () {
         //	}
         //}
         // random_sample_start
-	
+
         add_edge(g, 0, 1, 30);
         add_edge(g, 0, 1, 30);
         add_edge(g, 0, 2, 9);
@@ -792,39 +680,52 @@ int main () {
                 START_TIMER(t1);
                 for(j = i+1;j < num_nodes;j++){
                         dijkstra(g, i,j);
-			
+
                 }
                 STOP_TIMER(t1);
                 LOG_MSG("done in %f seconds.",GET_TIMING(t1));
         }
-	
+
         for(i = 0; i < num_nodes;i++){
                 for(j = 0; j < num_nodes;j++){
                         if(i != j){
                                 dijkstra(g, i,j);
-                                fprintf(stdout,"%d->%d %d ",i,j, print_path(g, j));
+                                path= print_path(g, j);
+                                fprintf(stdout,"%d->%d %f ",i,j, path->score);
+                                for(c = 0; c < path->len;c++){
+                                        fprintf(stdout,"%d,",path->path[c]);
+                                }
+                                free_dijkstra_path(path);
                         }else{
                                 fprintf(stdout,"0 ");
                         }
                         fprintf(stdout,"\n");
-			
+
                 }
 
         }
         fprintf(stdout,"\n");
+
         remove_edge(g,3,4);
         remove_edge(g,4,5);
-	
+
         for(i = 0; i < num_nodes;i++){
                 for(j = 0; j < num_nodes;j++){
                         if(i != j){
                                 dijkstra(g, i,j);
-                                fprintf(stdout,"%d->%d %d ",i,j, print_path(g, j));
+                                path= print_path(g, j);
+                                fprintf(stdout,"%d->%d %f ",i,j, path->score);
+
+                                //fprintf(stdout,"%d->%d %d ",i,j, print_path(g, j));
                                 //fprintf(stdout,"%d ", print_path(g, j));
+                                for(c = 0; c < path->len;c++){
+                                        fprintf(stdout,"%d,",path->path[c]);
+                                }
+                                free_dijkstra_path(path);
                         }else{
                                 fprintf(stdout,"0 ");
                         }
-                         fprintf(stdout,"\n");
+                        fprintf(stdout,"\n");
                 }
 
         }
@@ -842,7 +743,7 @@ int main () {
                 }
                 free(v->edges);
                 free(v);
-		
+
         }
         free(g->vertices);
         free(g);

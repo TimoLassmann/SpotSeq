@@ -356,6 +356,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
         background = fhmm->background;
 
 
+
         RUNP(f_ptr = fopen(param->output, "w"));
 
         /* print dot header...  */

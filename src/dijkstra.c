@@ -5,57 +5,13 @@
 #endif
 #include "tldevel.h"
 
+#include "dijkstra.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <float.h>
 
-typedef struct {
-        int vertex;
-        double weight;
-} edge_t;
 
-typedef struct {
-        edge_t **edges;
-        int edges_len;
-        int edges_size;
-        double dist;		/* needed for dij */
-        int prev;		/* needed for dij */
-        int visited;		/* needed for dij */
-} vertex_t;
-
-typedef struct {
-        vertex_t **vertices;
-        int vertices_len;
-        int vertices_size;
-} graph_t;
-
-typedef struct {
-        int *data;
-        int *prio;
-        int *index;
-        int len;
-        int size;
-} heap_t;
-
-
-typedef struct {
-        int* path;
-        int len;
-        double score;
-} dpath_t;
-
-dpath_t* print_path (graph_t *g, int i);
-
-void free_dijkstra_path(dpath_t* p);
-
-void add_vertex (graph_t *g, int i);
-
-void add_edge (graph_t *g, int a, int b, double w);
-
-void remove_edge(graph_t *g, int a, int b);
-
-void dijkstra (graph_t *g, int a, int b);
 void dijkstra_local (graph_t *g, int a, int b,double max_distance);
 
 
@@ -69,6 +25,39 @@ int calculate_connectivity(graph_t* g, double* connectivity);
 
 int progress_bar(float x);
 
+
+graph_t* alloc_graph(void)
+{
+        graph_t* g = NULL;
+        MMALLOC(g, sizeof(graph_t));
+        g->vertices = NULL;
+        g->vertices_len = 0;
+        g->vertices_size = 0;
+        return g;
+ERROR:
+        return NULL;
+}
+
+void free_graph(graph_t* g)
+{
+        int i,j;
+        if(g){
+                for(i = 0; i < g->vertices_len;i++){
+                        vertex_t *v = g->vertices[i];
+                        if(v->edges){
+                                for(j = 0; j < v->edges_len;j++){
+                                        MFREE(v->edges[j]);
+                                }
+                                MFREE(v->edges);
+                        }
+                        MFREE(v);
+
+                }
+                MFREE(g->vertices);
+                MFREE(g);
+        }
+
+}
 /*
   Algorithm 1.
   NA algorithm
@@ -413,31 +402,12 @@ int calculate_connectivity(graph_t* g, double* connectivity)
 }
 
 
-
-void free_graph(graph_t* g)
-{
-        int i,j;
-        /* free stuff */
-        for(i = 0; i < g->vertices_len;i++){
-                vertex_t *v = g->vertices[i];
-                for(j = 0; j < v->edges_len;j++){
-                        free(v->edges[j]);
-                }
-                free(v->edges);
-                free(v);
-
-        }
-        free(g->vertices);
-        free(g);
-
-}
-
-
-void add_vertex (graph_t *g, int i)
+int add_vertex (graph_t *g, int i)
 {
         if (g->vertices_size < i + 1) {
                 int size = g->vertices_size * 2 > i ? g->vertices_size * 2 : i + 4;
-                g->vertices = realloc(g->vertices, size * sizeof (vertex_t *));
+                MREALLOC(g->vertices,  size * sizeof (vertex_t *));
+
                 for (int j = g->vertices_size; j < size; j++){
                         g->vertices[j] = NULL;
                 }
@@ -447,9 +417,12 @@ void add_vertex (graph_t *g, int i)
                 g->vertices[i] = calloc(1, sizeof (vertex_t));
                 g->vertices_len++;
         }
+        return OK;
+ERROR:
+        return FAIL;
 }
 
-void add_edge (graph_t *g, int a, int b, double w)
+int add_edge (graph_t *g, int a, int b, double w)
 {
 
         vertex_t *v = NULL; //a = a - 'a';
@@ -461,15 +434,21 @@ void add_edge (graph_t *g, int a, int b, double w)
         v = g->vertices[a];
         if (v->edges_len >= v->edges_size) {
                 v->edges_size = v->edges_size ? v->edges_size * 2 : 4;
-                v->edges = realloc(v->edges, v->edges_size * sizeof (edge_t *));
+
+                MREALLOC(v->edges,  v->edges_size * sizeof (edge_t *));
+
+
         }
         e = calloc(1, sizeof (edge_t));
         e->vertex = b;
         e->weight = w;
         v->edges[v->edges_len++] = e;
+        return OK;
+ERROR:
+        return FAIL;
 }
 
-void remove_edge(graph_t *g, int a, int b)
+int remove_edge(graph_t *g, int a, int b)
 {
         int i;
         int c;
@@ -489,9 +468,11 @@ void remove_edge(graph_t *g, int a, int b)
         if(c == -1){
                 fprintf(stdout,"V not found!!!!\n");
         }
-        free(v->edges[c]);
+        MFREE(v->edges[c]);
+
         v->edges[c] = v->edges[v->edges_len-1];
         v->edges_len--;
+        return OK;
 }
 
 heap_t *create_heap (int n) {
@@ -513,7 +494,8 @@ void free_heap(heap_t* h)
 }
 
 
-void push_heap (heap_t *h, int v, int p) {
+void push_heap (heap_t *h, int v, int p)
+{
         int i = h->index[v] == 0 ? ++h->len : h->index[v];
         int j = i / 2;
         while (i > 1) {
@@ -531,16 +513,20 @@ void push_heap (heap_t *h, int v, int p) {
         h->index[v] = i;
 }
 
-int min (heap_t *h, int i, int j, int k) {
+int min (heap_t *h, int i, int j, int k)
+{
         int m = i;
-        if (j <= h->len && h->prio[j] < h->prio[m])
+        if (j <= h->len && h->prio[j] < h->prio[m]){
                 m = j;
-        if (k <= h->len && h->prio[k] < h->prio[m])
+        }
+        if (k <= h->len && h->prio[k] < h->prio[m]){
                 m = k;
+        }
         return m;
 }
 
-int pop_heap (heap_t *h) {
+int pop_heap (heap_t *h)
+{
         int v = h->data[1];
         int i = 1;
         while (1) {
@@ -560,7 +546,8 @@ int pop_heap (heap_t *h) {
         return v;
 }
 
-void dijkstra (graph_t *g, int a, int b) {
+void dijkstra (graph_t *g, int a, int b)
+{
         int i, j;
         //a = a - 'a';
         //b = b - 'a';
@@ -595,7 +582,8 @@ void dijkstra (graph_t *g, int a, int b) {
         free_heap(h);
 }
 
-dpath_t* print_path (graph_t *g, int i) {
+dpath_t* get_dijkstra_path (graph_t *g, int i)
+{
         int n, j;
         vertex_t *v, *u;
         //int *path = NULL;
@@ -647,13 +635,17 @@ void free_dijkstra_path(dpath_t* p)
 
 #ifdef ITEST
 int main () {
-        graph_t *g = calloc(1, sizeof (graph_t));
+        graph_t *g = NULL;//calloc(1, sizeof (graph_t));
+
 
         dpath_t* path = NULL;
         int i,j,c;
 
         char nodes[] = "abcdef";
         int num_nodes = 6;
+
+        RUNP(g = alloc_graph());
+
         for(i = 0; i < num_nodes;i++){
                 add_vertex(g,i);
         }
@@ -690,7 +682,7 @@ int main () {
                 for(j = 0; j < num_nodes;j++){
                         if(i != j){
                                 dijkstra(g, i,j);
-                                path= print_path(g, j);
+                                path = get_dijkstra_path(g, j);
                                 fprintf(stdout,"%d->%d %f ",i,j, path->score);
                                 for(c = 0; c < path->len;c++){
                                         fprintf(stdout,"%d,",path->path[c]);
@@ -713,7 +705,7 @@ int main () {
                 for(j = 0; j < num_nodes;j++){
                         if(i != j){
                                 dijkstra(g, i,j);
-                                path= print_path(g, j);
+                                path= get_dijkstra_path(g, j);
                                 fprintf(stdout,"%d->%d %f ",i,j, path->score);
 
                                 //fprintf(stdout,"%d->%d %d ",i,j, print_path(g, j));
@@ -736,18 +728,10 @@ int main () {
 //dijkstra(g, 'a', 'f');
 //print_path(g, 'f');
 
-        for(i = 0; i < g->vertices_len;i++){
-                vertex_t *v = g->vertices[i];
-                for(j = 0; j < v->edges_len;j++){
-                        free(v->edges[j]);
-                }
-                free(v->edges);
-                free(v);
-
-        }
-        free(g->vertices);
-        free(g);
-        return 0;
+        free_graph(g);
+        return EXIT_SUCCESS;
+ERROR:
+        return EXIT_FAILURE;
 }
 
 

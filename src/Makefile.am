@@ -57,6 +57,7 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 
+DIJSTRA_SOURCES = dijkstra.c dijkstra.ha
 
 bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
 
@@ -68,7 +69,7 @@ spotseq_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 
 endif
 
-spotseq_pplot_SOURCES = pplot.c dijkstra.c $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
+spotseq_pplot_SOURCES = pplot.c $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 
 cairo_test_SOURCES = cairo_test.c
 
@@ -156,7 +157,7 @@ check_PROGRAMS = dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_
 #libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 
-dijkstra_ITEST_SOURCES = dijkstra.c
+dijkstra_ITEST_SOURCES = $(DIJSTRA_SOURCES)
 dijkstra_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 dijkstra_ITEST_LDADD = $(libihmm_a_LIBADD)
 

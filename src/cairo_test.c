@@ -78,6 +78,7 @@ struct logo_letter{
         double freq;
         char c;
         int letter;
+        int gray;
 };
 
 
@@ -89,6 +90,7 @@ struct logo_data{
 
 unsigned char image[STRIDE*HEIGHT];
 int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc);
+int write_letter_gray(cairo_t *cr, double x, double y,int c, double scale, int nuc);
 int  run_draw_logo(struct logo_data* logo, char* outname);
 int get_rgb_color(int color, double*r, double *g, double *b);
 
@@ -132,6 +134,7 @@ struct logo_data* alloc_logo(int len, int L)
                         logo->letters[i][j]->scale = 1.0;
                         logo->letters[i][j]->freq = 0.0;
                         logo->letters[i][j]->letter = j;
+                        logo->letters[i][j]->gray = 0;
 
                 }
 
@@ -362,6 +365,55 @@ int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc)
         return 0;
 }
 
+
+int write_letter_gray(cairo_t *cr, double x, double y,int c, double scale, int nuc)
+{
+
+        cairo_save (cr);
+
+        char tmp[2];
+        cairo_surface_t *surface;
+        int height;
+        double r,g,b;
+        //LOG_MSG("Writing Letter");
+        surface = cairo_get_group_target (cr);
+
+        //fprintf(stdout,"w:%d h:%d\n",        cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
+
+        height = cairo_image_surface_get_height(surface);
+
+        scale= MACRO_MAX(0.01, scale);
+        //fprintf(stdout,"Height: %f\n",y );
+        cairo_select_font_face (cr, "monospace", 0, CAIRO_FONT_WEIGHT_BOLD);
+        cairo_set_font_size (cr, BASE_FONT_SIZE);
+        r = 192.0 / 255.0;
+        g = 192.0 / 255.0;
+        b = 192.0 / 255.0;
+        cairo_set_source_rgb (cr, r,g,b);
+        if(nuc){
+                //get_rgb_color(nuc_colors[c], &r,&g,&b);
+
+                tmp[0] = "ACGT"[c];
+                tmp[1] = 0;
+
+        }else{
+
+
+                tmp[0] = "ACDEFGHIKLMNPQRSTVWY"[c];
+                tmp[1] = 0;
+        }
+
+
+
+
+        cairo_move_to (cr, x,height -y);
+        cairo_scale (cr,1.0,scale);
+
+        cairo_show_text (cr, tmp);
+        //fprintf(stdout,"Print letter:%s\n",tmp);
+        cairo_restore (cr);
+        return 0;
+}
 int sort_logo_letter_by_height(const void *a, const void *b)
 {
         struct logo_letter* const *one = a;

@@ -93,6 +93,7 @@ struct logo_letter{
         double freq;
         char c;
         int letter;
+        int gray;
 };
 
 
@@ -118,6 +119,7 @@ int run_pplot_ihmm(struct parameters* param);
 int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters* param);
 unsigned char image[STRIDE*HEIGHT];
 int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc);
+int write_letter_gray(cairo_t *cr, double x, double y,int c, double scale, int nuc);
 int  run_draw_logo(struct logo_data* logo, char* outname);
 int get_rgb_color(int color, double*r, double *g, double *b);
 
@@ -256,7 +258,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
         char buffer[BUFFER_LEN];
         double sum;
         double max;
-        double threshold;
+        //double threshold;
         int* node_merge = NULL;
         /* dijkstra grapt */
         graph_t* g = NULL;
@@ -289,7 +291,8 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
                 }
                 if(max > 0.8){
                         max= 0.0;
-
+                        a = 0;
+                        b = 0;
                         for(i =0; i < fhmm->K;i++){
                                 if(fhmm->t[i][j] / sum > max){
                                         max = fhmm->t[i][j] / sum;
@@ -498,7 +501,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
                                 if(node_merge[a] != -1){
                                 if(fhmm->t[a][b] >= param->edge_threshold ){
                                         RUN(get_color(buffer,fhmm->t[a][b], 0.0f,1.0f ));
-                                        fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n", node_merge[a],node_merge[b],  fhmm->t[a][b] , buffer, (int) (fhmm->t[a][b] *10)+1 );
+                                        fprintf(f_ptr,"State%d:e -> State%d:w[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n", node_merge[a],node_merge[b],  fhmm->t[a][b] , buffer, (int) (fhmm->t[a][b] *10)+1 );
                                         fhmm->t[a][b] = -100.0;
                                 }
                                 }
@@ -511,7 +514,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
                                 if(node_merge[b] != -1){
                                 if(fhmm->t[a][b] >= param->edge_threshold ){
                                         RUN(get_color(buffer,fhmm->t[a][b], 0.0f,1.0f ));
-                                        fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n", node_merge[a],node_merge[b],  fhmm->t[a][b] , buffer, (int) (fhmm->t[a][b] *10)+1 );
+                                        fprintf(f_ptr,"State%d:e -> State%d:w[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n", node_merge[a],node_merge[b],  fhmm->t[a][b] , buffer, (int) (fhmm->t[a][b] *10)+1 );
                                          fhmm->t[a][b] = -100.0;
                                 }
                                 }
@@ -530,7 +533,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
 
                         if(fhmm->t[i][j] >= param->edge_threshold ){
                                 RUN(get_color(buffer,fhmm->t[i][j], 0.0f,1.0f ));
-                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , buffer, (int) (fhmm->t[i][j] *10)+1 );
+                                fprintf(f_ptr,"State%d:e -> State%d:w[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , buffer, (int) (fhmm->t[i][j] *10)+1 );
                         }
                         }//
 
@@ -569,22 +572,27 @@ int make_logo(int** matrix,int len, int L, char* outname)
 
 
         double total;
-        total = 0;
+        double max;
+        total = 0.0;
+        max = -1.0;
         for(i = 0; i < len;i++){
+                total = 0.0;
                 for(j = 0; j < L;j++){
                         logo->letters[i][j]->c = "ACGT"[j];
                         logo->letters[i][j]->freq = matrix[i][j];
-                        fprintf(stdout," %d", matrix[i][j]);
+                        //fprintf(stdout," %d", matrix[i][j]);
                         total += matrix[i][j];
                 }
-                fprintf(stdout,"\n");
+                //fprintf(stdout,"\n");
+                max= MACRO_MAX(max, total);
+
         }
-fprintf(stdout,"\n");
+        //fprintf(stdout,"\n");
         double entropy, sum, e, height;
 
-        e = 1.0 / log(2.0) * ((double)(logo->L-1.0) / (2.0*total));
+        e = (1.0 / log(2.0)) * ((double)(logo->L-1.0) / (2.0*max));
 
-
+        e = 0.0;
 
         for(i = 0; i < len;i++){
                 sum = 0.0;
@@ -607,11 +615,18 @@ fprintf(stdout,"\n");
 
 
                 height =  log2((double) logo->L ) - (entropy + e);
-                //fprintf(stdout,"entropy: %f error:%f   height :%f \n",entropy,e, log2(4.0) - (entropy + e));
-                for(j = 0; j < L;j++){
-                        logo->letters[i][j]->scale = logo->letters[i][j]->freq* height * 2.0;
-                        //logo->letters[i][j]->scale = round(logo->letters[i][j]->scale* 100.0) / 100.0;
-                        //fprintf(stdout,"%0.3f ", logo->letters[i][j]->scale);
+                //fprintf(stdout,"pos:%d entropy: %f error:%f   height :%f max:%f\n",i,entropy,e, log2(4.0) - (entropy + e),max);
+                if(height < 0.25){
+                        for(j = 0; j < L;j++){
+                                logo->letters[i][j]->gray = 1;
+                                logo->letters[i][j]->scale = logo->letters[i][j]->freq* 2.0 * 2.0;
+                        }
+                }else{
+                        for(j = 0; j < L;j++){
+                                logo->letters[i][j]->scale = logo->letters[i][j]->freq* height * 2.0;
+                                //logo->letters[i][j]->scale = round(logo->letters[i][j]->scale* 100.0) / 100.0;
+                                //fprintf(stdout,"%0.3f ", logo->letters[i][j]->scale);
+                        }
                 }
                 //fprintf(stdout,"\n");
 
@@ -691,6 +706,7 @@ struct logo_data* alloc_logo(int len, int L)
                         logo->letters[i][j]->scale = 1.0;
                         logo->letters[i][j]->freq = 0.0;
                         logo->letters[i][j]->letter = j;
+                        logo->letters[i][j]->gray = 0;
 
                 }
 
@@ -830,10 +846,10 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
 
         cairo_surface_destroy (surface);
 
-        fprintf(stdout,"w:%f h:%f\n", base_w ,base_h);
+        //fprintf(stdout,"w:%f h:%f\n", base_w ,base_h);
 
         surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, (int)( base_w * logo->len),(int)( base_h* logo->L));
-        fprintf(stdout,"w:%d h:%d\n",        cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
+        //fprintf(stdout,"w:%d h:%d\n",        cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
 
         cr = cairo_create (surface);
 
@@ -845,8 +861,8 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
 
 
 
-        fprintf(stdout,"%f w %f h\n", base_w, base_h);
-        fprintf(stdout,"%f h (recommended offset)\n",font_extents.height);
+        //fprintf(stdout,"%f w %f h\n", base_w, base_h);
+        //fprintf(stdout,"%f h (recommended offset)\n",font_extents.height);
 
 
 
@@ -855,8 +871,11 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
         for(i = 0;i < logo->len;i++){
                 y = 0.0;
                 for(j = 0; j <  logo->L;j++){
-
-                        write_letter(cr, x, y, logo->letters[i][j]->letter , logo->letters[i][j]->scale ,1);
+                        if(logo->letters[i][j]->gray){
+                                 write_letter_gray(cr, x, y, logo->letters[i][j]->letter , logo->letters[i][j]->scale ,1);
+                        }else{
+                                write_letter(cr, x, y, logo->letters[i][j]->letter , logo->letters[i][j]->scale ,1);
+                        }
                         y += base_h * logo->letters[i][j]->scale ;
                 }
                  x+= base_w;
@@ -868,9 +887,57 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
 
         cairo_surface_destroy (surface);
 
-        return 0;
+        return OK;
 }
 
+int write_letter_gray(cairo_t *cr, double x, double y,int c, double scale, int nuc)
+{
+
+        cairo_save (cr);
+
+        char tmp[2];
+        cairo_surface_t *surface;
+        int height;
+        double r,g,b;
+        //LOG_MSG("Writing Letter");
+        surface = cairo_get_group_target (cr);
+
+        //fprintf(stdout,"w:%d h:%d\n",        cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
+
+        height = cairo_image_surface_get_height(surface);
+
+        scale= MACRO_MAX(0.01, scale);
+        //fprintf(stdout,"Height: %f\n",y );
+        cairo_select_font_face (cr, "monospace", 0, CAIRO_FONT_WEIGHT_BOLD);
+        cairo_set_font_size (cr, BASE_FONT_SIZE);
+        r = 192.0 / 255.0;
+        g = 192.0 / 255.0;
+        b = 192.0 / 255.0;
+        cairo_set_source_rgb (cr, r,g,b);
+        if(nuc){
+                //get_rgb_color(nuc_colors[c], &r,&g,&b);
+
+                tmp[0] = "ACGT"[c];
+                tmp[1] = 0;
+
+        }else{
+
+
+                tmp[0] = "ACDEFGHIKLMNPQRSTVWY"[c];
+                tmp[1] = 0;
+        }
+
+
+
+
+        cairo_move_to (cr, x,height -y);
+        cairo_scale (cr,1.0,scale);
+
+        cairo_show_text (cr, tmp);
+        //fprintf(stdout,"Print letter:%s\n",tmp);
+        cairo_restore (cr);
+        return 0;
+}
 
 int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc)
 {
@@ -915,7 +982,7 @@ int write_letter(cairo_t *cr, double x, double y,int c, double scale, int nuc)
         cairo_show_text (cr, tmp);
         //fprintf(stdout,"Print letter:%s\n",tmp);
         cairo_restore (cr);
-        return 0;
+        return OK;
 }
 
 int get_color(char* color, float x, float min_x, float max_x)

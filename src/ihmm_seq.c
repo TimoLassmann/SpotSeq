@@ -194,6 +194,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         sb->background = background;
 
 
+
         MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->num_seq;i++){
                 sb->sequences[i] = NULL;

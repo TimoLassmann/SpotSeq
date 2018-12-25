@@ -57,19 +57,23 @@ CONVERSION = hmm_conversion.h hmm_conversion.c
 
 FINITEHMM = finite_hmm.c finite_hmm.h
 
-DIJSTRA_SOURCES = dijkstra.c dijkstra.ha
+DIJSTRA_SOURCES = dijkstra.c dijkstra.h
+
+LOGO_SOURCES = motif_logo.c motif_logo.h
 
 bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
 
 if ENABLE_CAIRO
-bin_PROGRAMS +=  cairo_test spotseq_pplot
+bin_PROGRAMS +=  cairo_test spotseq_pplot spotseq_seqmotif
 AM_CPPFLAGS += $(CAIRO_CFLAGS)
 cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 spotseq_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-
+spotseq_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
-spotseq_pplot_SOURCES = pplot.c $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
+spotseq_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE)  $(FINITEHMM) $(RANDOMKIT_FILES)
+
+spotseq_pplot_SOURCES = pplot.c   $(LOGO_SOURCES)  $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 
 cairo_test_SOURCES = cairo_test.c
 

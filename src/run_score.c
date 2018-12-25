@@ -49,7 +49,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
 
         /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K , & sb->rndstate));
+        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ,NULL));// & sb->rndstate));
 
         /* score sequences  */
 

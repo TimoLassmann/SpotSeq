@@ -319,13 +319,14 @@ int convert_fhmm_scaled_to_prob(struct fhmm* fhmm)
         //LOG_MSG("states:%d L:%d", fhmm->K, fhmm->L);
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
-                        // LOG_MSG("%d %d %f",i,j,fhmm->e[i][j]);
+                        //LOG_MSG("Emission %d %d %f",i,j,fhmm->e[i][j]);
                         fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
                 }
         }
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < fhmm->K;j++){
+                        //LOG_MSG("Trans %d %d %f",i,j,fhmm->t[i][j]);
                         fhmm->t[i][j] = scaledprob2prob(fhmm->t[i][j]);
                 }
         }

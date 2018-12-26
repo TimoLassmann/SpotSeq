@@ -238,14 +238,14 @@ int standard_MOTIF_challenge(struct parameters* param)
         RUN(create_n_random_sequences(sb,param, 20));
         RUN(add_motif_to_all_sequences(sb, param, motif));
 
-        snprintf(buffer, BUFFER_LEN, "%s/%s", param->outdir,"train.fa");
+        snprintf(buffer, BUFFER_LEN, "%s/train_%s.fa", param->outdir,motif);
         RUN(write_sequences_to_file(sb,buffer));
         reset_sb(sb); // clear out stuff from before...
 
         /* create testing sequence */
         RUN(create_n_random_sequences(sb,param, param->number_negative));
         RUN(add_motif_to_all_sequences(sb, param, motif));
-        snprintf(buffer, BUFFER_LEN, "%s/%s", param->outdir,"test.fa");
+        snprintf(buffer, BUFFER_LEN, "%s/test_%s.fa", param->outdir,motif);
         RUN(write_sequences_to_file(sb,buffer));
 
 
@@ -256,7 +256,7 @@ int standard_MOTIF_challenge(struct parameters* param)
 /* create negative seuqences */
 
         RUN(create_n_random_sequences(sb,param,param->number_negative));
-        snprintf(buffer, BUFFER_LEN, "%s/%s", param->outdir,"neg.fa");
+        snprintf(buffer, BUFFER_LEN, "%s/neg_%s.fa", param->outdir,motif);
         RUN(write_sequences_to_file(sb,buffer));
 
 

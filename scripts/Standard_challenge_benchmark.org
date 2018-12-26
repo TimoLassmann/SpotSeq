@@ -1,0 +1,320 @@
+#+TITLE:  Standard Challenge Benchmark
+#+AUTHOR: Timo Lassmann
+#+EMAIL:  timo.lassmann@telethonkids.org.au
+#+DATE:   2018-12-25
+#+LATEX_CLASS: report
+#+OPTIONS:  toc:nil
+#+OPTIONS: H:4
+#+LATEX_CMD: pdflatex
+* Introduction 
+  
+* Preliminaries 
+
+The benchmark requires spotseq to be installed, and a number of R packages
+
+** How to use this file 
+
+1. Load in emacs org-mode 
+2. tangle with ctrl+c ctrl+v t 
+3. upload to server; run analysis
+
+
+* Plotting and summary statistics 
+
+The script below takes log-odds scores from positive and negative test sequences, draws an area under receiver operating characteristic curve (ROC) and writes output to file. The script also plots the curves (use -d dark versions I prefer to use in presentations.
+
+   #+BEGIN_SRC R :tangle makeROC.R :shebang #!/usr/bin/env Rscript :noweb yes
+     library(optparse)
+     sessionInfo()
+     dark <- FALSE;
+     error <- 0;
+     option_list = list(
+         make_option(c("-p", "--positive"),
+                     type="character",
+                     default=NULL,
+                     help="scores for positive test sequences.",
+                     metavar="character"),
+         make_option(c("-n", "--negative"),
+                     type="character",
+                     default=NULL,
+                     help="scores for the negarive test sequences.",
+                     metavar="character"),
+         make_option(c("-e", "--experimentname"),
+                     type="character",
+                     default=NULL,
+                     help="input - path to saved singleR object.",
+                     metavar="character"),
+         make_option(c("-k", "--error"),
+                     type="integer",
+                     default=0,
+                     help="input - path to saved singleR object.",
+                     metavar="character"),
+         make_option(c("-d", "--dark"), action="store_true", default=FALSE,
+                     help="use dark theme (for presentations)")
+
+
+     );
+
+     opt_parser <- OptionParser(option_list=option_list,
+                                description = "\nLoad singleR object and make plots.",
+                                epilogue = "Example:\n\n  Blah  \n\n");
+     opt <- parse_args(opt_parser);
+
+     if(opt$dark){
+         dark <- TRUE
+     }
+
+     error <-  opt$error;
+
+     if (is.null(opt$positive)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+     if (is.null(opt$negative)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+
+     posname <- opt$positive
+     negname <- opt$negative
+     name <- opt$experimentname
+     pos = read.csv(posname,header = T,row.names= 1)
+     neg = read.csv(negname,header = T,row.names= 1)
+
+
+     <<Rlibraries>>
+
+     response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
+     predictor = c(pos[,1],neg[,1])
+
+                                             #roc = roc(response,predictor)
+
+     x = cbind(response,predictor)
+     x = as.data.frame(x)
+
+
+     if(dark){
+         p = ggplot(x , aes(d = response, m = predictor))
+         p <- op +  geom_roc(labels = FALSE,
+                             fill=rgb(0,0,20,maxColorValue = 255),
+                             color=rgb(220,210,200,maxColorValue = 255))
+
+         p <- p + geom_abline(intercept = 0, slope = 1, color=rgb(220,210,200,maxColorValue = 255))
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
+
+         p <- p + annotate("text",
+                           color=rgb(220,210,200,maxColorValue = 255),
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
+
+         p <- p + theme_classic()
+         p <- p + theme(panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255),colour = rgb(0,0,20,maxColorValue = 255)),
+                        text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+                        rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+                        line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+                        )
+     }else{
+         p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE)
+
+         p <- p + geom_abline(intercept = 0, slope = 1)
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
+
+         p <- p + annotate("text",
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
+     }
+     metadata <- tribble(~name,~error, ~AUC,
+                         paste0(name), error, round(calc_auc(p)$AUC, 4))
+
+     metadata
+     if(!file.exists("metadata.csv")){
+         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = TRUE)
+     }else{
+         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = FALSE)
+     }
+
+     outname = paste0("ROC_",name,".jpg");
+     jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+
+     p
+
+
+
+
+     dev.off()
+     options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     outname = paste0("ROC_",name,".tex");
+     tikz(outname,width = 2, height = 2)
+
+     dev.off()
+
+   #+END_SRC
+
+
+
+
+
+
+code to summarise the results. 
+
+#+BEGIN_SRC R
+dat= read_csv("metadata.csv") 
+ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
+
+#+END_SRC
+
+
+
+* Sanity checks and convenience scripts
+
+** Check for SpotSeq installation
+
+   #+BEGIN_SRC sh :tangle check_for_programs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
+     programs=(spotseq_model spotseq_score)
+
+     printf "Running Sanity checks:\n";
+
+     for item in ${programs[*]}
+     do
+         if which $item >/dev/null; then
+             printf "%15s found.\n"  $item;
+         else
+             printf "\nERROR: %s not found!\n\n" $item;
+             exit 1;
+         fi
+     done
+   #+END_SRC
+
+** Check for libraries 
+   
+   All packages will be installed locally: 
+   
+   ~/R/x86_64-pc-linux-gnu-library/3.2
+   
+   Here I define the list of libraries I'll be using. 
+   
+
+   #+NAME: liblist
+   #+BEGIN_SRC R :exports code :results none
+     libraries <- c("tibble","readr","ggplot2","plotROC","tikzDevice","dplyr")
+   #+END_SRC
+   
+   Script to test if libraries are present.
+   #+BEGIN_SRC R :tangle test_for_libraries.R :shebang #!/usr/bin/env Rscript :noweb yes :exports code :results none
+     <<liblist>>
+     Sys.info()["nodename"]
+     for(library in libraries) 
+     { 
+         f = is.element(library, installed.packages()[,1])
+         print(paste("Library",library, "is installed?", f))
+         if(!f)
+         {
+             message("Missing library:",library )
+             quit(status=1)
+         }
+     }
+     quit(status=0)
+   #+END_SRC
+   
+   
+   #+BEGIN_SRC sh :results output :exports both
+     ./test_for_libraries.R
+   #+END_SRC
+
+   Code block to load the libraries in R code.
+
+   #+NAME: Rlibraries
+   #+BEGIN_SRC R :exports code :results none :noweb yes
+     <<liblist>>
+     lapply(libraries, FUN = function(X) {
+         do.call("library", list(X)) 
+     })
+
+   #+END_SRC
+
+*** Makefile to kick off the analysis
+
+    1) Makefile 
+
+#+BEGIN_SRC makefile :tangle Makefile
+all: tangle check_r_libs check_programs
+	@ echo Done
+
+tangle:
+	./tangleorgs.sh Standard_challenge_benchmark.org
+
+check_r_libs:
+	@ $$(pwd)/test_for_libraries.R
+	@ if [ $$? -ne 0 ]; then exit; fi;
+	@ echo R libs found 
+
+check_programs:
+	@ $$(pwd)/check_for_programs.sh
+	@ if [ $$? -ne 0 ]; then exit; fi;
+	@ echo Programs found
+
+#+END_SRC
+
+*** script to tangle analysis org documents from command line
+
+#+BEGIN_SRC sh :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
+#
+# tangle files with org-mode
+#
+DIR=`pwd`
+FILES=""
+
+function usage()
+{
+cat <<EOF
+
+This script will:
+
+1) tangle the input file 
+
+usage: $0   <a.org> <b.org> ...
+EOF
+exit 1;
+}
+
+while getopts i:  opt
+do
+case ${opt} in
+i) INDIR=${OPTARG};;
+*) usage;;
+esac
+done
+     
+# wrap each argument in the code required to call tangle on it
+for i in $@; do
+   FILES="$FILES \"$i\""
+done
+
+if [ "${FILES}" = "" ]; then usage; fi
+     
+emacs -Q --batch \
+  --eval "(progn
+  (require 'org)(require 'ob)(require 'ob-tangle)
+  (setq org-src-preserve-indentation t)
+  (mapc (lambda (file)
+  (find-file (expand-file-name file \"$DIR\"))
+  (org-babel-tangle)
+  (kill-buffer)) '($FILES)))" 2>&1 |grep -i tangled
+
+#+END_SRC
+
+
+
+
+

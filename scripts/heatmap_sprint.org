@@ -143,8 +143,8 @@
 
 
    #+BEGIN_SRC R :session one :results none 
-     pos = read.csv("~/tmp/ERROR4/pos.csv",header = T,row.names= 1) 
-     neg = read.csv("~/tmp/ERROR4/neg.csv",header = T,row.names= 1) 
+     pos = read.csv("../pos.csv",header = T,row.names= 1) 
+     neg = read.csv("../neg.csv",header = T,row.names= 1) 
 
      dpos = density(pos[,1]);
      dneg = density(neg[,1]);
@@ -279,31 +279,47 @@
 
 
    #+BEGIN_SRC R :tangle makeROC.R :shebang #!/usr/bin/env Rscript 
-     library(optparse) 
+     library(optparse)
      sessionInfo()
+     dark <- FALSE;
+     error <- 0;
      option_list = list(
          make_option(c("-p", "--positive"),
                      type="character",
                      default=NULL,
-                     help="input - path to saved singleR object.", 
+                     help="scores for positive test sequences.",
                      metavar="character"),
          make_option(c("-n", "--negative"),
                      type="character",
                      default=NULL,
-                     help="input - path to saved singleR object.", 
+                     help="scores for the negarive test sequences.",
                      metavar="character"),
          make_option(c("-e", "--experimentname"),
                      type="character",
                      default=NULL,
-                     help="input - path to saved singleR object.", 
-                     metavar="character")
+                     help="input - path to saved singleR object.",
+                     metavar="character"),
+         make_option(c("-k", "--error"),
+                     type="integer",
+                     default=0,
+                     help="input - path to saved singleR object.",
+                     metavar="character"),
+         make_option(c("-d", "--dark"), action="store_true", default=FALSE,
+                     help="use dark theme (for presentations)")
 
-     ); 
+
+     );
 
      opt_parser <- OptionParser(option_list=option_list,
                                 description = "\nLoad singleR object and make plots.",
                                 epilogue = "Example:\n\n  Blah  \n\n");
      opt <- parse_args(opt_parser);
+
+     if(opt$dark){
+         dark <- TRUE
+     }
+
+     error <-  opt$error;
 
      if (is.null(opt$positive)){
          print_help(opt_parser)
@@ -317,68 +333,90 @@
      posname <- opt$positive
      negname <- opt$negative
      name <- opt$experimentname
-     pos = read.csv(posname,header = T,row.names= 1) 
-     neg = read.csv(negname,header = T,row.names= 1) 
+     pos = read.csv(posname,header = T,row.names= 1)
+     neg = read.csv(negname,header = T,row.names= 1)
 
-    # library(pROC)
- library(ggplot2)
+     library(tibble)
+     library(readr)                                 
+     library(ggplot2)
      library(plotROC)
-library(tikzDevice)
+     library(tikzDevice)
+     library(dplyr)
 
      response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
      predictor = c(pos[,1],neg[,1])
 
-     #roc = roc(response,predictor)
+                                             #roc = roc(response,predictor)
+
+     x = cbind(response,predictor)
+     x = as.data.frame(x)
 
 
+     if(dark){
+         p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE,
+                                                                     fill=rgb(0,0,20,maxColorValue = 255),
+                                                                     color=rgb(220,210,200,maxColorValue = 255))
 
-     x = cbind(response,predictor) 
-     x = as.data.frame(x) 
-     p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE,
-                                                                 fill=rgb(0,0,20,maxColorValue = 255),
-                                                                 color=rgb(220,210,200,maxColorValue = 255))
+         p <- p + geom_abline(intercept = 0, slope = 1, color=rgb(220,210,200,maxColorValue = 255))
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
 
-p <- p + geom_abline(intercept = 0, slope = 1, color=rgb(220,210,200,maxColorValue = 255))
- p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0)) 
-  p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0)) 
+         p <- p + annotate("text",
+                           color=rgb(220,210,200,maxColorValue = 255),
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
 
-     p <- p + annotate("text",
-                       color=rgb(220,210,200,maxColorValue = 255),
-                       x = .75,
-                       y = .25, 
-                       label = paste("AUC =", round(calc_auc(p)$AUC, 4))) 
-p  <-  p + xlab("1-Specificity (FPR)")
-p  <-  p + ylab("Sensitivity (TPR)")
+         p <- p + theme_classic() + theme(
+                                        panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255), colour = rgb(0,0,20,maxColorValue = 255)),
+                                        text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+                                        rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+                                        line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                                        axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+                                        axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                                        axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
 
-     p <- p + theme_classic() + theme(
-                                    panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255), colour = rgb(0,0,20,maxColorValue = 255)),
-                                    text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
-                                    rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
-                                    line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
-                                    axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
-                                    axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)), 
-                                    axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+                                        )
+     }else{
+         p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE)
 
-                                    )
+         p <- p + geom_abline(intercept = 0, slope = 1)
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
 
-     
-outname = paste0("ROC_",name,".jpg");
+         p <- p + annotate("text",
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
+     }
+     metadata <- tribble(~name,~error, ~AUC,
+                         paste0(name), error, round(calc_auc(p)$AUC, 4))
+
+     metadata
+     if(!file.exists("metadata.csv")){
+         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = TRUE)
+     }else{
+         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = FALSE)
+     }
+
+     outname = paste0("ROC_",name,".jpg");
      jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
-p
- #    plot.roc(roc,print.auc=TRUE, auc.polygon=TRUE, grid=c(0.1, 0.1),
-  #            grid.col=c("green", "red"), max.auc.polygon=TRUE,)
 
-
+     p
 
 
 
 
      dev.off()
-options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     options(tikzDocumentDeclaration = '\\documentclass{beamer}')
      outname = paste0("ROC_",name,".tex");
-tikz(outname,width = 2, height = 2)
-p
-dev.off()
+     tikz(outname,width = 2, height = 2)
+
+     dev.off()
 
    #+END_SRC
 
@@ -399,6 +437,14 @@ dev.off()
 
    #+END_SRC
  
+
+
+dat= read_csv("../metadata.csv") 
+ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
+
+Don't need this... 
+dat %>% group_by(name) %>% summarise_at(vars(AUC), mean, na.rm = TRUE)
+
  6) make silly boxplot 
 
 
@@ -467,7 +513,9 @@ dev.off()
 
 #+END_SRC
 
+
 #+RESULTS:
+
 : 2
 
 

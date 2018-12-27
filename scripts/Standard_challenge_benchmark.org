@@ -11,7 +11,7 @@
   1) generate test sequences using =tfbs_bench=
   2) generate infinite hidden Markov model using =spotseq_model= 
   3) score test and negative sequences using =spotseq_score= 
-  4) generate AUC scores using the R supercite:team-2018-r script =makeROC.R=
+  4) generate AUC scores using the Rscript =makeROC.R=
   5) summarise and plot scores from multiple runs. 
 * Preliminaries 
 
@@ -41,6 +41,13 @@
   #+END_EXAMPLE
 
    A makefile will appear 
+
+* Dependencies 
+
+  This test suite depends on:
+  1) Gnu Parallel supercite:tange-2011-gnu-paral
+  2) R supercite:team-2018-r 
+  3) SpotSeq 
 
 * Setting the RNG seed globally
 
@@ -114,8 +121,147 @@
         done
     done
 
-
   #+END_SRC
+
+* Run SpotSeq model
+
+
+  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    DIR=`pwd`
+    OUTDIR=
+    SAMPLES=10
+    AVAILABLECORES=8
+    JOBS=1
+    function usage()
+    {
+
+        printf "This script will run spotseq model in parallel on all train_*>.fa files in a target directory.\n\n" ;
+        printf "usage: $0 -o <target input directory> -c <available cores (default 8)>\n\n" ;
+        exit 1;
+    }
+
+    while getopts o:c:  opt
+    do
+        case ${opt} in
+            o) OUTDIR=${OPTARG};;
+            c) AVAILABLECORES=${OPTARG};;
+            ,*) usage;;
+        esac
+    done
+    if [ "${OUTDIR}" == "" ]; then usage; fi
+    if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
+
+    OUTDIR=${OUTDIR%/}
+    shopt -s nullglob
+    EXISTINGFILES=($OUTDIR/train_*fa) 
+
+    if [ "${#EXISTINGFILES[@]}" -lt 1 ]; then
+        printf "\nInput directory contains no input files matching train_*.fa\n\n";
+        exit 1;
+    fi
+
+    let JOBS="$AVAILABLECORES / 8" 
+
+    if [ "$JOBS" -lt 1 ]; then
+        JOBS=1
+    fi
+  #+END_SRC
+
+
+  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    <<randomseed>>
+  #+END_SRC
+
+  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
+
+    echo "find $OUTDIR -name train_*.fa | parallel --jobs $JOBS \"spotseq_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --seed $SEED\"";
+    find $OUTDIR -name "train_*.fa" | parallel --jobs $JOBS "spotseq_model -i {} -o {}.h5 --nthreads 8 --niter 10000  --seed $SEED"
+
+  #+END_SRC 
+
+
+
+* Run SpotSeq score & AUC calculation
+
+
+  #+BEGIN_SRC bash -n :tangle run_spotseq_score.sh :shebang #!/usr/bin/env bash :noweb yes
+    DIR=`pwd`
+    OUTDIR=
+    SAMPLES=10
+    AVAILABLECORES=8
+    JOBS=1
+    function usage()
+    {
+
+        printf "This script will run spotseq score in parallel using all train_*>.h5 model files in a target directory.\n\n" ;
+        printf "usage: $0 -o <target input directory> -c <available cores (default 8)>\n\n" ;
+        exit 1;
+    }
+
+    while getopts o:c:  opt
+    do
+        case ${opt} in
+            o) OUTDIR=${OPTARG};;
+            c) AVAILABLECORES=${OPTARG};;
+            ,*) usage;;
+        esac
+    done
+    if [ "${OUTDIR}" == "" ]; then usage; fi
+    if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
+    function rename ()
+    {
+        curl -s -o /dev/null -w "%{http_code}" $url
+    }
+
+
+    OUTDIR=${OUTDIR%/}
+    shopt -s nullglob
+    MODELFILES=($OUTDIR/train_*h5) 
+
+    if [ "${#MODELFILES[@]}" -lt 1 ]; then
+        printf "\nInput directory contains no input files matching *.h5\n\n";
+        exit 1;
+    fi
+
+    let JOBS="$AVAILABLECORES / 8" 
+
+    if [ "$JOBS" -lt 1 ]; then
+        JOBS=1
+    fi
+
+    echo ${#MODELFILES[@]}
+
+    echo ${MODELFILES[*]}
+    echo ${!MODELFILES[*]}
+    printf "" > "spotseq_commands.txt"
+    printf "" > "makeROC_commands.txt"
+    TESTFILES=$(sed "s/train_/test_/g" <<< ${MODELFILES[*]})
+    TESTFILES=$(sed "s/.fa.h5/.fa/g" <<< ${TESTFILES[*]})
+    TESTFILES=(${TESTFILES//:/ })
+    NEGFILES=$(sed "s/train_/neg_/g" <<< ${MODELFILES[*]})
+    NEGFILES=$(sed "s/.fa.h5/.fa/g" <<< ${NEGFILES[*]})
+    NEGFILES=(${NEGFILES//:/ })
+
+    for index in "${!MODELFILES[@]}"
+    do
+        echo ${MODELFILES[$index]} ${TESTFILES[$index]} ${NEGFILES[$index]}
+        printf "spotseq_score -m %s -i %s -o %s_pos.csv\n" ${MODELFILES[$index]} ${TESTFILES[$index]} ${MODELFILES[$index]} >> "spotseq_commands.txt"
+        printf "spotseq_score -m %s -i %s -o %s_neg.csv\n\n" ${MODELFILES[$index]} ${NEGFILES[$index]} ${MODELFILES[$index]}  >> "spotseq_commands.txt"
+
+        ERROR=$(echo ${MODELFILES[$index]} | awk '{x = split($1,a,"_"); gsub(".fa.h5","",a[x]); gsub("k","",a[x]); print a[x]}')
+    
+        printf "./makeROC.R -p %s_pos.csv -n %s_neg.csv -e %s -k %s\n" ${MODELFILES[$index]} ${MODELFILES[$index]} ${MODELFILES[$index]}  $ERROR >> "makeROC_commands.txt"
+
+    done
+
+
+    printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
+    parallel --jobs $JOBS < spotseq_commands.txt
+    parallel --jobs $JOBS < makeROC_commands.txt
+
+
+    #+END_SRC 
 
 
 * Plotting and summary statistics 
@@ -234,7 +380,7 @@ The script below takes log-odds scores from positive and negative test sequences
          p  <-  p + ylab("Sensitivity (TPR)")
      }
      metadata <- tribble(~name,~error, ~AUC,
-                         paste0(name), error, round(calc_auc(p)$AUC, 4))
+                         paste0(basename(name)), error, round(calc_auc(p)$AUC, 4))
 
      metadata
      if(!file.exists("metadata.csv")){
@@ -243,7 +389,7 @@ The script below takes log-odds scores from positive and negative test sequences
          write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = FALSE)
      }
 
-     outname = paste0("ROC_",name,".jpg");
+     outname = paste0("ROC_",basename(name),".jpg");
      jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
 
      p
@@ -252,11 +398,11 @@ The script below takes log-odds scores from positive and negative test sequences
 
 
      dev.off()
-     options(tikzDocumentDeclaration = '\\documentclass{beamer}')
-     outname = paste0("ROC_",name,".tex");
-     tikz(outname,width = 2, height = 2)
+     #options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     #outname = paste0("ROC_",basename(name),".tex");
+     #tikz(outname,width = 2, height = 2)
 
-     dev.off()
+     #dev.off()
 
    #+END_SRC
 
@@ -269,7 +415,8 @@ code to summarise the results.
 
 #+BEGIN_SRC R -n 
 dat= read_csv("metadata.csv") 
-ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
+class(dat[[2]])<-"character"
+ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
 
 #+END_SRC
 
@@ -279,8 +426,8 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
 ** Check for SpotSeq installation
 
-   #+BEGIN_SRC sh -n :tangle check_for_programs.sh :shebang #!/usr/bin/env sh
-     programs=(spotseq_model spotseq_score tfbs_bench)
+   #+BEGIN_SRC bash -n :tangle check_for_programs.sh :shebang #!/usr/bin/env bash
+     programs=(Rscript parallel pkg-config spotseq_model spotseq_score tfbs_bench)
 
      printf "Running Sanity checks:\n";
 
@@ -301,7 +448,7 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
    
    #+NAME: liblist
    #+BEGIN_SRC R -n :exports code :results none
-     libraries <- c("tibble","readr","ggplot2","plotROC","tikzDevice","dplyr")
+     libraries <- c("devtools","optparse","tidyverse","plotROC")
    #+END_SRC
    
    Script to test if libraries are present.
@@ -325,7 +472,7 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
    #+BEGIN_SRC sh -n :results output :exports both
      ./test_for_libraries.R
    #+END_SRC
-
+   install.packages("tidyverse")
    Code block to load the libraries in R code.
 
    #+NAME: Rlibraries
@@ -337,32 +484,32 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
    #+END_SRC
 
-*** Makefile to kick off the analysis
+** Makefile to kick off the analysis
 
     1) Makefile 
 
 #+BEGIN_SRC makefile -n :tangle Makefile
-all: tangle check_r_libs check_programs
+all: check_r_libs 
 	@ echo Done
 
 tangle:
 	./tangleorgs.sh Standard_challenge_benchmark.org
 
-check_r_libs:
+check_r_libs: check_programs
 	@ $$(pwd)/test_for_libraries.R
 	@ if [ $$? -ne 0 ]; then exit; fi;
 	@ echo R libs found 
 
-check_programs:
+check_programs:  tangle
 	@ $$(pwd)/check_for_programs.sh
 	@ if [ $$? -ne 0 ]; then exit; fi;
 	@ echo Programs found
 
 #+END_SRC
 
-*** script to tangle analysis org documents from command line
+** script to tangle analysis org documents from command line
 
-#+BEGIN_SRC sh -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
+#+BEGIN_SRC bash -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env bash
 #
 # tangle files with org-mode
 #

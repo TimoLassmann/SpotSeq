@@ -147,8 +147,9 @@ if test "$enable_cairo" = no; then
 echo "------------------------------------------"
 echo " Unable to find cairo  on this system.    "
 echo " Motif plotting code will not be built.   "
-echo " To install cairo:     "
+echo " To install cairo:                        "
 echo " Fedora: sudo dnf install cairo-devel     "
+echo " Ubuntu: sudo apt install libcairo2-dev   "
 echo "------------------------------------------"
 fi
 

@@ -7,23 +7,122 @@
 #+OPTIONS: H:4
 #+LATEX_CMD: pdflatex
 * Introduction 
-  
+  Here I test spotseq's ability to detect motifs embedded in random nucleotide sequences. The suite runs the following steps:
+  1) generate test sequences using =tfbs_bench=
+  2) generate infinite hidden Markov model using =spotseq_model= 
+  3) score test and negative sequences using =spotseq_score= 
+  4) generate AUC scores using the R supercite:team-2018-r script =makeROC.R=
+  5) summarise and plot scores from multiple runs. 
 * Preliminaries 
 
-The benchmark requires spotseq to be installed, and a number of R packages
+  This file contains all the code to run the benchmark. To get started copy this file into a benchmark directory: 
 
-** How to use this file 
+  #+BEGIN_EXAMPLE sh -n 
+  BENCHDIR="$HOME/benchmarks/Spotseq_TFBS/"
+  mkdir -p $BENCHDIR
+  cp Standard_challenge_benchmark.org $BENCHDIR
+  cd $BENCHDIR
+  #+END_EXAMPLE
 
-1. Load in emacs org-mode 
-2. tangle with ctrl+c ctrl+v t 
-3. upload to server; run analysis
+
+  Open the file in Emacs and tangle with =C+c C+v t=.
+
+  Alternatively running this on the command line should work: 
+
+  #+BEGIN_EXAMPLE sh -n 
+  emacs -Q --batch \
+    --eval "(progn
+    (require 'org)(require 'ob)(require 'ob-tangle)
+    (setq org-src-preserve-indentation t)
+    (mapc (lambda (file)
+    (find-file (expand-file-name file \".\"))
+    (org-babel-tangle)
+    (kill-buffer)) '(\"Standard_challenge_benchmark.org\")))" 2>&1 |grep -i tangled
+  #+END_EXAMPLE
+
+   A makefile will appear 
+
+* Setting the RNG seed globally
+
+  This code block sets a seed globally to be used in both generating the test data sets and in spotseq itself.
+  #+NAME: randomseed
+  #+BEGIN_SRC sh -n :exports code :results none :noweb yes
+    SEED=3
+  #+END_SRC
+
+  Ha! not 42. 
+
+* Generating the test data sets 
+
+  This bash script will generate the test datasets: 
+
+  #+BEGIN_SRC bash -n :tangle gen_test_datasets.sh :shebang #!/usr/bin/env bash :noweb yes
+    DIR=`pwd`
+    OUTDIR=
+    SAMPLES=10
+
+    function usage()
+    {
+
+        printf "This script will generate test data sets.\n\n" ;
+        printf "usage: $0 -o <output directory> -s <samples (default 10)>\n\n" ;
+        exit 1;
+    }
+
+    while getopts o:s:  opt
+    do
+        case ${opt} in
+            o) OUTDIR=${OPTARG};;
+            s) SAMPLES=${OPTARG};;
+            ,*) usage;;
+        esac
+    done
+    if [ "${OUTDIR}" == "" ]; then usage; fi
+    if [ "${SAMPLES}" -lt 1 ]; then usage; fi
+  #+END_SRC
+  Add in the random number seed;
+  #+BEGIN_SRC bash -n :tangle gen_test_datasets.sh :shebang #!/usr/bin/env sh :noweb yes
+    <<randomseed>>
+  #+END_SRC
+
+  #+BEGIN_SRC bash -n :tangle gen_test_datasets.sh :shebang #!/usr/bin/env sh :noweb yes
+
+    shopt -s nullglob
+    EXISTINGFILES=($OUTDIR*fa) 
+
+    for file in ${EXISTINGFILES[*]}; do
+        echo $file;
+    done
+    if [ "${#EXISTINGFILES[@]}" -gt 0 ]; then 
+        printf "\nERROR: The output directory $OUTDIR contains fasta files (see above).\n\n" ;
+        printf "Remove these first!\n\n" ;
+        exit 1;
+    fi
+
+    printf "Using RNG seed: %d \n" $SEED;
+
+    errors=($(seq 0 1 5))
+
+    for i in $(seq 1 1 $SAMPLES)
+    do
+        printf "Generating sample %s\n", $i;
+        for error in ${errors[*]}
+        do
+            echo "tfbs_bench -o $OUTDIR -e $error -s $SEED"
+            tfbs_bench -o $OUTDIR -e $error -s $SEED
+            SEED=$((SEED+1))
+        done
+    done
+
+
+  #+END_SRC
 
 
 * Plotting and summary statistics 
 
 The script below takes log-odds scores from positive and negative test sequences, draws an area under receiver operating characteristic curve (ROC) and writes output to file. The script also plots the curves (use -d dark versions I prefer to use in presentations.
 
-   #+BEGIN_SRC R :tangle makeROC.R :shebang #!/usr/bin/env Rscript :noweb yes
+   #+BEGIN_SRC R -n :tangle makeROC.R :shebang #!/usr/bin/env Rscript :noweb yes
      library(optparse)
      sessionInfo()
      dark <- FALSE;
@@ -168,7 +267,7 @@ The script below takes log-odds scores from positive and negative test sequences
 
 code to summarise the results. 
 
-#+BEGIN_SRC R
+#+BEGIN_SRC R -n 
 dat= read_csv("metadata.csv") 
 ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
@@ -180,8 +279,8 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
 ** Check for SpotSeq installation
 
-   #+BEGIN_SRC sh :tangle check_for_programs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
-     programs=(spotseq_model spotseq_score)
+   #+BEGIN_SRC sh -n :tangle check_for_programs.sh :shebang #!/usr/bin/env sh
+     programs=(spotseq_model spotseq_score tfbs_bench)
 
      printf "Running Sanity checks:\n";
 
@@ -198,20 +297,15 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
 ** Check for libraries 
    
-   All packages will be installed locally: 
-   
-   ~/R/x86_64-pc-linux-gnu-library/3.2
-   
    Here I define the list of libraries I'll be using. 
    
-
    #+NAME: liblist
-   #+BEGIN_SRC R :exports code :results none
+   #+BEGIN_SRC R -n :exports code :results none
      libraries <- c("tibble","readr","ggplot2","plotROC","tikzDevice","dplyr")
    #+END_SRC
    
    Script to test if libraries are present.
-   #+BEGIN_SRC R :tangle test_for_libraries.R :shebang #!/usr/bin/env Rscript :noweb yes :exports code :results none
+   #+BEGIN_SRC R -n :tangle test_for_libraries.R :shebang #!/usr/bin/env Rscript :noweb yes :exports code :results none
      <<liblist>>
      Sys.info()["nodename"]
      for(library in libraries) 
@@ -228,14 +322,14 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
    #+END_SRC
    
    
-   #+BEGIN_SRC sh :results output :exports both
+   #+BEGIN_SRC sh -n :results output :exports both
      ./test_for_libraries.R
    #+END_SRC
 
    Code block to load the libraries in R code.
 
    #+NAME: Rlibraries
-   #+BEGIN_SRC R :exports code :results none :noweb yes
+   #+BEGIN_SRC R -n :exports code :results none :noweb yes
      <<liblist>>
      lapply(libraries, FUN = function(X) {
          do.call("library", list(X)) 
@@ -247,7 +341,7 @@ ggplot(dat,aes(x = name, y = AUC)) + geom_boxplot()
 
     1) Makefile 
 
-#+BEGIN_SRC makefile :tangle Makefile
+#+BEGIN_SRC makefile -n :tangle Makefile
 all: tangle check_r_libs check_programs
 	@ echo Done
 
@@ -268,7 +362,7 @@ check_programs:
 
 *** script to tangle analysis org documents from command line
 
-#+BEGIN_SRC sh :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
+#+BEGIN_SRC sh -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env sh
 #
 # tangle files with org-mode
 #
@@ -314,7 +408,29 @@ emacs -Q --batch \
 
 #+END_SRC
 
+* References 
 
+#+BEGIN_SRC latex 
+  \printbibliography[heading=none]
 
+#+END_SRC
+
+* Versions 
+  #+BEGIN_SRC emacs-lisp -n :exports both :eval yes
+    (princ (concat
+            (format "Emacs version: %s\n"
+                    (emacs-version))
+            (format "org version: %s\n"
+                    (org-version))))
+  #+END_SRC
+
+  #+RESULTS:
+  : Emacs version: GNU Emacs 26.1 (build 1, x86_64-redhat-linux-gnu, GTK+ Version 3.22.30)
+  :  of 2018-06-26
+  : org version: 9.1.9
+
+  #+BEGIN_SRC sh :results output :exports both :eval yes
+    bash --version
+  #+END_SRC
 
 

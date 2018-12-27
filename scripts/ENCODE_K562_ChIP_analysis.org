@@ -55,10 +55,10 @@
   as well as GRCh38. Metadata is captured in the =metadata.csv= file. 
 
 * Selection 
-  Let's focus on =conservative idr thresholded peaks= mapped to
-  GRCh38. The code below prints a table containing the targeted TF,
-  the ENCODE ID and the name of the file containing the corresponding
-  narrow bed peaks.
+Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code below prints a table containing the targeted TF, the ENCODE ID and the name of the file containing the corresponding narrow bed peaks.
+
+
+
   #+NAME: datasets
   #+BEGIN_SRC sh :results table :exports none
     cat ../ENCODE_K562_ChIP/metadata.tsv | grep GRCh38  | grep conservative  | grep released   | awk 'BEGIN{FS = "\t"}

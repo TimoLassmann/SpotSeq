@@ -222,44 +222,52 @@ int standard_MOTIF_challenge(struct parameters* param)
 
         RUNP(sb = alloc_seq_buffer( MACRO_MAX(20,param->number_negative)));
 
-        /* make motif */
-        for(i = 0; i < 15;i++){
-                r =  rk_double(&param->rndstate);
-                for(c = 0; c < 4;c++){
-                        if(r <= background[c]){
-                                motif[i] = "ACGT"[c];
-                                break;
+        while(1){
+                /* make motif */
+                for(i = 0; i < 15;i++){
+                        r =  rk_double(&param->rndstate);
+                        for(c = 0; c < 4;c++){
+                                if(r <= background[c]){
+                                        motif[i] = "ACGT"[c];
+                                        break;
+                                }
                         }
                 }
+                motif[15] = 0;
+                /* create output filename */
+                snprintf(buffer, BUFFER_LEN, "%s/train_%s_k%d.fa",param->outdir,  motif,param->error);
+
+                /* if filename already exists skip and repeat */
+
+                if(!my_file_exists(buffer)){
+
+                        /* create training sequence */
+                        RUN(create_n_random_sequences(sb,param, 20));
+                        RUN(add_motif_to_all_sequences(sb, param, motif));
+
+
+                        RUN(write_sequences_to_file(sb,buffer));
+                        reset_sb(sb); // clear out stuff from before...
+
+                        /* create testing sequence */
+                        RUN(create_n_random_sequences(sb,param, param->number_negative));
+                        RUN(add_motif_to_all_sequences(sb, param, motif));
+                        snprintf(buffer, BUFFER_LEN, "%s/test_%s_k%d.fa", param->outdir,motif,param->error);
+                        RUN(write_sequences_to_file(sb,buffer));
+
+
+
+                        reset_sb(sb);// clear out stuff from before...
+
+
+                        /* create negative sequences */
+                        RUN(create_n_random_sequences(sb,param,param->number_negative));
+                        snprintf(buffer, BUFFER_LEN, "%s/neg_%s_k%d.fa",param->outdir,motif,param->error);
+                        RUN(write_sequences_to_file(sb,buffer));
+                        break;
+                }
+
         }
-        motif[15] = 0;
-
-        /* create training sequence */
-        RUN(create_n_random_sequences(sb,param, 20));
-        RUN(add_motif_to_all_sequences(sb, param, motif));
-
-        snprintf(buffer, BUFFER_LEN, "%s/train_%s.fa", param->outdir,motif);
-        RUN(write_sequences_to_file(sb,buffer));
-        reset_sb(sb); // clear out stuff from before...
-
-        /* create testing sequence */
-        RUN(create_n_random_sequences(sb,param, param->number_negative));
-        RUN(add_motif_to_all_sequences(sb, param, motif));
-        snprintf(buffer, BUFFER_LEN, "%s/test_%s.fa", param->outdir,motif);
-        RUN(write_sequences_to_file(sb,buffer));
-
-
-
-        reset_sb(sb);// clear out stuff from before...
-
-
-/* create negative seuqences */
-
-        RUN(create_n_random_sequences(sb,param,param->number_negative));
-        snprintf(buffer, BUFFER_LEN, "%s/neg_%s.fa", param->outdir,motif);
-        RUN(write_sequences_to_file(sb,buffer));
-
-
 
 
         //snprintf(buffer, BUFFER_LEN, "%s/%s_%s_mis_%d_%d.fa", outdir,"Standard_Challenge", motif,n_mismatches,lf*10);
@@ -444,6 +452,8 @@ int write_sequences_to_file(struct seq_buffer* sb,char* filename)
         int i;
         ASSERT(sb != NULL," no sequences.");
         ASSERT(filename != NULL ," No filename.");
+
+
         RUNP(f_ptr = fopen(filename, "w"));
 
         for(i = 0; i < sb->num_seq;i++){

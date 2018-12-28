@@ -497,8 +497,11 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;
 
+
+        double** all_scores = NULL;
         double s1,s2;
         double best_score;
+        double sum;
         int max = 1000;
         int c;
         int i;
@@ -531,12 +534,17 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         model_bag->best_model = -1;
         best_score = -100.0;
+
+        limit = MACRO_MIN(max, sb->num_seq);
+
+        RUNP(all_scores = galloc(all_scores, limit,model_bag->num_models, 0.0));
+
         for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
                 RUN(alloc_dyn_matrices(fhmm));
                 RUN(run_score_sequences(fhmm,sb,td, pool));
 
-                limit = MACRO_MIN(max, sb->num_seq);
+
 
                 s1 = 0.0;
                 s2 = 0.0;
@@ -544,6 +552,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
                         //sb_in->sequences[i]->senq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
                         s1 += sb->sequences[i]->score;
                         s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
+                        all_scores[i][c] = sb->sequences[i]->score;
                 }
 
                 s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
@@ -560,6 +569,28 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         LOG_MSG("Best Model: %d",model_bag->best_model);
         RUN(write_best_model(param->output, model_bag->best_model));
+
+        for(i = 0; i < limit;i++){
+                s1 = 0.0;
+                s2 = 0.0;
+
+                for(c = 0; c < model_bag->num_models;c++){
+                        s1 += all_scores[i][c];
+                        s2 += all_scores[i][c] * all_scores[i][c];
+                        fprintf(stdout,"%5.2f ",all_scores[i][c]);
+                }
+
+                s2 = sqrt(((double) model_bag->num_models * s2 - s1 * s1)/ ((double) model_bag->num_models * ((double) model_bag->num_models -1.0)));
+                s1 = s1 / (double) model_bag->num_models;
+
+                fprintf(stdout," %f stdev: %f \n",s1,s2);
+
+
+        }
+
+
+        //LOG_MSG("Mean KL divergence: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
+        gfree(all_scores);
         //LOG_MSG("Got past writing");
         free_spotseq_thread_data(td);
         //LOG_MSG("Got past free thread data ");

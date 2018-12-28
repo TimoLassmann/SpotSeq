@@ -104,7 +104,9 @@ void* do_score_sequences(void* threadarg)
                         RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
                         RUN(random_model_score(fhmm->background, &r_score, seq->seq, seq->seq_len,expected_len));
                         //fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, LOGISTIC_FLT(f_score - r_score));
+
                         seq->score = (f_score - r_score) / logf(2.0);
+                        //seq->score = f_score;
                 }
         }
         return NULL;

@@ -386,6 +386,23 @@ ERROR:
         return FAIL;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int random_score_sequences(struct seq_buffer* sb,double* background )
 {
         struct ihmm_sequence* s;

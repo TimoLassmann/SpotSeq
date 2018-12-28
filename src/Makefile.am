@@ -61,7 +61,7 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
-bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench
+bin_PROGRAMS =  sim_seq spotseq_model spotseq_plot spotseq_score spotseq_lcs spotseq_iclu spotseq_emit cal tfbs_bench composition_bench
 
 if ENABLE_CAIRO
 bin_PROGRAMS +=  cairo_test spotseq_pplot spotseq_seqmotif
@@ -122,10 +122,24 @@ outdir.h \
 outdir.c \
 matrix_io.h \
 matrix_io.c \
+benchmark_seq.h \
+benchmark_seq.c \
 create_TFBS_benchmark_datasets.c
 
 tfbs_bench_LDADD =  ${MYLIBDIRS}
 
+
+
+composition_bench_SOURCES = $(RANDOMKIT_FILES) \
+outdir.h \
+outdir.c \
+matrix_io.h \
+matrix_io.c \
+benchmark_seq.h \
+benchmark_seq.c \
+create_composition_benchmark_dataset.c
+
+composition_bench_LDADD =  ${MYLIBDIRS}
 #build_ihmm_SOURCES = \
 model_nuc_seq.c \
 matrix_io.h \

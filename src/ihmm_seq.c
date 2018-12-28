@@ -934,6 +934,9 @@ struct seq_buffer* load_sequences(char* in_filename)
         RUN(detect_alphabet(sb));
 
         RUN(add_background_to_sequence_buffer(sb));
+
+
+
         return sb;
 ERROR:
         free_ihmm_sequences(sb);
@@ -964,7 +967,8 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb)
         ASSERT(sum != 0.0f,"No sequence counts found");
         for(i = 0; i < sb->L;i++){
                 //LOG_MSG("%d %f %f",i,sb->background[i], sum);
-                 sb->background[i] /= sum;
+
+                sb->background[i] /= sum;
         }
         // exit(0);
         return OK;

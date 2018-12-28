@@ -19,6 +19,8 @@
 
 #include "matrix_io.h"
 
+#include "benchmark_seq.h"
+
 double background[4] = {0.25,0.5,0.75,1.0};
 
 struct parameters{
@@ -32,18 +34,6 @@ struct parameters{
 
 /* Structs to hold sequences  */
 
-struct sequence{
-        uint8_t* seq;
-        char* name;
-        int malloc_len;
-        int seq_len;
-};
-
-struct seq_buffer{
-        struct sequence** seqs;
-        int malloc_num;
-        int num_seq;
-};
 
 int standard_MOTIF_challenge(struct parameters* param);
 int create_n_random_sequences(struct seq_buffer* sb,struct parameters* param, int N);
@@ -53,11 +43,7 @@ static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
 
-/* seqbuffer stuff  */
-static struct seq_buffer* alloc_seq_buffer(int num_seq);
-static int write_sequences_to_file(struct seq_buffer* sb,char* filename);
-static int reset_sb(struct seq_buffer* sb);
-static void free_sb(struct seq_buffer* sb);
+
 
 int main (int argc, char *argv[])
 {
@@ -280,7 +266,6 @@ ERROR:
         return FAIL;
 }
 
-
 int add_motif_to_all_sequences(struct seq_buffer* sb,struct parameters* param, char* motif)
 {
         struct sequence* sequence = NULL;
@@ -407,90 +392,3 @@ ERROR:
 
 }
 
-struct seq_buffer* alloc_seq_buffer(int num_seq)
-{
-        struct seq_buffer* sb  = NULL;
-        struct sequence* sequence = NULL;
-        int i;
-
-        ASSERT(num_seq > 0, "No parameters.");
-
-        MMALLOC(sb,sizeof(struct seq_buffer));
-        sb->malloc_num = num_seq;
-        sb->num_seq = 0;
-        sb->seqs = NULL;
-        MMALLOC(sb->seqs, sizeof(struct ihmm_sequence*) *sb->malloc_num );
-        for(i = 0; i < sb->malloc_num;i++){
-                sb->seqs[i] = NULL;
-                sequence = NULL;
-                MMALLOC(sequence,sizeof(struct sequence));
-                sequence->seq = NULL;
-                sequence->name = NULL;
-                sequence->malloc_len = 128;
-                sequence->seq_len = 0;
-                MMALLOC(sequence->seq, sizeof(uint8_t) * sequence->malloc_len);
-                MMALLOC(sequence->name, sizeof(char) * 256);
-                sb->seqs[i] = sequence;
-        }
-        return sb;
-
-        /*sequence->seq[sequence->seq_len] = line[i];
-        sequence->seq_len++;
-        if(sequence->seq_len == sequence->malloc_len){
-                sequence->malloc_len = sequence->malloc_len << 1;
-                MREALLOC(sequence->seq, sizeof(uint8_t) *sequence->malloc_len);
-                }*/
-
-ERROR:
-        free_sb(sb);
-        return NULL;
-}
-
-int write_sequences_to_file(struct seq_buffer* sb,char* filename)
-{
-        FILE* f_ptr = NULL;
-        int i;
-        ASSERT(sb != NULL," no sequences.");
-        ASSERT(filename != NULL ," No filename.");
-
-
-        RUNP(f_ptr = fopen(filename, "w"));
-
-        for(i = 0; i < sb->num_seq;i++){
-                fprintf(f_ptr,">Seq_%d\n%s\n",i+1,sb->seqs[i]->seq);
-        }
-        fclose(f_ptr);
-        return OK;
-ERROR:
-        if(f_ptr){
-                fclose(f_ptr);
-        }
-        return FAIL;
-
-}
-
-int reset_sb(struct seq_buffer* sb)
-{
-        int i;
-        sb->num_seq = 0;
-        for(i = 0; i < sb->malloc_num;i++){
-                sb->seqs[i]->seq_len = 0;
-        }
-        return OK;
-}
-
-void free_sb(struct seq_buffer* sb)
-{
-        int i;
-        struct sequence* seq = NULL;
-        if(sb){
-                for(i =0; i < sb->malloc_num;i++){
-                        seq = sb->seqs[i];
-                        MFREE(seq->seq);
-                        MFREE(seq->name);
-                        MFREE(seq);
-                }
-                MFREE(sb->seqs);
-                MFREE(sb);
-        }
-}

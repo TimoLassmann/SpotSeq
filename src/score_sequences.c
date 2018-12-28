@@ -129,6 +129,12 @@ int main (int argc, char *argv[])
         LOG_MSG("Loading sequences.");
         RUNP(sb = load_sequences(param->in_sequences));
 
+        /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
+
+        for(i =0; i < sb->L;i++){
+                fhmm->background[i] = prob2scaledprob(sb->background[i]);
+        }
+
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
 

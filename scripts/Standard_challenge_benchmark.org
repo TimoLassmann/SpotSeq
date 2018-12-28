@@ -419,6 +419,7 @@ The script below takes log-odds scores from positive and negative test sequences
 code to summarise the results. 
 
 #+BEGIN_SRC R -n 
+library(tidyverse)
 dat= read_csv("metadata.csv") 
 class(dat[[2]])<-"character"
 ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)

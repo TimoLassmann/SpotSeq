@@ -312,6 +312,66 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         /* clear emission counts */
         RUN(clear_counts(ihmm));
 
+        //LOG_MSG("ITER:%d", ihmm->training_iterations);
+        /* sequence weighting  */
+
+        double sum = prob2scaledprob(0.0);
+        for(i = 0; i < sb->num_seq;i++){
+                 if(ihmm->training_iterations > 9980){
+                         fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] - sb->sequences[i]->r_score );
+                 }
+                sum = logsum(sum,   sb->sequences[i]->score_arr[model_index]);
+
+        }
+        if(ihmm->training_iterations > 9980){
+        fprintf(stdout,"\n" );
+        }
+        for(i = 0; i < sb->num_seq;i++){
+                /* standardise */
+                sb->sequences[i]->score_arr[model_index] = sb->sequences[i]->score_arr[model_index]- logsum(sb->sequences[i]->score_arr[model_index],sb->sequences[i]->r_score);//,   sb->sequences[i]->r_score   -= sum;
+                if(sb->sequences[i]->score_arr[model_index]> 0){
+                        sb->sequences[i]->score_arr[model_index] = prob2scaledprob(1.0);
+                }
+
+
+                 if(ihmm->training_iterations > 9980){
+                       fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
+                }
+
+                /* subtract  */
+
+                sb->sequences[i]->score_arr[model_index] = 1.0 - scaledprob2prob(sb->sequences[i]->score_arr[model_index]);
+
+                if(ihmm->training_iterations > 9980){
+                        fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
+                }
+
+                /* simulated annealing  */
+
+                sb->sequences[i]->score_arr[model_index] = pow(sb->sequences[i]->score_arr[model_index], 1.0 / (double)MACRO_MAX(1000- ihmm->training_iterations  , 1.0));
+
+                if(ihmm->training_iterations > 9980){
+                        fprintf(stdout,"%f\n",sb->sequences[i]->score_arr[model_index] );
+                }
+
+
+        }
+        sum = 0.0;
+        for(i = 0; i < sb->num_seq;i++){
+                sum += sb->sequences[i]->score_arr[model_index];
+
+        }
+        sum /= (double) sb->num_seq;
+
+        for(i = 0; i < sb->num_seq;i++){
+                sb->sequences[i]->score_arr[model_index] /= sum;
+                if(ihmm->training_iterations > 9980){
+                        LOG_MSG("MODEL %d SEQ %d Weight: %f ", model_index, i,sb->sequences[i]->score_arr[model_index]);
+                }
+
+        }
+
+
         for(i = 0; i < sb->num_seq;i++){
                 RUN(fill_counts_i(ihmm, sb->sequences[i],model_index));
         }
@@ -372,9 +432,14 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
         label = s->label_arr[model_index];
         seq = s->seq;
         len = s->seq_len;
-        score = 1.0;// - scaledprob2prob(s->score);
+        score = 1.0;///s->score_arr[model_index];
+
+
+        // 1.0;// - scaledprob2prob(s->score);
         //score =1.0 - scaledprob2prob ( s->score - logsum(s->score,  s->r_score));
         //u = sb->sequences[seq_ID]->u;
+        //fprintf(stdout,"%f %f %f\n", s->score,s->r_score, scaledprob2prob ( s->score - logsum(s->score,  s->r_score)));
+
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
 

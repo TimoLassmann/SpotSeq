@@ -88,6 +88,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 //RUN(check_labels(sb,model_bag->num_models ));
                 //LOG_MSG("Done");
                 if(!no_path){
+
                         for(i = 0; i < model_bag->num_models;i++){
                                 //LOG_MSG("removing unused states");
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
@@ -388,6 +389,7 @@ void* do_dynamic_programming(void *threadarg)
                                                                       &data->rndstate));
 
                                         //}
+                                        s->score_arr[j] = data->dyn[0][0];
                         }
 
                         //LOG_MSG("Thread %d running sequence %d   %f %d",thread_id, i,data->sb->sequences[i]->score,data->seed);
@@ -1139,6 +1141,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
 
         if(sum != 0.0 && !isnan(sum)){
                 state = IHMM_END_STATE;
+                double score = prob2scaledprob(1.0);//    1.0;
                 for(i = len-1; i >= 0; i--){
                         //fprintf(stdout,"pick: %d %d\n", i,state);
                         for(j = 0; j < K;j++){
@@ -1187,10 +1190,13 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                                         if(r <= DBL_EPSILON){
                                                 state = a;
                                                 label[i] = a;
+                                                score = score + prob2scaledprob(list[j]->t);
                                                 break;
                                         }
                                 }
                         }
+
+                        score = score + prob2scaledprob( ft->emission[seq[i]][state]);
                                 //}
                         /*if(label[i] == -1){
                                 WARNING_MSG("path is negative!!!!, %e %e u:%e sum: %f",r,tmp_r,u[i+1],sum);
@@ -1211,6 +1217,8 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                                         }*/
 
                 }
+                score = score + prob2scaledprob(  ft->transition[IHMM_START_STATE][state]);
+                matrix[0][0] = score;
                 /* sanitycheck!  */
                 *has_path = 1;
         }else{

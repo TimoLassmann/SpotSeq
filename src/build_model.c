@@ -436,20 +436,6 @@ ERROR:
         return FAIL;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 int random_score_sequences(struct seq_buffer* sb,double* background )
 {
         struct ihmm_sequence* s;
@@ -476,7 +462,9 @@ int random_score_sequences(struct seq_buffer* sb,double* background )
                 RUN(random_model_score(back, &s->r_score , s->seq, s->seq_len,expected_len));
         }
         MFREE(back);
+        //exit(0);
         return OK;
+
 ERROR:
         MFREE(back);
         return FAIL;

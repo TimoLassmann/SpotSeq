@@ -1952,6 +1952,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->label_arr = NULL;
         sequence->tmp_label_arr = NULL;
         sequence->u_arr = NULL;
+        sequence->score_arr = NULL;
 
 
         return sequence;
@@ -2001,6 +2002,16 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, in
 
         RUNP(sequence->tmp_label_arr = galloc(sequence->tmp_label_arr, num_models, max_len+1, -1));
 
+
+        RUNP(sequence->score_arr  = galloc(sequence->score_arr, num_models));
+
+        int i;
+
+        for(i = 0; i < num_models;i++){
+                sequence->score_arr[i] = prob2scaledprob(1.0);
+        }
+
+        
         MMALLOC(sequence->has_path,sizeof(uint8_t) * num_models);
 
 
@@ -2121,6 +2132,9 @@ void free_ihmm_sequence(struct ihmm_sequence* sequence)
                         gfree(sequence->tmp_label_arr);
                 }
 
+                if(sequence->score_arr){
+                        gfree(sequence->score_arr);
+                }
                 MFREE(sequence);
         }
 }

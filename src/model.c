@@ -401,6 +401,7 @@ ERROR:
 }
 
 
+
 int iHmmHyperSample(struct ihmm_model* model, int iterations)
 {
         int i,j,c;
@@ -544,23 +545,31 @@ int set_model_hyper_parameters(struct model_bag* b, double alpha, double gamma)
 
         for(i = 0; i < b->num_models;i++){
                 model = b->models[i];
-                if(alpha == IHMM_PARAM_PLACEHOLDER){
+                //if(alpha == IHMM_PARAM_PLACEHOLDER){
                         model->alpha_a = 6.0;
                         model->alpha_b = 15.0;
                         model->alpha = rk_gamma(&model->rndstate, model->alpha_a,1.0 / model->alpha_b);
-                }else{
-                        model->alpha = alpha;
-                }
+                        //}else{
+                        //        model->alpha = alpha;
+                        //}
 
-                if(gamma == IHMM_PARAM_PLACEHOLDER){
+                //if(gamma == IHMM_PARAM_PLACEHOLDER){
                         model->gamma_a = 16.0;
                         model->gamma_b = 4.0;
                         model->gamma = rk_gamma(&model->rndstate, model->gamma_a,1.0 / model->gamma_b);
-                }else{
-                        model->gamma = gamma;
+                        //}else{
+                        //        model->gamma = gamma;
+                        //}
+                        //model->gamma_limit = 50.0;
+                        //model->alpha_limit = 2.0;
+                if(alpha != IHMM_PARAM_PLACEHOLDER){
+                        model->alpha_limit  = alpha;
                 }
-                model->gamma_limit = 50.0;
-                model->alpha_limit = 2.0;
+
+                if(gamma != IHMM_PARAM_PLACEHOLDER){
+                        model->gamma_limit = gamma;
+                }
+
                 for(j = 0; j < model->num_states;j++){
                         model->beta[j] = (double)(model->num_states);
                 }

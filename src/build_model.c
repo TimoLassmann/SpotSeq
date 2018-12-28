@@ -47,7 +47,7 @@ static int run_build_ihmm(struct parameters* param);
 
 static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
-
+static int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean);
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -64,7 +64,7 @@ int main (int argc, char *argv[])
         param->in_model = NULL;
         param->cmd_line = NULL;
         param->num_threads = 8;
-        param->num_start_states = 10;
+        param->num_start_states = 0;
         param->local = 0;
         param->rev = 0;
         param->num_iter = 1000;
@@ -210,6 +210,8 @@ int run_build_ihmm(struct parameters* param)
         struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
 
+        double average_sequence_len;
+
         //int initial_states;
         int i,j;
 
@@ -270,10 +272,31 @@ int run_build_ihmm(struct parameters* param)
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
 
-                num_state_array[0] = 10;
-                for(i = 1; i < param->num_models;i++){
-                        num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
+
+                average_sequence_len = 0.0;
+
+                for(i = 0; i < sb->num_seq;i++){
+
+                        average_sequence_len += sb->sequences[i]->seq_len;
                 }
+                average_sequence_len /= (double) sb->num_seq;
+                average_sequence_len = sqrt(average_sequence_len);
+
+                /* If the user specified the number of states use this instead. */
+                if(param->num_start_states){
+                        average_sequence_len = (double) param->num_start_states;
+                }
+                /* This function sets the number of starting states to max seq len /2 +- 25  */
+                RUN(init_num_state_array( num_state_array, param->num_models, param, average_sequence_len));
+
+                //num_state_array[0] = 10;
+                //for(i = 0; i < param->num_models;i++){
+                //        LOG_MSG("Num: %d",num_state_array[i]);
+                        //num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
+                //}
+
+
+
                 RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,   param->seed));
 
 
@@ -300,6 +323,9 @@ int run_build_ihmm(struct parameters* param)
                 /* Set seed in sequence buffer */
                 sb->seed = rk_ulong(&model_bag->rndstate);
                 rk_seed(sb->seed, &sb->rndstate);
+
+
+
 
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
 
@@ -387,7 +413,28 @@ ERROR:
 }
 
 
+int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean)
+{
+        rk_state rndstate;
+        int i;
 
+        ASSERT(param != NULL,"No parameter");
+
+        if(param->seed){
+                rk_seed(param->seed, &rndstate);
+        }else{
+                rk_randomseed(&rndstate);
+        }
+
+        for(i = 0; i < len;i++){
+                num_state_array[i] = (int)rk_normal(&rndstate, mean,25.0);
+                num_state_array[i] = MACRO_MIN(num_state_array[i], 1000);
+                num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 
 

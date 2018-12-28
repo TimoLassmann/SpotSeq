@@ -181,7 +181,6 @@
   #+END_SRC 
 
 
-
 * Run SpotSeq score & AUC calculation
 
 
@@ -262,7 +261,6 @@
 
 
     #+END_SRC 
-
 
 * Plotting and summary statistics 
 
@@ -428,7 +426,6 @@ ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
 #+END_SRC
 
 
-
 * Sanity checks and convenience scripts
 
 ** Check for SpotSeq installation
@@ -496,7 +493,7 @@ ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
     1) Makefile 
 
 #+BEGIN_SRC makefile -n :tangle Makefile
-all: check_r_libs 
+check: check_r_libs 
 	@ echo Done
 
 tangle:

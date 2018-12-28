@@ -17,6 +17,7 @@
 struct parameters{
         char* in_model;
         char* in_sequences;
+        char* background_sequences;
         char* output;
         int num_threads;
 };
@@ -31,6 +32,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
+        struct seq_buffer* sb_back = NULL;
 
         struct spotseq_thread_data** td = NULL;
 
@@ -44,6 +46,7 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
         param->in_sequences = NULL;
+        param->background_sequences = NULL;
         param->output = NULL;
         param->num_threads = 8;
 
@@ -53,6 +56,7 @@ int main (int argc, char *argv[])
                         {"in",required_argument,0,'i'},
                         {"out",required_argument,0,'o'},
                         {"nthreads",required_argument,0,'t'},
+                        {"background",required_argument,0,'b'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
@@ -65,6 +69,9 @@ int main (int argc, char *argv[])
                 switch(c) {
                 case 'i':
                         param->in_sequences = optarg;
+                        break;
+                case 'b':
+                        param->background_sequences = optarg;
                         break;
                 case 'o':
                         param->output = optarg;
@@ -109,6 +116,14 @@ int main (int argc, char *argv[])
                 }
         }
 
+        if(param->background_sequences ){
+
+                if(!my_file_exists(param->background_sequences)){
+                        RUN(print_help(argv));
+                        ERROR_MSG("The file <%s> does not exist.",param->background_sequences);
+                }
+        }
+
         if(!param->output){
                 RUN(print_help(argv));
                 ERROR_MSG("No output file! use -o   <blah.csv>");
@@ -128,14 +143,33 @@ int main (int argc, char *argv[])
         /* load sequences.  */
         LOG_MSG("Loading sequences.");
         RUNP(sb = load_sequences(param->in_sequences));
+        LOG_MSG("Read %d sequences.",sb->num_seq);
+
+
 
         /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
 
         for(i =0; i < sb->L;i++){
-                fhmm->background[i] = prob2scaledprob(sb->background[i]);
+                fhmm->background[i] = 0.0;
         }
 
-        LOG_MSG("Read %d sequences.",sb->num_seq);
+        RUN(get_res_counts(sb, fhmm->background));
+        if(param->background_sequences){
+                LOG_MSG("Loading background sequences.");
+                RUNP(sb_back = load_sequences(param->background_sequences));
+                LOG_MSG("Read %d sequences.",sb->num_seq);
+                RUN(get_res_counts(sb_back, fhmm->background));
+        }
+
+        double sum = 0;
+        for(i =0; i < sb->L;i++){
+                sum += fhmm->background[i];
+                fprintf(stdout,"%d: %f\n", i,fhmm->background[i]);
+        }
+
+        for(i =0; i < sb->L;i++){
+                fhmm->background[i] = prob2scaledprob(fhmm->background[i] / sum);
+        }
 
 
        /* start threadpool  */
@@ -193,5 +227,6 @@ int print_help(char **argv)
         fprintf(stdout,"Options:\n\n");
 
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--background","Background sequences - residue counts from these will be ADDED to the background model. " ,"[8]"  );
         return OK;
 }

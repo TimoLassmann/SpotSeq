@@ -56,7 +56,7 @@ extern struct ihmm_sequence* alloc_ihmm_seq(void);
 extern int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models);
 extern int check_labels(struct seq_buffer* sb, int num_models);
 
-
+extern int get_res_counts(struct seq_buffer* sb, double* counts);
 
 
 extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);

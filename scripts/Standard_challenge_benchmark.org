@@ -282,17 +282,22 @@ The script below takes log-odds scores from positive and negative test sequences
          make_option(c("-n", "--negative"),
                      type="character",
                      default=NULL,
-                     help="scores for the negarive test sequences.",
+                     help="scores for the negative test sequences.",
                      metavar="character"),
          make_option(c("-e", "--experimentname"),
                      type="character",
                      default=NULL,
-                     help="input - path to saved singleR object.",
+                     help="Experiment name.",
+                     metavar="character"),
+         make_option(c("-s", "--summary"),
+                     type="character",
+                     default="stats.csv",
+                     help="Summary stats file name [stats.csv].",
                      metavar="character"),
          make_option(c("-k", "--error"),
                      type="integer",
                      default=0,
-                     help="input - path to saved singleR object.",
+                     help="Errors.",
                      metavar="character"),
          make_option(c("-d", "--dark"), action="store_true", default=FALSE,
                      help="use dark theme (for presentations)")
@@ -310,6 +315,8 @@ The script below takes log-odds scores from positive and negative test sequences
      }
 
      error <-  opt$error;
+
+    summaryfilename <- opt$summary
 
      if (is.null(opt$positive)){
          print_help(opt_parser)
@@ -383,10 +390,10 @@ The script below takes log-odds scores from positive and negative test sequences
                          paste0(basename(name)), error, round(calc_auc(p)$AUC, 4))
 
      metadata
-     if(!file.exists("metadata.csv")){
-         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = TRUE)
+     if(!file.exists(summaryfilename)){
+         write_csv(metadata, summaryfilename,  na = "NA", append = TRUE, col_names = TRUE)
      }else{
-         write_csv(metadata, "metadata.csv", na = "NA", append = TRUE, col_names = FALSE)
+         write_csv(metadata, summaryfilename, na = "NA", append = TRUE, col_names = FALSE)
      }
 
      outname = paste0("ROC_",basename(name),".jpg");

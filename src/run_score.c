@@ -2,7 +2,7 @@
 #include "run_score.h"
 
 
-int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool)
+int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thread_data** td, struct thr_pool* pool)
 {
 
         int i;
@@ -38,7 +38,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 {
 
         struct thr_pool* pool = NULL;
-        struct spotseq_thread_data** td = NULL;
+        struct wims_thread_data** td = NULL;
         int i;
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
@@ -49,7 +49,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
 
         /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ,NULL));// & sb->rndstate));
+        RUNP(td = create_wims_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ,NULL));// & sb->rndstate));
 
         /* score sequences  */
 
@@ -62,12 +62,12 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
         }
         thr_pool_wait(pool);
 
-        free_spotseq_thread_data(td);
+        free_wims_thread_data(td);
         thr_pool_destroy(pool);
 
         return OK;
 ERROR:
-        free_spotseq_thread_data(td);
+        free_wims_thread_data(td);
         thr_pool_destroy(pool);
         return FAIL;
 }
@@ -76,7 +76,7 @@ ERROR:
 
 void* do_score_sequences(void* threadarg)
 {
-        struct spotseq_thread_data *data;
+        struct wims_thread_data *data;
         struct fhmm* fhmm = NULL;
         struct ihmm_sequence* seq = NULL;
         int i;
@@ -85,7 +85,7 @@ void* do_score_sequences(void* threadarg)
         int expected_len;
         double f_score;
         double r_score;
-        data = (struct spotseq_thread_data *) threadarg;
+        data = (struct wims_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -116,7 +116,7 @@ ERROR:
 
 void* do_label_sequences(void* threadarg)
 {
-        struct spotseq_thread_data *data;
+        struct wims_thread_data *data;
         struct fhmm* fhmm = NULL;
         struct ihmm_sequence* seq = NULL;
         int i;
@@ -124,7 +124,7 @@ void* do_label_sequences(void* threadarg)
         int thread_id;
         double f_score;
         double b_score;
-        data = (struct spotseq_thread_data *) threadarg;
+        data = (struct wims_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;

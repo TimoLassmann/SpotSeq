@@ -20,7 +20,7 @@
 #include "thread_data.h"
 
 
-extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct spotseq_thread_data** td, struct thr_pool* pool);
+extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thread_data** td, struct thr_pool* pool);
 extern void* do_score_sequences(void* threadarg);
 
 extern int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_threads);

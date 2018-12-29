@@ -7,9 +7,9 @@
 
 
 
-struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int max_len, int K,rk_state* random)
+struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len, int K,rk_state* random)
 {
-        struct spotseq_thread_data** td = NULL;
+        struct wims_thread_data** td = NULL;
         int i;
         int local_num_treads;
         size_t mem_needed;
@@ -26,10 +26,10 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
 
         }
 
-        MMALLOC(td, sizeof(struct spotseq_thread_data*) * local_num_treads);
+        MMALLOC(td, sizeof(struct wims_thread_data*) * local_num_treads);
         for(i = 0; i < local_num_treads;i++){
                 td[i] = NULL;
-                MMALLOC(td[i], sizeof(struct spotseq_thread_data));
+                MMALLOC(td[i], sizeof(struct wims_thread_data));
                 td[i]->dyn = NULL;
                 td[i]->F_matrix = NULL;
                 td[i]->B_matrix = NULL;
@@ -67,12 +67,12 @@ struct spotseq_thread_data** create_spotseq_thread_data(int* num_threads, int ma
 
         return td;
 ERROR:
-        free_spotseq_thread_data(td);
+        free_wims_thread_data(td);
         return NULL;
 }
 
 
-int resize_spotseq_thread_data(struct spotseq_thread_data** td,int* num_threads, int max_len, int K)
+int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int max_len, int K)
 {
         int i;
         int local_num_treads;
@@ -116,7 +116,7 @@ ERROR:
 }
 
 
-void free_spotseq_thread_data(struct spotseq_thread_data** td)
+void free_wims_thread_data(struct wims_thread_data** td)
 {
         int i;
         if(td){

@@ -472,9 +472,9 @@ ERROR:
 
 
 
-struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename)
+struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
 {
-        struct spotseq_thread_data** td = NULL;
+        struct wims_thread_data** td = NULL;
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];
         int num_threads = 0;
@@ -505,7 +505,7 @@ struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename)
         ASSERT(max_K!=0, "No states???");
 
         hdf5_close_group(hdf5_data);
-        RUNP(td = create_spotseq_thread_data(&num_threads, max_len, max_K, NULL));
+        RUNP(td = create_wims_thread_data(&num_threads, max_len, max_K, NULL));
 
 
         for(i = 0 ;i < num_threads;i++){
@@ -522,7 +522,7 @@ ERROR:
 }
 
 
-int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int num_threads,int max_len,int max_K)
+int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int num_threads,int max_len,int max_K)
 {
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];

@@ -84,8 +84,8 @@ extern struct ihmm_model* read_model( char* filename);
 extern int write_best_model(char* filename, int best_model);
 
 /* Write RNG states in threads to file to ensure reproducibility.... */
-struct spotseq_thread_data** read_thread_data_to_hdf5(char* filename);
-int write_thread_data_to_hdf5(char* filename,struct spotseq_thread_data** td,int num_threads,int max_len,int max_K);
+struct wims_thread_data** read_thread_data_to_hdf5(char* filename);
+int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int num_threads,int max_len,int max_K);
 
 /* Initialize number of states.  */
 extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K);

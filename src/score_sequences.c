@@ -34,7 +34,7 @@ int main (int argc, char *argv[])
         struct seq_buffer* sb = NULL;
         struct seq_buffer* sb_back = NULL;
 
-        struct spotseq_thread_data** td = NULL;
+        struct wims_thread_data** td = NULL;
 
         struct thr_pool* pool = NULL;
 
@@ -178,7 +178,7 @@ int main (int argc, char *argv[])
 
 
         /* allocate data for threads; */
-        RUNP(td = create_spotseq_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
+        RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
         RUN(run_score_sequences(fhmm,sb, td, pool));
          /* Print scores.. */
@@ -189,7 +189,7 @@ int main (int argc, char *argv[])
         }
         fclose(fptr);
 
-        free_spotseq_thread_data(td);
+        free_wims_thread_data(td);
         thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
@@ -201,7 +201,7 @@ ERROR:
                 fclose(fptr);
         }
 
-        free_spotseq_thread_data(td);
+        free_wims_thread_data(td);
         if(pool){
                 thr_pool_destroy(pool);
         }

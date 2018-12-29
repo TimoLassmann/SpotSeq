@@ -7,10 +7,10 @@
 #+OPTIONS: H:4
 #+LATEX_CMD: pdflatex
 * Introduction 
-  Here I test spotseq's ability to detect motifs embedded in random nucleotide sequences. The suite runs the following steps:
+  Here I test wims's ability to detect motifs embedded in random nucleotide sequences. The suite runs the following steps:
   1) generate test sequences using =tfbs_bench=
-  2) generate infinite hidden Markov model using =spotseq_model= 
-  3) score test and negative sequences using =spotseq_score= 
+  2) generate infinite hidden Markov model using =wims_model= 
+  3) score test and negative sequences using =wims_score= 
   4) generate AUC scores using the Rscript =makeROC.R=
   5) summarise and plot scores from multiple runs. 
 * Preliminaries 
@@ -18,7 +18,7 @@
   This file contains all the code to run the benchmark. To get started copy this file into a benchmark directory: 
 
   #+BEGIN_EXAMPLE sh -n 
-  BENCHDIR="$HOME/benchmarks/Spotseq_TFBS/"
+  BENCHDIR="$HOME/benchmarks/wims_TFBS/"
   mkdir -p $BENCHDIR
   cp Standard_challenge_benchmark.org $BENCHDIR
   cd $BENCHDIR
@@ -47,11 +47,11 @@
   This test suite depends on:
   1) Gnu Parallel supercite:tange-2011-gnu-paral
   2) R supercite:team-2018-r 
-  3) SpotSeq 
+  3) wims ( https://github.com/TimoLassmann/wims.git)
 
 * Setting the RNG seed globally
 
-  This code block sets a seed globally to be used in both generating the test data sets and in spotseq itself.
+  This code block sets a seed globally to be used in both generating the test data sets and in wims itself.
   #+NAME: randomseed
   #+BEGIN_SRC sh -n :exports code :results none :noweb yes
     SEED=3
@@ -67,20 +67,22 @@
     DIR=`pwd`
     OUTDIR=
     SAMPLES=10
+    BENCHTYPE=
 
     function usage()
     {
 
         printf "This script will generate test data sets.\n\n" ;
-        printf "usage: $0 -o <output directory> -s <samples (default 10)>\n\n" ;
+        printf "usage: $0 -o <output directory> -s <samples (default 10)> -t < tfbs | comp >\n\n" ;
         exit 1;
     }
 
-    while getopts o:s:  opt
+    while getopts o:s:t:  opt
     do
         case ${opt} in
             o) OUTDIR=${OPTARG};;
             s) SAMPLES=${OPTARG};;
+            t) BENCHTYPE=${OPTARG};;
             ,*) usage;;
         esac
     done
@@ -107,26 +109,40 @@
     fi
 
     printf "Using RNG seed: %d \n" $SEED;
+    if [ "${BENCHTYPE}" == "tfbs" ]; then 
+        errors=($(seq 0 1 5))
 
-    errors=($(seq 0 1 5))
-
-    for i in $(seq 1 1 $SAMPLES)
-    do
-        printf "Generating sample %s\n", $i;
-        for error in ${errors[*]}
+        for i in $(seq 1 1 $SAMPLES)
         do
-            echo "tfbs_bench -o $OUTDIR -e $error -s $SEED"
-            tfbs_bench -o $OUTDIR -e $error -s $SEED
-            SEED=$((SEED+1))
+            printf "Generating sample %s\n", $i;
+            for error in ${errors[*]}
+            do
+                echo "tfbs_bench -o $OUTDIR -e $error -s $SEED"
+                tfbs_bench -o $OUTDIR -e $error -s $SEED
+                SEED=$((SEED+1))
+            done
         done
-    done
+    fi
+
+    if [ "${BENCHTYPE}" == "comp" ]; then 
+        for i in $(seq 1 1 $SAMPLES)
+        do
+            printf "Generating sample %s\n", $i;
+            for mix in $(seq 0.0 0.1 1.0)
+            do
+                echo "composition_bench -o $OUTDIR -m $mix -s $SEED -r $i"
+                composition_bench -o $OUTDIR -m $mix -s $SEED -r $i
+                SEED=$((SEED+1))
+            done
+        done
+    fi
 
   #+END_SRC
 
-* Run SpotSeq model
+* Run wims model
 
 
-  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
     DIR=`pwd`
     OUTDIR=
     SAMPLES=10
@@ -135,7 +151,7 @@
     function usage()
     {
 
-        printf "This script will run spotseq model in parallel on all train_*>.fa files in a target directory.\n\n" ;
+        printf "This script will run wims_model in parallel on all train_*>.fa files in a target directory.\n\n" ;
         printf "usage: $0 -o <target input directory> -c <available cores (default 8)>\n\n" ;
         exit 1;
     }
@@ -168,40 +184,41 @@
   #+END_SRC
 
 
-  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
     <<randomseed>>
   #+END_SRC
 
-  #+BEGIN_SRC bash -n :tangle run_spotseq_model.sh :shebang #!/usr/bin/env bash :noweb yes
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
     printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
 
-    echo "find $OUTDIR -name train_*.fa | parallel --jobs $JOBS \"spotseq_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --seed $SEED\"";
-    find $OUTDIR -name "train_*.fa" | parallel --jobs $JOBS "spotseq_model -i {} -o {}.h5 --nthreads 8 --niter 10000  --seed $SEED"
+    echo "find $OUTDIR -name train_*.fa | parallel --jobs $JOBS \"wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --seed $SEED\"";
+    find $OUTDIR -name "train_*.fa" | parallel --jobs $JOBS "wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000  --seed $SEED"
 
   #+END_SRC 
 
+* Run wims score & AUC calculation
 
-* Run SpotSeq score & AUC calculation
 
-
-  #+BEGIN_SRC bash -n :tangle run_spotseq_score.sh :shebang #!/usr/bin/env bash :noweb yes
+  #+BEGIN_SRC bash -n :tangle run_wims_score.sh :shebang #!/usr/bin/env bash :noweb yes
     DIR=`pwd`
     OUTDIR=
     SAMPLES=10
     AVAILABLECORES=8
     JOBS=1
+    SUMMARY=
     function usage()
     {
 
-        printf "This script will run spotseq score in parallel using all train_*>.h5 model files in a target directory.\n\n" ;
-        printf "usage: $0 -o <target input directory> -c <available cores (default 8)>\n\n" ;
+        printf "This script will run wims_score in parallel using all train_*>.h5 model files in a target directory.\n\n" ;
+        printf "usage: $0 -o <target input directory> -c <available cores (default 8)> -s <summary.txt> \n\n" ;
         exit 1;
     }
 
-    while getopts o:c:  opt
+    while getopts o:c:s:  opt
     do
         case ${opt} in
             o) OUTDIR=${OPTARG};;
+            s) SUMMARY=${OPTARG};;
             c) AVAILABLECORES=${OPTARG};;
             ,*) usage;;
         esac
@@ -233,7 +250,7 @@
 
     echo ${MODELFILES[*]}
     echo ${!MODELFILES[*]}
-    printf "" > "spotseq_commands.txt"
+    printf "" > "wims_commands.txt"
     printf "" > "makeROC_commands.txt"
     TESTFILES=$(sed "s/train_/test_/g" <<< ${MODELFILES[*]})
     TESTFILES=$(sed "s/.fa.h5/.fa/g" <<< ${TESTFILES[*]})
@@ -245,18 +262,18 @@
     for index in "${!MODELFILES[@]}"
     do
         echo ${MODELFILES[$index]} ${TESTFILES[$index]} ${NEGFILES[$index]}
-        printf "spotseq_score -m %s -i %s -o %s_pos.csv\n" ${MODELFILES[$index]} ${TESTFILES[$index]} ${MODELFILES[$index]} >> "spotseq_commands.txt"
-        printf "spotseq_score -m %s -i %s -o %s_neg.csv\n\n" ${MODELFILES[$index]} ${NEGFILES[$index]} ${MODELFILES[$index]}  >> "spotseq_commands.txt"
+        printf "wims_score -m %s -i %s -b %s -o %s_pos.csv\n" ${MODELFILES[$index]} ${TESTFILES[$index]} ${NEGFILES[$index]} ${MODELFILES[$index]} >> "wims_commands.txt"
+        printf "wims_score -m %s -i %s -b %s -o %s_neg.csv\n\n" ${MODELFILES[$index]} ${NEGFILES[$index]} ${TESTFILES[$index]} ${MODELFILES[$index]}  >> "wims_commands.txt"
 
         ERROR=$(echo ${MODELFILES[$index]} | awk '{x = split($1,a,"_"); gsub(".fa.h5","",a[x]); gsub("k","",a[x]); print a[x]}')
     
-        printf "./makeROC.R -p %s_pos.csv -n %s_neg.csv -e %s -k %s\n" ${MODELFILES[$index]} ${MODELFILES[$index]} ${MODELFILES[$index]}  $ERROR >> "makeROC_commands.txt"
+        printf "./makeROC.R -p %s_pos.csv -n %s_neg.csv -e %s -k %s -s %s \n" ${MODELFILES[$index]} ${MODELFILES[$index]} ${MODELFILES[$index]}  $ERROR $SUMMARY   >> "makeROC_commands.txt"
 
     done
 
 
     printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
-    parallel --jobs $JOBS < spotseq_commands.txt
+    parallel --jobs 1 < wims_commands.txt
     parallel --jobs $JOBS < makeROC_commands.txt
 
 
@@ -426,13 +443,12 @@ ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
 
 #+END_SRC
 
-
 * Sanity checks and convenience scripts
 
-** Check for SpotSeq installation
+** Check for wims installation
 
    #+BEGIN_SRC bash -n :tangle check_for_programs.sh :shebang #!/usr/bin/env bash
-     programs=(Rscript parallel pkg-config spotseq_model spotseq_score tfbs_bench)
+     programs=(Rscript parallel pkg-config wims_model wims_score tfbs_bench)
 
      printf "Running Sanity checks:\n";
 
@@ -496,6 +512,18 @@ ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
 #+BEGIN_SRC makefile -n :tangle Makefile
 check: check_r_libs 
 	@ echo Done
+
+
+tfbs: 
+	@ ./gen_test_datasets.sh -o tfbs_test -s 10 -t tfbs
+	@ ./run_wims_model.sh  -o tfbs_test -c 128
+	@ ./run_wims_score.sh  -o  tfbs_test -c 128 -s results_tfbs.csv
+
+comp: 
+	@ ./gen_test_datasets.sh -o comp_test -s 10 -t comp
+	@ ./run_wims_model.sh  -o comp_test -c 128
+	@ ./run_wims_score.sh  -o  comp_test -c 128 -s results_comp.csv
+
 
 tangle:
 	./tangleorgs.sh Standard_challenge_benchmark.org

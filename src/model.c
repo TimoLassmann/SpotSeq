@@ -313,9 +313,11 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         RUN(clear_counts(ihmm));
 
         //LOG_MSG("ITER:%d", ihmm->training_iterations);
-        /* sequence weighting  */
 
-        double sum = prob2scaledprob(0.0);
+
+        /* This is how one *could* sequence weighting  */
+
+        /*double sum = prob2scaledprob(0.0);
         for(i = 0; i < sb->num_seq;i++){
                  if(ihmm->training_iterations > 9980){
                          fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] - sb->sequences[i]->r_score );
@@ -326,8 +328,9 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         if(ihmm->training_iterations > 9980){
         fprintf(stdout,"\n" );
         }
+
         for(i = 0; i < sb->num_seq;i++){
-                /* standardise */
+                 standardise
                 sb->sequences[i]->score_arr[model_index] = sb->sequences[i]->score_arr[model_index]- logsum(sb->sequences[i]->score_arr[model_index],sb->sequences[i]->r_score);//,   sb->sequences[i]->r_score   -= sum;
                 if(sb->sequences[i]->score_arr[model_index]> 0){
                         sb->sequences[i]->score_arr[model_index] = prob2scaledprob(1.0);
@@ -338,7 +341,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
                        fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
                 }
 
-                /* subtract  */
+                subtract
 
                 sb->sequences[i]->score_arr[model_index] = 1.0 - scaledprob2prob(sb->sequences[i]->score_arr[model_index]);
 
@@ -346,7 +349,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
                         fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
                 }
 
-                /* simulated annealing  */
+                simulated annealing
 
                 sb->sequences[i]->score_arr[model_index] = pow(sb->sequences[i]->score_arr[model_index], 1.0 / (double)MACRO_MAX(1000- ihmm->training_iterations  , 1.0));
 
@@ -370,7 +373,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
                 }
 
         }
-
+        */
 
         for(i = 0; i < sb->num_seq;i++){
                 RUN(fill_counts_i(ihmm, sb->sequences[i],model_index));

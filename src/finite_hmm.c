@@ -1,6 +1,52 @@
 
 #include "finite_hmm.h"
 
+
+/* Calculate the bayesian information criteria score for a finite HMM */
+/* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
+/* data is the number of residues in the training dataset */
+int calculate_BIC( struct fhmm* fhmm, double ML, double data,double* BIC)
+{
+        int i,j,c;
+        double num_param;
+
+        ASSERT(fhmm != NULL, "No model");
+
+        ASSERT(data != 0, "No data");
+
+        num_param = 0.0;
+        for(i = 0; i < fhmm->K;i++){
+                c = 0;
+                for(j = 0; j < fhmm->K;j++){
+                        if(fhmm->t[i][j] != prob2scaledprob(0.0)){
+                                c++;
+                        }
+                }
+                c = c - 1;       /* we need to subtract one because the last transition is not a free parameter - the sumhas to be 1 */
+                num_param += c;
+        }
+        for(i = 0; i < fhmm->K;i++){
+                c = 0;
+                for(j = 0; j < fhmm->L;j++){
+                        if( fhmm->e[i][j] != prob2scaledprob(0.0)){
+                                c++;
+                        }
+                }
+                 c = c - 1;       /* we need to subtract one because the last emission is not a free parameter - the sumhas to be 1 */
+                 num_param += c;
+        }
+
+        *BIC = -2.0 * ML + num_param * log(data);
+
+        return OK;
+ERROR:
+        return FAIL;
+
+
+}
+
+
+
 int random_model_score(double* b, double* ret_score,  uint8_t* a, int len, int expected_len)
 {
         int i;

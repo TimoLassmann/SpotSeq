@@ -486,10 +486,14 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         struct fhmm* fhmm = NULL;
 
 
-        double** all_scores = NULL;
-        double s1,s2;
+        //double** all_scores = NULL;
+        //double s1,s2;
         double best_score;
-        double sum;
+        //double sum;
+        double max_likelihood;
+
+        double BIC;
+        double total_seq_len;
         int max = 1000;
         int c;
         int i;
@@ -522,35 +526,33 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         model_bag->best_model = -1;
         best_score = -100.0;
+        max_likelihood = prob2scaledprob(1.0);
 
         limit = MACRO_MIN(max, sb->num_seq);
 
-        RUNP(all_scores = galloc(all_scores, limit,model_bag->num_models, 0.0));
+        total_seq_len = 0.0;
+        for(i = 0; i < limit;i++){
+                total_seq_len += sb->sequences[i]->seq_len;
+        }
+
+
+
+        //RUNP(all_scores = galloc(all_scores, limit,model_bag->num_models, 0.0));
 
         for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
                 RUN(alloc_dyn_matrices(fhmm));
                 RUN(run_score_sequences(fhmm,sb,td, pool));
 
-
-
-                s1 = 0.0;
-                s2 = 0.0;
+                max_likelihood = prob2scaledprob(1.0);
                 for(i = 0; i < limit;i++){
-                        //sb_in->sequences[i]->senq_len = 10 + (int)(rk_double(&rndstate)*10.0) - 5.0;
-                        s1 += sb->sequences[i]->score;
-                        s2 += (sb->sequences[i]->score * sb->sequences[i]->score);
-                        all_scores[i][c] = sb->sequences[i]->score;
+                        max_likelihood = logsum(max_likelihood,sb->sequences[i]->score);
                 }
 
-                s2 = sqrt(((double) limit * s2 - s1 * s1)/ ((double) limit * ((double) limit -1.0)));
-                s1 = s1 / (double) limit;
-
-
-
-                LOG_MSG("Model: %d Mean log-odds ratio: %f stdev: %f (based on first %d seqs)",c,s1,s2,limit);
-                if(s1 > best_score){
-                        best_score = s1;
+                RUN(calculate_BIC(fhmm, max_likelihood, total_seq_len, &BIC));
+                LOG_MSG("Model: %d ML: %.2f BIC %f (based on first %d seqs)",c,max_likelihood,BIC,limit);
+                if(BIC > best_score){
+                        best_score = BIC;
                         model_bag->best_model = c;
                 }
         }
@@ -558,7 +560,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         LOG_MSG("Best Model: %d",model_bag->best_model);
         RUN(write_best_model(param->output, model_bag->best_model));
 
-        for(i = 0; i < limit;i++){
+        /*for(i = 0; i < limit;i++){
                 s1 = 0.0;
                 s2 = 0.0;
 
@@ -578,7 +580,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         //LOG_MSG("Mean KL divergence: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
-        gfree(all_scores);
+        gfree(all_scores);*/
         //LOG_MSG("Got past writing");
         free_spotseq_thread_data(td);
         //LOG_MSG("Got past free thread data ");

@@ -24,6 +24,7 @@ struct fhmm{
         int L;
 };
 
+extern int calculate_BIC( struct fhmm* fhmm, double ML, double data,double* BIC);
 extern int random_model_score(double* b, double* ret_score, uint8_t* a, int len, int expected_len);
 extern int forward(struct fhmm* fhmm,double** matrix,double* ret_score, uint8_t* a, int len);
 extern int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len);

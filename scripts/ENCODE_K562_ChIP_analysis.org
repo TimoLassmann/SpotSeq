@@ -159,29 +159,49 @@ Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code b
   #+END_EXAMPLE
 
 
- #+BEGIN_SRC bash -n :tangle get_all_top_1000_seq.sh :shebang #!/usr/bin/env bash 
-   cat data/metadata.tsv \
-       | grep GRCh38  \
-       | grep conservative \
-       | grep released \
-       | awk 'BEGIN{FS = "\t"} {\
-    printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
-       | awk '{\
-                    printf "zcat data/%s | sort -k 7,7nr | head -n 1000 > input_fasta/%s_%s_top_1000_regions.bed\n", $3,$2,$1;\
-    }' > get_top_bed_commands.txt 
+ #+BEGIN_SRC bash -n :tangle get_all_top_X_seq.sh :shebang #!/usr/bin/env bash 
+   DIR=`pwd`
+   NSEQ=
+
+   function usage()
+   {
+
+       printf "This script will retrieve the top X sequences from a ChIP-seq bed file .\n\n" ;
+       printf "usage: $0 -n <number of top regions >>\n\n" ;
+       exit 1;
+   }
+
+   while getopts n:  opt
+   do
+       case ${opt} in
+           n) NSEQ=${OPTARG};;
+           ,*) usage;;
+       esac
+   done
+   if [ "${NSEQ}" == "" ]; then usage; fi
 
    cat data/metadata.tsv \
        | grep GRCh38  \
        | grep conservative \
        | grep released \
        | awk 'BEGIN{FS = "\t"} {\
-    printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
-       | awk '{\
-                    printf "bedtools getfasta -fi reference_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed input_fasta/%s_%s_top_1000_regions.bed > input_fasta/%s_%s_top_1000_regions.fa \n",$2,$1,$2,$1;\
-    }' > get_fasta_sequences_commands.txt  
+       printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
+       | awk -v nseq="$NSEQ"  '{\
+                       printf "zcat data/%s | sort  -k 7,7nr |  sort -u  -k 1,1 -k 2,2n | sort  -k 7,7nr | head -n  %d    > input_fasta/%s_%s_top_1000_regions.bed\n", $3,nseq,$2,$1;\
+       }' > get_top_bed_commands.txt 
 
- parallel --jobs 32 < get_top_bed_commands.txt 
- parallel --jobs 32 < get_fasta_sequences_commands.txt  
+   cat data/metadata.tsv \
+       | grep conservative \
+       | grep GRCh38  \
+       | grep released \
+       | awk 'BEGIN{FS = "\t"} {\
+       printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
+       | awk '{\
+                       printf "bedtools getfasta -fi reference_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed input_fasta/%s_%s_top_1000_regions.bed > input_fasta/%s_%s_top_1000_regions.fa \n",$2,$1,$2,$1;\
+       }' > get_fasta_sequences_commands.txt  
+
+   parallel --jobs 32 < get_top_bed_commands.txt 
+   parallel --jobs 32 < get_fasta_sequences_commands.txt  
 
  #+END_SRC
 

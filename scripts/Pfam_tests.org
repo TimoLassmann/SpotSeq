@@ -1,0 +1,16 @@
+#+TITLE:  
+#+AUTHOR: Timo Lassmann
+#+EMAIL:  timo.lassmann@telethonkids.org.au
+#+DATE:   2018-12-30
+#+LATEX_CLASS: report
+#+OPTIONS:  toc:nil
+#+OPTIONS: H:4
+#+LATEX_CMD: pdflatex
+* Introduction 
+  
+
+
+
+
+
+ ./src/wims_model -i ~/tmp/PF01335_seed.fa -o test.h5 -nthreads 5 -niter 5000 --states 300 -gamma 5 --alpha 2 

@@ -5,521 +5,245 @@
 #+LATEX_CLASS: report
 #+OPTIONS:  toc:nil
 #+OPTIONS: H:4
-#+LATEX_CMD: xelatex
+#+LATEX_CMD: pdflatex
 
-* Versions 
-  #+BEGIN_SRC emacs-lisp -n :exports both :eval yes
-    (princ (concat
-            (format "Emacs version: %s\n"
-                    (emacs-version))
-            (format "org version: %s\n"
-                    (org-version))))
-  #+END_SRC
 
-  #+RESULTS:
-  : Emacs version: GNU Emacs 26.1 (build 1, x86_64-redhat-linux-gnu, GTK+ Version 3.22.30)
-  :  of 2018-06-26
-  : org version: 9.1.9
 
-  #+BEGIN_SRC sh :results output :exports both :eval yes
-    bash --version
-  #+END_SRC
+* Preliminaries 
 
-  #+RESULTS:
-  : GNU bash, version 4.4.19(1)-release (x86_64-pc-linux-gnu)
-  : Copyright (C) 2016 Free Software Foundation, Inc.
-  : License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-  : 
-  : This is free software; you are free to change and redistribute it.
-  : There is NO WARRANTY, to the extent permitted by law.
+  This file contains all the code to run the benchmark. To get started copy this file into a benchmark directory: 
+
+  #+BEGIN_EXAMPLE sh -n 
+  BENCHDIR="$HOME/benchmarks/encode_TFBS/"
+  mkdir -p $BENCHDIR
+  cp ENCODE_K562_ChIP_analysis.org $BENCHDIR
+  cd $BENCHDIR
+  #+END_EXAMPLE
+
+
+  Open the file in Emacs and tangle with =C+c C+v t=.
+
+  Alternatively running this on the command line should work: 
+
+  #+BEGIN_EXAMPLE sh -n 
+  emacs -Q --batch \
+    --eval "(progn
+    (require 'org)(require 'ob)(require 'ob-tangle)
+    (setq org-src-preserve-indentation t)
+    (mapc (lambda (file)
+    (find-file (expand-file-name file \".\"))
+    (org-babel-tangle)
+    (kill-buffer)) '(\"ENCODE_K562_ChIP_analysis.org\")))" 2>&1 |grep -i tangled
+  #+END_EXAMPLE
+
+
+  Optional: set PATH to point to directory where wims is installed. 
+
+#+BEGIN_SRC sh 
+export PATH=$PATH:$HOME/bin
+
+#+END_SRC
 
 * Goal 
   Apply iHMM to top peaks to see if we can: 
   a) recover known motifs 
   b) see if sequences under peaks contain additional signal 
 
-* Spotseq
+* Wims installation 
 
   install with: 
   #+BEGIN_EXAMPLE sh 
   git clone https://github.com/timolassmann/spotseq.git
   ./autogen.sh 
-  ./configure --bindir  /data/Projects/spotseq/bin 
+  ./configure --bindir  $HOME/bin 
   make
   make install 
   #+END_EXAMPLE
 
+* Install BEDtools supercite:quinlan-2014-bedtool
+
+
+  #+BEGIN_SRC bash 
+    echo "Installing BEDtools" 
+    DIR="$HOME/programs"
+    mkdir -p $DIR
+
+    cd $DIR
+    git clone https://github.com/arq5x/bedtools2.git
+    cd bedtools2/
+    sudo make install 
+
+  #+END_SRC
+
+
+* Setting the RNG seed globally
+
+  This code block sets a seed globally to be used in both generating the test data sets and in wims itself.
+  #+NAME: randomseed
+  #+BEGIN_SRC sh -n :exports code :results none :noweb yes
+    SEED=3
+  #+END_SRC
+
+  Ha! not 42. 
 
 * Data 
-  Downloaded 4812 ChIP-seqbed files. These contain data mapped to hg19
-  as well as GRCh38. Metadata is captured in the =metadata.csv= file. 
+
+  I downloaded all ENCODE ChIP-seq data using the following selection: 
+
+  #+BEGIN_EXAMPLE 
+  https://www.encodeproject.org/search/ 
+  type=Experiment&status=released
+  assay_slims=DNA+binding&assay_title=ChIP-seq
+  award.project=ENCODE
+  award.rfa=ENCODE3
+  assembly=GRCh38
+  replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens
+  target.investigated_as=transcription+factor
+  biosample_type=cell+line
+  cell_slims=cancer+cell
+  biosample_term_name=K562
+  biosample_type=cell+line 
+  files.file_type=bed+narrowPeak
+  #+END_EXAMPLE
+
+
+
+  #+BEGIN_EXAMPLE html 
+  https://www.encodeproject.org/search/?type=Experiment&status=released&assay_slims=DNA+binding&assay_title=ChIP-seq&award.project=ENCODE&award.rfa=ENCODE3&assembly=GRCh38&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&target.investigated_as=transcription+factor&biosample_type=cell+line&cell_slims=cancer+cell&biosample_term_name=K562&biosample_type=cell+line&files.file_type=bed+narrowPeak
+
+  #+END_EXAMPLE
+
+  This will download a the list of files to be downloaded ( =files.txt= ). To start downloading the files copy the list into a raw data directory: 
+
+  #+BEGIN_EXAMPLE bash -n
+
+    DATADIR="$HOME/benchmarks/encode_TFBS/data"
+    mkdir -p $DATADIR
+    mv files.txt $DATADIR
+    cd $DATADIR
+  #+END_EXAMPLE
+ 
+  and start downloading the files as per ENCODE instructions. 
+
+  #+BEGIN_EXAMPLE bash -n
+    xargs -L 1 curl -O -L < files.txt
+  #+END_EXAMPLE
+
+  However, I seem to be able to download the files faster using =wget= + =gnu parallel=supercite:tange-2011-gnu-paral. 
+
+  #+BEGIN_EXAMPLE bash -n  
+    cat files.txt | awk '{printf "wget %s\n", $1}' > wget_commands.txt
+    parallel --jobs 32 < wget_commands.txt
+
+  #+END_EXAMPLE
+
+
+  All ChIP-seq runs were aligned against this reference genome: =ENCFF643CGH.tar.gz=
+
+  To download: 
+
+  #+BEGIN_EXAMPLE bash  -n 
+    DATADIR="$HOME/benchmarks/encode_TFBS/reference_genome"
+    mkdir -p $DATADIR
+    cd $DATADIR
+    wget https://www.encodeproject.org/files/ENCFF643CGH/@@download/ENCFF643CGH.tar.gz
+    tar -xvf ENCFF643CGH.tar.gz 
+  #+END_EXAMPLE
 
 * Selection 
 Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code below prints a table containing the targeted TF, the ENCODE ID and the name of the file containing the corresponding narrow bed peaks.
 
+ #+BEGIN_EXAMPLE bash  -n 
+    DIR="$HOME/benchmarks/encode_TFBS/input_fasta"
+    mkdir -p $DIR
+  #+END_EXAMPLE
 
 
-  #+NAME: datasets
-  #+BEGIN_SRC sh :results table :exports none
-    cat ../ENCODE_K562_ChIP/metadata.tsv | grep GRCh38  | grep conservative  | grep released   | awk 'BEGIN{FS = "\t"}
+ #+BEGIN_SRC bash -n :tangle get_all_top_1000_seq.sh :shebang #!/usr/bin/env bash 
+   cat data/metadata.tsv \
+       | grep GRCh38  \
+       | grep conservative \
+       | grep released \
+       | awk 'BEGIN{FS = "\t"} {\
+    printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
+       | awk '{\
+                    printf "zcat data/%s | sort -k 7,7nr | head -n 1000 > input_fasta/%s_%s_top_1000_regions.bed\n", $3,$2,$1;\
+    }' > get_top_bed_commands.txt 
+
+   cat data/metadata.tsv \
+       | grep GRCh38  \
+       | grep conservative \
+       | grep released \
+       | awk 'BEGIN{FS = "\t"} {\
+    printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
+       | awk '{\
+                    printf "bedtools getfasta -fi reference_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed input_fasta/%s_%s_top_1000_regions.bed > input_fasta/%s_%s_top_1000_regions.fa \n",$2,$1,$2,$1;\
+    }' > get_fasta_sequences_commands.txt  
+
+ parallel --jobs 32 < get_top_bed_commands.txt 
+ parallel --jobs 32 < get_fasta_sequences_commands.txt  
+
+ #+END_SRC
+
+* Run wims
+
+
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    DIR=`pwd`
+    INDIR=
+    SAMPLES=10
+    AVAILABLECORES=8
+    JOBS=1
+    function usage()
     {
-     printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' 
-  #+END_SRC
 
-  #+RESULTS: datasets
-  | ENCFF190SJX | HDAC2-human           | ENCFF190SJX.bed.gz |
-  | ENCFF805MAQ | ARNT-human            | ENCFF805MAQ.bed.gz |
-  | ENCFF492VKT | eGFP-GABPA-human      | ENCFF492VKT.bed.gz |
-  | ENCFF535ZFM | ZNF24-human           | ENCFF535ZFM.bed.gz |
-  | ENCFF208AKZ | ZNF639-human          | ENCFF208AKZ.bed.gz |
-  | ENCFF498TJW | ZBTB5-human           | ENCFF498TJW.bed.gz |
-  | ENCFF729POI | UBTF-human            | ENCFF729POI.bed.gz |
-  | ENCFF371FZO | NCOA1-human           | ENCFF371FZO.bed.gz |
-  | ENCFF667LOH | ELF1-human            | ENCFF667LOH.bed.gz |
-  | ENCFF512UAX | eGFP-ZNF507-human     | ENCFF512UAX.bed.gz |
-  | ENCFF032MJB | NCOR1-human           | ENCFF032MJB.bed.gz |
-  | ENCFF779AZS | POLR2B-human          | ENCFF779AZS.bed.gz |
-  | ENCFF634VUQ | E2F1-human            | ENCFF634VUQ.bed.gz |
-  | ENCFF951EDR | RFX1-human            | ENCFF951EDR.bed.gz |
-  | ENCFF619KPM | eGFP-ZBTB40-human     | ENCFF619KPM.bed.gz |
-  | ENCFF136UPB | ELF4-human            | ENCFF136UPB.bed.gz |
-  | ENCFF426IHW | NONO-human            | ENCFF426IHW.bed.gz |
-  | ENCFF851MOQ | PCBP2-human           | ENCFF851MOQ.bed.gz |
-  | ENCFF719ZHN | RBM14-human           | ENCFF719ZHN.bed.gz |
-  | ENCFF151TIK | ASH1L-human           | ENCFF151TIK.bed.gz |
-  | ENCFF275XNU | CBX3-human            | ENCFF275XNU.bed.gz |
-  | ENCFF825ZCR | BRD4-human            | ENCFF825ZCR.bed.gz |
-  | ENCFF385TGU | JUN-human             | ENCFF385TGU.bed.gz |
-  | ENCFF436JKE | RFX5-human            | ENCFF436JKE.bed.gz |
-  | ENCFF027TJN | POLR2AphosphoS2-human | ENCFF027TJN.bed.gz |
-  | ENCFF589RYN | IKZF1-human           | ENCFF589RYN.bed.gz |
-  | ENCFF132TXF | NFIC-human            | ENCFF132TXF.bed.gz |
-  | ENCFF141XEH | eGFP-NR2C1-human      | ENCFF141XEH.bed.gz |
-  | ENCFF736AVY | eGFP-PTRF-human       | ENCFF736AVY.bed.gz |
-  | ENCFF910AUJ | SETDB1-human          | ENCFF910AUJ.bed.gz |
-  | ENCFF970WRP | eGFP-ZNF740-human     | ENCFF970WRP.bed.gz |
-  | ENCFF020OCJ | FIP1L1-human          | ENCFF020OCJ.bed.gz |
-  | ENCFF372LNZ | RBM25-human           | ENCFF372LNZ.bed.gz |
-  | ENCFF609UTS | TBP-human             | ENCFF609UTS.bed.gz |
-  | ENCFF122XOC | STAT1-human           | ENCFF122XOC.bed.gz |
-  | ENCFF394AJV | ZNF24-human           | ENCFF394AJV.bed.gz |
-  | ENCFF467REJ | ZNF407-human          | ENCFF467REJ.bed.gz |
-  | ENCFF648YCS | PRPF4-human           | ENCFF648YCS.bed.gz |
-  | ENCFF682QKR | eGFP-VEZF1-human      | ENCFF682QKR.bed.gz |
-  | ENCFF771LVW | ATF4-human            | ENCFF771LVW.bed.gz |
-  | ENCFF007LBS | eGFP-DDX20-human      | ENCFF007LBS.bed.gz |
-  | ENCFF757ULW | eGFP-ZNF584-human     | ENCFF757ULW.bed.gz |
-  | ENCFF561ZCZ | KDM4B-human           | ENCFF561ZCZ.bed.gz |
-  | ENCFF170JJV | RCOR1-human           | ENCFF170JJV.bed.gz |
-  | ENCFF250NHM | MCM7-human            | ENCFF250NHM.bed.gz |
-  | ENCFF529CTW | JUNB-human            | ENCFF529CTW.bed.gz |
-  | ENCFF130MXC | MCM2-human            | ENCFF130MXC.bed.gz |
-  | ENCFF908GXO | MCM7-human            | ENCFF908GXO.bed.gz |
-  | ENCFF049YPY | RUNX1-human           | ENCFF049YPY.bed.gz |
-  | ENCFF286JTK | eGFP-KLF13-human      | ENCFF286JTK.bed.gz |
-  | ENCFF166MJJ | eGFP-IRF9-human       | ENCFF166MJJ.bed.gz |
-  | ENCFF803HUH | eGFP-PTTG1-human      | ENCFF803HUH.bed.gz |
-  | ENCFF499LJX | eGFP-ZNF644-human     | ENCFF499LJX.bed.gz |
-  | ENCFF346SWX | CBX8-human            | ENCFF346SWX.bed.gz |
-  | ENCFF161EHH | DDX20-human           | ENCFF161EHH.bed.gz |
-  | ENCFF007LEG | ZBTB5-human           | ENCFF007LEG.bed.gz |
-  | ENCFF088EKR | eGFP-HINFP-human      | ENCFF088EKR.bed.gz |
-  | ENCFF783GDC | eGFP-NR4A1-human      | ENCFF783GDC.bed.gz |
-  | ENCFF805RSY | CTBP1-human           | ENCFF805RSY.bed.gz |
-  | ENCFF503LMD | FOSL1-human           | ENCFF503LMD.bed.gz |
-  | ENCFF191MYC | CBX1-human            | ENCFF191MYC.bed.gz |
-  | ENCFF117NUA | SNIP1-human           | ENCFF117NUA.bed.gz |
-  | ENCFF489ZXV | eGFP-HDAC8-human      | ENCFF489ZXV.bed.gz |
-  | ENCFF815REG | eGFP-ID3-human        | ENCFF815REG.bed.gz |
-  | ENCFF512PBA | KLF16-human           | ENCFF512PBA.bed.gz |
-  | ENCFF941XDH | ZNF24-human           | ENCFF941XDH.bed.gz |
-  | ENCFF745CJF | MLLT1-human           | ENCFF745CJF.bed.gz |
-  | ENCFF299JOC | MTA2-human            | ENCFF299JOC.bed.gz |
-  | ENCFF261YCK | eGFP-TFDP1-human      | ENCFF261YCK.bed.gz |
-  | ENCFF563MXX | eGFP-ZBTB11-human     | ENCFF563MXX.bed.gz |
-  | ENCFF357AHH | TCF7-human            | ENCFF357AHH.bed.gz |
-  | ENCFF410PQD | eGFP-TSC22D4-human    | ENCFF410PQD.bed.gz |
-  | ENCFF465BGX | eGFP-TAF7-human       | ENCFF465BGX.bed.gz |
-  | ENCFF003UXM | MAFF-human            | ENCFF003UXM.bed.gz |
-  | ENCFF003MTQ | eGFP-ADNP-human       | ENCFF003MTQ.bed.gz |
-  | ENCFF669QKC | HDAC6-human           | ENCFF669QKC.bed.gz |
-  | ENCFF768YPD | MBD2-human            | ENCFF768YPD.bed.gz |
-  | ENCFF037UMP | MLLT1-human           | ENCFF037UMP.bed.gz |
-  | ENCFF671YEU | eGFP-NFE2L1-human     | ENCFF671YEU.bed.gz |
-  | ENCFF550AVU | HNRNPK-human          | ENCFF550AVU.bed.gz |
-  | ENCFF251ZSJ | eGFP-IRF1-human       | ENCFF251ZSJ.bed.gz |
-  | ENCFF144CHJ | PCBP1-human           | ENCFF144CHJ.bed.gz |
-  | ENCFF596TWD | MNT-human             | ENCFF596TWD.bed.gz |
-  | ENCFF752RBV | eGFP-BACH1-human      | ENCFF752RBV.bed.gz |
-  | ENCFF389ELU | CTCF-human            | ENCFF389ELU.bed.gz |
-  | ENCFF059THO | COPS2-human           | ENCFF059THO.bed.gz |
-  | ENCFF058FJN | GMEB1-human           | ENCFF058FJN.bed.gz |
-  | ENCFF216COR | MAFK-human            | ENCFF216COR.bed.gz |
-  | ENCFF481AOS | MAX-human             | ENCFF481AOS.bed.gz |
-  | ENCFF272CWK | ARID3A-human          | ENCFF272CWK.bed.gz |
-  | ENCFF440HZQ | SP1-human             | ENCFF440HZQ.bed.gz |
-  | ENCFF196VRG | MYC-human             | ENCFF196VRG.bed.gz |
-  | ENCFF400JHH | eGFP-ZNF24-human      | ENCFF400JHH.bed.gz |
-  | ENCFF989AVX | NCOA2-human           | ENCFF989AVX.bed.gz |
-  | ENCFF895ZGS | eGFP-TEAD2-human      | ENCFF895ZGS.bed.gz |
-  | ENCFF460GYT | NRF1-human            | ENCFF460GYT.bed.gz |
-  | ENCFF264QLP | RUNX1-human           | ENCFF264QLP.bed.gz |
-  | ENCFF675TCT | eGFP-ZNF83-human      | ENCFF675TCT.bed.gz |
-  | ENCFF696WVL | ZNF830-human          | ENCFF696WVL.bed.gz |
-  | ENCFF761ITN | U2AF1-human           | ENCFF761ITN.bed.gz |
-  | ENCFF984LWO | eGFP-MAFG-human       | ENCFF984LWO.bed.gz |
-  | ENCFF284LYU | eGFP-NR2C2-human      | ENCFF284LYU.bed.gz |
-  | ENCFF416UYQ | BACH1-human           | ENCFF416UYQ.bed.gz |
-  | ENCFF772WLM | ZNF318-human          | ENCFF772WLM.bed.gz |
-  | ENCFF552LKV | eGFP-PYGO2-human      | ENCFF552LKV.bed.gz |
-  | ENCFF724JQX | eGFP-DIDO1-human      | ENCFF724JQX.bed.gz |
-  | ENCFF446YER | ARNT-human            | ENCFF446YER.bed.gz |
-  | ENCFF284LLF | ZC3H11A-human         | ENCFF284LLF.bed.gz |
-  | ENCFF840ZAM | eGFP-RELA-human       | ENCFF840ZAM.bed.gz |
-  | ENCFF129NQC | NFATC3-human          | ENCFF129NQC.bed.gz |
-  | ENCFF129QWO | ZZZ3-human            | ENCFF129QWO.bed.gz |
-  | ENCFF027GDP | eGFP-CREB3-human      | ENCFF027GDP.bed.gz |
-  | ENCFF797QCH | SAFB2-human           | ENCFF797QCH.bed.gz |
-  | ENCFF243YBW | NCOA1-human           | ENCFF243YBW.bed.gz |
-  | ENCFF044TCD | eGFP-ZNF589-human     | ENCFF044TCD.bed.gz |
-  | ENCFF883AYB | TCF12-human           | ENCFF883AYB.bed.gz |
-  | ENCFF672AGD | HDAC2-human           | ENCFF672AGD.bed.gz |
-  | ENCFF438DWU | SMARCA5-human         | ENCFF438DWU.bed.gz |
-  | ENCFF410AIK | HDAC1-human           | ENCFF410AIK.bed.gz |
-  | ENCFF505HOV | DNMT1-human           | ENCFF505HOV.bed.gz |
-  | ENCFF830UEH | MITF-human            | ENCFF830UEH.bed.gz |
-  | ENCFF625FYY | eGFP-KLF1-human       | ENCFF625FYY.bed.gz |
-  | ENCFF386ZWB | MCM5-human            | ENCFF386ZWB.bed.gz |
-  | ENCFF740JCX | YBX1-human            | ENCFF740JCX.bed.gz |
-  | ENCFF389LKZ | RNF2-human            | ENCFF389LKZ.bed.gz |
-  | ENCFF966CGZ | RNF2-human            | ENCFF966CGZ.bed.gz |
-  | ENCFF565ADA | BRCA1-human           | ENCFF565ADA.bed.gz |
-  | ENCFF091EWT | PYGO2-human           | ENCFF091EWT.bed.gz |
-  | ENCFF263NDI | TRIM24-human          | ENCFF263NDI.bed.gz |
-  | ENCFF102TZK | SMARCC2-human         | ENCFF102TZK.bed.gz |
-  | ENCFF606WYG | FOXK2-human           | ENCFF606WYG.bed.gz |
-  | ENCFF830BRF | ZBTB2-human           | ENCFF830BRF.bed.gz |
-  | ENCFF857AXB | TRIM24-human          | ENCFF857AXB.bed.gz |
-  | ENCFF409EYL | USF1-human            | ENCFF409EYL.bed.gz |
-  | ENCFF313PGK | BRD9-human            | ENCFF313PGK.bed.gz |
-  | ENCFF904KHM | U2AF2-human           | ENCFF904KHM.bed.gz |
-  | ENCFF631RMQ | eGFP-HDAC8-human      | ENCFF631RMQ.bed.gz |
-  | ENCFF834DYD | eGFP-CUX1-human       | ENCFF834DYD.bed.gz |
-  | ENCFF573OMT | KDM5B-human           | ENCFF573OMT.bed.gz |
-  | ENCFF757UDB | NCOR1-human           | ENCFF757UDB.bed.gz |
-  | ENCFF408CMK | NFXL1-human           | ENCFF408CMK.bed.gz |
-  | ENCFF337XJU | ZNF282-human          | ENCFF337XJU.bed.gz |
-  | ENCFF678EKM | RBM22-human           | ENCFF678EKM.bed.gz |
-  | ENCFF557SFL | MGA-human             | ENCFF557SFL.bed.gz |
-  | ENCFF583UGE | ZBTB8A-human          | ENCFF583UGE.bed.gz |
-  | ENCFF944YSD | eGFP-ZNF395-human     | ENCFF944YSD.bed.gz |
-  | ENCFF164ODT | eGFP-ZNF148-human     | ENCFF164ODT.bed.gz |
-  | ENCFF897LDW | NFYB-human            | ENCFF897LDW.bed.gz |
-  | ENCFF528EDV | TRIM28-human          | ENCFF528EDV.bed.gz |
-  | ENCFF784XVN | E2F1-human            | ENCFF784XVN.bed.gz |
-  | ENCFF777MDP | MCM7-human            | ENCFF777MDP.bed.gz |
-  | ENCFF546QRV | MCM5-human            | ENCFF546QRV.bed.gz |
-  | ENCFF538UZE | BCOR-human            | ENCFF538UZE.bed.gz |
-  | ENCFF058LTT | JUN-human             | ENCFF058LTT.bed.gz |
-  | ENCFF267DTG | KDM4B-human           | ENCFF267DTG.bed.gz |
-  | ENCFF662LUH | SMC3-human            | ENCFF662LUH.bed.gz |
-  | ENCFF066UQP | eGFP-ELF1-human       | ENCFF066UQP.bed.gz |
-  | ENCFF599CTG | eGFP-ZNF639-human     | ENCFF599CTG.bed.gz |
-  | ENCFF548ITQ | SMAD5-human           | ENCFF548ITQ.bed.gz |
-  | ENCFF300RMI | SMARCA4-human         | ENCFF300RMI.bed.gz |
-  | ENCFF131VZY | eGFP-GTF2E2-human     | ENCFF131VZY.bed.gz |
-  | ENCFF204OIP | XRCC5-human           | ENCFF204OIP.bed.gz |
-  | ENCFF097AKG | NCOA2-human           | ENCFF097AKG.bed.gz |
-  | ENCFF993YKH | SMARCB1-human         | ENCFF993YKH.bed.gz |
-  | ENCFF011BHF | ATF3-human            | ENCFF011BHF.bed.gz |
-  | ENCFF539RBU | 3xFLAG-ATF1-human     | ENCFF539RBU.bed.gz |
-  | ENCFF154SRU | FOXK2-human           | ENCFF154SRU.bed.gz |
-  | ENCFF601ZZJ | NCOA6-human           | ENCFF601ZZJ.bed.gz |
-  | ENCFF036PCO | eGFP-ILK-human        | ENCFF036PCO.bed.gz |
-  | ENCFF371NVU | YY1-human             | ENCFF371NVU.bed.gz |
-  | ENCFF124MXH | NFYA-human            | ENCFF124MXH.bed.gz |
-  | ENCFF762NRN | NRF1-human            | ENCFF762NRN.bed.gz |
-  | ENCFF493NZN | KDM1A-human           | ENCFF493NZN.bed.gz |
-  | ENCFF529AJE | ZSCAN29-human         | ENCFF529AJE.bed.gz |
-  | ENCFF251SPU | SOX6-human            | ENCFF251SPU.bed.gz |
-  | ENCFF452INW | ETV6-human            | ENCFF452INW.bed.gz |
-  | ENCFF964DVU | YBX3-human            | ENCFF964DVU.bed.gz |
-  | ENCFF086TFH | HDGF-human            | ENCFF086TFH.bed.gz |
-  | ENCFF608YGZ | HDAC3-human           | ENCFF608YGZ.bed.gz |
-  | ENCFF710ZFM | MIER1-human           | ENCFF710ZFM.bed.gz |
-  | ENCFF953PPE | ATF7-human            | ENCFF953PPE.bed.gz |
-  | ENCFF589ZQU | GABPB1-human          | ENCFF589ZQU.bed.gz |
-  | ENCFF386PEX | eGFP-ZNF354B-human    | ENCFF386PEX.bed.gz |
-  | ENCFF734CJH | HCFC1-human           | ENCFF734CJH.bed.gz |
-  | ENCFF709XJG | EWSR1-human           | ENCFF709XJG.bed.gz |
-  | ENCFF710XYY | IRF1-human            | ENCFF710XYY.bed.gz |
-  | ENCFF237ZFZ | HDAC1-human           | ENCFF237ZFZ.bed.gz |
-  | ENCFF771TNK | ARID1B-human          | ENCFF771TNK.bed.gz |
-  | ENCFF259WDV | CC2D1A-human          | ENCFF259WDV.bed.gz |
-  | ENCFF146FGH | CHAMP1-human          | ENCFF146FGH.bed.gz |
-  | ENCFF359ERT | THRA-human            | ENCFF359ERT.bed.gz |
-  | ENCFF484BSF | GATA1-human           | ENCFF484BSF.bed.gz |
-  | ENCFF438FCN | ZNF318-human          | ENCFF438FCN.bed.gz |
-  | ENCFF190IHG | MEF2A-human           | ENCFF190IHG.bed.gz |
-  | ENCFF605VXL | KDM1A-human           | ENCFF605VXL.bed.gz |
-  | ENCFF270VUX | 3xFLAG-PBX2-human     | ENCFF270VUX.bed.gz |
-  | ENCFF825LBQ | C11orf30-human        | ENCFF825LBQ.bed.gz |
-  | ENCFF460EQX | NR0B1-human           | ENCFF460EQX.bed.gz |
-  | ENCFF160QWL | GTF2F1-human          | ENCFF160QWL.bed.gz |
-  | ENCFF061UNO | MYBL2-human           | ENCFF061UNO.bed.gz |
-  | ENCFF149PSG | eGFP-ETS2-human       | ENCFF149PSG.bed.gz |
-  | ENCFF038PPG | ESRRA-human           | ENCFF038PPG.bed.gz |
-  | ENCFF477IDC | NR2C1-human           | ENCFF477IDC.bed.gz |
-  | ENCFF667ANE | RFX1-human            | ENCFF667ANE.bed.gz |
-  | ENCFF086ZSD | XRCC3-human           | ENCFF086ZSD.bed.gz |
-  | ENCFF266ALJ | ZNF830-human          | ENCFF266ALJ.bed.gz |
-  | ENCFF428RTI | HDGF-human            | ENCFF428RTI.bed.gz |
-  | ENCFF077WVW | CHAMP1-human          | ENCFF077WVW.bed.gz |
-  | ENCFF122GOC | MCM3-human            | ENCFF122GOC.bed.gz |
-  | ENCFF909KNE | POLR2A-human          | ENCFF909KNE.bed.gz |
-  | ENCFF567XKS | ZNF384-human          | ENCFF567XKS.bed.gz |
-  | ENCFF666MKU | RNF2-human            | ENCFF666MKU.bed.gz |
-  | ENCFF577EBU | NCOR1-human           | ENCFF577EBU.bed.gz |
-  | ENCFF809CZV | REST-human            | ENCFF809CZV.bed.gz |
-  | ENCFF056DZM | NR2F2-human           | ENCFF056DZM.bed.gz |
-  | ENCFF992BIU | TBL1XR1-human         | ENCFF992BIU.bed.gz |
-  | ENCFF302XKF | THRAP3-human          | ENCFF302XKF.bed.gz |
-  | ENCFF916OUG | STAT5A-human          | ENCFF916OUG.bed.gz |
-  | ENCFF162TOM | NR3C1-human           | ENCFF162TOM.bed.gz |
-  | ENCFF148GRM | ZSCAN29-human         | ENCFF148GRM.bed.gz |
-  | ENCFF930OMM | RBBP5-human           | ENCFF930OMM.bed.gz |
-  | ENCFF852MFA | NCOA1-human           | ENCFF852MFA.bed.gz |
-  | ENCFF660FBQ | HDAC2-human           | ENCFF660FBQ.bed.gz |
-  | ENCFF002VSM | eGFP-NR4A1-human      | ENCFF002VSM.bed.gz |
-  | ENCFF333IXA | SMARCA4-human         | ENCFF333IXA.bed.gz |
-  | ENCFF181PHR | STAT1-human           | ENCFF181PHR.bed.gz |
-  | ENCFF355IGX | SMARCE1-human         | ENCFF355IGX.bed.gz |
-  | ENCFF111EXG | PHB2-human            | ENCFF111EXG.bed.gz |
-  | ENCFF705FAV | ZNF280A-human         | ENCFF705FAV.bed.gz |
-  | ENCFF440KMN | GATA2-human           | ENCFF440KMN.bed.gz |
-  | ENCFF554UPA | GABPA-human           | ENCFF554UPA.bed.gz |
-  | ENCFF318SAW | JUN-human             | ENCFF318SAW.bed.gz |
-  | ENCFF619AEN | TCF12-human           | ENCFF619AEN.bed.gz |
-  | ENCFF548PPV | IRF1-human            | ENCFF548PPV.bed.gz |
-  | ENCFF046NMM | ZNF184-human          | ENCFF046NMM.bed.gz |
-  | ENCFF769VDQ | eGFP-NFE2-human       | ENCFF769VDQ.bed.gz |
-  | ENCFF063ZIT | SAFB-human            | ENCFF063ZIT.bed.gz |
-  | ENCFF365NCW | POLR2A-human          | ENCFF365NCW.bed.gz |
-  | ENCFF608GNP | eGFP-PBX2-human       | ENCFF608GNP.bed.gz |
-  | ENCFF909FRB | ZBTB33-human          | ENCFF909FRB.bed.gz |
-  | ENCFF350TYH | eGFP-ZNF740-human     | ENCFF350TYH.bed.gz |
-  | ENCFF843VNZ | MCM2-human            | ENCFF843VNZ.bed.gz |
-  | ENCFF973ITD | SRSF7-human           | ENCFF973ITD.bed.gz |
-  | ENCFF117UOA | TBL1XR1-human         | ENCFF117UOA.bed.gz |
-  | ENCFF954QSX | AFF1-human            | ENCFF954QSX.bed.gz |
-  | ENCFF119EPK | MNT-human             | ENCFF119EPK.bed.gz |
-  | ENCFF549HMO | KAT8-human            | ENCFF549HMO.bed.gz |
-  | ENCFF937JNR | TAF1-human            | ENCFF937JNR.bed.gz |
-  | ENCFF558HHY | HES1-human            | ENCFF558HHY.bed.gz |
-  | ENCFF847JCH | NFRKB-human           | ENCFF847JCH.bed.gz |
-  | ENCFF594KPG | NFRKB-human           | ENCFF594KPG.bed.gz |
-  | ENCFF161HQY | eGFP-ZKSCAN8-human    | ENCFF161HQY.bed.gz |
-  | ENCFF443IZC | STAT2-human           | ENCFF443IZC.bed.gz |
-  | ENCFF145JGI | NFE2-human            | ENCFF145JGI.bed.gz |
-  | ENCFF950VDB | eGFP-GTF2A2-human     | ENCFF950VDB.bed.gz |
-  | ENCFF181NNL | DPF2-human            | ENCFF181NNL.bed.gz |
-  | ENCFF008DYZ | E2F8-human            | ENCFF008DYZ.bed.gz |
-  | ENCFF646AZP | AFF1-human            | ENCFF646AZP.bed.gz |
-  | ENCFF299RMS | LEF1-human            | ENCFF299RMS.bed.gz |
-  | ENCFF315QEI | DPF2-human            | ENCFF315QEI.bed.gz |
-  | ENCFF105CED | MITF-human            | ENCFF105CED.bed.gz |
-  | ENCFF023PLP | NBN-human             | ENCFF023PLP.bed.gz |
-  | ENCFF571NDF | ZBTB40-human          | ENCFF571NDF.bed.gz |
-  | ENCFF647FMI | ZNF316-human          | ENCFF647FMI.bed.gz |
-  | ENCFF757ZGV | POLR2A-human          | ENCFF757ZGV.bed.gz |
-  | ENCFF142HGO | RBM34-human           | ENCFF142HGO.bed.gz |
-  | ENCFF389KBV | DEAF1-human           | ENCFF389KBV.bed.gz |
-  | ENCFF763SRM | RBM17-human           | ENCFF763SRM.bed.gz |
-  | ENCFF450DFK | eGFP-CEBPB-human      | ENCFF450DFK.bed.gz |
-  | ENCFF352VEC | ZNF184-human          | ENCFF352VEC.bed.gz |
-  | ENCFF233MGP | E4F1-human            | ENCFF233MGP.bed.gz |
-  | ENCFF160TXQ | E2F6-human            | ENCFF160TXQ.bed.gz |
-  | ENCFF937LGS | TARDBP-human          | ENCFF937LGS.bed.gz |
-  | ENCFF115DVM | GTF2F1-human          | ENCFF115DVM.bed.gz |
-  | ENCFF445RNG | L3MBTL2-human         | ENCFF445RNG.bed.gz |
-  | ENCFF448ZSO | MAX-human             | ENCFF448ZSO.bed.gz |
-  | ENCFF947YGS | ZNF639-human          | ENCFF947YGS.bed.gz |
-  | ENCFF776NRP | ZNF407-human          | ENCFF776NRP.bed.gz |
-  | ENCFF443TUR | FOXA1-human           | ENCFF443TUR.bed.gz |
-  | ENCFF195JOB | ZNF316-human          | ENCFF195JOB.bed.gz |
-  | ENCFF938BND | YY1-human             | ENCFF938BND.bed.gz |
-  | ENCFF016MVN | HDAC1-human           | ENCFF016MVN.bed.gz |
-  | ENCFF045KTH | EHMT2-human           | ENCFF045KTH.bed.gz |
-  | ENCFF205LME | BCLAF1-human          | ENCFF205LME.bed.gz |
-  | ENCFF142JBX | eGFP-ATF1-human       | ENCFF142JBX.bed.gz |
-  | ENCFF282WIP | TARDBP-human          | ENCFF282WIP.bed.gz |
-  | ENCFF791JTK | POLR2G-human          | ENCFF791JTK.bed.gz |
-  | ENCFF055YKX | RBM39-human           | ENCFF055YKX.bed.gz |
-  | ENCFF736MBF | IRF1-human            | ENCFF736MBF.bed.gz |
-  | ENCFF159OAX | CREM-human            | ENCFF159OAX.bed.gz |
-  | ENCFF408WSW | ELK1-human            | ENCFF408WSW.bed.gz |
-  | ENCFF525FJA | CBX5-human            | ENCFF525FJA.bed.gz |
-  | ENCFF333IVK | eGFP-GATA2-human      | ENCFF333IVK.bed.gz |
-  | ENCFF225IZQ | PHF8-human            | ENCFF225IZQ.bed.gz |
-  | ENCFF716CWM | POLR2A-human          | ENCFF716CWM.bed.gz |
-  | ENCFF563DQA | TAL1-human            | ENCFF563DQA.bed.gz |
-  | ENCFF632ZHY | YY1-human             | ENCFF632ZHY.bed.gz |
-  | ENCFF144DMD | THAP1-human           | ENCFF144DMD.bed.gz |
-  | ENCFF500ARI | FUS-human             | ENCFF500ARI.bed.gz |
-  | ENCFF059AZP | ZBTB11-human          | ENCFF059AZP.bed.gz |
-  | ENCFF304OMG | STAT1-human           | ENCFF304OMG.bed.gz |
-  | ENCFF429TTF | ZMYM3-human           | ENCFF429TTF.bed.gz |
-  | ENCFF580SYA | TRIM28-human          | ENCFF580SYA.bed.gz |
-  | ENCFF026FEJ | eGFP-POLR2H-human     | ENCFF026FEJ.bed.gz |
-  | ENCFF951LYB | NR2F6-human           | ENCFF951LYB.bed.gz |
-  | ENCFF067JKB | NR2F1-human           | ENCFF067JKB.bed.gz |
-  | ENCFF805OCR | FOXM1-human           | ENCFF805OCR.bed.gz |
-  | ENCFF819MHF | BHLHE40-human         | ENCFF819MHF.bed.gz |
-  | ENCFF493LXC | HDAC1-human           | ENCFF493LXC.bed.gz |
-  | ENCFF691HAG | RAD51-human           | ENCFF691HAG.bed.gz |
-  | ENCFF927SOS | AGO1-human            | ENCFF927SOS.bed.gz |
-  | ENCFF209OKY | HNRNPUL1-human        | ENCFF209OKY.bed.gz |
-  | ENCFF912CZG | HMBOX1-human          | ENCFF912CZG.bed.gz |
-  | ENCFF709IUJ | eGFP-ZFX-human        | ENCFF709IUJ.bed.gz |
-  | ENCFF892JRL | SIN3B-human           | ENCFF892JRL.bed.gz |
-  | ENCFF638SAT | eGFP-CEBPG-human      | ENCFF638SAT.bed.gz |
-  | ENCFF100VPO | SKIL-human            | ENCFF100VPO.bed.gz |
-  | ENCFF412EVD | TAL1-human            | ENCFF412EVD.bed.gz |
-  | ENCFF423GUZ | MYNN-human            | ENCFF423GUZ.bed.gz |
-  | ENCFF375FRM | POLR2A-human          | ENCFF375FRM.bed.gz |
-  | ENCFF101MTI | CTCF-human            | ENCFF101MTI.bed.gz |
-  | ENCFF319TPR | ZEB2-human            | ENCFF319TPR.bed.gz |
-  | ENCFF892BNB | ZEB2-human            | ENCFF892BNB.bed.gz |
-  | ENCFF804ARW | PKNOX1-human          | ENCFF804ARW.bed.gz |
-  | ENCFF875JHB | GATA1-human           | ENCFF875JHB.bed.gz |
-  | ENCFF869JTA | SREBF1-human          | ENCFF869JTA.bed.gz |
-  | ENCFF834PRZ | RBFOX2-human          | ENCFF834PRZ.bed.gz |
-  | ENCFF692JCC | POU5F1-human          | ENCFF692JCC.bed.gz |
-  | ENCFF857WHF | POLR2A-human          | ENCFF857WHF.bed.gz |
-  | ENCFF214VWR | IKZF1-human           | ENCFF214VWR.bed.gz |
-  | ENCFF377AEV | ARID2-human           | ENCFF377AEV.bed.gz |
-  | ENCFF286DHJ | HDAC2-human           | ENCFF286DHJ.bed.gz |
-  | ENCFF617WYS | ELF1-human            | ENCFF617WYS.bed.gz |
-  | ENCFF104IIJ | ARHGAP35-human        | ENCFF104IIJ.bed.gz |
-  | ENCFF296WNS | NEUROD1-human         | ENCFF296WNS.bed.gz |
-  | ENCFF086USH | ZNF143-human          | ENCFF086USH.bed.gz |
-  | ENCFF346NMC | TAF15-human           | ENCFF346NMC.bed.gz |
-  | ENCFF403GZC | IRF2-human            | ENCFF403GZC.bed.gz |
-  | ENCFF562ERQ | CREB3L1-human         | ENCFF562ERQ.bed.gz |
-  | ENCFF653WEF | CTCFL-human           | ENCFF653WEF.bed.gz |
-  | ENCFF457COE | MXI1-human            | ENCFF457COE.bed.gz |
-  | ENCFF235UDJ | SAP30-human           | ENCFF235UDJ.bed.gz |
-  | ENCFF196UZE | CEBPB-human           | ENCFF196UZE.bed.gz |
-  | ENCFF012KDB | SMAD1-human           | ENCFF012KDB.bed.gz |
-  | ENCFF056LZZ | SMAD2-human           | ENCFF056LZZ.bed.gz |
-  | ENCFF090VAI | JUN-human             | ENCFF090VAI.bed.gz |
-  | ENCFF804BSI | ZFP91-human           | ENCFF804BSI.bed.gz |
-  | ENCFF326QUT | DACH1-human           | ENCFF326QUT.bed.gz |
-  | ENCFF749WKK | TCF7L2-human          | ENCFF749WKK.bed.gz |
-  | ENCFF214GAI | ILF3-human            | ENCFF214GAI.bed.gz |
-  | ENCFF575VHZ | CDC5L-human           | ENCFF575VHZ.bed.gz |
-  | ENCFF613YPH | PML-human             | ENCFF613YPH.bed.gz |
-  | ENCFF643PFS | SIN3A-human           | ENCFF643PFS.bed.gz |
-  | ENCFF910WWV | E2F7-human            | ENCFF910WWV.bed.gz |
-  | ENCFF418BWE | REST-human            | ENCFF418BWE.bed.gz |
-  | ENCFF843MEU | MTA1-human            | ENCFF843MEU.bed.gz |
-  | ENCFF826HDC | JUND-human            | ENCFF826HDC.bed.gz |
-  | ENCFF558SDJ | eGFP-ZNF512-human     | ENCFF558SDJ.bed.gz |
-  | ENCFF920ETU | HNRNPH1-human         | ENCFF920ETU.bed.gz |
-  | ENCFF432VIV | POLR2A-human          | ENCFF432VIV.bed.gz |
-  | ENCFF605TNJ | eGFP-ATF3-human       | ENCFF605TNJ.bed.gz |
-  | ENCFF678KKB | MTA3-human            | ENCFF678KKB.bed.gz |
-  | ENCFF905NMP | JUN-human             | ENCFF905NMP.bed.gz |
-  | ENCFF390BXU | ZNF274-human          | ENCFF390BXU.bed.gz |
-  | ENCFF207FUE | ATF2-human            | ENCFF207FUE.bed.gz |
-  | ENCFF843LQG | NFATC3-human          | ENCFF843LQG.bed.gz |
-  | ENCFF453DGG | RLF-human             | ENCFF453DGG.bed.gz |
-  | ENCFF176RLH | NCOA4-human           | ENCFF176RLH.bed.gz |
-  | ENCFF723QGS | MYC-human             | ENCFF723QGS.bed.gz |
-  | ENCFF449ZBD | TAF9B-human           | ENCFF449ZBD.bed.gz |
-  | ENCFF014VRD | eGFP-MEF2D-human      | ENCFF014VRD.bed.gz |
-  | ENCFF012DPW | SNRNP70-human         | ENCFF012DPW.bed.gz |
-  | ENCFF888TCK | PTBP1-human           | ENCFF888TCK.bed.gz |
-  | ENCFF457TVR | CCAR2-human           | ENCFF457TVR.bed.gz |
-  | ENCFF107VTI | HNRNPLL-human         | ENCFF107VTI.bed.gz |
-  | ENCFF682JRN | HNRNPL-human          | ENCFF682JRN.bed.gz |
-  | ENCFF779ZST | TEAD4-human           | ENCFF779ZST.bed.gz |
-  | ENCFF883FSC | ZNF274-human          | ENCFF883FSC.bed.gz |
-  | ENCFF270QLC | TAF7-human            | ENCFF270QLC.bed.gz |
-  | ENCFF376CAG | ZHX1-human            | ENCFF376CAG.bed.gz |
-  | ENCFF914QSN | NR2C2-human           | ENCFF914QSN.bed.gz |
-  | ENCFF821JKR | TRIM28-human          | ENCFF821JKR.bed.gz |
-  | ENCFF179GMV | CEBPZ-human           | ENCFF179GMV.bed.gz |
-  | ENCFF593FWV | SIX5-human            | ENCFF593FWV.bed.gz |
-  | ENCFF762ACV | GTF2F1-human          | ENCFF762ACV.bed.gz |
-  | ENCFF762GKR | PHF20-human           | ENCFF762GKR.bed.gz |
-  | ENCFF124NBN | RB1-human             | ENCFF124NBN.bed.gz |
-  | ENCFF334TMJ | GATAD2B-human         | ENCFF334TMJ.bed.gz |
-  | ENCFF619KWZ | ZBED1-human           | ENCFF619KWZ.bed.gz |
-  | ENCFF277ZUZ | ZNF592-human          | ENCFF277ZUZ.bed.gz |
-  | ENCFF161BNR | UBTF-human            | ENCFF161BNR.bed.gz |
-  | ENCFF023KAG | MEIS2-human           | ENCFF023KAG.bed.gz |
-  | ENCFF824ANA | POLR2AphosphoS5-human | ENCFF824ANA.bed.gz |
-  | ENCFF213EHL | TARDBP-human          | ENCFF213EHL.bed.gz |
-  | ENCFF270PLW | NONO-human            | ENCFF270PLW.bed.gz |
-  | ENCFF569AQR | ETV6-human            | ENCFF569AQR.bed.gz |
-  | ENCFF876CPX | RNF2-human            | ENCFF876CPX.bed.gz |
-  | ENCFF482PBU | ZBTB7A-human          | ENCFF482PBU.bed.gz |
-  | ENCFF607PKH | ZNF263-human          | ENCFF607PKH.bed.gz |
-  | ENCFF909TDT | NUFIP1-human          | ENCFF909TDT.bed.gz |
-  | ENCFF474QSX | NR3C1-human           | ENCFF474QSX.bed.gz |
-  | ENCFF407WIN | GATAD2A-human         | ENCFF407WIN.bed.gz |
-  | ENCFF317SWK | CBFA2T2-human         | ENCFF317SWK.bed.gz |
-  | ENCFF845OPG | CBFA2T3-human         | ENCFF845OPG.bed.gz |
-  | ENCFF953ZSO | ZMIZ1-human           | ENCFF953ZSO.bed.gz |
-  | ENCFF108FQP | ARNT-human            | ENCFF108FQP.bed.gz |
-  | ENCFF552BXT | PHF21A-human          | ENCFF552BXT.bed.gz |
-  | ENCFF364WAT | ATF3-human            | ENCFF364WAT.bed.gz |
-  | ENCFF870ESB | LEF1-human            | ENCFF870ESB.bed.gz |
-  | ENCFF522KCK | EGR1-human            | ENCFF522KCK.bed.gz |
-  | ENCFF041AYU | PRDM10-human          | ENCFF041AYU.bed.gz |
-  | ENCFF301SLW | ZFP36-human           | ENCFF301SLW.bed.gz |
-  | ENCFF329HLY | ZKSCAN1-human         | ENCFF329HLY.bed.gz |
-  | ENCFF712WMH | SRSF3-human           | ENCFF712WMH.bed.gz |
-  | ENCFF159GUY | TRIP13-human          | ENCFF159GUY.bed.gz |
-  | ENCFF838NIW | MYC-human             | ENCFF838NIW.bed.gz |
-  | ENCFF602YIK | USF2-human            | ENCFF602YIK.bed.gz |
-  | ENCFF674RBL | SUZ12-human           | ENCFF674RBL.bed.gz |
-  | ENCFF695KNI | MYC-human             | ENCFF695KNI.bed.gz |
-  | ENCFF753LFL | BMI1-human            | ENCFF753LFL.bed.gz |
-  | ENCFF714WNT | SMARCA4-human         | ENCFF714WNT.bed.gz |
-  | ENCFF317FDT | CUX1-human            | ENCFF317FDT.bed.gz |
-  | ENCFF237YNN | EGR1-human            | ENCFF237YNN.bed.gz |
-  | ENCFF478IFD | BCLAF1-human          | ENCFF478IFD.bed.gz |
-  | ENCFF120IMP | MYC-human             | ENCFF120IMP.bed.gz |
-  | ENCFF041ODC | CTCF-human            | ENCFF041ODC.bed.gz |
-  | ENCFF446MUL | SIN3A-human           | ENCFF446MUL.bed.gz |
-  | ENCFF433PKW | EP300-human           | ENCFF433PKW.bed.gz |
+        printf "This script will run wims_model in parallel on all train_*>.fa files in a target directory.\n\n" ;
+        printf "usage: $0 -i <target input directory> -c <available cores (default 8)>\n\n" ;
+        exit 1;
+    }
 
-
-
-  Here I parse the table above to write out the shell commands
-  necessary to select the top 1000 peaks for each experiment. 
-  #+BEGIN_SRC bash :results file :exports none :var tbl=datasets :file get_all_top_1000_seq.sh 
-    for idx in ${!tbl[*]}; do echo $idx ${tbl[$idx]} | awk '{
-                printf "echo \"Working on %s\"\n ", $2;
-                printf "zcat ../ENCODE_K562_ChIP/%s | sort -k 7,7nr | head -n 1000 > ../input_fasta/%s_%s_top_1000_regions.bed\n", $3,$2,$1;
-                printf "bedtools getfasta -fi ../genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed ../input_fasta/%s_%s_top_1000_regions.bed > ../input_fasta/%s_%s_top_1000_regions.fa \n",$2,$1,$2,$1;
-                }'
+    while getopts i:c:  opt
+    do
+        case ${opt} in
+            i) INDIR=${OPTARG};;
+            c) AVAILABLECORES=${OPTARG};;
+            ,*) usage;;
+        esac
     done
+    if [ "${INDIR}" == "" ]; then usage; fi
+    if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
+
+    INDIR=${INDIR%/}
+    shopt -s nullglob
+    EXISTINGFILES=($INDIR/*fa) 
+
+    if [ "${#EXISTINGFILES[@]}" -lt 1 ]; then
+        printf "\nInput directory contains no input files matching *.fa\n\n";
+        exit 1;
+    fi
+
+    let JOBS="$AVAILABLECORES / 32" 
+
+    if [ "$JOBS" -lt 1 ]; then
+        JOBS=1
+    fi
   #+END_SRC
 
-  #+RESULTS:
-  [[file:get_all_top_1000_seq.sh]]
-  
 
-  Run command 
-  #+BEGIN_SRC sh 
-    chmod 700 get_all_top_1000_seq.sh 
-    ./get_all_top_1000_seq.sh 
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    <<randomseed>>
+  #+END_SRC
+
+  #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
+    printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
+
+    echo "find $INDIR -name *.fa | parallel --jobs $JOBS \"wims_model -i {} -o {}.h5 --nthreads 32 --niter 5000 --seed $SEED\"";
+    find $INDIR -name "*.fa" | parallel --jobs $JOBS "wims_model -i {} -o {}.h5 --nthreads 32 --niter 5000  --seed $SEED"
+
   #+END_SRC 
 
-* Run spotseq
+
+
 ** modelling: 
 #+BEGIN_SRC sh
   for filename in ../input_fasta/*.fa; do
@@ -654,3 +378,165 @@ EOF
 
 
    #+END_SRC 
+
+
+
+* Sanity checks and convenience scripts
+
+** Check for wims installation
+
+   #+BEGIN_SRC bash -n :tangle check_for_programs.sh :shebang #!/usr/bin/env bash
+     programs=(Rscript parallel pkg-config wims_model wims_score tfbs_bench bedtools zcat)
+
+     printf "Running Sanity checks:\n";
+
+     for item in ${programs[*]}
+     do
+         if which $item >/dev/null; then
+             printf "%15s found.\n"  $item;
+         else
+             printf "\nERROR: %s not found!\n\n" $item;
+             exit 1;
+         fi
+     done
+   #+END_SRC
+
+** Check for libraries 
+   
+   Here I define the list of libraries I'll be using. 
+   
+   #+NAME: liblist
+   #+BEGIN_SRC R -n :exports code :results none
+     libraries <- c("devtools","optparse","tidyverse","plotROC")
+   #+END_SRC
+   
+   Script to test if libraries are present.
+   #+BEGIN_SRC R -n :tangle test_for_libraries.R :shebang #!/usr/bin/env Rscript :noweb yes :exports code :results none
+     <<liblist>>
+     Sys.info()["nodename"]
+     for(library in libraries) 
+     { 
+         f = is.element(library, installed.packages()[,1])
+         print(paste("Library",library, "is installed?", f))
+         if(!f)
+         {
+             message("Missing library:",library )
+             quit(status=1)
+         }
+     }
+     quit(status=0)
+   #+END_SRC
+   
+   
+   #+BEGIN_SRC sh -n :results output :exports both
+     ./test_for_libraries.R
+   #+END_SRC
+   install.packages("tidyverse")
+   Code block to load the libraries in R code.
+
+   #+NAME: Rlibraries
+   #+BEGIN_SRC R -n :exports code :results none :noweb yes
+     <<liblist>>
+     lapply(libraries, FUN = function(X) {
+         do.call("library", list(X)) 
+     })
+
+   #+END_SRC
+
+** Makefile to kick off the analysis
+
+    1) Makefile 
+
+#+BEGIN_SRC makefile -n :tangle Makefile
+check: check_r_libs 
+	@ echo Done
+
+tangle:
+	./tangleorgs.sh ENCODE_K562_ChIP_analysis.org
+
+check_r_libs: check_programs
+	@ $$(pwd)/test_for_libraries.R
+	@ if [ $$? -ne 0 ]; then exit; fi;
+	@ echo R libs found 
+
+check_programs:  tangle
+	@ $$(pwd)/check_for_programs.sh
+	@ if [ $$? -ne 0 ]; then exit; fi;
+	@ echo Programs found
+
+#+END_SRC
+
+** script to tangle analysis org documents from command line
+
+#+BEGIN_SRC bash -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env bash
+#
+# tangle files with org-mode
+#
+DIR=`pwd`
+FILES=""
+
+function usage()
+{
+cat <<EOF
+
+This script will:
+
+1) tangle the input file 
+
+usage: $0   <a.org> <b.org> ...
+EOF
+exit 1;
+}
+
+while getopts i:  opt
+do
+case ${opt} in
+i) INDIR=${OPTARG};;
+*) usage;;
+esac
+done
+     
+# wrap each argument in the code required to call tangle on it
+for i in $@; do
+   FILES="$FILES \"$i\""
+done
+
+if [ "${FILES}" = "" ]; then usage; fi
+     
+emacs -Q --batch \
+  --eval "(progn
+  (require 'org)(require 'ob)(require 'ob-tangle)
+  (setq org-src-preserve-indentation t)
+  (mapc (lambda (file)
+  (find-file (expand-file-name file \"$DIR\"))
+  (org-babel-tangle)
+  (kill-buffer)) '($FILES)))" 2>&1 |grep -i tangled
+
+#+END_SRC
+
+* References 
+
+#+BEGIN_SRC latex 
+  \printbibliography[heading=none]
+
+#+END_SRC
+
+* Versions 
+  #+BEGIN_SRC emacs-lisp -n :exports both :eval yes
+    (princ (concat
+            (format "Emacs version: %s\n"
+                    (emacs-version))
+            (format "org version: %s\n"
+                    (org-version))))
+  #+END_SRC
+
+  #+RESULTS:
+  : Emacs version: GNU Emacs 26.1 (build 1, x86_64-redhat-linux-gnu, GTK+ Version 3.22.30)
+  :  of 2018-06-26
+  : org version: 9.1.9
+
+  #+BEGIN_SRC sh :results output :exports both :eval yes
+    bash --version
+  #+END_SRC
+
+

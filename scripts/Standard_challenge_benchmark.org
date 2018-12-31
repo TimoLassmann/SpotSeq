@@ -281,6 +281,8 @@
 
 * Plotting and summary statistics 
 
+** Main plotting script
+
 The script below takes log-odds scores from positive and negative test sequences, draws an area under receiver operating characteristic curve (ROC) and writes output to file. The script also plots the curves (use -d dark versions I prefer to use in presentations.
 
    #+BEGIN_SRC R -n :tangle makeROC.R :shebang #!/usr/bin/env Rscript :noweb yes
@@ -432,16 +434,43 @@ The script below takes log-odds scores from positive and negative test sequences
 
 
 
+** Code to make summary figures 
 
-code to summarise the results. 
+
+1) Composition test.
+
 
 #+BEGIN_SRC R -n 
 library(tidyverse)
-dat= read_csv("metadata.csv") 
+dat= read_csv("results_comp.csv") 
 class(dat[[2]])<-"character"
-ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
+dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
+p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
+outname = "Composition_test_figure.jpg"
+jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+p
+dev.off()
+     #options(tikzDocumentDeclaration = '\\documentclass{beamer}')
 
 #+END_SRC
+
+
+2) TFBS test 
+#+BEGIN_SRC R -n 
+library(tidyverse)
+dat= read_csv("results_tfbs.csv") 
+class(dat[[2]])<-"character"
+p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
+
+p <- p + scale_y_continuous(breaks=seq(0.4,1.0,0.1))
+outname = "TFBS_test_figure.jpg"
+jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+p
+dev.off()
+
+#+END_SRC
+dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
+
 
 * Sanity checks and convenience scripts
 

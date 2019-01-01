@@ -19,6 +19,7 @@ struct parameters{
         char* in_sequences;
         char* background_sequences;
         char* output;
+        char* summary_file;
         int num_threads;
 };
 
@@ -29,6 +30,7 @@ static int free_parameters(struct parameters* param);
 int main (int argc, char *argv[])
 {
         FILE* fptr = NULL;
+
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
@@ -49,6 +51,7 @@ int main (int argc, char *argv[])
         param->background_sequences = NULL;
         param->output = NULL;
         param->num_threads = 8;
+        param->summary_file = NULL;
 
         while (1){
                 static struct option long_options[] ={
@@ -57,11 +60,12 @@ int main (int argc, char *argv[])
                         {"out",required_argument,0,'o'},
                         {"nthreads",required_argument,0,'t'},
                         {"background",required_argument,0,'b'},
+                        {"summary",required_argument,0,'s'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hm:i:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hm:i:s:",long_options, &option_index);
 
                 if (c == -1){
                         break;
@@ -81,6 +85,9 @@ int main (int argc, char *argv[])
                         break;
                 case 'm':
                         param->in_model = optarg;
+                        break;
+                case 's':
+                        param->summary_file = optarg;
                         break;
                 case 'h':
                         RUN(print_help(argv));
@@ -188,6 +195,40 @@ int main (int argc, char *argv[])
                 fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
         }
         fclose(fptr);
+
+        if(param->summary_file){
+                double s1,s2;
+
+                s1 = 0.0;
+                s2 = 0.0;
+
+                for(i = 0; i < sb->num_seq;i++){
+                        s1 += sb->sequences[i]->score;
+                        s2 += sb->sequences[i]->score * sb->sequences[i]->score;
+                }
+
+
+                s2 = sqrt(((double) sb->num_seq * s2 - s1 * s1)/ ((double) sb->num_seq * ((double)sb->num_seq -1.0)));
+                s1 = s1 / (double) sb->num_seq;
+
+                fptr = NULL;
+                if(!my_file_exists(param->summary_file)){
+                        RUNP(fptr = fopen(param->summary_file, "w"));
+                        fprintf(fptr,"Model,SequenceFile,Mean,Stdev\n");
+
+                }else{
+                        RUNP(fptr = fopen(param->summary_file, "a"));
+                }
+                fprintf(fptr,"%s,%s,%f,%f\n",basename(param->in_model), basename(param->in_sequences),s1,s2);
+
+                fclose(fptr);
+                fprintf(stdout," %f stdev: %f \n",s1,s2);
+                /*if(!my_file_exists(param->in_sequences)){
+                        RUN(print_help(argv));
+                        ERROR_MSG("The file <%s> does not exist.",param->in_sequences);
+                        }*/
+        }
+
 
         free_wims_thread_data(td);
         thr_pool_destroy(pool);

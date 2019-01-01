@@ -187,7 +187,7 @@ Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code b
        | awk 'BEGIN{FS = "\t"} {\
        printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
        | awk -v nseq="$NSEQ"  '{\
-                       printf "zcat data/%s | sort  -k 7,7nr |  sort -u  -k 1,1 -k 2,2n | sort  -k 7,7nr | head -n  %d    > input_fasta/%s_%s_top_1000_regions.bed\n", $3,nseq,$2,$1;\
+                       printf "zcat data/%s | sort  -k 7,7nr |  sort -u  -k 1,1 -k 2,2n | sort  -k 7,7nr | head -n  %d    > input_fasta/%s_%s_top_%s_regions.bed\n", $3,nseq,$2,$1,nseq;\
        }' > get_top_bed_commands.txt 
 
    cat data/metadata.tsv \
@@ -197,7 +197,7 @@ Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code b
        | awk 'BEGIN{FS = "\t"} {\
        printf "%s\t%s\t%s.bed.gz\n",  $1,$13,$1}' \
        | awk '{\
-                       printf "bedtools getfasta -fi reference_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed input_fasta/%s_%s_top_1000_regions.bed > input_fasta/%s_%s_top_1000_regions.fa \n",$2,$1,$2,$1;\
+                       printf "bedtools getfasta -fi reference_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed input_fasta/%s_%s_top_%s_regions.bed > input_fasta/%s_%s_top_%s_regions.fa \n",$2,$1,nseq,$2,$1,nseq;\
        }' > get_fasta_sequences_commands.txt  
 
    parallel --jobs 32 < get_top_bed_commands.txt 
@@ -261,6 +261,226 @@ Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code b
     find $INDIR -name "*.fa" | parallel --jobs $JOBS "wims_model -i {} -o {}.h5 --nthreads 32 --niter 5000  --seed $SEED"
 
   #+END_SRC 
+
+* Run pair-wise score
+
+  Run each model against each input fasta dataset. 
+
+  1) make background fasta file
+
+#+BEGIN_SRC  bash 
+  DIR="$HOME/benchmarks/encode_TFBS/input_fasta"
+  find $DIR -maxdepth 1 -iname '*.fa' -not -name 'background.fa' -exec cat {} +> $DIR/background.fa
+#+END_SRC
+
+
+2) run wims_score all vs all
+
+ZZZ3-human_ENCFF129QWO
+
+ #+BEGIN_SRC bash -n :tangle run_wims_score_all_vs_all.sh :shebang #!/usr/bin/env bash :noweb yes
+   DIR=`pwd`
+   INDIR=
+   SAMPLES=10
+   AVAILABLECORES=8
+   JOBS=1
+   function usage()
+   {
+
+       printf "This script will run wims_model in parallel on all train_*>.fa files in a target directory.\n\n" ;
+       printf "usage: $0 -i <target input directory> -c <available cores (default 8)>\n\n" ;
+       exit 1;
+   }
+
+   while getopts i:c:  opt
+   do
+       case ${opt} in
+           i) INDIR=${OPTARG};;
+           c) AVAILABLECORES=${OPTARG};;
+           ,*) usage;;
+       esac
+   done
+   if [ "${INDIR}" == "" ]; then usage; fi
+   if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
+
+   INDIR=${INDIR%/}
+   shopt -s nullglob
+   MODELFILES=($INDIR/*h5) 
+
+   if [ "${#MODELFILES[@]}" -lt 1 ]; then
+       printf "\nInput directory contains no input files matching *.h5\n\n";
+       exit 1;
+   fi
+
+   echo ${!MODELFILES[*]}
+   printf "" > "wims_score_commands.txt"
+   #printf "" > "makeROC_commands.txt"
+
+   TESTFILES=$(sed "s/.fa.h5/.fa/g" <<< ${MODELFILES[*]})
+   TESTFILES=(${TESTFILES//:/ })
+
+
+   for index1 in "${!MODELFILES[@]}"
+   do
+       for index2 in "${!MODELFILES[@]}"
+       do
+           echo  wims_score -m ${MODELFILES[$index1]} -i ${TESTFILES[$index2]} -nthreads 4 -background $INDIR/background.fa -o test.csv
+       done
+    
+   done
+
+
+  #+END_SRC
+
+
+** plotting etc.. 
+The script below takes log-odds scores from positive and negative test sequences, draws an area under receiver operating characteristic curve (ROC) and writes output to file. The script also plots the curves (use -d dark versions I prefer to use in presentations.
+
+
+   #+BEGIN_SRC R -n :tangle makeROC.R :shebang #!/usr/bin/env Rscript :noweb yes
+     library(optparse)
+     sessionInfo()
+     dark <- FALSE;
+     error <- 0;
+     option_list = list(
+         make_option(c("-p", "--positive"),
+                     type="character",
+                     default=NULL,
+                     help="scores for positive test sequences.",
+                     metavar="character"),
+         make_option(c("-n", "--negative"),
+                     type="character",
+                     default=NULL,
+                     help="scores for the negative test sequences.",
+                     metavar="character"),
+         make_option(c("-e", "--experimentname"),
+                     type="character",
+                     default=NULL,
+                     help="Experiment name.",
+                     metavar="character"),
+         make_option(c("-s", "--summary"),
+                     type="character",
+                     default="stats.csv",
+                     help="Summary stats file name [stats.csv].",
+                     metavar="character"),
+         make_option(c("-k", "--error"),
+                     type="integer",
+                     default=0,
+                     help="Errors.",
+                     metavar="character"),
+         make_option(c("-d", "--dark"), action="store_true", default=FALSE,
+                     help="use dark theme (for presentations)")
+
+
+     );
+
+     opt_parser <- OptionParser(option_list=option_list,
+                                description = "\nLoad singleR object and make plots.",
+                                epilogue = "Example:\n\n  Blah  \n\n");
+     opt <- parse_args(opt_parser);
+
+     if(opt$dark){
+         dark <- TRUE
+     }
+
+     error <-  opt$error;
+
+    summaryfilename <- opt$summary
+
+     if (is.null(opt$positive)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+     if (is.null(opt$negative)){
+         print_help(opt_parser)
+         stop("Missing infile!\n", call.=FALSE)
+     }
+
+     posname <- opt$positive
+     negname <- opt$negative
+     name <- opt$experimentname
+     pos = read.csv(posname,header = T,row.names= 1)
+     neg = read.csv(negname,header = T,row.names= 1)
+
+
+     <<Rlibraries>>
+
+     response = c(rep(1,dim(pos)[1]), rep(0,dim(neg)[1]))
+     predictor = c(pos[,1],neg[,1])
+
+                                             #roc = roc(response,predictor)
+
+     x = cbind(response,predictor)
+     x = as.data.frame(x)
+
+
+     if(dark){
+         p = ggplot(x , aes(d = response, m = predictor))
+         p <- op +  geom_roc(labels = FALSE,
+                             fill=rgb(0,0,20,maxColorValue = 255),
+                             color=rgb(220,210,200,maxColorValue = 255))
+
+         p <- p + geom_abline(intercept = 0, slope = 1, color=rgb(220,210,200,maxColorValue = 255))
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
+
+         p <- p + annotate("text",
+                           color=rgb(220,210,200,maxColorValue = 255),
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
+
+         p <- p + theme_classic()
+         p <- p + theme(panel.background = element_rect(fill =rgb(0,0,20,maxColorValue = 255),colour = rgb(0,0,20,maxColorValue = 255)),
+                        text = element_text(colour=rgb(220,210,200,maxColorValue = 255)),
+                        rect = element_rect(fill = rgb(0,0,20,maxColorValue = 255),colour=rgb(0,0,20,maxColorValue = 255)),
+                        line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.text = element_text(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.line = element_line(colour =rgb(220,210,200,maxColorValue = 255)),
+                        axis.ticks = element_line(colour = rgb(220,210,200,maxColorValue = 255)),
+                        )
+     }else{
+         p = ggplot(x , aes(d = response, m = predictor)) + geom_roc(labels = FALSE)
+
+         p <- p + geom_abline(intercept = 0, slope = 1)
+         p <- p +scale_x_continuous(limits = c(0,1), expand = c(0, 0))
+         p <- p + scale_y_continuous(limits = c(0,1), expand = c(0, 0))
+
+         p <- p + annotate("text",
+                           x = .75,
+                           y = .25,
+                           label = paste("AUC =", round(calc_auc(p)$AUC, 4)))
+         p  <-  p + xlab("1-Specificity (FPR)")
+         p  <-  p + ylab("Sensitivity (TPR)")
+     }
+     metadata <- tribble(~name,~error, ~AUC,
+                         paste0(basename(name)), error, round(calc_auc(p)$AUC, 4))
+
+     metadata
+     if(!file.exists(summaryfilename)){
+         write_csv(metadata, summaryfilename,  na = "NA", append = TRUE, col_names = TRUE)
+     }else{
+         write_csv(metadata, summaryfilename, na = "NA", append = TRUE, col_names = FALSE)
+     }
+
+     outname = paste0("ROC_",basename(name),".jpg");
+     jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+
+     p
+
+
+
+
+     dev.off()
+     #options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     #outname = paste0("ROC_",basename(name),".tex");
+     #tikz(outname,width = 2, height = 2)
+
+     #dev.off()
+
+   #+END_SRC
 
 
 

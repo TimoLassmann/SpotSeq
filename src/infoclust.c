@@ -1,3 +1,4 @@
+
 #include "infoclust.h"
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
@@ -622,6 +623,7 @@ int add_hit_locations(struct sa* sa, struct paraclu_cluster* p)
         for(i = p->start_in_sa; i < p->end_in_sa;i++){
                 p->hits[c]->pos = sa->lcs[i]->pos;
                 p->hits[c]->seq = sa->lcs[i]->seq_num;
+                p->hits[c]->strand = 0;
                 c++;
         }
 
@@ -720,10 +722,12 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
 {
         double beta = 0.1;
         double sum = 0.0;
+        int rev_cmp[4] ={ 3,2,1,0};
         int i,j;
         int c;
         int seq;
         int pos;
+        int strand;
 
         RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
         RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
@@ -731,7 +735,7 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         for(i =0; i < motif->len;i++){
                 sum = 0.0;
                 for(j = 0; j < sb->L;j++){
-                        motif->count_matrix[i][j] =sb->background[j] * beta;// rk_gamma(&rndstate, sb->background[j], 1.0);
+                        motif->count_matrix[i][j] = sb->background[j] * beta;// rk_gamma(&rndstate, sb->background[j], 1.0);
                         sum += motif->count_matrix[i][j];
                 }
                 for(j = 0; j < sb->L;j++){
@@ -745,16 +749,33 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         for(i = 0; i < motif->num_hits;i++){
                 seq = motif->hits[i]->seq;
                 pos = motif->hits[i]->pos;
-                //fprintf(stdout, "seq:%d pos:%d\t", seq, pos);
-                for(c = 0;c < motif->len;c++){
-                        if(c + pos < 0){
-                                //        (stdout,"-");
-                        }else if(c + pos >= sb->sequences[seq]->seq_len){
-                                //        fprintf(stdout,"-");
-                        }else{
-                                motif->count_matrix[c][sb->sequences[seq]->seq[c + pos]] += 1.0;
-                                //        fprintf(stdout,"%c","ACGT"[sb->sequences[seq]->seq[c + pos]]);
+                strand = motif->hits[i]->strand;
+                if(!strand){
+                        //fprintf(stdout, "seq:%d pos:%d\t", seq, pos);
+                        for(c = 0;c < motif->len;c++){
+                                if(c + pos < 0){
+                                        //        (stdout,"-");
+                                }else if(c + pos >= sb->sequences[seq]->seq_len){
+                                        //        fprintf(stdout,"-");
+                                }else{
+                                        motif->count_matrix[c][sb->sequences[seq]->seq[c + pos]] += 1.0;
+                                        //        fprintf(stdout,"%c","ACGT"[sb->sequences[seq]->seq[c + pos]]);
+                                }
                         }
+                }else{
+                        for(c = 0;c < motif->len;c++){
+                                if(c + pos < 0){
+                                        //        (stdout,"-");
+                                }else if(c + pos >= sb->sequences[seq]->seq_len){
+                                        //        fprintf(stdout,"-");
+                                }else{
+                                        j = rev_cmp[sb->sequences[seq]->seq[c + pos]];
+
+                                        motif->count_matrix[(motif->len-1) - c][j] += 1.0;
+                                        //        fprintf(stdout,"%c","ACGT"[sb->sequences[seq]->seq[c + pos]]);
+                                }
+                        }
+
                 }
                 //fprintf(stdout, "\n");
         }
@@ -1470,6 +1491,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         struct paraclu_cluster* b;
         struct paraclu_cluster* new_motif = NULL;
         double** rand_freq_matrix = NULL;
+
         double* background_scores = NULL;
         int i,j;
         int best_i;
@@ -1478,7 +1500,11 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         int allowed_overlap;
         int num_random = 10000;
         int limit;
+
+
+
         /* all pairwise comparisons... */
+
         limit = MACRO_MIN(250, m->num_items);
         best_i = -1;
         best_j = -1;
@@ -1553,6 +1579,9 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                         allowed_overlap =  MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);
                         LOG_MSG("Merging %d %d  allowed over:%d score:%f",best_i, best_j, allowed_overlap,best_score);
                         RUN(motif_dyn_programming(fhmm , a->freq_matrix, b->freq_matrix, a->len, b->len,allowed_overlap));
+
+
+
                         RUNP(new_motif = init_paraclu_cluster());
                         RUN(traceback_and_merge_motifs(fhmm,a,b,new_motif));
                         RUN(add_motif_count_matrix_based_on_hits(sb,new_motif));
@@ -1572,6 +1601,8 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
 ERROR:
         return FAIL;
 }
+
+
 
 int insert_motif(struct motif_list* m, struct paraclu_cluster* p,struct fhmm* fhmm,struct seq_buffer *sb)
 {

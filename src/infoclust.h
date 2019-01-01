@@ -5,6 +5,7 @@
 struct hit{
         int seq;
         int pos;
+        int strand;
 };
 
 struct paraclu_cluster{

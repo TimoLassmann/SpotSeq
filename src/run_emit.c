@@ -1,6 +1,134 @@
 #include "emit_random.h"
 
-struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num)
+static int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndstate );
+
+struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,unsigned long seed)
+{
+        struct seq_buffer* sb_out = NULL;
+        int i,j;
+        double sum;
+
+        double s1,s2;
+
+        ASSERT(fhmm != NULL, "No HMM");
+        ASSERT(num != 0, "No sequences requested.");
+
+        rk_state rndstate;
+        if(seed){
+                rk_seed(seed, &rndstate);
+        }else{
+                rk_randomseed(&rndstate);
+        }
+
+
+        /* Step one convert log probabilities */
+        for(i = 0;i < fhmm->K;i++){
+                sum = 0.0;
+                for(j = 0; j < fhmm->K;j++){
+                        fhmm->t[i][j] = scaledprob2prob(fhmm->t[i][j]);
+                        sum += fhmm->t[i][j];
+                }
+                for(j = 0; j < fhmm->K;j++){
+                        fhmm->t[i][j] /= sum;
+                }
+
+                for(j = 1;j < fhmm->K;j++){
+                        fhmm->t[i][j] += fhmm->t[i][j-1];
+                }
+
+
+        }
+        /* now emission probabilities  */
+        for(i = 0; i < fhmm->K;i++){
+                sum = 0.0;
+                for(j = 0 ; j < fhmm->L;j++){
+                        fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
+                        sum += fhmm->e[i][j];
+                }
+                for(j = 0 ; j < fhmm->L;j++){
+                        fhmm->e[i][j] /= sum;
+                }
+                for(j = 1; j < fhmm->L;j++){
+                        fhmm->e[i][j] += fhmm->e[i][j-1];
+                }
+        }
+
+        MMALLOC(sb_out,sizeof(struct seq_buffer));
+        sb_out->malloc_num = num ;
+        sb_out->num_seq = num;
+        sb_out->sequences = NULL;
+        sb_out->max_len = 0.0;
+        sb_out->L = fhmm->L;
+
+        sb_out->background = NULL;
+        MMALLOC(sb_out->background,sizeof(float) * sb_out->L );
+
+        MMALLOC(sb_out->sequences, sizeof(struct ihmm_sequence*) *sb_out->malloc_num );
+        for(i = 0; i < sb_out->num_seq;i++){
+                sb_out->sequences[i] = NULL;
+                RUNP(sb_out->sequences[i] = alloc_ihmm_seq());
+                snprintf(sb_out->sequences[i]->name, 256, "RANDOM%d", i+1);
+
+                emit_a_sequence(fhmm, sb_out->sequences[i],&rndstate  );
+                s1 += sb_out->sequences[i]->seq_len;
+                s2 += (sb_out->sequences[i]->seq_len * sb_out->sequences[i]->seq_len);
+        }
+
+        s2 = sqrt(((double) sb_out->num_seq * s2 - s1 * s1)/ ((double) sb_out->num_seq * ((double) sb_out->num_seq -1.0)));
+        s1 = s1 / (double) sb_out->num_seq;
+        LOG_MSG("Simulated %d sequences of mean length %f stdev %f", sb_out->num_seq,s1,s2);
+        return sb_out;
+ERROR:
+        return NULL;
+}
+
+int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndstate)
+{
+        int state = IHMM_START_STATE;
+        int i,j;
+
+
+        double r;
+
+
+
+
+        while(state != IHMM_END_STATE){
+                /* transistion */
+
+                r = rk_double(rndstate);
+
+                for(j = 0; j < fhmm->K;j++){
+                        if(r <= fhmm->t[state][j]){
+                                state = j;
+                                break;
+                        }
+                }
+
+                /* emission */
+                r = rk_double(rndstate);
+                for(j = 0; j < fhmm->L;j++){
+                        if(r <= fhmm->e[state][j]){
+                                s->seq[s->seq_len] = j;
+                                s->seq_len++;
+
+
+                                break;
+
+                        }
+                }
+                if(s->seq_len == s->malloc_len){
+                        s->malloc_len = s->malloc_len << 1;
+                        RUN(realloc_ihmm_seq(s));
+                }
+        }
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num, unsigned long seed)
 {
         struct seq_buffer* sb_out = NULL;
 
@@ -10,8 +138,12 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         double r;
 
         rk_state rndstate;
+        if(seed){
+                rk_seed(seed, &rndstate);
+        }else{
+                rk_randomseed(&rndstate);
+        }
 
-        RUN(rk_randomseed(&rndstate));
 
         ASSERT(sb_in != NULL, "No sequence Buffer");
         s1 = 0.0;

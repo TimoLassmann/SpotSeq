@@ -6,12 +6,11 @@ static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 int detect_alphabet(struct seq_buffer* sb);
 
 int translate_DNA_to_internal(struct seq_buffer* sb);
-
-int translate_internal_to_DNA(struct seq_buffer* sb);
-
-int translate_internal_to_PROTEIN(struct seq_buffer* sb);
-
 int translate_PROTEIN_to_internal(struct seq_buffer* sb);
+
+
+
+
 
 int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 

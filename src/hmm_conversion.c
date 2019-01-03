@@ -331,17 +331,23 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         used[1] = local_num_states;
         local_num_states++;
 
-        for(j = 2; j < model->num_states;j++){
+        for(j = 2; j < model->num_states-1;j++){
                 sum = 0.0;
                 for(i = 0; i < model->L;i++){
                         sum += model->emission_counts[i][j];
                 }
+                //fprintf(stdout,"%f ",sum);
                 if(sum){
                         used[j] = local_num_states;
                         local_num_states++;
                 }
         }
+        //fprintf(stdout,"\n");
 
+        //for(i = 0; i < model->num_states;i++){
+        //        fprintf(stdout,"%d ",used[i]);
+        //}
+        //fprintf(stdout,"\n");
 
         RUNP(fhmm = alloc_fhmm());
 
@@ -474,6 +480,7 @@ int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
 
         MMALLOC(model_bag->finite_models, sizeof(struct fhmm*)* model_bag->num_models);
         for(miter = 0; miter < model_bag->num_models;miter++){
+                //LOG_MSG("Looking at model: %d ",miter);
                 model_bag->finite_models[miter] = NULL;
 
                 RUNP(model_bag->finite_models[miter] = build_finite_hmm_from_infinite_hmm(model_bag->models[miter]));

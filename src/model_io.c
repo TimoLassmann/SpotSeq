@@ -185,7 +185,7 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
 
         hdf5_data->num_attr = 0;
 
-        LOG_MSG("header done");
+        //LOG_MSG("header done");
 
 
         RUN(hdf5_create_group("/",hdf5_data));
@@ -197,20 +197,20 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
         RUN(hdf5_close_group(hdf5_data));
 
         RUN(add_RNG_state(hdf5_data, "RNG",&bag->rndstate));
-        LOG_MSG("RNG top  done");
+        //LOG_MSG("RNG top  done");
         RUN(hdf5_create_group("models",hdf5_data));
 
         RUN(hdf5_close_group(hdf5_data));
-        LOG_MSG("Create model group done.");
+        //LOG_MSG("Create model group done.");
 
         for(model_i = 0; model_i < bag->num_models;model_i++){
                 snprintf(buffer, BUFFER_LEN, "models/m%d", model_i+1);
-                LOG_MSG("Writing model %d.",model_i);
+                //LOG_MSG("Writing model %d.",model_i);
                 RUN(write_model_hdf5(hdf5_data, bag->models[model_i], buffer));
 
                 snprintf(buffer, BUFFER_LEN, "models/m%d/fhmm", model_i+1);
                 RUN(add_fhmm(hdf5_data, bag->finite_models[model_i] , buffer));
-                LOG_MSG("Done");
+                //LOG_MSG("Done");
         }
         hdf5_close_file(hdf5_data);
         hdf5_free(hdf5_data);

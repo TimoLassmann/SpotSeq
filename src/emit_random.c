@@ -88,7 +88,7 @@ int main(const int argc, char * argv[])
 
 
                 RUNP(fhmm = read_best_fmodel(in, &best));
-
+                RUN(convert_fhmm_log_to_prob_for_sampling(fhmm));
                 RUNP(sb = emit_sequences_from_fhmm_model(fhmm, num_seq,seed));
                 free_fhmm(fhmm);
         }

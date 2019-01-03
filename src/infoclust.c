@@ -956,9 +956,9 @@ int calculate_log_likelihood_based_on_hits(struct fhmm*  fhmm,struct seq_buffer*
         return OK;
 ERROR:
         return FAIL;
-
-
 }
+
+
 int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct paraclu_cluster* motif,struct sa* sa, struct seq_buffer* sb_temp)
 {
         int i,j,c;
@@ -1977,8 +1977,8 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct paraclu_cluster* a,struc
 ERROR:
         MFREE(path);
         return FAIL;
-
 }
+
 int align_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* score)
 {
 

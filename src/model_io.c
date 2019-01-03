@@ -121,7 +121,7 @@ struct model_bag* read_model_bag_hdf5(char* filename)
 
                 snprintf(buffer, BUFFER_LEN, "models/m%d/fhmm",i+1);
                 /* get HMM parameters  */
-                RUNP(bag->finite_models[i] =read_fhmm_parameters(hdf5_data, buffer));
+                RUNP(bag->finite_models[i] = read_fhmm_parameters(hdf5_data, buffer));
 
         }
 

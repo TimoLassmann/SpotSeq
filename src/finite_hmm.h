@@ -36,6 +36,7 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group);
 extern struct fhmm* alloc_fhmm(void);
 extern int setup_model(struct fhmm* fhmm);
 extern int convert_fhmm_scaled_to_prob(struct fhmm* fhmm);
+extern int convert_fhmm_log_to_prob_for_sampling(struct fhmm* fhmm);
 extern struct fhmm* init_fhmm(char* filename);
 extern int alloc_dyn_matrices(struct fhmm* fhmm);
 extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);

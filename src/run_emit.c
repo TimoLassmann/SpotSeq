@@ -21,53 +21,6 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
         }
 
 
-        /* Step one convert log probabilities */
-        for(i = 0;i < fhmm->K;i++){
-                sum = 0.0;
-                //fprintf(stdout,"K:%d\t",i);
-                for(j = 0; j < fhmm->K;j++){
-                        //fprintf(stdout,"%f ",fhmm->t[i][j]);
-                        fhmm->t[i][j] = scaledprob2prob(fhmm->t[i][j]);
-                        sum += fhmm->t[i][j];
-                }
-                //fprintf(stdout,"\n");
-                for(j = 0; j < fhmm->K;j++){
-                        fhmm->t[i][j] /= sum;
-                }
-
-                for(j = 1;j < fhmm->K;j++){
-                        fhmm->t[i][j] += fhmm->t[i][j-1];
-                }
-                //fprintf(stdout,"K:%d\t",i);
-                //for(j = 0; j < fhmm->K;j++){
-                //        fprintf(stdout,"%f ",fhmm->t[i][j]);
-                //}
-                //fprintf(stdout,"\n");
-
-        }
-        //fprintf(stdout,"\n");
-        /* now emission probabilities  */
-        for(i = 0; i < fhmm->K;i++){
-                sum = 0.0;
-                for(j = 0 ; j < fhmm->L;j++){
-                        fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
-                        sum += fhmm->e[i][j];
-                }
-                //ASSERT(sum != 0.0 , "Sum cannot be zero!");
-                for(j = 0 ; j < fhmm->L;j++){
-                        fhmm->e[i][j] /= sum;
-                }
-                for(j = 1; j < fhmm->L;j++){
-                        fhmm->e[i][j] += fhmm->e[i][j-1];
-                }
-                //fprintf(stdout,"K:%d\t",i);
-                //for(j = 0; j < fhmm->L;j++){
-                //        fprintf(stdout,"%f ",fhmm->e[i][j]);
-                //}
-                //fprintf(stdout,"\n");
-        }
-        //fprintf(stdout,"\n");
-
         MMALLOC(sb_out,sizeof(struct seq_buffer));
         sb_out->malloc_num = num ;
         sb_out->num_seq = num;
@@ -105,7 +58,6 @@ int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndst
         int state = IHMM_START_STATE;
         int i,j;
         double r;
-
         while(state != IHMM_END_STATE){
                 /* transistion */
 
@@ -121,6 +73,7 @@ int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndst
                 /* emission */
                 r = rk_double(rndstate);
                 for(j = 0; j < fhmm->L;j++){
+
                         if(r <= fhmm->e[state][j]){
                                 s->seq[s->seq_len] = j;
                                 s->seq_len++;
@@ -130,7 +83,6 @@ int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndst
 
                         }
                 }
-                //LOG_MSG("state:%d",state);
                 if(s->seq_len == s->malloc_len){
                         s->malloc_len = s->malloc_len << 1;
                         RUN(realloc_ihmm_seq(s));

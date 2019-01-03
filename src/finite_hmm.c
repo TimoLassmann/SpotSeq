@@ -386,6 +386,81 @@ ERROR:
 
 }
 
+int convert_fhmm_log_to_prob_for_sampling(struct fhmm* fhmm)
+{
+        int i,j;
+        double sum;
+        ASSERT(fhmm != NULL, "no model");
+        /* I need to allocate tindex & convert probs to log space */
+        init_logsum();
+
+
+        sum = 0.0;
+
+        for(i = 0; i < fhmm->L;i++){
+                fhmm->background[i] = scaledprob2prob(fhmm->background[i]);
+                sum += fhmm->background[i];
+        }
+        for(i = 0; i < fhmm->L;i++){
+                fhmm->background[i] /= sum;
+        }
+
+
+        //for(i = 1; i < fhmm->L;i++){
+        //        fhmm->background[i] += fhmm->background[i-1];
+        //}
+
+        /* Step one convert log probabilities */
+        for(i = 0;i < fhmm->K;i++){
+                sum = 0.0;
+                //fprintf(stdout,"K:%d\t",i);
+                for(j = 0; j < fhmm->K;j++){
+                        //fprintf(stdout,"%f ",fhmm->t[i][j]);
+                        fhmm->t[i][j] = scaledprob2prob(fhmm->t[i][j]);
+                        sum += fhmm->t[i][j];
+                }
+                //fprintf(stdout,"\n");
+                for(j = 0; j < fhmm->K;j++){
+                        fhmm->t[i][j] /= sum;
+                }
+
+                for(j = 1;j < fhmm->K;j++){
+                        fhmm->t[i][j] += fhmm->t[i][j-1];
+                }
+                //fprintf(stdout,"K:%d\t",i);
+                //for(j = 0; j < fhmm->K;j++){
+                //        fprintf(stdout,"%f ",fhmm->t[i][j]);
+                //}
+                //fprintf(stdout,"\n");
+
+        }
+        //fprintf(stdout,"\n");
+        /* now emission probabilities  */
+        for(i = 0; i < fhmm->K;i++){
+                sum = 0.0;
+                for(j = 0 ; j < fhmm->L;j++){
+                        fhmm->e[i][j] = scaledprob2prob(fhmm->e[i][j]);
+                        sum += fhmm->e[i][j];
+                }
+                //ASSERT(sum != 0.0 , "Sum cannot be zero!");
+                for(j = 0 ; j < fhmm->L;j++){
+                        fhmm->e[i][j] /= sum;
+                }
+                for(j = 1; j < fhmm->L;j++){
+                        fhmm->e[i][j] += fhmm->e[i][j-1];
+                }
+                /*fprintf(stdout,"K:%d\t",i);
+                for(j = 0; j < fhmm->L;j++){
+                        fprintf(stdout,"%f ",fhmm->e[i][j]);
+                }
+                fprintf(stdout,"\n");*/
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
 int alloc_dyn_matrices(struct fhmm* fhmm)
 {
         ASSERT(fhmm!= NULL, "No model");
@@ -494,6 +569,7 @@ struct fhmm* alloc_fhmm(void)
         fhmm->L = 0;
         fhmm->f_score = 0.0;
         fhmm->b_score = 0.0;
+        fhmm->r_score = 0.0;
 
         fhmm->alloc_matrix_len = 0;
 

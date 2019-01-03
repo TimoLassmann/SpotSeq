@@ -279,56 +279,62 @@ Let's focus on =conservative idr thresholded peaks= mapped to GRCh38. The code b
 ZZZ3-human_ENCFF129QWO
 
  #+BEGIN_SRC bash -n :tangle run_wims_score_all_vs_all.sh :shebang #!/usr/bin/env bash :noweb yes
-   DIR=`pwd`
-   INDIR=
-   SAMPLES=10
-   AVAILABLECORES=8
-   JOBS=1
-   function usage()
-   {
+      DIR=`pwd`
+      INDIR=
+      SAMPLES=10
+      AVAILABLECORES=8
+      JOBS=1
+      function usage()
+      {
 
-       printf "This script will run wims_model in parallel on all train_*>.fa files in a target directory.\n\n" ;
-       printf "usage: $0 -i <target input directory> -c <available cores (default 8)>\n\n" ;
-       exit 1;
-   }
+          printf "This script will run wims_model in parallel on all train_*>.fa files in a target directory.\n\n" ;
+          printf "usage: $0 -i <target input directory> -c <available cores (default 8)>\n\n" ;
+          exit 1;
+      }
 
-   while getopts i:c:  opt
-   do
-       case ${opt} in
-           i) INDIR=${OPTARG};;
-           c) AVAILABLECORES=${OPTARG};;
-           ,*) usage;;
-       esac
-   done
-   if [ "${INDIR}" == "" ]; then usage; fi
-   if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
+      while getopts i:c:  opt
+      do
+          case ${opt} in
+              i) INDIR=${OPTARG};;
+              c) AVAILABLECORES=${OPTARG};;
+              ,*) usage;;
+          esac
+      done
+      if [ "${INDIR}" == "" ]; then usage; fi
+      if [ "${AVAILABLECORES}" -lt 1 ]; then usage; fi
 
-   INDIR=${INDIR%/}
-   shopt -s nullglob
-   MODELFILES=($INDIR/*h5) 
+      INDIR=${INDIR%/}
+      shopt -s nullglob
+      MODELFILES=($INDIR/*h5) 
 
-   if [ "${#MODELFILES[@]}" -lt 1 ]; then
-       printf "\nInput directory contains no input files matching *.h5\n\n";
-       exit 1;
-   fi
+      if [ "${#MODELFILES[@]}" -lt 1 ]; then
+          printf "\nInput directory contains no input files matching *.h5\n\n";
+          exit 1;
+      fi
 
-   echo ${!MODELFILES[*]}
-   printf "" > "wims_score_commands.txt"
-   #printf "" > "makeROC_commands.txt"
+      echo ${!MODELFILES[*]}
+      printf "" > "wims_score_commands.txt"
+      #printf "" > "makeROC_commands.txt"
 
-   TESTFILES=$(sed "s/.fa.h5/.fa/g" <<< ${MODELFILES[*]})
-   TESTFILES=(${TESTFILES//:/ })
+      TESTFILES=$(sed "s/.fa.h5/.fa/g" <<< ${MODELFILES[*]})
+      TESTFILES=(${TESTFILES//:/ })
 
 
-   for index1 in "${!MODELFILES[@]}"
-   do
-       for index2 in "${!MODELFILES[@]}"
-       do
-           echo  wims_score -m ${MODELFILES[$index1]} -i ${TESTFILES[$index2]} -nthreads 4 -background $INDIR/background.fa -o test.csv
-       done
-    
-   done
+      for index1 in "${!MODELFILES[@]}"
+      do
+          for index2 in "${!MODELFILES[@]}"
+          do
+              echo  "wims_score -m ${MODELFILES[$index1]} -i ${TESTFILES[$index2]} -nthreads 4 -background $INDIR/background.fa -o test.csv -s score_summary.csv " >> "wims_score_commands.txt"
+          done
 
+      done
+      let JOBS="$AVAILABLECORES / 4" 
+
+       if [ "$JOBS" -lt 1 ]; then
+           JOBS=1
+       fi
+
+      parallel --jobs $JOBS < wims_score_commands.txt
 
   #+END_SRC
 
@@ -501,6 +507,26 @@ The script below takes log-odds scores from positive and negative test sequences
       sbatch ./infoclust.sh -m $filename
   done
 
+
+#+END_SRC
+* Plot 
+
+#+BEGIN_SRC R 
+
+library(tidyverse)
+dat = read_csv("score_summary.csv")
+tmp = dcast(dat, Model~SequenceFile, value.var = 'Mean') 
+
+mat = tmp[1:nrow(tmp),2:ncol(tmp)]; 
+
+rownames(mat) = tmp[,1]
+mat[is.na(mat)] <- 0
+
+ggplot(dat, aes(Model, SequenceFile )) +
+  geom_tile(aes(fill = Mean), color = "white")
+
+Model                           SequenceFile                       Mean Stdev
+tric versions of traditional HMMs and are cool; 
 
 #+END_SRC
 * Slurm scripts 

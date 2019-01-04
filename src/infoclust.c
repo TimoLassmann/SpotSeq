@@ -5,6 +5,7 @@
 #include "label_suffix_array.h"
 #include "run_score.h"
 #include "model.h"
+#include "motif_refinement.h"
 #include <getopt.h>
 
 struct parameters{
@@ -17,7 +18,10 @@ struct parameters{
 /* global rnd state */
 rk_state rndstate;
 
+
+
 static int run_infoclust(struct parameters* param);
+int set_overlap(int len_a, int len_b);
 
 int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq_buffer* sb);
 
@@ -153,6 +157,7 @@ ERROR:
         free_parameters(param);
         return EXIT_FAILURE;
 }
+
 
 int run_infoclust(struct parameters* param)
 {
@@ -294,8 +299,16 @@ int run_infoclust(struct parameters* param)
 
         qsort(m->plist , m->num_items, sizeof(struct paraclu_cluster*), sort_paraclu_cluster_based_on_likelihood);
 
+
+
         RUN(hierarchal_merge_motif( m,fhmm ,sb));
 
+
+        for(i = 0; i < m->num_items;i++){
+                if(m->plist[i]){
+                        em_algorithm(m->plist[i]->count_matrix,m->plist[i]->len,sb->L , sb_temp);
+                }
+        }
 
 
 
@@ -749,8 +762,8 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         for(i = 0; i < motif->num_hits;i++){
                 seq = motif->hits[i]->seq;
                 pos = motif->hits[i]->pos;
-                strand = motif->hits[i]->strand;
-                if(!strand){
+                //strand = motif->hits[i]->strand;
+                //if(!strand){
                         //fprintf(stdout, "seq:%d pos:%d\t", seq, pos);
                         for(c = 0;c < motif->len;c++){
                                 if(c + pos < 0){
@@ -762,7 +775,7 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
                                         //        fprintf(stdout,"%c","ACGT"[sb->sequences[seq]->seq[c + pos]]);
                                 }
                         }
-                }else{
+                        /*}else{
                         for(c = 0;c < motif->len;c++){
                                 if(c + pos < 0){
                                         //        (stdout,"-");
@@ -776,7 +789,7 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
                                 }
                         }
 
-                }
+                        }*/
                 //fprintf(stdout, "\n");
         }
         //fprintf(stdout, "\n");
@@ -1505,7 +1518,7 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
 
         /* all pairwise comparisons... */
 
-        limit = MACRO_MIN(250, m->num_items);
+        limit = m->num_items;
         best_i = -1;
         best_j = -1;
 
@@ -1516,7 +1529,8 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                         for(j = i+1; j <limit;j++){
                                 if(m->plist[j]){
                                         b = m->plist[j];
-                                        allowed_overlap = MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);
+
+                                        allowed_overlap =  set_overlap(a->len, b->len);
                                         RUN(motif_dyn_programming(fhmm, a->freq_matrix, b->freq_matrix, a->len, b->len,allowed_overlap));
                                         score = fhmm->F_matrix[a->len][b->len];
 
@@ -1533,7 +1547,9 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         if(best_i != -1 || best_j != -1){
                 a = m->plist[best_i];
                 b = m->plist[best_j];
-                allowed_overlap =  MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);
+
+                allowed_overlap =  set_overlap(a->len, b->len);
+
                 RUNP(rand_freq_matrix = galloc(rand_freq_matrix, a->len, fhmm->L, 0.0));
                 for(i = 0; i < a->len;i++){
                         for(j = 0; j < fhmm->L;j++){
@@ -1545,7 +1561,8 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                 for(j = 0; j < num_random;j++){
                         RUN(randomize_freq_matrix(rand_freq_matrix, a->len,fhmm->L));
 
-                        allowed_overlap = MACRO_MIN(a->len, b->len);
+
+                        allowed_overlap =  set_overlap(a->len, b->len);
                         RUN(motif_dyn_programming(fhmm,rand_freq_matrix,b->freq_matrix, a->len, b->len,allowed_overlap));
                         background_scores[j] = fhmm->F_matrix[a->len][b->len];
                 }
@@ -1573,10 +1590,10 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
 
                 MFREE(background_scores);
 
-                if(i <= 1){
+                if(i <= 100){
                         a = m->plist[best_i];
                         b = m->plist[best_j];
-                        allowed_overlap =  MACRO_MAX(6, MACRO_MIN(a->len, b->len)-2);
+                        allowed_overlap =  set_overlap(a->len, b->len);
                         LOG_MSG("Merging %d %d  allowed over:%d score:%f",best_i, best_j, allowed_overlap,best_score);
                         RUN(motif_dyn_programming(fhmm , a->freq_matrix, b->freq_matrix, a->len, b->len,allowed_overlap));
 
@@ -1601,6 +1618,18 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
 ERROR:
         return FAIL;
 }
+
+
+int set_overlap(int len_a, int len_b)
+{
+        int c;
+        c = MACRO_MAX(len_a, len_b);
+        if(c >= 128){
+                return MACRO_MIN(len_a, len_b);
+        }
+        return MACRO_MAX(6, MACRO_MIN(len_a, len_b)-1);
+}
+
 
 
 
@@ -2073,8 +2102,6 @@ int pick_state(double* a, double* b, int len, int* pick)
 
         return OK;
 }
-
-
 int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len_a, int len_b,int min_aln_len)
 {
         //double** e = fhmm->e;
@@ -2089,15 +2116,30 @@ int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len
         m[0][0] = 0.0f;
 
 
-        for(i = 1; i < len_a+1;i++){
+
+
+        j = len_a - min_aln_len;
+
+        for(i = 1; i < j+1;i++){
                 m[i][0] = 0.0f;
                 t[i][0] = 1;
         }
-        for(j = 1; j < len_b+1;j++){
+
+        for(i = j+1; i < len_a+1;i++){
+                m[i][0] = 100000.0f;
+                t[i][0] = 1;
+        }
+
+        i = len_b - min_aln_len;
+        for(j = 1; j < i+1;j++){
                 m[0][j] = 0.0f;
                 t[0][j] = 2;
         }
 
+        for(j = i+1; j < len_b+1;j++){
+                m[0][j] = 100000.0;
+                t[0][j] = 2;
+        }
 
         for(i = 1; i < len_a+1;i++){
                 for(j = 1; j < len_b+1;j++){
@@ -2127,15 +2169,23 @@ int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len
 
         /* Disallow all alignments with fewer than 6 aligned positions*/
 
-        i =  len_a;
-        for(j = min_aln_len+1; j < len_b+1;j++){
+        i = len_a;
+        for(j = 0; j < min_aln_len ;j++){
+                 m[i][j] = 100000.0;
+                 t[i][j] = 2;
+        }
+        for(j = min_aln_len; j < len_b+1;j++){
                 if(m[i][j-1] < m[i][j]){
                         m[i][j] = m[i][j-1];
                         t[i][j] = 2;
                 }
         }
         j = len_b;
-        for(i = min_aln_len+1; i < len_a+1;i++){
+        for(i = 0; i < min_aln_len;i++){
+                  m[i][j] = 100000.0;
+                  t[i][j] = 1;
+        }
+        for(i = min_aln_len; i < len_a+1;i++){
                 if(m[i-1][j] < m[i][j]){
                         m[i][j] = m[i-1][j];
                         t[i][j] = 1;
@@ -2154,6 +2204,9 @@ int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len
         }
         return OK;
 }
+
+
+
 
 /* just compare - decision what to do later */
 int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* kl_div)

@@ -8,6 +8,8 @@ struct hit{
         int strand;
 };
 
+
+
 struct paraclu_cluster{
         struct hit** hits;
         double** freq_matrix;

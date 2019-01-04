@@ -39,8 +39,12 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
                 sb_out->sequences[i] = NULL;
                 RUNP(sb_out->sequences[i] = alloc_ihmm_seq());
                 snprintf(sb_out->sequences[i]->name, 256, "RANDOM%d", i+1);
+                while (sb_out->sequences[i]->seq_len < 16){
+                        RUN(emit_a_sequence(fhmm, sb_out->sequences[i],&rndstate));
+                }
 
-                emit_a_sequence(fhmm, sb_out->sequences[i],&rndstate  );
+
+
                 s1 += sb_out->sequences[i]->seq_len;
                 s2 += (sb_out->sequences[i]->seq_len * sb_out->sequences[i]->seq_len);
         }

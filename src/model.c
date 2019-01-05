@@ -276,6 +276,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
 
         /* First I need to check what the largest state ID is and see if we have sufficient space allocated in the model.  */
         max_state_ID = -1;
+
         //fprintf(stdout,"%d numseq\n",sb->num_seq );
         for(i = 0; i < sb->num_seq;i++){
                 label = sb->sequences[i]->label_arr[model_index];
@@ -415,7 +416,30 @@ ERROR:
         return FAIL;
 }
 
+int add_pseudocounts_emission(struct ihmm_model* model, double* background, double alpha)
+{
+        int i,j;
+        double sum;
+        ASSERT(model != NULL, "No model.");
 
+
+        for(i = 2; i < model->num_states;i++){
+                sum = 0.0;
+                for(j = 0; j < model->L;j++){
+                        sum += model->emission_counts[j][i];
+                }
+                if(sum){
+                        for(j = 0; j < model->L;j++){
+                                model->emission_counts[j][i] += alpha * background[j];
+                        }
+                }
+
+        }
+        return OK;
+ERROR:
+        return FAIL;
+
+}
 
 int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index)
 {

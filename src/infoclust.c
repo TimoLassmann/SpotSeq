@@ -272,6 +272,7 @@ int run_infoclust(struct parameters* param)
                                         }
                                         RUN(add_hit_locations(sa,p));
                                         RUN(add_motif_count_matrix_based_on_hits(sb, p));
+                                        //em_algorithm(p->count_matrix,p->len,sb->L , sb_temp);
 
                                         RUN(calculate_information_content(p->freq_matrix, fhmm->background, p->len, fhmm->L, &p->total));
                                         RUN(calculate_log_likelihood_based_on_hits(fhmm_log,sb,p,sa,sb_temp));
@@ -306,7 +307,7 @@ int run_infoclust(struct parameters* param)
 
         for(i = 0; i < m->num_items;i++){
                 if(m->plist[i]){
-                        em_algorithm(m->plist[i]->count_matrix,m->plist[i]->len,sb->L , sb_temp);
+                        // em_algorithm(m->plist[i]->count_matrix,m->plist[i]->len,sb->L , sb_temp);
                 }
         }
 
@@ -1514,8 +1515,6 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
         int num_random = 10000;
         int limit;
 
-
-
         /* all pairwise comparisons... */
 
         limit = m->num_items;
@@ -1627,7 +1626,7 @@ int set_overlap(int len_a, int len_b)
         if(c >= 128){
                 return MACRO_MIN(len_a, len_b);
         }
-        return MACRO_MAX(6, MACRO_MIN(len_a, len_b)-1);
+        return MACRO_MAX(6, MACRO_MIN(len_a, len_b)-2);
 }
 
 

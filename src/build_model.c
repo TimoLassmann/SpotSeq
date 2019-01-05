@@ -67,11 +67,11 @@ int main (int argc, char *argv[])
         param->num_start_states = 0;
         param->local = 0;
         param->rev = 0;
-        param->num_iter = 1000;
+        param->num_iter = 2000;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
-        param->num_models = 10;
+        param->num_models = 3;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},

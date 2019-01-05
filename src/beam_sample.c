@@ -94,6 +94,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                                 //LOG_MSG("fill counts");
                                 RUN(fill_counts(model_bag->models[i], sb,i));
+                                RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);

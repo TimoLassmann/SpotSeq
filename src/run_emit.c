@@ -19,6 +19,26 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
         }else{
                 rk_randomseed(&rndstate);
         }
+        /*double test[4];
+
+
+        for(i =0; i < 1000;i++){
+                sum = 0.0;
+                for(j = 0; j < 4;j++){
+                        test[j] = rk_gamma(&rndstate, (double)(i+1) / 100.0, 1.0);
+                        sum += test[j];
+                }
+                for(j = 0; j < 4;j++){
+                        test[j] /= sum;
+                        fprintf(stdout,"%f\t",test[j]);
+                }
+                fprintf(stdout,"%f\n", (double)(i+1) / 100.0);
+
+        }
+        exit(1);*/
+
+
+
 
 
         MMALLOC(sb_out,sizeof(struct seq_buffer));
@@ -29,7 +49,7 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
         sb_out->L = fhmm->L;
 
         sb_out->background = NULL;
-        MMALLOC(sb_out->background,sizeof(float) * sb_out->L );
+        MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
 
         MMALLOC(sb_out->sequences, sizeof(struct ihmm_sequence*) *sb_out->malloc_num );
 
@@ -129,7 +149,7 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
 
 
 
-        LOG_MSG("Mean length: %f stdev: %f",s1,s2);
+        LOG_MSG("Mean length: %f stdev: %f L:%d",s1,s2, sb_in->L);
 
         /*for(j = 0; j < 10;j++){
                 s1_t = 0.0;
@@ -155,7 +175,7 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         sb_out->L = sb_in->L;
 
         sb_out->background = NULL;
-        MMALLOC(sb_out->background,sizeof(float) * sb_out->L );
+        MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
         for(i = 0;i < sb_out->L;i++){
                 sb_out->background[i] = sb_in->background[i];
                 //fprintf(stdout,"%d %f",i,sb_out->background[i]);
@@ -174,12 +194,21 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
 
 
                 snprintf(sb_out->sequences[i]->name, 256, "RANDOM%d", i+1);
-                sb_out->sequences[i]->seq_len = rk_normal(&rndstate, s1,s2);
+                sb_out->sequences[i]->seq_len  = 0;
+
+                while(sb_out->sequences[i]->seq_len  < 16){
+                        sb_out->sequences[i]->seq_len = rk_normal(&rndstate, s1,s2);
+                }
+
+
                 if( sb_out->sequences[i]->seq_len > sb_out->max_len){
                         sb_out->max_len = sb_out->sequences[i]->seq_len;
                 }
                 while(sb_out->sequences[i]->malloc_len <= sb_out->sequences[i]->seq_len){
                         RUN(realloc_ihmm_seq(sb_out->sequences[i]));
+                }
+                if(sb_out->sequences[i]->malloc_len ==  sb_out->sequences[i]->seq_len){
+                        fprintf(stdout," %d %d \n",sb_out->sequences[i]->malloc_len, sb_out->sequences[i]->seq_len );
                 }
 
                 for(j = 0;j < sb_out->sequences[i]->seq_len;j++){

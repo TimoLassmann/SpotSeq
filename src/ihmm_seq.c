@@ -242,6 +242,8 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         if(mode == IHMM_SEQ_READ_ALL){
                 gfree(label);
         }
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
         gfree(name);
         gfree(seq);
         return sb;

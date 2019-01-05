@@ -61,7 +61,6 @@ extern void free_model_bag(struct model_bag* b);
 
 
 extern struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed);
-extern int clear_counts(struct ihmm_model* ihmm);
 extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 
@@ -90,8 +89,9 @@ int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int nu
 /* Initialize number of states.  */
 extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K);
 /* Fill counts from sequences  */
+extern int clear_counts(struct ihmm_model* ihmm);
 extern int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index);
-
+extern int add_pseudocounts_emission(struct ihmm_model* model, double* background, double alpha);
 //extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb);
 extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index);
 

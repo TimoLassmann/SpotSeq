@@ -166,13 +166,19 @@ int main (int argc, char *argv[])
                 RUNP(sb_back = load_sequences(param->background_sequences));
                 LOG_MSG("Read %d sequences.",sb->num_seq);
                 RUN(get_res_counts(sb_back, fhmm->background));
-        }
+                }
 
         double sum = 0;
         for(i =0; i < sb->L;i++){
                 sum += fhmm->background[i];
-                fprintf(stdout,"%d: %f\n", i,fhmm->background[i]);
+                //fprintf(stdout,"%d: %f\n", i,scaledprob2prob( fhmm->background[i]));
         }
+
+        //for(i =0; i < sb->L;i++){
+        //        fhmm->background[i]/=sum;
+        //        fprintf(stdout,"%d: %f\n", i,fhmm->background[i]);
+        //}
+
 
         for(i =0; i < sb->L;i++){
                 fhmm->background[i] = prob2scaledprob(fhmm->background[i] / sum);

@@ -1,6 +1,6 @@
 #include "hmm_conversion.h"
 
-static int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
+int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
@@ -15,7 +15,6 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
         // delete old tree...
-
         if(ft->root){
                 free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
@@ -397,7 +396,6 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                                 }
                         }
                 }
-
         }
 
         for(i = 0; i < local_num_states;i++){
@@ -418,11 +416,9 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
                 sum = 0;
                 for(j = 0;j < local_num_states;j++){
-
                         s2_t[i][j] = sqrt(  ((double) iterations * s2_t[i][j] - s1_t[i][j] * s1_t[i][j])/ ((double) iterations * ((double) iterations -1.0)));
                         s1_t[i][j] = s1_t[i][j] / (double) iterations;
                         sum+= s1_t[i][j];
-
                         //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                 }
                 if(sum){
@@ -485,9 +481,6 @@ int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
 
                 RUNP(model_bag->finite_models[miter] = build_finite_hmm_from_infinite_hmm(model_bag->models[miter]));
         }
-
-
-
         return OK;
 ERROR:
         return FAIL;
@@ -515,9 +508,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
-
         /* first index is state * letter ; second is sample (max = 100) */
-
         RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
         RUNP(s2_e = galloc(s2_e, model->num_states, model->L, 0.0));
 
@@ -541,7 +532,7 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
                         }
                 }
         }else{
-                for( iter=  0;iter < iterations;iter++){
+                for(iter = 0;iter < iterations;iter++){
                         RUN(fill_fast_transitions_only_matrices(model,ft));
                         for(i = 0;i < model->num_states;i++){
                                 for(c = 0; c < model->L;c++){
@@ -605,7 +596,6 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
         free_ihmm_model(model);
         return OK;
 ERROR:
-
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
         return FAIL;
@@ -613,8 +603,6 @@ ERROR:
 
 int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model)
 {
-
-
         int i,j;
         double sum = 0.0;
         ASSERT(ft != NULL, "No parameters");

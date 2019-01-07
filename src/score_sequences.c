@@ -151,9 +151,6 @@ int main (int argc, char *argv[])
         LOG_MSG("Loading sequences.");
         RUNP(sb = load_sequences(param->in_sequences));
         LOG_MSG("Read %d sequences.",sb->num_seq);
-
-
-
         /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
 
         for(i =0; i < sb->L;i++){
@@ -166,7 +163,7 @@ int main (int argc, char *argv[])
                 RUNP(sb_back = load_sequences(param->background_sequences));
                 LOG_MSG("Read %d sequences.",sb->num_seq);
                 RUN(get_res_counts(sb_back, fhmm->background));
-                }
+        }
 
         double sum = 0;
         for(i =0; i < sb->L;i++){
@@ -184,11 +181,8 @@ int main (int argc, char *argv[])
                 fhmm->background[i] = prob2scaledprob(fhmm->background[i] / sum);
         }
 
-
        /* start threadpool  */
         if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
-
-
 
         /* allocate data for threads; */
         RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
@@ -204,7 +198,6 @@ int main (int argc, char *argv[])
 
         if(param->summary_file){
                 double s1,s2;
-
                 s1 = 0.0;
                 s2 = 0.0;
 
@@ -213,7 +206,6 @@ int main (int argc, char *argv[])
                         s2 += sb->sequences[i]->score * sb->sequences[i]->score;
                 }
 
-
                 s2 = sqrt(((double) sb->num_seq * s2 - s1 * s1)/ ((double) sb->num_seq * ((double)sb->num_seq -1.0)));
                 s1 = s1 / (double) sb->num_seq;
 
@@ -221,7 +213,6 @@ int main (int argc, char *argv[])
                 if(!my_file_exists(param->summary_file)){
                         RUNP(fptr = fopen(param->summary_file, "w"));
                         fprintf(fptr,"Model,SequenceFile,Mean,Stdev\n");
-
                 }else{
                         RUNP(fptr = fopen(param->summary_file, "a"));
                 }

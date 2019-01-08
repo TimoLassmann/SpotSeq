@@ -356,6 +356,53 @@ ERROR:
         return FAIL;
 }
 
+int remove_state_for_ploting(struct fhmm*fhmm, int state)
+{
+        int i,j;
+        int a,b;
+        ASSERT(fhmm != NULL, "No model");
+
+        double** tmp_trans = NULL;
+        double** tmp_emit = NULL;
+
+        RUNP(tmp_trans = galloc(tmp_trans,fhmm->K-1, fhmm->K-1, 0.0));
+        RUNP(tmp_emit = galloc(tmp_emit,fhmm->K-1, fhmm->L, 0.0));
+        a = 0;
+        for(i = 0; i < fhmm->K;i++){
+                if(i != state){
+                        b = 0;
+                        for(j = 0; j < fhmm->K;j++){
+                                if(j != state){
+                                        tmp_trans[a][b] = fhmm->t[i][j];
+                                        b++;
+                                }
+
+                        }
+                        a++;
+                }
+
+        }
+         a = 0;
+        for(i = 0; i < fhmm->K;i++){
+                if(i != state){
+                        for(j = 0; j < fhmm->L;j++){
+                                tmp_emit[a][j] = fhmm->e[i][j];
+                        }
+                        a++;
+                }
+
+        }
+        gfree(fhmm->e);
+        gfree(fhmm->t);
+        fhmm->e = tmp_emit;
+        fhmm->t= tmp_trans;
+        fhmm->K = fhmm->K -1;
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int convert_fhmm_scaled_to_prob(struct fhmm* fhmm)
 {
         int i,j;
@@ -406,9 +453,9 @@ int convert_fhmm_log_to_prob_for_sampling(struct fhmm* fhmm)
         }
 
 
-        //for(i = 1; i < fhmm->L;i++){
-        //        fhmm->background[i] += fhmm->background[i-1];
-        //}
+        for(i = 1; i < fhmm->L;i++){
+                fhmm->background[i] += fhmm->background[i-1];
+        }
 
         /* Step one convert log probabilities */
         for(i = 0;i < fhmm->K;i++){

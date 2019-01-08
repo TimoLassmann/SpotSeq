@@ -36,6 +36,9 @@ typedef struct {
         double score;
 } dpath_t;
 
+
+extern int prune_graph_brute_force(double** t, int K,float gamma);
+extern int prune_graph_naive(double** t, int K,float gamma);
 extern graph_t* alloc_graph(void);
 extern void free_graph(graph_t* g);
 

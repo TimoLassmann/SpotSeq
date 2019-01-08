@@ -212,7 +212,32 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
         dpath_t* p = NULL;
 
         dpath_t** path_list = NULL;
+
+        int* state_count = NULL;
         /* check if incoming edges are skewed towards one state */
+
+        MMALLOC(state_count, sizeof(int)* fhmm->K);
+
+        c = 1;
+        /* recursively removing states...  */
+        while(c){
+                c = 0;
+                for( i = 0;i < fhmm->K;i++){
+                        state_count[i] = 0;
+                        for(j = 0;  j< fhmm->L;j++){
+                                state_count[i] += model->emission_counts[j][i];
+                        }
+                }
+                for(i = 0;i < fhmm->K;i++){
+                        //fprintf(stdout,"%d\t%d\t%f\n",i,state_count[i],(double)state_count[i] / sum);
+                        if(state_count[i] < 5 && i != IHMM_START_STATE && i != IHMM_END_STATE){
+                                LOG_MSG("Removing state: %d",i);
+                                RUN(remove_state_for_ploting(fhmm, i));
+                                c = 1;
+                        }
+                }
+                //fprintf(stdout,"\n");
+        }
 
 
         RUNP(g = alloc_graph());
@@ -223,11 +248,14 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
         /* add edges */
         for(i =0; i < fhmm->K;i++){
                 for(j =0; j < fhmm->K;j++){
-                        if(fhmm->t[i][j] >= 0.7){
+                        if(fhmm->t[i][j] < param->edge_threshold){
+                                //fhmm->t[i][j] = -INFINITY;
                                 //add_edge(g, i, j,1.0- fhmm->t[i][j]);
                         }
                 }
         }
+        RUN(prune_graph_naive(fhmm->t, fhmm->K, 0.5));
+        //RUN(prune_graph_brute_force(fhmm->t, fhmm->K, 0.5));
 
         for(j =0; j < fhmm->K;j++){
                 sum = 0.0;
@@ -389,15 +417,17 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
 
                 if(p->len){
                         count_mat = galloc(count_mat,p->len,fhmm->L,0);
+                        b = 0;
                         for(j = 0;j < p->len;j++){
                                 LOG_MSG("Making motif%d: %d ",node_merge[p->path[j]],p->path[j]);
                                 for(a = 0; a < model->L;a++){
                                         count_mat[j][a] = model->emission_counts[a][p->path[j]]+1;
+                                        b += count_mat[j][a];
                                 }
                         }
                         snprintf(buffer, BUFFER_LEN, "test_%d.png", node_merge[p->path[0]]);
                         make_logo(count_mat, p->len, model->L,buffer);
-                        fprintf(f_ptr,"State%d [image=\"%s\", label=\"\"];\n",node_merge[p->path[0]], buffer);
+                        fprintf(f_ptr,"State%d [image=\"%s\", label=\"%d\"];\n",node_merge[p->path[0]], buffer, b);
 
                         gfree(count_mat);
                         count_mat = NULL;
@@ -425,7 +455,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
 
                         snprintf(buffer, BUFFER_LEN, "test_%d.png", node_merge[i]);
                         make_logo(count_mat, 1, model->L,buffer);
-                        fprintf(f_ptr,"State%d [image=\"%s\", label=\"\"];\n",node_merge[i], buffer);
+                        fprintf(f_ptr,"State%d [image=\"%s\", label=\"%d\"];\n",node_merge[i], buffer, state_count[node_merge[i]]);
                         gfree(count_mat);
                         count_mat = NULL;
 
@@ -502,7 +532,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
         free_graph(g);
 
         MFREE(node_merge);
-
+        MFREE(state_count);
 
         return OK;
 ERROR:

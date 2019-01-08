@@ -58,6 +58,207 @@ void free_graph(graph_t* g)
         }
 
 }
+
+int prune_graph_brute_force(double** t, int K,float gamma)
+{
+        graph_t *g = NULL;
+        int c,i,j;
+        int a,b;
+        int num_remove;
+        int num_edges;
+        double  connectivity;
+        double connectivity_minus_one;
+        double min_rk;
+
+
+
+        ASSERT(t != NULL, "No matrix!");
+        ASSERT(K > 1, "No graph");
+
+        /* Allocate graph and insert edges.. */
+        RUNP(g = alloc_graph());
+
+        /* add vertices */
+        for(i = 0; i < K;i++){
+                RUN(add_vertex(g,i));
+        }
+
+
+        num_edges = 0;
+        /* add edges */
+        for(i = 0; i < K;i++){
+                for(j = 0; j < K;j++){
+                        if(t[i][j] != -INFINITY){
+                                RUN(add_edge(g, i,j,1.0- t[i][j]));
+                                num_edges++;
+                        }
+                }
+        }
+
+
+        num_remove =  (int)(gamma * (double)(num_edges - (g->vertices_len-1)));
+
+
+        // 2: n ← γ ( |E| − ( |V| − 1))
+        LOG_MSG("Pruning.");
+        LOG_MSG("%d edges.", num_edges);
+        LOG_MSG("will remove %d edges.",num_remove);
+
+        DECLARE_TIMER(t1);
+
+
+
+        //num_removec= 2;
+        for(c = 0; c < num_remove;c++){
+                START_TIMER(t1);
+                RUN(calculate_connectivity(g, &connectivity));
+                connectivity_minus_one = -DBL_MAX;
+                min_rk = DBL_MAX;
+
+                a = -1;
+                b = -1;
+                for(i = 0; i < K;i++){
+                        for(j = 0; j < K;j++){
+                                if(t[i][j] != -INFINITY){
+                                        //LOG_MSG("Working on: %d %d",i,j);
+                                        RUN(remove_edge(g,i,j));
+                                        connectivity_minus_one = 0;
+                                        RUN(calculate_connectivity(g, &connectivity_minus_one ));
+                                        //fprintf(stdout,"edge:%d %f %f (%f)\n",j,connectivity,connectivity_minus_one, connectivity_minus_one / connectivity);
+                                // sort num diff
+                                        if( connectivity_minus_one / connectivity < min_rk){
+                                                min_rk =  connectivity_minus_one / connectivity;
+                                                a = i;
+                                                b = j;
+                                        }
+                                        RUN(add_edge(g, i,j,1.0- t[i][j]));
+
+                                }
+
+                        }
+                        //RUN(progress_bar( (double)(j*i)/ (double) num_edges));
+                }
+                t[a][b] = -INFINITY;
+
+                RUN(remove_edge(g,a,b));
+
+                STOP_TIMER(t1);
+
+                LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
+        }
+
+
+
+
+
+        free_graph(g);
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+int prune_graph_naive(double** t, int K,float gamma)
+{
+        graph_t *g = NULL;
+        int c,i,j;
+        int a,b;
+        int num_remove;
+        int num_edges;
+        double min;
+        int** use_edge = NULL;
+
+
+        ASSERT(t != NULL, "No matrix!");
+        ASSERT(K > 1, "No graph");
+
+
+
+        RUNP(use_edge = galloc(use_edge,K,K,0));
+        /* Allocate graph and insert edges.. */
+        RUNP(g = alloc_graph());
+
+        /* add vertices */
+        for(i = 0; i < K;i++){
+                RUN(add_vertex(g,i));
+        }
+
+
+        num_edges = 0;
+        /* add edges */
+        for(i = 0; i < K;i++){
+                for(j = 0; j < K;j++){
+
+                        if(t[i][j] != -INFINITY){
+                                RUN(add_edge(g, i,j,1.0- t[i][j]));
+                                num_edges++;
+                                use_edge[i][j] = 1;
+                        }else{
+                                use_edge[i][j] = 0;
+                        }
+                }
+        }
+
+
+        num_remove =  (int)(gamma * (double)(num_edges - (g->vertices_len-1)));
+
+            DECLARE_TIMER(t1);
+        // 2: n ← γ ( |E| − ( |V| − 1))
+        LOG_MSG("Pruning.");
+        LOG_MSG("%d edges.", num_edges);
+        LOG_MSG("will remove %d edges.",num_remove);
+        //num_removec= 2;
+        for(c = 0; c < num_remove;c++){
+                START_TIMER(t1);
+
+                a = -1;
+                b = -1;
+                min = DBL_MAX;
+                for(i = 0; i < K;i++){
+                        for(j = 0; j < K;j++){
+                                if(use_edge[i][j]==1){
+
+                                        if (t[i][j] < min){
+                                                min= t[i][j];
+                                                a = i;
+                                                b = j;
+                                        }
+                                }
+                        }
+                }
+                RUN(remove_edge(g,a,b));
+                dijkstra(g, a,b);
+                if(g->vertices[b]->dist == DBL_MAX){
+                        add_edge(g,a,b, 1.0 - t[a][b]);
+                        use_edge[a][b] = 2; /* we mark this edge so we do not attempt to remove it again */
+
+                }else{
+                        use_edge[a][b] = 0;
+                }
+
+                STOP_TIMER(t1);
+
+                LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
+        }
+
+
+        for(i = 0; i < K;i++){
+                for(j = 0; j < K;j++){
+                        if(!use_edge[i][j]){
+                                t[i][j] = 0.0;//-INFINITY;
+                        }
+
+                }
+        }
+
+
+        free_graph(g);
+        gfree(use_edge);
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 /*
   Algorithm 1.
   NA algorithm
@@ -646,9 +847,12 @@ int main () {
 
         RUNP(g = alloc_graph());
 
+        /* add vertices */
         for(i = 0; i < num_nodes;i++){
                 add_vertex(g,i);
         }
+
+
         //for(i = 0; i < num_nodes-1;i++){
         //	for(j = i+1;j < num_nodes;j++){
         //		add_edge(g,i,j,random_int_zero_to_x(100));

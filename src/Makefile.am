@@ -39,6 +39,8 @@ FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
 fast_hmm_param_test_functions.c
 
+KALIGNSOURCE = kalign.h kalign.c 
+
 MODELSOURCE = model.h model.c model_io.c global.h
 
 BEAMSOURCE = beam_sample.h beam_sample.c
@@ -175,7 +177,7 @@ TESTS = dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST d
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -221,7 +223,9 @@ pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 
-
+kalign_ITEST_SOURCES = $(KALIGNSOURCE)
+kalign_ITEST_CPPFLAGS  =    $(AM_CPPFLAGS)  -DITEST
+kalign_ITEST_LDADD = $(MYLIBDIRS)
 
 
 

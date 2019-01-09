@@ -38,7 +38,7 @@ struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int 
                         realloc_ihmm_seq(sb_out->sequences[i]);
                 }
 
-                emit_a_kmer(fhmm, sb_out->sequences[i], start_state,len, &rndstate);
+                RUN(emit_a_kmer(fhmm, sb_out->sequences[i], start_state,len, &rndstate));
         }
 
         return sb_out;
@@ -164,21 +164,10 @@ ERROR:
 
 int emit_a_kmer(struct fhmm* fhmm,  struct ihmm_sequence* s,int state, int len,  rk_state* rndstate)
 {
-        int j,c;
+        int j;
         double r;
 
-        c = 0;
-        while(state != IHMM_END_STATE && c != len ){
-                /* transistion */
-
-                r = rk_double(rndstate);
-
-                for(j = 0; j < fhmm->K;j++){
-                        if(r <= fhmm->t[state][j]){
-                                state = j;
-                                break;
-                        }
-                }
+        while(state != IHMM_END_STATE &&  s->seq_len != len ){
 
                 /* emission */
                 r = rk_double(rndstate);
@@ -197,7 +186,20 @@ int emit_a_kmer(struct fhmm* fhmm,  struct ihmm_sequence* s,int state, int len, 
                         s->malloc_len = s->malloc_len << 1;
                         RUN(realloc_ihmm_seq(s));
                 }
+                /* transistion */
+
+                r = rk_double(rndstate);
+
+                for(j = 0; j < fhmm->K;j++){
+                        if(r <= fhmm->t[state][j]){
+                                state = j;
+                                break;
+                        }
+                }
+
+
         }
+        // LOG_MSG("requested: %d emitted:%d",len, s->seq_len);
 
         return OK;
 ERROR:

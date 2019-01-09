@@ -12,6 +12,7 @@
 
 
 #include "finite_hmm.h"
+extern struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int num,int len,unsigned long seed);
 extern struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num, unsigned long seed);
 extern struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num,unsigned long seed);
 #endif

@@ -33,6 +33,7 @@ randomkit.h \
 randomkit.c
 
 MOTIFREFINE = motif_refinement.h motif_refinement.c
+
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
 FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
@@ -95,7 +96,7 @@ wims_select_SOURCES = \
 select_model.c  $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 
 wims_kmer_SOURCES = \
-kmer_enrichment.c $(SCORESOURCE) $(EMITSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
+kmer_enrichment.c $(KALIGNSOURCE) $(MOTIFREFINE) $(SCORESOURCE) $(EMITSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 
 
 wims_score_SOURCES = \
@@ -172,7 +173,7 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS = dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
@@ -224,15 +225,8 @@ pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 kalign_ITEST_SOURCES = $(KALIGNSOURCE)
-kalign_ITEST_CPPFLAGS  =    $(AM_CPPFLAGS)  -DITEST
+kalign_ITEST_CPPFLAGS = $(AM_CPPFLAGS) -DITEST
 kalign_ITEST_LDADD = $(MYLIBDIRS)
-
-
-
-
-
-
-
 
 
 

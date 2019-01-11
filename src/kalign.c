@@ -157,35 +157,21 @@ char** kalign_align(char** sequences, int numseq)
         for (i = 32;i--;){
                 subm[i] = malloc(sizeof(float) * 32);
                 for (j = 32;j--;){
-                        subm[i][j] = 283.0; //0;//gpe << 1;//-5;// better on Balibase
+                        subm[i][j] = 0.0; //0;//gpe << 1;//-5;// better on Balibase
                 }
         }
 
+        for(i = 0; i < 4;i++){
+                for(j = 0; j < 4;j++){
+                        subm[i][j] = 1;
+                        if(i ==j){
+                                subm[i][j] += 2;
+                        }
 
+                }
 
+        }
 
-        subm[0][0] += 91;
-        subm[0][1] += -114;
-        subm[0][2] += -31;
-        subm[0][3] += -123;
-
-//	C -114  100 -125  -31    0  -43
-        subm[1][0] += -114;
-        subm[1][1] += 100;
-        subm[1][2] += -125;
-        subm[1][3] += -31;
-
-//	G  -31 -125  100 -114    0  -43
-        subm[2][0] += -31;
-        subm[2][1] += -125;
-        subm[2][2] += 100;
-        subm[2][3] += -114;
-
-//	T -123  -31 -114   91    0  -43
-        subm[3][0] += -123;
-        subm[3][1] += -31;
-        subm[3][2] += -114;
-        subm[3][3] += 91;
 
         /*
           104	-95	-95	-113

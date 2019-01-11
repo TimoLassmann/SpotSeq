@@ -198,11 +198,13 @@ int run_plot_ihmm(struct parameters* param)
 
         free_ihmm_model(model);
         free_fast_hmm_param(ft);
+        free_fhmm(fhmm);
 
         return OK;
 ERROR:
         free_fast_hmm_param(ft);
         free_ihmm_model(model);
+        free_fhmm(fhmm);
         return FAIL;
 }
 

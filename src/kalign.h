@@ -5,8 +5,8 @@
 #define SEEK_START 0
 #define SEEK_END 2
 
-#define GPO 217
-#define GPE 39.3
+#define GPO 0.75
+#define GPE 0.25
 #define TGPE  0.0
 
 

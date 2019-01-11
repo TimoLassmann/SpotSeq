@@ -175,11 +175,13 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                 ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
                 label = (int**)hdf5_data->data;
                 hdf5_close_group(hdf5_data);
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
+                //hdf5_close_file(hdf5_data);
+                //hdf5_free(hdf5_data);
         }else{
                 label= NULL;
         }
+        hdf5_close_file(hdf5_data);
+        hdf5_free(hdf5_data);
 
 
         MMALLOC(sb,sizeof(struct seq_buffer));
@@ -242,8 +244,8 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         if(mode == IHMM_SEQ_READ_ALL){
                 gfree(label);
         }
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        //hdf5_close_file(hdf5_data);
+        //hdf5_free(hdf5_data);
         gfree(name);
         gfree(seq);
         return sb;

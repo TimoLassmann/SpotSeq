@@ -1,21 +1,37 @@
 
 #include "motif_refinement.h"
-struct motif* init_motif(int W, int L);
-int copy_motif(struct motif* source,struct motif* target);
-void free_motif(struct motif* m);
-int print_motif(struct motif* m);
+
+
+struct motif_refinement{
+        double** freq_matrix;
+        double** count_matrix;
+        double* background_freq;
+        double* background_counts;
+        int W;
+        int L;
+        double log_likelihood;
+};
+
+
+
+
+
+struct motif_refinement* init_motif_refinement(int W, int L);
+int copy_motif_refinement(struct motif_refinement* source,struct motif_refinement* target);
+void free_motif_refinement(struct motif_refinement* m);
+int print_motif_refinement(struct motif_refinement* m);
 
 
 int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
 {
 
-        struct motif* tmp_motif = NULL;
-        struct motif* best_motif = NULL;
-        struct motif* org_motif = NULL;
+        struct motif_refinement* tmp_motif_refinement = NULL;
+        struct motif_refinement* best_motif_refinement = NULL;
+        struct motif_refinement* org_motif_refinement = NULL;
         struct ihmm_sequence* s = NULL;
         uint8_t* tmp_seq;
         /* initialize - initial lambda is sqtr(N number oif sequences ) / n - number of overlapping kmers  */
-        /* up to 1/ 2W  (2 times width of motif) */
+        /* up to 1/ 2W  (2 times width of motif_refinement) */
 
         int N,n;
 
@@ -38,15 +54,15 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
         double old_likelihood = 0.0;
 
         int i,j,c, offset, iter;
-        RUNP(org_motif = init_motif(W, L));
+        RUNP(org_motif_refinement = init_motif_refinement(W, L));
 
         for(i = 0; i < W;i++){
                 for(j = 0; j < L; j++){
-                        org_motif->count_matrix[i][j] = counts[i][j];
+                        org_motif_refinement->count_matrix[i][j] = counts[i][j];
                 }
         }
-        RUNP(best_motif = init_motif(W, L));
-        RUNP(tmp_motif = init_motif(W, L));
+        RUNP(best_motif_refinement = init_motif_refinement(W, L));
+        RUNP(tmp_motif_refinement = init_motif_refinement(W, L));
 
         N = sb->num_seq;
         n = 0;
@@ -54,37 +70,37 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
         for(i = 0; i < N;i++){
                 s = sb->sequences[i];
                 for(j = 0; j < s->seq_len; j++){
-                        org_motif->background_counts[s->seq[j]]+= 1.0;
+                        org_motif_refinement->background_counts[s->seq[j]]+= 1.0;
                         sum++;
 
                 }
                 n += s->seq_len - W;
         }
-        //print_motif(org_motif);
+        //print_motif_refinement(org_motif_refinement);
         for(j = 0; j < L;j++){
-                org_motif->background_freq[j] = org_motif->background_counts[j] / sum;
+                org_motif_refinement->background_freq[j] = org_motif_refinement->background_counts[j] / sum;
         }
 
         for(i = 0; i < W;i++){
                 sum = 0.0;
                 for(j = 0; j < L;j++){
-                        sum += org_motif->count_matrix[i][j] + (double)N/ 1000000.0 * org_motif->background_freq[j];
+                        sum += org_motif_refinement->count_matrix[i][j] + (double)N/ 1000000.0 * org_motif_refinement->background_freq[j];
                 }
                 for(j = 0; j < L;j++){
-                        org_motif->freq_matrix[i][j] = (org_motif->count_matrix[i][j] + (double)N/ 1000000.0 * org_motif->background_freq[j]) / sum;
+                        org_motif_refinement->freq_matrix[i][j] = (org_motif_refinement->count_matrix[i][j] + (double)N/ 1000000.0 * org_motif_refinement->background_freq[j]) / sum;
                 }
 
         }
 
 
-        print_motif(org_motif);
+        //print_motif_refinement(org_motif_refinement);
 
         start_lambda = sqrt((double)N) / (double)n;
 
 
 
         while (start_lambda <= (1.0 /( 2.0 *(double) W))){
-                LOG_MSG("Testing lambda %f.",  start_lambda);
+                //LOG_MSG("Testing lambda %f.",  start_lambda);
 
                 lambda = start_lambda;
                 likelihood = 0.0;
@@ -104,10 +120,10 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
 
 
                 }
-                fprintf(stdout,"sum:%f n:%d\n", sum, n );
+                //fprintf(stdout,"sum:%f n:%d\n", sum, n );
 
 
-                RUN(copy_motif(org_motif, tmp_motif));
+                RUN(copy_motif_refinement(org_motif_refinement, tmp_motif_refinement));
 
 
                 /* iterations here */
@@ -117,12 +133,12 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
                         lambda_b_u  = 0.0;
                         /* set counts to 0 */
                         for(j = 0; j < L;j++){
-                                tmp_motif->background_counts[j] = 0.0;
+                                tmp_motif_refinement->background_counts[j] = 0.0;
                         }
 
                         for(i = 0; i < W;i++){
                                 for(j = 0; j < L;j++){
-                                        tmp_motif->count_matrix[i][j] = 0.0;
+                                        tmp_motif_refinement->count_matrix[i][j] = 0.0;
                                 }
 
                         }
@@ -141,10 +157,10 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
                                         //score_b = prob2scaledprob(1.0);
                                         tmp_seq = s->seq +j;
                                         for(c = 0; c < W;c++){
-                                                //score_m  += prob2scaledprob(tmp_motif->freq_matrix[c][tmp_seq[c]]);
-                                                //score_b += prob2scaledprob(tmp_motif->background_freq[tmp_seq[c]]);
-                                                score_m = score_m * tmp_motif->freq_matrix[c][tmp_seq[c]];
-                                                score_b = score_b * tmp_motif->background_freq[tmp_seq[c]];
+                                                //score_m  += prob2scaledprob(tmp_motif_refinement->freq_matrix[c][tmp_seq[c]]);
+                                                //score_b += prob2scaledprob(tmp_motif_refinement->background_freq[tmp_seq[c]]);
+                                                score_m = score_m * tmp_motif_refinement->freq_matrix[c][tmp_seq[c]];
+                                                score_b = score_b * tmp_motif_refinement->background_freq[tmp_seq[c]];
 
                                         }
                                         //score_m += prob2scaledprob(lambda);
@@ -183,12 +199,12 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
                                 for(j = 0; j < s->seq_len- W; j++){
                                         tmp_seq = s->seq +j;
                                         for(c = 0; c < W;c++){
-                                               tmp_motif->count_matrix[c][tmp_seq[c]] += s->u[j];
-                                               tmp_motif->background_counts[tmp_seq[c]] += (1.0 - s->u[j]);
+                                               tmp_motif_refinement->count_matrix[c][tmp_seq[c]] += s->u[j];
+                                               tmp_motif_refinement->background_counts[tmp_seq[c]] += (1.0 - s->u[j]);
                                         }
                                 }
 
-                                //print_motif(tmp_motif);
+                                //print_motif_refinement(tmp_motif_refinement);
                                 //exit(0);
 
                                 //if(iter == 10){
@@ -225,43 +241,43 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
                         /* update counts */
                         sum = 0.0;
                         for(j = 0; j < L;j++){
-                                sum += tmp_motif->background_counts[j];
+                                sum += tmp_motif_refinement->background_counts[j];
                         }
 
                         for(j = 0; j < L;j++){
-                                tmp_motif->background_freq[j] = tmp_motif->background_counts[j] / sum;
+                                tmp_motif_refinement->background_freq[j] = tmp_motif_refinement->background_counts[j] / sum;
                         }
 
                         for(i = 0; i < W;i++){
                                 sum = 0.0;
                                 for(j = 0; j < L;j++){
-                                        sum += tmp_motif->count_matrix[i][j]  + (double)N/ 1000000.0 *  tmp_motif->background_freq[j];
+                                        sum += tmp_motif_refinement->count_matrix[i][j]  + (double)N/ 1000000.0 *  tmp_motif_refinement->background_freq[j];
                                 }
                                 for(j = 0; j < L;j++){
-                                        tmp_motif->freq_matrix[i][j] = (tmp_motif->count_matrix[i][j]+ (double)N/ 1000000.0 *  tmp_motif->background_freq[j]) / sum;
-                                        //tmp_motif->freq_matrix[i][j] = (tmp_motif->count_matrix[i][j]+ tmp_motif->background_freq[j])/ sum;//+ tmp_motif->background_freq[j]) / sum;
+                                        tmp_motif_refinement->freq_matrix[i][j] = (tmp_motif_refinement->count_matrix[i][j]+ (double)N/ 1000000.0 *  tmp_motif_refinement->background_freq[j]) / sum;
+                                        //tmp_motif_refinement->freq_matrix[i][j] = (tmp_motif_refinement->count_matrix[i][j]+ tmp_motif_refinement->background_freq[j])/ sum;//+ tmp_motif_refinement->background_freq[j]) / sum;
                                 }
 
 
                         }
 
 
-                        //print_motif(tmp_motif);
+                        //print_motif_refinement(tmp_motif_refinement);
 
                         //lambda_u = lambda_u / (double)n;
                         //lambda_b_u  = lambda_b_u / (double)n;
 
                         lambda = lambda_u /  (double)n;//(lambda_u +lambda_b_u   );
-                        LOG_MSG("iteration %d ll:%f lambde_u %f %f  new lambda = %f ",iter,likelihood, lambda_u ,lambda_b_u,lambda);
-                        //print_motiflambda_u(tmp_motif);
+                        //LOG_MSG("iteration %d ll:%f lambde_u %f %f  new lambda = %f ",iter,likelihood, lambda_u ,lambda_b_u,lambda);
+                        //print_motif_refinementlambda_u(tmp_motif_refinement);
                         //LOG_MSG("NEWL = %f",lambda );
                         //fprintf(st)
                 }
-                tmp_motif->log_likelihood = likelihood;
-                LOG_MSG("ll:%f (%d)",likelihood, iter);
-                if(best_motif->log_likelihood  <  tmp_motif->log_likelihood){
+                tmp_motif_refinement->log_likelihood = likelihood;
+                //LOG_MSG("ll:%f (%d)",likelihood, iter);
+                if(best_motif_refinement->log_likelihood  <  tmp_motif_refinement->log_likelihood){
 
-                        copy_motif(tmp_motif, best_motif);
+                        copy_motif_refinement(tmp_motif_refinement, best_motif_refinement);
                 }
 
                 start_lambda *= 2.0;
@@ -271,20 +287,22 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
 
 
 
-        //print_motif(org_motif);
+        print_motif_refinement(org_motif_refinement);
 
-        print_motif(best_motif);
+        //
+
+        print_motif_refinement(best_motif_refinement);
 
 
         for(i = 0; i < W;i++){
                 for(j = 0; j < L; j++){
-                        counts[i][j] = best_motif->count_matrix[i][j];
+                        counts[i][j] = best_motif_refinement->count_matrix[i][j];
                 }
         }
 
-        free_motif(org_motif);
-        free_motif(best_motif);
-        free_motif(tmp_motif);
+        free_motif_refinement(org_motif_refinement);
+        free_motif_refinement(best_motif_refinement);
+        free_motif_refinement(tmp_motif_refinement);
 
         /* step 0 - estimate z_ij - store in sb->u  */
 
@@ -297,12 +315,12 @@ ERROR:
 }
 
 
-struct motif* init_motif(int W, int L)
+struct motif_refinement* init_motif_refinement(int W, int L)
 {
 
-        struct motif* m = NULL;
+        struct motif_refinement* m = NULL;
         int i;
-        MMALLOC(m, sizeof(struct motif));
+        MMALLOC(m, sizeof(struct motif_refinement));
         m->L = L;
         m->W = W;
         m->log_likelihood = -INFINITY;
@@ -324,41 +342,42 @@ struct motif* init_motif(int W, int L)
 
         return m;
 ERROR:
-        free_motif(m);
+        free_motif_refinement(m);
         return NULL;
 }
 
-int print_motif(struct motif* m)
+int print_motif_refinement(struct motif_refinement* m)
 {
         int i,j;
         double sum = 0.0;
         fprintf(stdout,"Log-likelihood:%f\n", m->log_likelihood);
         fprintf(stdout,"Background\n");
 
-        for(j = 0; j < m->L;j++){
-                fprintf(stdout,"%3.3f\t", m->background_counts[j]);
 
-        }
         for(j = 0; j < m->L;j++){
-
                 fprintf(stdout,"%3.3f\t",m->background_freq[j]);
         }
+        for(j = 0; j < m->L;j++){
+                fprintf(stdout,"%3.3f\t", m->background_counts[j]);
+        }
+
         fprintf(stdout,"\n");
         fprintf(stdout,"\n");
 
         for(i = 0; i < m->W;i++){
+                for(j = 0; j < m->L;j++){
+
+                        fprintf(stdout,"%3.3f\t",m->freq_matrix[i][j]);
+                }
+                fprintf(stdout,"\t");
                 sum = 0.0;
                 for(j = 0; j < m->L;j++){
                         fprintf(stdout,"%3.3f\t",m->count_matrix[i][j]);
                         sum += m->count_matrix[i][j];
 
                 }
-                fprintf(stdout,"SUM:%3.3f\t",sum);
-                for(j = 0; j < m->L;j++){
+                fprintf(stdout,"SUM:%3.3f\n",sum);
 
-                        fprintf(stdout,"%3.3f\t",m->freq_matrix[i][j]);
-                }
-                fprintf(stdout,"\n");
         }
         fprintf(stdout,"\n");
 
@@ -366,11 +385,11 @@ int print_motif(struct motif* m)
 
 }
 
-int copy_motif(struct motif* source,struct motif* target)
+int copy_motif_refinement(struct motif_refinement* source,struct motif_refinement* target)
 {
         int i,j,L,W;
         ASSERT(source->L == target->L , "Different alphabet len!");
-        ASSERT(source->W == target->W , "Different motif len!");
+        ASSERT(source->W == target->W , "Different motif_refinement len!");
         L = source->L;
         W = source->W;
         target->log_likelihood = source->log_likelihood;
@@ -392,7 +411,7 @@ ERROR:
         return FAIL;
 }
 
-void free_motif(struct motif* m)
+void free_motif_refinement(struct motif_refinement* m)
 {
         if(m){
                 if(m->count_matrix){

@@ -1117,14 +1117,12 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                         a = list[j]->from;
                         b = list[j]->to;
                         matrix[i][b] += matrix[i-1][a];
-
                 }
                 sum = 0.0;
 
                 for(j = 0; j < K;j++){
                         matrix[i][j] *=  emission[j];
                         sum += matrix[i][j];
-
                 }
                 for(j = 0; j < K;j++){
                         matrix[i][j] /= sum;

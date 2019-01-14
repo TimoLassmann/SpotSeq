@@ -1,6 +1,14 @@
 #ifndef FASTER_HMM_PARAM_H
 #define FASTER_HMM_PARAM_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "tldevel.h"
+#include "distributions.h"
+#include "rb.h"
+#include "global.h"
 /* The idea here is to use libavl's red-black tree implementations to:
 
 1) insert sort transition parameters as they are sampled
@@ -22,7 +30,10 @@ struct faster_t_item{
 
 struct faster_hmm_param{
         struct faster_t_item** infinity;
-        struct rbtree_root* root;
+        struct rb_table* root;
+
+        struct rb_table* u;
+        struct rb_table* boundary;
         double** transition;
         double** emission;
         double* background_emission;
@@ -40,11 +51,16 @@ struct faster_param_bag{
         int num_models;
 };
 
+
+extern int explore_new_states(struct faster_hmm_param*ft, double min_u,int* num_states,double* beta, double alpha, double gamma, rk_state* rndstate);
+
 extern struct faster_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
 extern void free_faster_param_bag(struct faster_param_bag* b);
 
+extern int purge_rb_trees(struct faster_hmm_param*ft);
+extern int add_emission_to_frhmmp(struct faster_hmm_param* ft, double** e, int states);
+extern int add_transitions_to_frhmmp(struct faster_hmm_param* ft, double** t, int states);
 
-extern struct faster_hmm_param* alloc_faster_hmm_param(int k,int L);
-extern void free_faster_hmm_param(struct faster_hmm_param* ft);
+
 
 #endif

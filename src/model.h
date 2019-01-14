@@ -105,5 +105,7 @@ extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 extern int print_counts(struct ihmm_model* ihmm);
 extern int print_model_parameters(struct ihmm_model* ihmm);
 
-
+/* sample transitions / emissions */
+extern double** sample_emission(double**e,struct ihmm_model* model);
+extern double** sample_transistion(double**t,struct ihmm_model* model);
 #endif

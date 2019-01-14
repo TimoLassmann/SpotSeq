@@ -42,7 +42,7 @@ fast_hmm_param_test_functions.c
 
 KALIGNSOURCE = kalign.h kalign.c 
 
-MODELSOURCE = model.h model.c model_io.c global.h
+MODELSOURCE = model.h model.c model_io.c global.h sample_model.c 
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 

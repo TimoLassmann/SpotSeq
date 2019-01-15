@@ -30,24 +30,12 @@ struct libavl_allocator rb_allocator_tldevel =
 
 static struct faster_hmm_param* alloc_faster_hmm_param(int k, int L);
 static void free_faster_hmm_param(struct faster_hmm_param* ft);
-static void free_faster_transition_node(void* item,void *param);
+
 /* alloc functions...  done */
 
 
 /* exploring new states  */
-int get_max_to_infty_transition(struct faster_hmm_param*ft,double* max);
-int add_state(struct faster_hmm_param* ft,int* num_states,double* beta, double alpha, double gamma, rk_state* rndstate);
 
-/* setting u */
-
-int sample_u_for_each_residue(struct faster_hmm_param*ft, int* label, int len)
-{
-        int i,j;
-        double x;
-        was here - need to get random number for each transition based on previous label, insert into u tree.
-        x = ft->transition[IHMM_START_STATE][label[0]];
-        return OK;
-}
 
 
 int purge_rb_trees(struct faster_hmm_param*ft)
@@ -133,7 +121,7 @@ struct faster_hmm_param* alloc_faster_hmm_param(int k, int L)
 
         ft->root = NULL;
         RUNP(ft->root = rb_create(compare_transition, NULL,&rb_allocator_tldevel));
-         RUNP(ft->u = rb_create(compare_transition, NULL,&rb_allocator_tldevel));
+        RUNP(ft->u = rb_create(compare_transition, NULL,&rb_allocator_tldevel));
         RUNP(ft->boundary = rb_create(compare_ab, NULL,&rb_allocator_tldevel));
 
         MMALLOC(ft->background_emission, sizeof(double) * L  );
@@ -142,8 +130,8 @@ struct faster_hmm_param* alloc_faster_hmm_param(int k, int L)
                 ft->background_emission[i] = 0.0;
         }
 
-        //RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
-        //RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
+        RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
+        RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
 
         MMALLOC(ft->infinity, sizeof(struct faster_t_item*) * ft->alloc_num_states);
 
@@ -161,22 +149,6 @@ ERROR:
 }
 
 
-/* Master function to explore new states  */
-
-int explore_new_states(struct faster_hmm_param*ft, double min_u,int* num_states,double* beta, double alpha, double gamma, rk_state* rndstate)
-{
-        double max;
-
-        RUN( get_max_to_infty_transition(ft, &max));
-        while(max >= min_u && *num_states < MAX_NUM_STATES && max > 0.0 ){//}sb->max_len){
-                RUN(add_state(ft, num_states,beta,alpha,gamma,rndstate));
-                RUN( get_max_to_infty_transition(ft, &max));
-
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 /* Function to add states  */
 
@@ -441,6 +413,12 @@ void free_faster_hmm_param(struct faster_hmm_param* ft)
                 if(ft->root){
                         rb_destroy(ft->root,  free_faster_transition_node);
                 }
+                if(ft->u){
+                        rb_destroy(ft->u,  free_faster_transition_node);
+                }
+                if(ft->boundary){
+                        rb_destroy(ft->boundary,  free_faster_transition_node);
+                }
                 if(ft->infinity){
                         for(i = 0; i < ft->alloc_num_states;i++){
                                 MFREE(ft->infinity[i]);
@@ -465,24 +443,25 @@ int compare_ab(const void *pa, const void *pb, void *param)
 {
         const struct faster_t_item *a = pa;
         const struct faster_t_item *b = pb;
-        int fa,fb;
+        int i,j;
 
 
-        fa = a->a;      /* from a node name  */
-        fb = b->a;       /* from b node name  */
-        if(fa < fb){
+        i = a->a;      /* from a node name  */
+        j = b->a;       /* from b node name  */
+        if(i < j){
                 return -1;
-        }else if(fa > fb){
+        }else if(i> j){
                 return 1;
         }else{ /* if transition probability and from index is equal   compare to index */
-                int ta,tb;
-                ta = a->b;
-                tb = b->b;
-                if(ta < tb){
+
+                i = a->b;
+                j = b->b;
+                if(i < j){
                         return -1;
-                }else if(ta > tb){
+                }else if(i > j){
                         return 1;
                 }else{
+                        LOG_MSG("%d,%d\t%d,%d\n",a->a,a->b,b->a,b->b);
                         LOG_MSG("a == b");
                         return 0;
                 }
@@ -534,30 +513,3 @@ void free_faster_transition_node(void* item,void *param)
 }
 
 
-
-int main (int argc,char * argv[])
-{
-        fprintf(stdout,"Hello world\n");
-        struct faster_param_bag*fb = NULL;
-        int* start_states = NULL;
-        int num_start_states = 10;
-        int i;
-
-
-        MMALLOC(start_states, sizeof(int) * num_start_states);
-
-        for(i = 0; i < num_start_states;i++){
-                start_states[i] = i + 10;
-
-        }
-        RUNP(fb = alloc_faster_param_bag(num_start_states,start_states   ,4));
-
-
-        free_faster_param_bag(fb);
-
-        MFREE(start_states);
-        return EXIT_SUCCESS;
-ERROR:
-        return EXIT_FAILURE;
-
-}

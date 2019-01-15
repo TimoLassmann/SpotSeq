@@ -36,6 +36,11 @@ MOTIFREFINE = motif_refinement.h motif_refinement.c
 
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
+FASTERHMMSOURCES = faster_hmm_param_entry.c \
+faster_hmm_param_entry.h \
+faster_hmm_param.h \
+faster_hmm_param.c
+
 FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
 fast_hmm_param_test_functions.c
@@ -173,17 +178,20 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+#TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST faster_hmm_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
 #libihmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
+faster_hmm_ITEST_SOURCES = $(FASTERHMMSOURCES)  $(FINITEHMM) $(ISEQSOURCE) $(MODELSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)
+faster_hmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)  
+faster_hmm_ITEST_LDADD = $(libihmm_a_LIBADD)
 
 dijkstra_ITEST_SOURCES = $(DIJSTRA_SOURCES)
 dijkstra_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST

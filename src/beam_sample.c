@@ -104,6 +104,12 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
 
                 no_path = 1;
                 while(no_path){
+                        DECLARE_TIMER(T1);
+
+                        START_TIMER(T1);
+
+
+
                         no_path = 0;
                         ft_bag->max_last_state = -1;
                         for(i = 0; i < model_bag->num_models;i++){
@@ -119,6 +125,8 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         RUN(reset_valid_path(sb,model_bag->num_models));
                         RUN(set_u_multi(model_bag, ft_bag, sb));
 
+                        STOP_TIMER(T1);
+                        LOG_MSG("stuff took:%f",GET_TIMING(T1));
                         //RUN(set_u(sb,model,ft, &min_u));
 
                         //exit(0);
@@ -135,6 +143,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
 
                         //LOG_MSG("Iteration %d (%d states) sampling %d ", iter, model->num_states,sb->num_seq);
                         //exit(0);
+                        START_TIMER(T1);
                         //dyn prog + labelling
                         for(i = 0; i < num_threads;i++){
                                 td[i]->ft_bag = ft_bag;
@@ -151,7 +160,8 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 /* } */
                         }
                         thr_pool_wait(pool);
-
+                         STOP_TIMER(T1);
+                        LOG_MSG("dyn took:%f",GET_TIMING(T1));
                         //LOG_MSG("Check labelling after dyn (%d).",iter);
                         //RUN(check_labels(sb,model_bag->num_models ));
                         //LOG_MSG("Done");
@@ -1433,6 +1443,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 len = sb->sequences[i]->seq_len;
 
                 x = ft->transition[IHMM_START_STATE][label[0]];
+
                 //c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
                 //u[0] = rk_beta(&model->rndstate, 1.0, 11) * x;

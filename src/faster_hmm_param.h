@@ -23,10 +23,9 @@ Here I will follow the same strategy but will perform a single linear pass over 
 
 struct faster_t_item{
         double t;
-        uint16_t a;
-        uint16_t b;;
+        uint32_t a;
+        uint32_t b;
 };
-
 
 struct faster_hmm_param{
         struct faster_t_item** infinity;
@@ -44,7 +43,6 @@ struct faster_hmm_param{
         int L;
 };
 
-
 struct faster_param_bag{
         struct faster_hmm_param** fast_params;
         int max_last_state;
@@ -52,15 +50,15 @@ struct faster_param_bag{
 };
 
 
-extern int explore_new_states(struct faster_hmm_param*ft, double min_u,int* num_states,double* beta, double alpha, double gamma, rk_state* rndstate);
-
-extern struct faster_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
+extern void free_faster_transition_node(void* item,void *param);
+extern struct faster_param_bag* alloc_faster_param_bag(int num_models, int* K, int L);
 extern void free_faster_param_bag(struct faster_param_bag* b);
 
 extern int purge_rb_trees(struct faster_hmm_param*ft);
 extern int add_emission_to_frhmmp(struct faster_hmm_param* ft, double** e, int states);
 extern int add_transitions_to_frhmmp(struct faster_hmm_param* ft, double** t, int states);
 
-
+extern int get_max_to_infty_transition(struct faster_hmm_param*ft,double* max);
+extern int add_state(struct faster_hmm_param* ft,int* num_states,double* beta, double alpha, double gamma, rk_state* rndstate);
 
 #endif

@@ -389,8 +389,8 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 
         /* print start stop nodes  */
 
-        fprintf(f_ptr,"State%d [label=Start]\n", 0);
-        fprintf(f_ptr,"State%d [label=End]\n", 1);
+        fprintf(f_ptr,"State%d [label=Start,fontsize=48]\n", 0);
+        fprintf(f_ptr,"State%d [label=End,fontsize=48]\n", 1);
 
         /* I think here I try to figure out which state is used most -> has the
          * highest number of emissions. */
@@ -457,7 +457,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
                                 //       fprintf(stdout,"\t%f afa\n",tmp_sum[j]);
                                 tmp_sum[j] = MACRO_MAX ((int)tmp_sum[j],1);
                         }
-                        fprintf(f_ptr,"State%d [label=<\n",i);
+                        fprintf(f_ptr,"State%d [color=white,label=<\n",i);
 
                         fprintf(f_ptr,"<TABLE CELLPADDING=\"0\" BORDER=\"0\" CELLSPACING=\"0\">\n");
 
@@ -474,9 +474,9 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
                         //}
 
 
-                        fprintf(f_ptr,"<TR>\n");
-                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
-                        fprintf(f_ptr,"</TR>\n");
+                        //fprintf(f_ptr,"<TR>\n");
+                        //fprintf(f_ptr,"<TD BGCOLOR=\"white\"><FONT POINT-SIZE=\"%d\">%d: %d</FONT></TD>\n",12,i,total_counts[i]);
+                        //fprintf(f_ptr,"</TR>\n");
 
 
                         if(fhmm->L == ALPHABET_DNA){
@@ -490,7 +490,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
                                                 }
                                         }
                                         fprintf(f_ptr,"<TR>\n");
-                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",nuc_colors[out_letter],  MACRO_MAX( (int)tmp_sum[out_letter],1),"ACGTN"[out_letter]);
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"lightgray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",nuc_colors[out_letter],  MACRO_MAX( (int)tmp_sum[out_letter],1),"ACGTN"[out_letter]);
                                         fprintf(f_ptr,"</TR>\n");
                                         tmp_sum[out_letter] = -1;
                                 }
@@ -508,7 +508,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 
                                         //for(j = 0; j < ft->L;j++){
                                         fprintf(f_ptr,"<TR>\n");
-                                        fprintf(f_ptr,"<TD BGCOLOR=\"gray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",protein_colors[out_letter],  MACRO_MAX ((int)tmp_sum[out_letter],1),"ACDEFGHIKLMNPQRSTVWY"[out_letter]);
+                                        fprintf(f_ptr,"<TD BGCOLOR=\"lightgray\"><FONT COLOR=\"%s\" POINT-SIZE=\"%d\">%c</FONT></TD>\n",protein_colors[out_letter],  MACRO_MAX ((int)tmp_sum[out_letter],1),"ACDEFGHIKLMNPQRSTVWY"[out_letter]);
                                         fprintf(f_ptr,"</TR>\n");
                                         //}
 
@@ -530,7 +530,8 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
                         if(total_counts[j] >= param->node_count_cutoff){
                         if(fhmm->t[i][j] >= param->edge_threshold ){
                                 RUN(get_color(color_buffer,fhmm->t[i][j], 0.0f,1.0f ));
-                                fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , color_buffer, (int) (fhmm->t[i][j] *10)+1 );
+                                //fprintf(f_ptr,"State%d -> State%d[label=\"%0.2f\",color=\"%s\", penwidth=%d];\n",i,j,  fhmm->t[i][j] , color_buffer, (int) (fhmm->t[i][j] *10)+1 );
+                                fprintf(f_ptr,"State%d -> State%d[penwidth=%d];\n",i,j,5);
                         }
                         }//
 

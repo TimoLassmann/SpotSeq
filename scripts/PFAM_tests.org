@@ -1,0 +1,84 @@
+#+TITLE:  
+#+AUTHOR: Timo Lassmann
+#+EMAIL:  timo.lassmann@telethonkids.org.au
+#+DATE:   2019-01-22
+#+LATEX_CLASS: report
+#+OPTIONS:  toc:nil
+#+OPTIONS: H:4
+#+LATEX_CMD: pdflatex
+* Introduction 
+
+** Script to retrieve full length sequences
+
+   Basic I/O and parameter parsing
+   #+BEGIN_SRC bash -n :tangle get_fl_from_seed.sh :shebang #!/usr/bin/env bash :noweb yes
+     DIR=`pwd`
+     OUTPUT=
+     INPUT=
+
+     function usage()
+     {
+
+         printf "This script will retrieve full length sequences from a PFAM seed alignment.\n\n" ;
+         printf "usage: $0 -i <input PFAM seed alignment (fasta)> -o <output fasta> \n\n" ;
+         exit 1;
+     }
+
+     while getopts i:o:  opt
+     do
+         case ${opt} in
+             o) OUTPUT=${OPTARG};;
+             i) INPUT=${OPTARG};;
+             ,*) usage;;
+         esac
+     done
+     if [ "${OUTPUT}" == "" ]; then usage; fi
+     if [ "${INPUT}"  == "" ]; then usage; fi
+   #+END_SRC
+
+   Making a list of identifiers to retrieve 
+
+   #+BEGIN_SRC bash -n :tangle get_fl_from_seed.sh  :noweb yes
+
+     cat $INPUT | grep '>' | sed s/'[>\/]'/' '/g | awk '{printf "%s\n", $1}' > tmp_id.txt 
+
+     perl get_fl_IDs.pl  tmp_id.txt > $OUTPUT
+   
+
+   #+END_SRC
+
+   Perl api script to retrieve full length sequences from uniprot. 
+
+   #+BEGIN_SRC perl -n :tangle get_fl_IDs.pl :noweb yes
+     use strict;
+     use warnings;
+     use LWP::UserAgent;
+
+     my $list = $ARGV[0]; # File containg list of UniProt identifiers.
+
+     my $base = 'http://www.uniprot.org';
+     my $tool = 'uploadlists';
+
+     my $contact = ''; # Please set a contact email address here to help us debug in case of problems (see https://www.uniprot.org/help/privacy).
+     my $agent = LWP::UserAgent->new(agent => "libwww-perl $contact");
+     push @{$agent->requests_redirectable}, 'POST';
+
+     my $response = $agent->post("$base/$tool/",
+                                 [ 'file' => [$list],
+                                   'format' => 'fasta',
+                                   'from' => 'ACC+ID',
+                                   'to' => 'ACC',
+                                 ],
+                                 'Content_Type' => 'form-data');
+
+     while (my $wait = $response->header('Retry-After')) {
+         print STDERR "Waiting ($wait)...\n";
+         sleep $wait;
+         $response = $agent->get($response->base);
+     }
+
+     $response->is_success ?
+         print $response->content :
+         die 'Failed, got ' . $response->status_line .
+         ' for ' . $response->request->uri . "\n";
+   #+END_SRC

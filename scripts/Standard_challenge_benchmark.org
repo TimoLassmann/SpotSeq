@@ -191,8 +191,8 @@
   #+BEGIN_SRC bash -n :tangle run_wims_model.sh :shebang #!/usr/bin/env bash :noweb yes
     printf "Will process %s jobs in parallel, each using %s cores.\n"  $JOBS 8;
 
-    echo "find $OUTDIR -name train_*.fa | parallel --jobs $JOBS \"wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --seed $SEED\"";
-    find $OUTDIR -name "train_*.fa" | parallel --jobs $JOBS "wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000  --seed $SEED"
+    echo "find $OUTDIR -name train_*.fa | parallel --jobs $JOBS \"wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --states 100 --seed $SEED\"";
+    find $OUTDIR -name "train_*.fa" | parallel --jobs $JOBS "wims_model -i {} -o {}.h5 --nthreads 8 --niter 10000 --states 100 --seed $SEED"
 
   #+END_SRC 
 

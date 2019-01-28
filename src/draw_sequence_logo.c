@@ -104,7 +104,6 @@ int run_create_motif_for_each_sequence(struct parameters* param)
         ASSERT(param!= NULL, "No parameters found.");
 
 
-
         init_logsum();
 
         ASSERT(param != NULL, "No parameters.");
@@ -137,7 +136,7 @@ int run_create_motif_for_each_sequence(struct parameters* param)
                         }
                 }
                 LOG_MSG("Creating motif for sequence %d", i+1);
-                snprintf(buffer, BUFFER_LEN, "seqmotif_%d.png", i+1);
+                snprintf(buffer, BUFFER_LEN, "seqmotif_%s.png", s->name);
                 make_logo(count_mat, s->seq_len, model->L,buffer);
                 gfree(count_mat);
                 count_mat = NULL;

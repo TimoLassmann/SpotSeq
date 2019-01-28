@@ -435,41 +435,47 @@ The script below takes log-odds scores from positive and negative test sequences
 
 
 ** Code to make summary figures 
+   1) Composition test.
 
+   #+BEGIN_SRC R -n 
+     library(tidyverse)
+     dat= read_csv("results_comp.csv") 
+     class(dat[[2]])<-"character"
+     dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
+     p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
+     outname = "Composition_test_figure.jpg"
+     jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
+     p
+     dev.off()
+   #+END_SRC
 
-1) Composition test.
+   2) TFBS test 
+   #+BEGIN_SRC R -n 
+     library(tidyverse)
+     dat= read_csv("results_tfbs.csv") 
 
+     class(dat[[2]])<-"character"
+     p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
 
-#+BEGIN_SRC R -n 
-library(tidyverse)
-dat= read_csv("results_comp.csv") 
-class(dat[[2]])<-"character"
-dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
-p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
-outname = "Composition_test_figure.jpg"
-jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
-p
-dev.off()
-     #options(tikzDocumentDeclaration = '\\documentclass{beamer}')
+     p <- p + scale_y_continuous(breaks=seq(0.4,1.0,0.1))
+     p<- p + xlab("Number of mutations in planted site") 
 
-#+END_SRC
+     p <- p + theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+ggsave(
+  "TFBS_test_figure.jpg",
+  p,
+  width = 8,
+  height = 6,
+  dpi = 1200
+)
 
+     outname = "TFBS_test_figure.jpg"
+     jpeg(outname,width = 720, height = 480, units = "px", pointsize = 12,     quality = 90)
+     p
+     dev.off()
 
-2) TFBS test 
-#+BEGIN_SRC R -n 
-library(tidyverse)
-dat= read_csv("results_tfbs.csv") 
-class(dat[[2]])<-"character"
-p <- ggplot(dat,aes(x = error, y = AUC)) + geom_boxplot()+ geom_jitter(width = 0.2)
-
-p <- p + scale_y_continuous(breaks=seq(0.4,1.0,0.1))
-outname = "TFBS_test_figure.jpg"
-jpeg(outname,width = 480, height = 480, units = "px", pointsize = 12,     quality = 90)
-p
-dev.off()
-
-#+END_SRC
-dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
+   #+END_SRC
+   dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
 
 
 * Sanity checks and convenience scripts
@@ -536,93 +542,93 @@ dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
 
 ** Makefile to kick off the analysis
 
-    1) Makefile 
+   1) Makefile 
 
-#+BEGIN_SRC makefile -n :tangle Makefile
-check: check_r_libs 
-	@ echo Done
-
-
-tfbs: 
-	@ ./gen_test_datasets.sh -o tfbs_test -s 10 -t tfbs
-	@ ./run_wims_model.sh  -o tfbs_test -c 128
-	@ ./run_wims_score.sh  -o  tfbs_test -c 128 -s results_tfbs.csv
-
-comp: 
-	@ ./gen_test_datasets.sh -o comp_test -s 10 -t comp
-	@ ./run_wims_model.sh  -o comp_test -c 128
-	@ ./run_wims_score.sh  -o  comp_test -c 128 -s results_comp.csv
+   #+BEGIN_SRC makefile -n :tangle Makefile
+     check: check_r_libs 
+     @ echo Done
 
 
-tangle:
-	./tangleorgs.sh Standard_challenge_benchmark.org
+     tfbs: 
+     @ ./gen_test_datasets.sh -o tfbs_test -s 10 -t tfbs
+     @ ./run_wims_model.sh  -o tfbs_test -c 128
+     @ ./run_wims_score.sh  -o  tfbs_test -c 128 -s results_tfbs.csv
 
-check_r_libs: check_programs
-	@ $$(pwd)/test_for_libraries.R
-	@ if [ $$? -ne 0 ]; then exit; fi;
-	@ echo R libs found 
+     comp: 
+     @ ./gen_test_datasets.sh -o comp_test -s 10 -t comp
+     @ ./run_wims_model.sh  -o comp_test -c 128
+     @ ./run_wims_score.sh  -o  comp_test -c 128 -s results_comp.csv
 
-check_programs:  tangle
-	@ $$(pwd)/check_for_programs.sh
-	@ if [ $$? -ne 0 ]; then exit; fi;
-	@ echo Programs found
 
-#+END_SRC
+     tangle:
+     ./tangleorgs.sh Standard_challenge_benchmark.org
+
+     check_r_libs: check_programs
+     @ $$(pwd)/test_for_libraries.R
+     @ if [ $$? -ne 0 ]; then exit; fi;
+     @ echo R libs found 
+
+     check_programs:  tangle
+     @ $$(pwd)/check_for_programs.sh
+     @ if [ $$? -ne 0 ]; then exit; fi;
+     @ echo Programs found
+
+   #+END_SRC
 
 ** script to tangle analysis org documents from command line
 
-#+BEGIN_SRC bash -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env bash
-#
-# tangle files with org-mode
-#
-DIR=`pwd`
-FILES=""
+   #+BEGIN_SRC bash -n :tangle tangleorgs.sh :tangle-mode (identity #o700) :shebang #!/usr/bin/env bash
+     #
+     # tangle files with org-mode
+     #
+     DIR=`pwd`
+     FILES=""
 
-function usage()
-{
-cat <<EOF
+     function usage()
+     {
+         cat <<EOF
 
-This script will:
+     This script will:
 
-1) tangle the input file 
+     1) tangle the input file 
 
-usage: $0   <a.org> <b.org> ...
-EOF
-exit 1;
-}
+     usage: $0   <a.org> <b.org> ...
+     EOF
+         exit 1;
+     }
 
-while getopts i:  opt
-do
-case ${opt} in
-i) INDIR=${OPTARG};;
-*) usage;;
-esac
-done
-     
-# wrap each argument in the code required to call tangle on it
-for i in $@; do
-   FILES="$FILES \"$i\""
-done
+     while getopts i:  opt
+     do
+         case ${opt} in
+             i) INDIR=${OPTARG};;
+             ,*) usage;;
+         esac
+     done
 
-if [ "${FILES}" = "" ]; then usage; fi
-     
-emacs -Q --batch \
-  --eval "(progn
-  (require 'org)(require 'ob)(require 'ob-tangle)
-  (setq org-src-preserve-indentation t)
-  (mapc (lambda (file)
-  (find-file (expand-file-name file \"$DIR\"))
-  (org-babel-tangle)
-  (kill-buffer)) '($FILES)))" 2>&1 |grep -i tangled
+     # wrap each argument in the code required to call tangle on it
+     for i in $@; do
+         FILES="$FILES \"$i\""
+     done
 
-#+END_SRC
+     if [ "${FILES}" = "" ]; then usage; fi
+
+     emacs -Q --batch \
+           --eval "(progn
+       (require 'org)(require 'ob)(require 'ob-tangle)
+       (setq org-src-preserve-indentation t)
+       (mapc (lambda (file)
+       (find-file (expand-file-name file \"$DIR\"))
+       (org-babel-tangle)
+       (kill-buffer)) '($FILES)))" 2>&1 |grep -i tangled
+
+   #+END_SRC
 
 * References 
 
-#+BEGIN_SRC latex 
-  \printbibliography[heading=none]
+  #+BEGIN_SRC latex 
+    \printbibliography[heading=none]
 
-#+END_SRC
+  #+END_SRC
 
 * Versions 
   #+BEGIN_SRC emacs-lisp -n :exports both :eval yes

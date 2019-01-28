@@ -1,4 +1,4 @@
-#+TITLE:  
+#+TITLE:  PFAM tests 
 #+AUTHOR: Timo Lassmann
 #+EMAIL:  timo.lassmann@telethonkids.org.au
 #+DATE:   2019-01-22
@@ -7,6 +7,10 @@
 #+OPTIONS: H:4
 #+LATEX_CMD: pdflatex
 * Introduction 
+
+  The purpose here is to demonstrate how wims (or whatever I'll it in future) can model protein sequences belonging to PFAM families. There are two main questions: a) can wims replicate PFAM models /from unaligned/ sequences in the seed alignments and b) can wims /discover/ motifs from the full length sequences of the seed sequences. 
+
+
 
 ** Script to retrieve full length sequences
 

@@ -32,6 +32,9 @@ distributions.c \
 randomkit.h \
 randomkit.c
 
+
+ADJUSTEDRANDINDEXSOURCE = adjusted_rand_index.c adjusted_rand_index.h
+
 MOTIFREFINE = motif_refinement.h motif_refinement.c
 
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
@@ -40,7 +43,7 @@ FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
 fast_hmm_param_test_functions.c
 
-KALIGNSOURCE = kalign.h kalign.c 
+KALIGNSOURCE = kalign.h kalign.c
 
 MODELSOURCE = model.h model.c model_io.c global.h
 
@@ -64,7 +67,7 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
-bin_PROGRAMS =  wims_kmer sim_seq wims_model wims_plot wims_score wims_lcs wims_iclu wims_emit cal tfbs_bench composition_bench wims_select 
+bin_PROGRAMS =  wims_kmer sim_seq wims_model wims_plot wims_score wims_lcs wims_iclu wims_emit cal tfbs_bench composition_bench wims_select
 
 if ENABLE_CAIRO
 bin_PROGRAMS +=  cairo_test wims_pplot wims_seqmotif
@@ -173,12 +176,12 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST
+TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   hdf5glue_ITEST ari_ITEST
 
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST  hdf5glue_ITEST ari_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -223,6 +226,9 @@ pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTLST
 pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
+ari_ITEST_SOURCES = $(ADJUSTEDRANDINDEXSOURCE)
+ari_ITEST_CPPFLAGS = $(AM_CPPFLAGS) -DITEST
+ari_ITEST_LDADD = $(MYLIBDIRS)
 
 kalign_ITEST_SOURCES = $(KALIGNSOURCE)
 kalign_ITEST_CPPFLAGS = $(AM_CPPFLAGS) -DITEST

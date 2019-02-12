@@ -640,12 +640,7 @@ EOF
      OUTPUT=$INPUT"motif.h5"
      echo "spotseq_iclu -m $INPUT -out $OUTPUT "
      spotseq_iclu -m $INPUT -out $OUTPUT
-
-
-
    #+END_SRC 
-
-
 
 * Sanity checks and convenience scripts
 

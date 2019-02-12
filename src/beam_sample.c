@@ -1099,7 +1099,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         sum = 0;
         emission = ft->emission[seq[0]];
         for(i = 0; i < K;i++){
-                matrix[0][i] *=  emission[i];
+                matrix[0][i] *= emission[i];
                 sum += matrix[0][i];
         }
         for(i = 0; i < K;i++){

@@ -315,8 +315,8 @@ int per_state_kmer_counting(struct parameters* param)
 
                                 }
 
-                                //fprintf(stdout,"%s\t%d\t%d\t",ht_state->flat[j]->key,ht_state->flat[j]->count,l);
-                                //fprintf(stdout,"%f\t%e\n",ret_G, ret_p * (double)ht_state->total_count * (double) (fhmm->K -2)) ;
+                                fprintf(stdout,"%s\t%d\t%d\t",ht_state->flat[j]->key,ht_state->flat[j]->count,l);
+                                fprintf(stdout,"%f\t%e\n",ret_G, ret_p * (double)ht_state->total_count * (double) (fhmm->K -2)) ;
                                 sum_g += ret_G;
                                 if(a->num_seq == 100){
                                         break;

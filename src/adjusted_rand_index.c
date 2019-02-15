@@ -40,10 +40,12 @@ int ari(long long** n,int x, int y, double* ret)
         }
 
         for(i = 0;i<x ;i++){
+                //if(a[i]){
                 expected_index_x += a[i]*(a[i]-1);
                 for(j = 0; j < y;j++){
                         index_sum +=  n[i][j]*(n[i][j] -1);
                 }
+                //}
         }
         max_index = (double)(expected_index_x + expected_index_y) / 2.0;
 
@@ -51,6 +53,9 @@ int ari(long long** n,int x, int y, double* ret)
 
         ari = ((double)index_sum - expected_index) /(max_index - expected_index);
         *ret = ari;
+
+        MFREE(a);
+        MFREE(b);
         return OK;
 ERROR:
         if(a){

@@ -67,7 +67,7 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
-bin_PROGRAMS =  wims_kmer sim_seq wims_model wims_plot wims_score wims_lcs wims_iclu wims_emit cal tfbs_bench composition_bench wims_select
+bin_PROGRAMS =  wims_kmer sim_seq wims_model wims_plot wims_score wims_lcs wims_iclu wims_emit cal tfbs_bench composition_bench wims_select wims_ari
 
 if ENABLE_CAIRO
 bin_PROGRAMS +=  cairo_test wims_pplot wims_seqmotif
@@ -76,6 +76,9 @@ cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 wims_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 wims_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
+
+
+wims_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(HDF5GLUESOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
 wims_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE)  $(FINITEHMM) $(RANDOMKIT_FILES)
 

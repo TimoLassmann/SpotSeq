@@ -1,0 +1,32 @@
+\documentclass[crop,tikz]{standalone}% 'crop' is the default for v1.0, before it was 'preview'
+%\usetikzlibrary{...}% tikz package already loaded by 'tikz' option
+\usepackage{graphicx}
+\begin{document}
+
+
+\begin{tikzpicture}
+
+  % The images 
+  \node [anchor=west] at (0.0,0.0) {\includegraphics[width=16cm]{model_overview.png}};
+  \node  [anchor=west,rotate=90] at (0.25,-6.0) {$\infty$ HMM};
+  \node  [anchor=west,rotate=90] at (0.25,-9.0) {PFAM};
+  \node  [anchor=west] at (0.5,-5.5) {\includegraphics[width=7cm]{PF00271_QRIGRTGRv2.png}};
+  \node  [anchor=west] at (0.5,-8.5) {\includegraphics[width=7cm,height=2cm]{PF00271_QRIGRTGR_pfam.png}};
+  \node  [anchor=west] at (1.0,-10) {Helicase conserved C-terminal domain};
+  
+  \node [anchor=west]  at (8.5,-5.5) {\includegraphics[width=7cm]{PF00270_TGsGKT_v2.png}};
+  \node [anchor=west]  at (8.5,-8.5) {\includegraphics[width=7cm,height=2cm]{PF00270_TGsGKT_pfam.png}};
+   \node  [anchor=west] at (9.5,-10) {DEAD/DEAH box helicase domain};
+
+  
+  % the labels
+  
+ \node[shape=circle,draw=black,thick,font =\Large] at (0,2.75) {\bf A};
+ \node[shape=circle,draw=black,thick,font =\Large] at (0,-4) {\bf B};
+  \node[shape=circle,draw=black,thick,font =\Large] at (8,-4) {\bf C};
+  % the path
+
+   
+\end{tikzpicture}
+
+\end{document}

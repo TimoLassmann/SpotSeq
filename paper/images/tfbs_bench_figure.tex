@@ -1,0 +1,28 @@
+\documentclass[crop,tikz]{standalone}% 'crop' is the default for v1.0, before it was 'preview'
+%\usetikzlibrary{...}% tikz package already loaded by 'tikz' option
+\usepackage{graphicx}
+\begin{document}
+
+
+\begin{tikzpicture}
+
+  % The images 
+
+  %\node [anchor=west] at (0.75,-0.75) {\includegraphics[width=3.5cm]{MEME_DEME_results.png}};
+
+    \node [anchor=west] at (0.0,0.5) {\includegraphics[width=8cm]{train_ATGCCGTCTCGGAGA_k2fah5.pdf}};
+  \node [anchor=west] at (8.5,0.0) {\includegraphics[width=8cm]{TFBS_sim_results.jpg}};
+   
+  % the labels
+  
+ \node at (0,2.7) {\bf A};
+ \node at (8.5,2.7) {\bf B};
+
+ \node at (4,-2) {ATGCCGTCTCGGAGA};
+
+  % the path
+
+   
+\end{tikzpicture}
+
+\end{document}

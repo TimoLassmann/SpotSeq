@@ -58,6 +58,7 @@ AC_TYPE_UINT32_T
 
 
 AC_FUNC_MALLOC
+AC_FUNC_REALLOC
 AC_CHECK_FUNCS([arc4random arc4random_uniform])
 AC_CHECK_FUNCS([floor gettimeofday pow sqrt getcwd mkdir])
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK

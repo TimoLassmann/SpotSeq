@@ -63,6 +63,7 @@
 
   This bash script will generate the test datasets: 
 
+
   #+BEGIN_SRC bash -n :tangle gen_test_datasets.sh :shebang #!/usr/bin/env bash :noweb yes
     DIR=`pwd`
     OUTDIR=
@@ -484,8 +485,7 @@ ggsave(
 
    #+END_SRC
    dat$error <- factor(dat$error, levels = c(0,10,20,30,40,50,60,70,80,90,100) )
-
-
+   
 * Sanity checks and convenience scripts
 
 ** Check for wims installation

@@ -19,6 +19,8 @@ int main(const int argc, char * argv[])
         int best;
         unsigned int seed = 0;
 
+
+        rk_state rndstate;
         print_program_header(argv, "Emit random sequences.");
 
 
@@ -81,19 +83,27 @@ int main(const int argc, char * argv[])
                 ERROR_MSG("No sequences requested...! use -n XXXX ");
         }
 
+
+        if(seed){
+                rk_seed(seed, &rndstate);
+        }else{
+                rk_randomseed(&rndstate);
+        }
+
+
         if(random){
                 RUNP(sb_in = get_sequences_from_hdf5_model(in, IHMM_SEQ_READ_ONLY_SEQ));
-                RUNP(sb = emit_sequences_from_random_model(sb_in, num_seq,seed));
+                RUNP(sb = emit_sequences_from_random_model(sb_in, num_seq,&rndstate ));
         }else{
 
 
                 RUNP(fhmm = read_best_fmodel(in, &best));
                 RUN(convert_fhmm_log_to_prob_for_sampling(fhmm));
-                RUNP(sb = emit_sequences_from_fhmm_model(fhmm, num_seq,seed));
+                RUNP(sb = emit_sequences_from_fhmm_model(fhmm, num_seq,&rndstate));
                 free_fhmm(fhmm);
         }
 
-        RUN( write_ihmm_sequences_fasta(sb, out));
+        RUN( write_ihmm_sequences_fasta(sb, out, &rndstate));
 
         free_ihmm_sequences(sb);
         free_ihmm_sequences(sb_in);

@@ -127,13 +127,13 @@ static struct alignment* make_seq(struct alignment* aln,int a,int b,int* path);
 static void update_gaps(int old_len,int*gis,int new_len,int *newgaps);
 
 static char* get_input_into_string(char* string,char* infile);
-static void fasta_output(struct alignment* aln,char* outfile);
+void fasta_output(struct alignment* aln,char* outfile);
 static int count_sequences_fasta(char* string);
 static struct alignment* make_dna(struct alignment* aln);
 static struct alignment* aln_alloc(int numseq);
 static void free_aln(struct alignment* aln);
 static struct alignment* read_sequences(struct alignment* aln,char* string);
-static struct alignment* detect_and_read_sequences(char* infile);
+struct alignment* detect_and_read_sequences(char* infile);
 
 static float dna_distance_calculation(struct bignode* hash[],int* p,int seqlen,int diagonals,float mode);
 static float** dna_distance(struct alignment* si,float** dm);

@@ -736,12 +736,12 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
 {
         double beta = 0.1;
         double sum = 0.0;
-        int rev_cmp[4] ={ 3,2,1,0};
+        //int rev_cmp[4] ={ 3,2,1,0};
         int i,j;
         int c;
         int seq;
         int pos;
-        int strand;
+        //int strand;
 
         RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
         RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
@@ -2367,7 +2367,7 @@ int max_score_segment(double* x , int start ,int end, int min_len, double min_de
         double min_suffix;
         double total;
         int min_prefix_pos;
-        int min_suffix_pos;
+        int min_suffix_pos = 0;
         int mid;
         //fprintf(stderr,"Looking at %d	%d\n",start,end);
         if (start == end){

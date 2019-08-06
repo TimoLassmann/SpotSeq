@@ -13,6 +13,9 @@
 
 #include "tldevel.h"
 
+
+#include "randomkit.h"
+
 #include "outdir.h"
 
 #include "matrix_io.h"
@@ -20,6 +23,8 @@
 #include "make_dot_file.h"
 
 struct parameters{
+        //struct rng_state* rng;
+        rk_state* rndstate;
         char* input;
         char* outdir;
         int len;
@@ -42,7 +47,6 @@ struct seq_buffer{
 };
 
 /* hmm strtuct */
-
 #define STARTSTATE 0
 #define ENDSTATE 1
 
@@ -59,14 +63,17 @@ struct hmm{
 };
 
 
-static int run_sim_seq(struct parameters* param);
+int run_sim_seq(struct parameters* param);
 
 int embedded(struct parameters* param, struct seq_buffer*sb);
 int init_random(struct parameters* param, struct seq_buffer*sb );
-int add_motif(struct seq_buffer*sb, char* motif);
 
-int standard_challenge(char* outdir);
-int standard_challenge_split(char* outdir, int gap);
+int add_motif(struct seq_buffer*sb, char* motif, rk_state* rndstate);
+
+
+int standard_challenge(struct parameters* param);
+int standard_challenge_split(struct parameters* param);
+
 int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission,float self_transition);
 
 int ACGT_embedded_example(struct parameters* param, struct seq_buffer* sb,float mainres_emission);
@@ -86,7 +93,8 @@ static void free_sb(struct seq_buffer* sb);
 static struct hmm* malloc_hmm(int num_states, int alphabet_len, int max_seq_len);
 static void free_hmm(struct hmm* hmm);
 
-static int emit_sequence(struct hmm* hmm, struct sequence* sequence);
+static int emit_sequence(struct hmm* hmm, struct sequence* sequence , rk_state* rndstate);
+
 
 static int sanity_check_hmm(struct hmm*  hmm);
 static int cumsum_hmm(struct hmm* hmm);
@@ -95,6 +103,7 @@ int main (int argc, char *argv[])
 {
         struct parameters* param = NULL;
         int c;
+        int seed;
 
         print_program_header(argv, "Simulate sequences.");
 
@@ -103,8 +112,11 @@ int main (int argc, char *argv[])
         param->len = 1000;
         param->outdir = NULL;
 
+
+        seed = 0;
         while (1){
                 static struct option long_options[] ={
+                        {"seed",required_argument,0,'s'},
                         {"num",required_argument,0,'n'},
                         {"len",required_argument,0,'l'},
                         {"out",required_argument,0,'o'},
@@ -112,16 +124,18 @@ int main (int argc, char *argv[])
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"hn:l:o:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"hn:l:o:s:",long_options, &option_index);
 
                 if (c == -1){
                         break;
                 }
                 switch(c) {
+                case 's':
+                        seed = atoi(optarg);
+                        break;
                 case 'n':
                         param->num_seq = atoi(optarg);
                         break;
-
                 case 'l':
                         param->len = atoi(optarg);
                         break;
@@ -154,7 +168,14 @@ int main (int argc, char *argv[])
 
         ASSERT(param->len > 10, "Simulated sequence length has to be > 10");
 
-        standard_challenge(param->outdir);
+
+        if(seed){
+                rk_seed(seed, param->rndstate);
+        }else{
+                rk_randomseed(param->rndstate);
+        }
+
+        standard_challenge(param);
         //standard_challenge_split(param->outdir, 10);
 
         //RUN(run_sim_seq(param));
@@ -169,6 +190,9 @@ ERROR:
         free_parameters(param);
         return EXIT_FAILURE;
 }
+
+
+
 
 int run_sim_seq(struct parameters* param)
 {
@@ -263,27 +287,34 @@ range [0,5].
 */
 
 
-int standard_challenge(char* outdir)
+int standard_challenge(struct parameters* param)
 {
+
         struct seq_buffer*sb = NULL;
         struct sequence* sequence = NULL;
-        float background[4] = {0.25f,0.5f,0.75f,1.0f};
+
+        char* outdir = NULL;
+        double background[4] = {0.25f,0.5f,0.75f,1.0f};
         char buffer[BUFFER_LEN];
         char motif[16];
         char motif_mutated[16];
         int i,j,c;
         int n_mismatches;
-        float r;
+        double r;
         int lf = 0;
         int sample_window;
-        int upstream;
+        //int upstream;
 
+
+        outdir = param->outdir;
         ASSERT(outdir != NULL,"No parameters");
         RUNP(sb = alloc_seq_buffer(20));
 
         /* make motif */
         for(i = 0; i < 15;i++){
-                r = random_float_zero_to_x(1.0);
+                r = rk_double(param->rndstate);
+                //r = tl_random_double(param->rng);
+                //r = random_float_zero_to_x(1.0);
                 for(c = 0; c < 4;c++){
                         if(r <= background[c]){
                                 motif[i] = "ACGT"[c];
@@ -304,7 +335,8 @@ int standard_challenge(char* outdir)
                                 sequence = sb->seqs[i];
 
                                 for(j = 0; j < 600;j++){
-                                        r = random_float_zero_to_x(1.0);
+                                        r = rk_double(param->rndstate);
+                                        //r = random_float_zero_to_x(1.0);
                                         for(c = 0; c < 4;c++){
                                                 if(r <= background[c]){
                                                         sequence->seq[sequence->seq_len] = "ACGT"[c];
@@ -334,8 +366,10 @@ int standard_challenge(char* outdir)
 
 
                                 for(c = 0; c < n_mismatches; c ++){
-                                        j = random_int_zero_to_x(14);
-                                        motif_mutated[j] = "ACGT"[random_int_zero_to_x(3)];
+                                        //j = random_int_zero_to_x(14);
+                                        j = rk_interval(14, param->rndstate);
+
+                                        motif_mutated[j] = "ACGT"[rk_interval(3, param->rndstate)];
                                 }
                                 /*fprintf(stdout, "Here we go:\n");
                                 for(j = 0; j < 15;j++){
@@ -356,11 +390,10 @@ int standard_challenge(char* outdir)
                                         fprintf(stdout, "%c", motif_mutated[j]);
                                 }
                                 fprintf(stdout, "\n");*/
-
                                 sample_window = (int) ((600.0-15.0) * (float) (lf) / 10.0f);
-                                upstream = (int) ((600-15) - sample_window)/2;
-                                c = random_int_zero_to_x(sample_window) + upstream;
+                                //upstream = (int) ((600-15) - sample_window)/2;
 
+                                c = rk_interval(sample_window, param->rndstate);
                                 for(j = 0; j < 15;j++){
                                         sequence->seq[c+j] = motif_mutated[j];
                                 }
@@ -377,25 +410,30 @@ ERROR:
         return FAIL;
 }
 
-int standard_challenge_split(char* outdir, int gap)
+int standard_challenge_split(struct parameters* param)
 {
         struct seq_buffer*sb = NULL;
         struct sequence* sequence = NULL;
-        float background[4] = {0.25f,0.5f,0.75f,1.0f};
+
+        double background[4] = {0.25f,0.5f,0.75f,1.0f};
         char buffer[BUFFER_LEN];
         char motif[16];
         char motif_mutated[16];
-        int i,j,c,g;
+        char* outdir;
+        int i,j,c,g,gap;
         int n_mismatches;
-        float r;
+        double r;
         int sample_window;
+
+        gap = 10;
+        outdir = param->outdir;
 
         ASSERT(outdir != NULL,"No parameters");
         RUNP(sb = alloc_seq_buffer(20));
 
         /* make motif */
         for(i = 0; i < 15;i++){
-                r = random_float_zero_to_x(1.0);
+                r = rk_double(param->rndstate);
                 for(c = 0; c < 4;c++){
                         if(r <= background[c]){
                                 motif[i] = "ACGT"[c];
@@ -415,7 +453,7 @@ int standard_challenge_split(char* outdir, int gap)
                         sequence = sb->seqs[i];
 
                         for(j = 0; j < 600;j++){
-                                r = random_float_zero_to_x(1.0);
+                                r = rk_double(param->rndstate);
                                 for(c = 0; c < 4;c++){
                                         if(r <= background[c]){
                                                 sequence->seq[sequence->seq_len] = "ACGT"[c];
@@ -444,8 +482,8 @@ int standard_challenge_split(char* outdir, int gap)
                         //
 
                         for(c = 0; c < n_mismatches; c ++){
-                                j = random_int_zero_to_x(14);
-                                motif_mutated[j] = "ACGT"[random_int_zero_to_x(3)];
+                                j = rk_interval(14, param->rndstate);
+                                motif_mutated[j] = "ACGT"[rk_interval(3, param->rndstate)];
                         }
                         /*fprintf(stdout, "Here we go:\n");
                         for(j = 0; j < 15;j++){
@@ -469,7 +507,9 @@ int standard_challenge_split(char* outdir, int gap)
 
                         sample_window = (int) ((600.0-(15.0+gap)));
 
-                        c = random_int_zero_to_x(sample_window);
+                        c = rk_interval(sample_window, param->rndstate);
+
+                        //c = random_int_zero_to_x(sample_window);
 
                         for(j = 0; j < 15;j++){
                                 g = 0;
@@ -508,15 +548,15 @@ int embedded(struct parameters* param, struct seq_buffer*sb)
         RUN(write_sequences_to_file(sb,buffer));
 
         snprintf(motif, BUFFER_LEN, "%s","GCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC");
-        RUN(add_motif(sb,motif));
-        snprintf(buffer, BUFFER_LEN, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
+        RUN(add_motif(sb,motif,param->rndstate));
+        snprintf(buffer, BUFFER_LEN*2, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_sequences_to_file(sb,buffer));
 
 
         snprintf(motif, BUFFER_LEN, "%s","TGCATGCATGCA");
-        RUN(add_motif(sb,motif));
-        snprintf(buffer, BUFFER_LEN, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
+        RUN(add_motif(sb,motif, param->rndstate));
+        snprintf(buffer, BUFFER_LEN*2, "%s/%s_%s.fa",param->outdir,"RANDOM",motif);
         LOG_MSG("Writing to: %s.",buffer);
         RUN(write_sequences_to_file(sb,buffer));
 
@@ -543,7 +583,7 @@ int init_random(struct parameters* param, struct seq_buffer*sb )
                 sequence = sb->seqs[i];
                 sequence->seq_len = 0;
                 for(j = 0; j < expected_length;j++){
-                        c = random_int_zero_to_x(3);
+                        c = rk_interval(3, param->rndstate);
                         sequence->seq[sequence->seq_len] = "ACGT"[c];
                         sequence->seq_len++;
                         if(sequence->seq_len == sequence->malloc_len){
@@ -560,7 +600,7 @@ ERROR:
         return FAIL;
 }
 
-int add_motif(struct seq_buffer*sb, char* motif)
+int add_motif(struct seq_buffer*sb, char* motif, rk_state* rndstate)
 {
         struct sequence* sequence = NULL;
         int motif_len = 0;
@@ -571,10 +611,10 @@ int add_motif(struct seq_buffer*sb, char* motif)
         motif_len = strlen(motif);
 
         for(i = 0; i < sb->num_seq;i++){
-                if(random_float_zero_to_x(1.0) < 1.0){
+                if(rk_double(rndstate) < 1.0){
                         sequence = sb->seqs[i];
                         ASSERT(sequence->seq_len > motif_len,"Motif is longer than sequence");
-                        c = random_int_zero_to_x(sequence->seq_len - (motif_len + 1));
+                        c = rk_interval(sequence->seq_len - (motif_len +1), rndstate);
                         for(j = 0; j < motif_len;j++){
                                 sequence->seq[j+c] = motif[j];
                         }
@@ -672,7 +712,7 @@ int ACGT_concat_example(struct parameters* param, struct seq_buffer* sb,float ma
         sum =0.0;
         for(i =0; i < sb->malloc_num;i++){
                 //while(sb->seqs[sb->num_seq]->seq_len > expected_length + 50 ||sb->seqs[sb->num_seq]->seq_len <  expected_length - 50 ){
-                        RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq],param->rndstate));
                         //fprintf(stdout,"len: %d expected: %d\n", sb->seqs[sb->num_seq]->seq_len, expected_length );
                         //}
                 sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
@@ -805,7 +845,7 @@ int ACGT_embedded_example(struct parameters* param, struct seq_buffer* sb,float 
 
         sum =0.0;
         for(i =0; i < sb->malloc_num;i++){
-                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq],param->rndstate));
                 sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
                 sb->num_seq++;
         }
@@ -880,7 +920,7 @@ int two_state_example(struct parameters* param,  struct seq_buffer* sb)
 
         sum =0.0;
         for(i =0; i < sb->malloc_num;i++){
-                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq]));
+                RUN(emit_sequence(hmm,sb->seqs[sb->num_seq], param->rndstate ));
                 sum += (float)(sb->seqs[sb->num_seq]->seq_len -1);
                 sb->num_seq++;
         }
@@ -901,11 +941,11 @@ ERROR:
 }
 
 
-int emit_sequence(struct hmm* hmm, struct sequence* sequence)
+int emit_sequence(struct hmm* hmm, struct sequence* sequence, rk_state* rndstate)
 {
 
         int state;
-        float r;
+        double r;
         //int sum = 0;
         int i;
         ASSERT(sequence != NULL, "No sequence");
@@ -913,7 +953,9 @@ int emit_sequence(struct hmm* hmm, struct sequence* sequence)
         state = STARTSTATE;
         while(state != ENDSTATE){
                 /* transition */
-                r = random_float_zero_to_x(1.0);
+                //r = random_float_zero_to_x(1.0);
+
+                r = rk_double(rndstate);
                 for(i = 0 ; i < hmm->num_states;i++){
                         if(r <= hmm->transitions[state][i]){
                                 state = i;
@@ -921,7 +963,8 @@ int emit_sequence(struct hmm* hmm, struct sequence* sequence)
                         }
                 }
                 /* emission */
-                r = random_float_zero_to_x(1.0);
+                r = rk_double(rndstate);
+
                 for(i = 0 ; i < hmm->alphabet_len;i++){
                         if(r <= hmm->emissions[state][i]){
                                 sequence->seq[sequence->seq_len] = "ACGT"[i];

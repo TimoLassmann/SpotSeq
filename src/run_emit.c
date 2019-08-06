@@ -3,7 +3,7 @@
 static int emit_a_kmer(struct fhmm* fhmm,  struct ihmm_sequence* s,int state, int len,  rk_state* rndstate);
 static int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndstate );
 
-struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int num,int len,unsigned long seed)
+struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int num,int len,rk_state* rndstate)
 {
         struct seq_buffer* sb_out = NULL;
         int i;
@@ -11,12 +11,6 @@ struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int 
         ASSERT(fhmm != NULL, "No HMM");
         ASSERT(num != 0, "No sequences requested.");
 
-        rk_state rndstate;
-        if(seed){
-                rk_seed(seed, &rndstate);
-        }else{
-                rk_randomseed(&rndstate);
-        }
 
         MMALLOC(sb_out,sizeof(struct seq_buffer));
         sb_out->malloc_num = num ;
@@ -38,7 +32,7 @@ struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int 
                         realloc_ihmm_seq(sb_out->sequences[i]);
                 }
 
-                RUN(emit_a_kmer(fhmm, sb_out->sequences[i], start_state,len, &rndstate));
+                RUN(emit_a_kmer(fhmm, sb_out->sequences[i], start_state,len, rndstate));
         }
 
         return sb_out;
@@ -46,7 +40,7 @@ ERROR:
         return NULL;
 }
 
-struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,unsigned long seed)
+struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num, rk_state* rndstate)
 {
         struct seq_buffer* sb_out = NULL;
         int i;
@@ -55,12 +49,6 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
         ASSERT(fhmm != NULL, "No HMM");
         ASSERT(num != 0, "No sequences requested.");
 
-        rk_state rndstate;
-        if(seed){
-                rk_seed(seed, &rndstate);
-        }else{
-                rk_randomseed(&rndstate);
-        }
 
 
         /*double test[4];
@@ -104,7 +92,7 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num,uns
                 RUNP(sb_out->sequences[i] = alloc_ihmm_seq());
                 snprintf(sb_out->sequences[i]->name, 256, "RANDOM%d", i+1);
                 while (sb_out->sequences[i]->seq_len < 16){
-                        RUN(emit_a_sequence(fhmm, sb_out->sequences[i],&rndstate));
+                        RUN(emit_a_sequence(fhmm, sb_out->sequences[i],rndstate));
                 }
 
 
@@ -207,7 +195,7 @@ ERROR:
 }
 
 
-struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num, unsigned long seed)
+struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, int num, rk_state* rndstate)
 {
         struct seq_buffer* sb_out = NULL;
 
@@ -216,12 +204,6 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         //double s1_t,s2_t;
         double r;
 
-        rk_state rndstate;
-        if(seed){
-                rk_seed(seed, &rndstate);
-        }else{
-                rk_randomseed(&rndstate);
-        }
 
 
         ASSERT(sb_in != NULL, "No sequence Buffer");
@@ -286,7 +268,7 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
                 sb_out->sequences[i]->seq_len  = 0;
 
                 while(sb_out->sequences[i]->seq_len  < 16){
-                        sb_out->sequences[i]->seq_len = rk_normal(&rndstate, s1,s2);
+                        sb_out->sequences[i]->seq_len = rk_normal(rndstate, s1,s2);
                 }
 
 
@@ -302,7 +284,8 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
 
                 for(j = 0;j < sb_out->sequences[i]->seq_len;j++){
                         //r = random_float_zero_to_x(1.0);
-                         r = rk_double(&rndstate);
+                         r = rk_double(rndstate);
+
                          //fprintf(stdout,"%f\n",r);
                          for(c = 0 ; c < sb_out->L;c++){
                                  if(r <= sb_out->background[c]){

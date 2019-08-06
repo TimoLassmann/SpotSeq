@@ -50,6 +50,7 @@ int create_n_random_sequences_mix_dist(struct seq_buffer* sb,struct parameters* 
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
+int mix_challenge(struct parameters* param);
 
 int main (int argc, char *argv[])
 {

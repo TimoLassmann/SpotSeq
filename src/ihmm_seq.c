@@ -1,13 +1,13 @@
 #include "ihmm_seq.h"
 
-
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
-int detect_alphabet(struct seq_buffer* sb);
+int detect_alphabet(struct seq_buffer* sb, rk_state* rndstate);
 
-int translate_DNA_to_internal(struct seq_buffer* sb);
-int translate_PROTEIN_to_internal(struct seq_buffer* sb);
-
+//int translate_DNA_to_internal(struct seq_buffer* sb);
+int translate_DNA_to_internal(struct seq_buffer* sb, rk_state* rndstate);
+//int translate_PROTEIN_to_internal(struct seq_buffer* sb);
+int translate_PROTEIN_to_internal(struct seq_buffer* sb, rk_state* rndstate);
 
 
 
@@ -464,7 +464,8 @@ int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, double
                 seq = sb->sequences[i]->seq;
 
                 for(j = 0;j < len;j++){
-                        r = random_float_zero_to_x(emission[k][seq[j]]);
+                        r = rk_double(&rndstate) * emission[k][seq[j]];
+                        //r = random_float_zero_to_x(emission[k][seq[j]]);
                         for(c = 0; c < k;c++){
                                 r -= emission[c][seq[j]];
                                 if(r <= 0.0f){
@@ -733,8 +734,8 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
                                         break;
                                 }
                         }
-
-                        label[j] = random_int_zero_to_x(k-1) + 2;
+                        label[j] = rk_interval(k-1, &rndstate) +2;
+                        //label[j] = random_int_zero_to_x(k-1) + 2;
                         DPRINTF3("%d",label[j]);
                 }
         }
@@ -744,7 +745,7 @@ ERROR:
         return FAIL;
 }
 
-struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
+struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq, rk_state* rndstate)
 {
         struct seq_buffer* sb  = NULL;
         struct ihmm_sequence* sequence = NULL;
@@ -824,7 +825,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq)
                 }
         }
         sb->num_seq = numseq;
-        RUN(detect_alphabet(sb));
+        RUN(detect_alphabet(sb,rndstate));
         RUN(add_background_to_sequence_buffer(sb));
         return sb;
 ERROR:
@@ -832,7 +833,7 @@ ERROR:
         return NULL;
 }
 
-struct seq_buffer* load_sequences(char* in_filename)
+struct seq_buffer* load_sequences(char* in_filename, rk_state* rndstate)
 {
         struct seq_buffer* sb  = NULL;
         struct ihmm_sequence* sequence = NULL;
@@ -934,7 +935,7 @@ struct seq_buffer* load_sequences(char* in_filename)
         }
         fclose(f_ptr);
         sb->num_seq++;
-        RUN(detect_alphabet(sb));
+        RUN(detect_alphabet(sb,rndstate));
 
         RUN(add_background_to_sequence_buffer(sb));
 
@@ -994,7 +995,7 @@ ERROR:
         return FAIL;
 }
 
-int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
+int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment, rk_state* rndstate)
 {
         FILE* f_ptr = NULL;
         int i,j,c;
@@ -1128,10 +1129,10 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment)
 
         fclose(f_ptr);
         if(sb->L == ALPHABET_DNA){
-                RUN(translate_DNA_to_internal(sb));
+                RUN(translate_DNA_to_internal(sb, rndstate));
         }
         if(sb->L == ALPHABET_PROTEIN){
-                RUN(translate_PROTEIN_to_internal(sb));
+                RUN(translate_PROTEIN_to_internal(sb,rndstate));
         }
 
         gfree(dwb);
@@ -1146,7 +1147,7 @@ ERROR:
         return FAIL;
 }
 
-int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename)
+int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename, rk_state* rndstate)
 {
         FILE* f_ptr = NULL;
         int i,j;
@@ -1230,10 +1231,10 @@ int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename)
 
         fclose(f_ptr);
         if(sb->L == ALPHABET_DNA){
-                RUN(translate_DNA_to_internal(sb));
+                RUN(translate_DNA_to_internal(sb,rndstate));
         }
         if(sb->L == ALPHABET_PROTEIN){
-                RUN(translate_PROTEIN_to_internal(sb));
+                RUN(translate_PROTEIN_to_internal(sb,rndstate));
         }
         return OK;
 ERROR:
@@ -1245,7 +1246,7 @@ ERROR:
 }
 
 
-struct seq_buffer* load_ihmm_sequences(char* in_filename)
+struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
 {
         struct seq_buffer* sb  = NULL;
         struct ihmm_sequence* sequence = NULL;
@@ -1387,7 +1388,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename)
         }
         fclose(f_ptr);
         sb->num_seq++;
-        RUN(detect_alphabet(sb));
+        RUN(detect_alphabet(sb, rndstate));
         RUN(add_background_to_sequence_buffer(sb));
         gfree(digit_buffer);
         return sb;
@@ -1518,7 +1519,7 @@ ERROR:
 
 /* The purpose is to automatically detect whether the sequences are DNA /
  * protein based on match to IUPAC codes. */
-int detect_alphabet(struct seq_buffer* sb)
+int detect_alphabet(struct seq_buffer* sb, rk_state* rndstate)
 {
         struct ihmm_sequence* sequence = NULL;
         int i,j;
@@ -1576,11 +1577,11 @@ int detect_alphabet(struct seq_buffer* sb)
         if(c == 0){
                 LOG_MSG("Detected DNA sequences.");
                 sb->L = ALPHABET_DNA;
-                RUN(translate_DNA_to_internal(sb));
+                RUN(translate_DNA_to_internal(sb,rndstate));
         }else if(c == 1){
                 LOG_MSG("Detected protein sequences.");
                 sb->L = ALPHABET_PROTEIN;
-                RUN(translate_PROTEIN_to_internal(sb));
+                RUN(translate_PROTEIN_to_internal(sb, rndstate));
         }else{
                 ERROR_MSG("Alphabet not recognized.");
         }
@@ -1589,12 +1590,19 @@ ERROR:
         return FAIL;
 }
 
-int translate_DNA_to_internal(struct seq_buffer* sb )
+int translate_DNA_to_internal(struct seq_buffer* sb, rk_state* rndstate)
 {
         struct ihmm_sequence* sequence = NULL;
+
+
         int i,j;
         int r;
         ASSERT(sb != NULL,"No sequence buffer.");
+
+
+        //double  sum = 0;
+
+
 
         /* A 	Adenine */
         /* C 	Cytosine */
@@ -1642,7 +1650,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'R':
                         case 'r':
                                 /* R 	A or G */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else{
@@ -1652,7 +1661,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'Y':
                         case 'y':
                                 /* Y 	C or T */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 1;
                                 }else{
@@ -1662,7 +1672,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'S':
                         case 's':
                                 /* S 	G or C */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 1;
                                 }else{
@@ -1672,7 +1683,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'W':
                         case 'w':
                                 /* W 	A or T */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else{
@@ -1682,7 +1694,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'K':
                         case 'k':
                                 /* K 	G or T */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 2;
                                 }else{
@@ -1692,7 +1705,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'M':
                         case 'm':
                                 /* M 	A or C */
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else{
@@ -1702,7 +1716,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'B':
                         case 'b':
                                 /* B 	C or G or T */
-                                r = random_int_zero_to_x(2);
+                                //r = random_int_zero_to_x(2);
+                                r = rk_interval(2, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 1;
                                 }else if(r == 1){
@@ -1714,7 +1729,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'D':
                         case 'd':
                                 /* D 	A or G or T */
-                                r = random_int_zero_to_x(2);
+                                //r = random_int_zero_to_x(2);
+                                r = rk_interval(2, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else if(r == 1){
@@ -1726,7 +1742,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'H':
                         case 'h':
                                 /* H 	A or C or T */
-                                r = random_int_zero_to_x(2);
+                                //r = random_int_zero_to_x(2);
+                                r = rk_interval(2, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else if(r == 1){
@@ -1738,7 +1755,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                         case 'V':
                         case 'v':
                                 /* V 	A or C or G */
-                                r = random_int_zero_to_x(2);
+                                //r = random_int_zero_to_x(2);
+                                r = rk_interval(2, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 0;
                                 }else if(r == 1){
@@ -1749,7 +1767,8 @@ int translate_DNA_to_internal(struct seq_buffer* sb )
                                 break;
                         case 'N':
                         case 'n':
-                                sequence->seq[j] = random_int_zero_to_x(3);
+                                r = rk_interval(3, rndstate);
+                                sequence->seq[j] = r;//random_int_zero_to_x(3);
                                 break;
                         default:
                                 ERROR_MSG("Non ACGTN letter in sequence:%s (%d) %s (%d out of %d).",sequence->name, i,sequence->seq,j, sequence->seq_len);
@@ -1786,7 +1805,7 @@ ERROR:
 
 
 
-int translate_PROTEIN_to_internal(struct seq_buffer* sb )
+int translate_PROTEIN_to_internal(struct seq_buffer* sb, rk_state* rndstate)
 {
         struct ihmm_sequence* sequence = NULL;
         int i,j;
@@ -1827,7 +1846,8 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
                                 sequence->seq[j] = 0;
                                 break;
                         case 'B'://D or N - 2 or 11
-                                r = random_int_zero_to_x(1);
+                                //r = random_int_zero_to_x(1);
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 2;
                                 }else{
@@ -1893,10 +1913,12 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
                                 sequence->seq[j] = 19;
                                 break;
                         case 'X':
-                                sequence->seq[j] = random_int_zero_to_x(19);
+                                r = rk_interval(19, rndstate);
+                                sequence->seq[j] = r;//random_int_zero_to_x(19);
                                 break;
                         case 'Z':
-                                r = random_int_zero_to_x(1);
+
+                                r = rk_interval(1, rndstate);
                                 if(r == 0){
                                         sequence->seq[j] = 3;
                                 }else{
@@ -1905,7 +1927,8 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb )
                                 break;
                         default:
                                 WARNING_MSG("Non ACGTN letter in sequence:%d %c.",i,sequence->seq[j]);
-                                sequence->seq[j] = random_int_zero_to_x(19);
+                                r = rk_interval(19, rndstate);
+                                sequence->seq[j] = r;//andom_int_zero_to_x(19);
                                 break;
                         }
 
@@ -2068,7 +2091,7 @@ ERROR:
         return NULL;
 }
 
-int print_labelled_ihmm_buffer(struct seq_buffer* sb)
+int print_labelled_ihmm_buffer(struct seq_buffer* sb, rk_state* rndstate)
 {
         ASSERT(sb != NULL, "No sequence buffer");
         if(sb->L == ALPHABET_DNA){
@@ -2096,10 +2119,10 @@ int print_labelled_ihmm_buffer(struct seq_buffer* sb)
         }*/
 
         if(sb->L == ALPHABET_DNA){
-                RUN(translate_DNA_to_internal(sb));
+                RUN(translate_DNA_to_internal(sb,rndstate));
         }
         if(sb->L == ALPHABET_PROTEIN){
-                RUN(translate_PROTEIN_to_internal(sb));
+                RUN(translate_PROTEIN_to_internal(sb,rndstate));
         }
         return OK;
 ERROR:

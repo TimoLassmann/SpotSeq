@@ -136,7 +136,7 @@ int run_model_selection(struct parameters* param)
 
         double BIC;
         double total_seq_len;
-        int max = 1000;
+        //int max = 1000;
         int c;
         int i;
         int limit;

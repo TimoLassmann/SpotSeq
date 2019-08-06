@@ -16,6 +16,7 @@ int run_create_motif_for_each_sequence(struct parameters* param);
 int free_parameters(struct parameters* param);
 int print_help(char **argv);
 
+int make_logo(int** matrix,int len, int L, char* outname);
 
 int main (int argc, char *argv[])
 {
@@ -100,7 +101,7 @@ int run_create_motif_for_each_sequence(struct parameters* param)
 
 
 
-        int best = 0;
+        //int best = 0;
         ASSERT(param!= NULL, "No parameters found.");
 
 

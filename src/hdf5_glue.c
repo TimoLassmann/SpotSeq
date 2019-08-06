@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 
-static int hdf5_create_dataset_compact(char* dataset_name,struct hdf5_data* hdf5_data, hid_t type);
+int hdf5_create_dataset_compact(char* dataset_name,struct hdf5_data* hdf5_data, hid_t type);
 static int hdf5_close_dataset(struct hdf5_data* hdf5_data);
 
 static herr_t op_func (hid_t loc_id, const char *name, const H5L_info_t *info, void *operator_data);
@@ -316,7 +316,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
 {
         //int i;
         int type = -1;
-        void* ptr = NULL;
+        //void* ptr = NULL;
 
         char* m1d_char = NULL;
         int* m1d_int = NULL;
@@ -325,7 +325,7 @@ int hdf5_read_dataset(char* dataset_name,struct hdf5_data* hdf5_data)
 
         float* m1d_float = NULL;
         double* m1d_double = NULL;
-        ulong* m2d_ulong = NULL;
+        //ulong* m2d_ulong = NULL;
 
         char** m2d_char = NULL;
         int** m2d_int = NULL;
@@ -697,7 +697,7 @@ ERROR:
 
 
 
-static int hdf5_create_dataset_compact(char* dataset_name,struct hdf5_data* hdf5_data, hid_t type)
+int hdf5_create_dataset_compact(char* dataset_name,struct hdf5_data* hdf5_data, hid_t type)
 {
         int i;
 

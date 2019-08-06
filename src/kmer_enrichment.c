@@ -88,7 +88,7 @@ int traceback_and_merge_motifs(struct fhmm* fhmm,struct motif* a,struct motif* b
 
 int write_meme_output(char* filename,struct motif_list* m, struct fhmm*  fhmm);
 
-static int run_kmer_counting(struct parameters* param);
+int run_kmer_counting(struct parameters* param);
 static int per_state_kmer_counting(struct parameters* param);
 
 struct motif* create_motif_based_on_kmer_count(char* seq, int len,int count, int L, double* background, int total_counts);
@@ -249,7 +249,7 @@ int per_state_kmer_counting(struct parameters* param)
                 ht_back = HT_INIT(KMERHASH,1000000);
                 for(l = kmer_len_start; l <= kmer_len_end;l++){
                         sampled = 0;
-                        sb = emit_kmers_from_state(fhmm, i, num_samples, l,rk_ulong(&rndstate));
+                        sb = emit_kmers_from_state(fhmm, i, num_samples, l,&rndstate);
                         for(j = 0; j < num_samples;j++){
                                 s = sb->sequences[j];
                                 kmer= NULL;
@@ -440,7 +440,7 @@ int run_kmer_counting(struct parameters* param)
         ht = HT_INIT(KMERHASH,10000);
         while(ht->total_count  != param->N){
 
-                RUNP(sb = emit_sequences_from_fhmm_model(fhmm,1000, rk_ulong(&rndstate)));
+                RUNP(sb = emit_sequences_from_fhmm_model(fhmm,1000, &rndstate));
 
 
 

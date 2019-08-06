@@ -17,7 +17,7 @@ static void lawless416(double *x, int n, double lambda, double *ret_f, double *r
 static int esl_stats_DMean(const double *x, int n, double *opt_mean, double *opt_var);
 static double esl_gumbel_invcdf(double p, double mu, double lambda);
 
-static int esl_gumbel_FitComplete(double *x, int n, double *ret_mu, double *ret_lambda);
+int esl_gumbel_FitComplete(double *x, int n, double *ret_mu, double *ret_lambda);
 
 int calibrate(char* model_file,int num_threads, double* mu, double* lambda)
 {
@@ -83,13 +83,13 @@ ERROR:
 
 int main (int argc,char * argv[])
 {
-        FILE* fout_ptr = NULL;
+        //FILE* fout_ptr = NULL;
         double mu, lambda;
 
-        int i,j;
-        double  est_mu,est_lambda;
-        double* scores = NULL;
-        double r;
+        //int i,j;
+        //double  est_mu,est_lambda;
+        //double* scores = NULL;
+        //double r;
         rk_state rndstate;
 
         RUN(rk_randomseed(&rndstate));

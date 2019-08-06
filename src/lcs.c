@@ -369,14 +369,14 @@ int calculate_log_likelihood(struct fhmm*  fhmm,struct seq_buffer* sb, struct mo
         int w;
         int state;
         float a,b,cc;
-        float sum;
+        //float sum;
         float lambda_0;         /* background prior */
 
         float lambda_1;         /* motif prior */
 
-        float log_likelihood_0;
+        //float log_likelihood_0;
 
-        float log_likelihood_1;
+        //float log_likelihood_1;
 
         struct ihmm_sequence* s = NULL;
 

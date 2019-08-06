@@ -239,7 +239,7 @@ ERROR:
 
 struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
 {
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN+5];
         struct ihmm_model* model = NULL;
         int a,b;
         int i;
@@ -338,7 +338,7 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         model->alloc_num_states = model->num_states;
         RUN(resize_ihmm_model(model, model->num_states+1));
 
-        snprintf(buffer, BUFFER_LEN , "%s/RNG", group);
+        snprintf(buffer, BUFFER_LEN+5 , "%s/RNG", group);
         //LOG_MSG("Trying to create group: %s", buffer);
         RUN(read_RNG_state(hdf5_data, buffer,&model->rndstate));
         //WARNING_MSG("Each time a run is continued a new RNG seed is selected...");
@@ -353,7 +353,7 @@ ERROR:
 int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char* group)
 {
         //struct hdf5_data* hdf5_data = NULL;
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN+5];
         double** tmp = NULL;
         int i,j;
 
@@ -434,7 +434,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
 
         RUN(hdf5_close_group(hdf5_data));
 
-        snprintf(buffer, BUFFER_LEN , "%s/RNG", group);
+        snprintf(buffer, BUFFER_LEN+5 , "%s/RNG", group);
         //LOG_MSG("Trying to create group: %s", buffer);
         RUN(add_RNG_state(hdf5_data, buffer,&model->rndstate));
 

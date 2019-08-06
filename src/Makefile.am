@@ -122,7 +122,7 @@ wims_emit_SOURCES = $(ISEQSOURCE) $(MODELSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_F
 #wims_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
-sim_seq_SOURCES = \
+sim_seq_SOURCES = $(RANDOMKIT_FILES) \
 outdir.h \
 outdir.c \
 matrix_io.h \

@@ -41,19 +41,19 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
         double lambda_u = 0.0;
         double start_lambda = 0.0;
 
-        double lambda_b = 0.0;
-        double lambda_b_u = 0.0;
-        double start_lambda_b = 0.0;
+        //double lambda_b = 0.0;
+        //double lambda_b_u = 0.0;
+        //double start_lambda_b = 0.0;
 
 
         double sum;
         double score_m;
         double score_b;
-        double local_p;
+        //double local_p;
         double likelihood = 0.0;
         double old_likelihood = 0.0;
 
-        int i,j,c, offset, iter;
+        int i,j,c, iter;
         RUNP(org_motif_refinement = init_motif_refinement(W, L));
 
         for(i = 0; i < W;i++){
@@ -130,7 +130,7 @@ int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb)
                 for(iter = 0; iter < 1000; iter++){
                         likelihood = 0.0;
                         lambda_u = 0.0;
-                        lambda_b_u  = 0.0;
+                        //lambda_b_u  = 0.0;
                         /* set counts to 0 */
                         for(j = 0; j < L;j++){
                                 tmp_motif_refinement->background_counts[j] = 0.0;

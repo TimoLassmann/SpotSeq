@@ -675,14 +675,17 @@ ERROR:
         return FAIL;
 }
 
-struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, unsigned int seed)
+struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, rk_state* rndstate)
 {
         struct model_bag* b = NULL;
 
         int i;
-        unsigned int local_seed;
+        unsigned long seed;
+        unsigned long local_seed;
         ASSERT(num_models > 0,"need to allocate at least one model");
 
+
+        seed = rk_ulong(rndstate);
         MMALLOC(b, sizeof(struct model_bag));
 
         b->models = NULL;

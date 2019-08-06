@@ -44,10 +44,10 @@ ERROR:
 int set_log_file(char* root, char* name)
 {
         FILE* test_ptr = NULL;
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN*2];
         char out_root_dir[BUFFER_LEN];
         snprintf(out_root_dir, BUFFER_LEN, "%s/" ,root);
-        snprintf(buffer, BUFFER_LEN, "%s%s/%s.log",out_root_dir,OUTDIR_LOG,name);
+        snprintf(buffer, BUFFER_LEN*2, "%s%s/%s.log",out_root_dir,OUTDIR_LOG,name);
 
         RUNP(test_ptr = fopen(buffer, "w"));
         fclose(test_ptr);
@@ -63,7 +63,7 @@ ERROR:
 int create_output_directories(char* root)
 {
         //struct stat st = {0};
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN*2];
         char out_root_dir[BUFFER_LEN];
 
         //create main output directory.
@@ -78,17 +78,17 @@ int create_output_directories(char* root)
           ERROR_MSG("Directory %s already exists.",out_root_dir);
           }*/
 
-        snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_MODEL);
+        snprintf(buffer, BUFFER_LEN*2, "%s%s/",out_root_dir,OUTDIR_MODEL);
         RUN(create_dir(buffer,1));
 
-        snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_VIZ);
+        snprintf(buffer, BUFFER_LEN*2, "%s%s/",out_root_dir,OUTDIR_VIZ);
         RUN(create_dir(buffer,1));
 
 
-        snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_CHECKPOINTS);
+        snprintf(buffer, BUFFER_LEN*2, "%s%s/",out_root_dir,OUTDIR_CHECKPOINTS);
         RUN(create_dir(buffer,1));
 
-        snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_LOG);
+        snprintf(buffer, BUFFER_LEN*2, "%s%s/",out_root_dir,OUTDIR_LOG);
         RUN(create_dir(buffer,1));
 
 
@@ -120,13 +120,13 @@ ERROR:
 int check_if_output_directories_exists(char* root)
 {
         struct stat st = {0};
-        char buffer[BUFFER_LEN];
+        char buffer[BUFFER_LEN*2];
         char out_root_dir[BUFFER_LEN];
 
         snprintf(out_root_dir, BUFFER_LEN, "%s/" ,root);
         //test if root is there
         if (stat(out_root_dir, &st) != -1) {
-                snprintf(buffer, BUFFER_LEN, "%s%s/",out_root_dir,OUTDIR_CHECKPOINTS);
+                snprintf(buffer, BUFFER_LEN*2, "%s%s/",out_root_dir,OUTDIR_CHECKPOINTS);
                 if (stat(buffer, &st) == -1) {
                         ERROR_MSG("%d not found.",buffer );
                 }

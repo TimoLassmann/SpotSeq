@@ -1,5 +1,5 @@
 #include "hmm_conversion.h"
-
+#include "rb.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)

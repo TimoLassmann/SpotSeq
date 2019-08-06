@@ -21,6 +21,7 @@ struct parameters{
         char* output;
         char* summary_file;
         int num_threads;
+        rk_state rndstate;
 };
 
 
@@ -100,6 +101,11 @@ int main (int argc, char *argv[])
                 }
         }
 
+        if(42){
+                rk_seed(42, &param->rndstate);
+        }else{
+                rk_randomseed(&param->rndstate);
+        }
         LOG_MSG("Starting run");
 
         if(!param->in_sequences){
@@ -149,7 +155,7 @@ int main (int argc, char *argv[])
         RUN(alloc_dyn_matrices(fhmm));
         /* load sequences.  */
         LOG_MSG("Loading sequences.");
-        RUNP(sb = load_sequences(param->in_sequences));
+        RUNP(sb = load_sequences(param->in_sequences, &param->rndstate));
         LOG_MSG("Read %d sequences.",sb->num_seq);
         /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
 
@@ -160,7 +166,7 @@ int main (int argc, char *argv[])
         RUN(get_res_counts(sb, fhmm->background));
         if(param->background_sequences){
                 LOG_MSG("Loading background sequences.");
-                RUNP(sb_back = load_sequences(param->background_sequences));
+                RUNP(sb_back = load_sequences(param->background_sequences, &param->rndstate));
                 LOG_MSG("Read %d sequences.",sb->num_seq);
                 RUN(get_res_counts(sb_back, fhmm->background));
         }

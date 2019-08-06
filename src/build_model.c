@@ -35,6 +35,7 @@ struct parameters{
         double alpha;
         double gamma;
         unsigned long seed;
+        rk_state rndstate;
         int num_iter;
         int local;
         int num_models;
@@ -176,6 +177,12 @@ int main (int argc, char *argv[])
                 ERROR_MSG("To few models! use -nmodels <1+>");
         }
 
+        if(param->seed){
+                rk_seed(param->seed, &param->rndstate);
+        }else{
+                rk_randomseed(&param->rndstate);
+        }
+
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         //rk_save_testing();
@@ -261,7 +268,7 @@ int run_build_ihmm(struct parameters* param)
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
 
-                RUNP(sb = load_sequences(param->input));
+                RUNP(sb = load_sequences(param->input,&param->rndstate));
 
                 //sb = concatenate_sequences(sb);
                 //RUN(label_seq_based_on_random_fhmm(sb, initial_states, 0.3));
@@ -295,10 +302,7 @@ int run_build_ihmm(struct parameters* param)
                         //num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
                 //}
 
-
-
-                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,   param->seed));
-
+                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models, &param->rndstate));
 
                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)

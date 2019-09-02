@@ -464,6 +464,9 @@ int main(const int argc,const char * argv[])
         int i,j;
         int res = 0;
         float x;
+        rk_state rndstate;
+
+        rk_randomseed(&rndstate);
 
         RUN(print_program_header((char * const*)argv,"Fast HMM param test"));
 
@@ -498,7 +501,7 @@ int main(const int argc,const char * argv[])
         RUN(print_fast_hmm_params(ft));
 
         for(i =0; i < 10;i++){
-                x = random_float_zero_to_x(1.0);
+                x = rk_double(&rndstate);// random_float_zero_to_x(1.0);
 
                 res = fast_hmm_param_binarySearch_t(ft, x);
                 fprintf(stdout,"search for %f: %d  \n",x, res);

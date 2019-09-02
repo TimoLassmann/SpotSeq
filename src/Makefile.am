@@ -67,22 +67,22 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
-bin_PROGRAMS =  wims_kmer sim_seq wims_model wims_plot wims_score wims_lcs wims_iclu wims_emit cal tfbs_bench composition_bench wims_select wims_ari
+bin_PROGRAMS =  seqwise_kmer sim_seq seqwise_model seqwise_plot seqwise_score seqwise_lcs seqwise_iclu seqwise_emit cal tfbs_bench composition_bench seqwise_select seqwise_ari
 
 if ENABLE_CAIRO
-bin_PROGRAMS +=  cairo_test wims_pplot wims_seqmotif
+bin_PROGRAMS +=  cairo_test seqwise_pplot seqwise_seqmotif
 AM_CPPFLAGS += $(CAIRO_CFLAGS)
 cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-wims_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-wims_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+seqwise_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+seqwise_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
 
-wims_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(HDF5GLUESOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
+seqwise_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(HDF5GLUESOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
-wims_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE)  $(FINITEHMM) $(RANDOMKIT_FILES)
+seqwise_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE)  $(FINITEHMM) $(RANDOMKIT_FILES)
 
-wims_pplot_SOURCES = pplot.c   $(LOGO_SOURCES)  $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
+seqwise_pplot_SOURCES = pplot.c   $(LOGO_SOURCES)  $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 
 cairo_test_SOURCES = cairo_test.c
 
@@ -90,36 +90,36 @@ cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCOR
 cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
-wims_plot_SOURCES = \
+seqwise_plot_SOURCES = \
 plot_model.c  $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
-#wims_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#seqwise_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-wims_model_SOURCES = \
+seqwise_model_SOURCES = \
 build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
-#wims_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#seqwise_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-wims_select_SOURCES = \
+seqwise_select_SOURCES = \
 select_model.c  $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 
-wims_kmer_SOURCES = \
+seqwise_kmer_SOURCES = \
 kmer_enrichment.c $(KALIGNSOURCE) $(MOTIFREFINE) $(SCORESOURCE) $(EMITSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 
 
-wims_score_SOURCES = \
+seqwise_score_SOURCES = \
 score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
-#wims_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#seqwise_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-wims_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
-#wims_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
-
-
-wims_iclu_SOURCES = $(SCORESOURCE) $(MODELSOURCE) $(MOTIFREFINE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) label_suffix_array.h label_suffix_array.c  infoclust.c infoclust.h
-#wims_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+seqwise_lcs_SOURCES = $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
+#seqwise_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
-wims_emit_SOURCES = $(ISEQSOURCE) $(MODELSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
+seqwise_iclu_SOURCES = $(SCORESOURCE) $(MODELSOURCE) $(MOTIFREFINE) $(THREADSOURCE) $(ISEQSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) label_suffix_array.h label_suffix_array.c  infoclust.c infoclust.h
+#seqwise_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-#wims_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+seqwise_emit_SOURCES = $(ISEQSOURCE) $(MODELSOURCE) $(HDF5GLUESOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
+
+#seqwise_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 sim_seq_SOURCES = $(RANDOMKIT_FILES) \

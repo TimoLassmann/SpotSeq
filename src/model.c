@@ -911,6 +911,7 @@ int main(const int argc,const char * argv[])
 {
         struct ihmm_model* ihmm = NULL;
         struct seq_buffer* sb = NULL;
+        rk_state rndstate;
         int i;
         char *tmp_seq[4] = {
                 "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
@@ -919,12 +920,12 @@ int main(const int argc,const char * argv[])
                 "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"};
 
 
-
+        rk_randomseed(&rndstate);
         //119l
         RUN(print_program_header((char * const*)argv,"GAGA"));
 
 
-        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4));
+        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4,&rndstate));
         RUN(random_label_ihmm_sequences(sb, 10, 0.3));
         rk_seed(1802, &sb->rndstate);
 

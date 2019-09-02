@@ -319,8 +319,6 @@ int run_build_ihmm(struct parameters* param)
 
                         model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
                         //print_counts(model_bag->models[i]);
-
-
                 }
 
                 RUN(check_labels(sb,model_bag->num_models ));
@@ -335,8 +333,6 @@ int run_build_ihmm(struct parameters* param)
 
                 /* Allocating thread structure. */
                 RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
-
-
         }
 
         LOG_MSG("Will use %d threads.", param->num_threads);

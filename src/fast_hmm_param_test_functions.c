@@ -64,7 +64,10 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
 
         RUN(expand_ft_if_necessary(ft, k));
 
+        rk_state rndstate;
 
+
+        rk_randomseed(&rndstate);
         //num = ft->num_items;
         //list = ft->list;
 
@@ -72,7 +75,7 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
                 sum = 0.0;
                 for(j = 0;j < k;j++){
 
-                        tmp_probs[j] = random_float_zero_to_x(1.0);
+                        tmp_probs[j] = (float) rk_double(&rndstate);// random_float_zero_to_x(1.0);
 
 
                         sum+=tmp_probs[j];
@@ -92,6 +95,7 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
         }
         ft->last_state = k-1;
         MFREE(tmp_probs);
+
         return OK;
 ERROR:
         return FAIL;

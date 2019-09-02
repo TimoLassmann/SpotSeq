@@ -186,7 +186,11 @@ int run_plot_ihmm(struct parameters* param)
         RUNP(model = read_best_imodel(param->input, &best));
 
         RUN(convert_fhmm_scaled_to_prob(fhmm));
-        //RUNP(model = read_model_hdf5(param->input));
+
+        /* WAS here - read in labels and plot  */
+        //struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
+
+//RUNP(model = read_model_hdf5(param->input));
 
 
         //RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
@@ -653,5 +657,3 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--ethres","Edge threshold." ,"[0.5]"  );
         return OK;
 }
-
-

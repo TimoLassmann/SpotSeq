@@ -102,7 +102,7 @@ static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
 /* Initialize hash table functions  */
-HT_GLOBAL_INIT(KMERHASH, char*);
+HT_GLOBAL_INIT(KMERHASH, char*)
 
 int fill_background_hash(HT_TYPE(KMERHASH)* ht,int num_samples, int len,int L, double* background);
 

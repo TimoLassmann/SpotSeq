@@ -138,17 +138,36 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 td[i]->ft_bag = ft_bag;
                                 td[i]->ft = ft;
                                 td[i]->sb = sb;
-                                if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){
-                                        fprintf(stderr,"Adding job to queue failed.");
+                        }
+#ifdef HAVE_OPENMP
+                        omp_set_num_threads(num_threads);
+#pragma omp parallel shared(td) private(i)
+                        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                                for(i = 0; i < num_threads;i++){
+                                        do_dynamic_programming(td[i]);
                                 }
+#ifdef HAVE_OPENMP
+                        }
+#endif
+
+
+                        /* for(i = 0 ; i < num_threads;i++){ */
+                                /* td[i]->ft_bag = ft_bag; */
+                                /* td[i]->ft = ft; */
+                                /* td[i]->sb = sb; */
+                                /* if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){ */
+                                /*         fprintf(stderr,"Adding job to queue failed."); */
+                                /* } */
                                 /* if(thr_pool_queue(pool,do_forward_backward,td[i]) == -1){ */
                                 /*          fprintf(stderr,"Adding job to queue failed."); */
                                 /* } */
                                 /* if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){ */
                                 /*         fprintf(stderr,"Adding job to queue failed."); */
                                 /* } */
-                        }
-                        thr_pool_wait(pool);
+                        //}
+                //thr_pool_wait(pool);
                         //LOG_MSG("Check labelling after dyn (%d).",iter);
                         //RUN(check_labels(sb,model_bag->num_models ));
                         //LOG_MSG("Done");

@@ -12,6 +12,8 @@
 #include <float.h>
 #include <stdint.h>
 
+#include <omp.h>
+
 #include "tldevel.h"
 #include "thr_pool.h"
 #include "rbtree.h"

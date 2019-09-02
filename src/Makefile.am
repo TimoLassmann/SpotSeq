@@ -6,7 +6,7 @@ CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.l
 
 # top_builddir = @top_builddir@
 
-
+AM_CFLAGS =  @OPENMP_CFLAGS@
 AM_LDFLAGS = @DEAD_STRIP@
 AM_LDFLAGS += -Wno-undef
 

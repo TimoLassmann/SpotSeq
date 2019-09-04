@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <omp.h>
 
 #include "tldevel.h"
 #include "thr_pool.h"

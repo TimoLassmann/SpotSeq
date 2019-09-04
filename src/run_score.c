@@ -6,6 +6,7 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thr
 {
 
         int i;
+        int num_threads;
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
 
@@ -17,8 +18,10 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thr
         RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
 
 
+        num_threads = td[0]->num_threads;
 
         /* score sequences  */
+        /*
         for(i = 0; i <  td[0]->num_threads;i++){
                 td[i]->sb = sb;
                 td[i]->fhmm = fhmm;
@@ -27,6 +30,25 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thr
                 }
         }
         thr_pool_wait(pool);
+        */
+        for(i = 0; i < num_threads;i++){
+                td[i]->sb = sb;
+                td[i]->fhmm = fhmm;
+        }
+
+
+#ifdef HAVE_OPENMP
+        omp_set_num_threads(num_threads);
+#pragma omp parallel shared(td) private(i)
+        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                for(i = 0; i < num_threads;i++){
+                        do_score_sequences(td[i]);
+                }
+#ifdef HAVE_OPENMP
+        }
+#endif
 
         return OK;
 ERROR:
@@ -45,7 +67,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
         init_logsum();
         /* start threadpool  */
-        if((pool = thr_pool_create(num_threads ,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(num_threads ,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
 
         /* allocate data for threads; */
@@ -53,7 +75,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
         /* score sequences  */
 
-        for(i = 0; i < num_threads;i++){
+        /*for(i = 0; i < num_threads;i++){
                 td[i]->sb = sb;
                 td[i]->fhmm = fhmm;
                 if(thr_pool_queue(pool, do_label_sequences,td[i]) == -1){
@@ -61,6 +83,26 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
                 }
         }
         thr_pool_wait(pool);
+        */
+        for(i = 0; i < num_threads;i++){
+                td[i]->sb = sb;
+                td[i]->fhmm = fhmm;
+        }
+
+
+#ifdef HAVE_OPENMP
+        omp_set_num_threads(num_threads);
+#pragma omp parallel shared(td) private(i)
+        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                for(i = 0; i < num_threads;i++){
+                        do_label_sequences(td[i]);
+                }
+#ifdef HAVE_OPENMP
+        }
+#endif
+
 
         free_wims_thread_data(td);
         thr_pool_destroy(pool);

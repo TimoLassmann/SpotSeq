@@ -130,7 +130,6 @@ int main (int argc, char *argv[])
         }
 
         if(param->background_sequences ){
-
                 if(!my_file_exists(param->background_sequences)){
                         RUN(print_help(argv));
                         ERROR_MSG("The file <%s> does not exist.",param->background_sequences);

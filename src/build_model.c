@@ -590,8 +590,6 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         //LOG_MSG("Got past seq free");
         free_model_bag(model_bag);
         //LOG_MSG("Got past model bag free");
-
-
         return OK;
 ERROR:
         free_wims_thread_data(td);

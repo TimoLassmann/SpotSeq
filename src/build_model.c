@@ -1,3 +1,4 @@
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -26,6 +27,7 @@
 
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
+#define OPT_COMPETITIVE 3
 
 struct parameters{
         char* input;
@@ -36,7 +38,9 @@ struct parameters{
         double gamma;
         unsigned long seed;
         rk_state rndstate;
+        int competitive;
         int num_iter;
+        int inner_iter;
         int local;
         int num_models;
         int num_threads;
@@ -45,7 +49,8 @@ struct parameters{
 };
 
 static int run_build_ihmm(struct parameters* param);
-
+static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td);
+static int analyzescores(struct seq_buffer* sb, int num_models);
 static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
 static int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean);
@@ -69,10 +74,12 @@ int main (int argc, char *argv[])
         param->local = 0;
         param->rev = 0;
         param->num_iter = 2000;
+        param->inner_iter = 100;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
         param->num_models = 3;
+        param->competitive = 0;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -86,6 +93,7 @@ int main (int argc, char *argv[])
                         {"alpha",required_argument,0,'a'},
                         {"gamma",required_argument,0,'g'},
                         {"seed",required_argument,0,OPT_SEED},
+                        {"competitive",no_argument,0,OPT_COMPETITIVE},
                         {"rev",0,0,'r'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
@@ -97,6 +105,9 @@ int main (int argc, char *argv[])
                         break;
                 }
                 switch(c) {
+                case OPT_COMPETITIVE:
+                        param->competitive =1;
+                        break;
                 case OPT_SEED:
                         param->seed = atoi(optarg);
                         break;
@@ -186,7 +197,6 @@ int main (int argc, char *argv[])
         RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         //rk_save_testing();
-
         //return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
         /* 1 means allow transitions that are not seen in the training
@@ -254,9 +264,9 @@ int run_build_ihmm(struct parameters* param)
                 average_sequence_len = 0.0;
 
                 for(i = 0; i < sb->num_seq;i++){
-
                         average_sequence_len += sb->sequences[i]->seq_len;
                 }
+
                 average_sequence_len /= (double) sb->num_seq;
                 average_sequence_len = sqrt(average_sequence_len);
 
@@ -267,7 +277,7 @@ int run_build_ihmm(struct parameters* param)
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
                 RUN(init_num_state_array( num_state_array, param->num_models, param, average_sequence_len));
 
-                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models, &param->rndstate));
+                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models, param->seed));
 
                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
@@ -310,25 +320,26 @@ int run_build_ihmm(struct parameters* param)
                 }
 
         }
-        /*for(i = 0; i < 1000000;i++){
-
-                long a = rk_random(&model_bag->rndstate) >> 9, b = rk_random(&model_bag->rndstate) >> 4;
-                float test = a / 8388609.0f;
-                if(test < 0.00001 || test > 0.9999){
-                        fprintf(stdout,"%ld %ld  %f\n ",a,b, test);
-                }
-
-        }
-        exit(0);*/
-
         /* Do a random score */
-
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
         /* Main function */
-        RUN(run_beam_sampling(model_bag,ft_bag, sb,td,  param->num_iter,  param->num_threads));
 
+        int outer_iter = param->num_iter / param->inner_iter;
 
+        //RUN(convert_ihmm_to_fhmm_models(model_bag));
+        for(i = 0; i < outer_iter;i++){
+                /* run inner iter beam sampling iterations */
+                RUN(run_beam_sampling(model_bag,ft_bag, sb,td, param->inner_iter, param->num_threads));
+
+                /* convert to fhmm */
+                RUN(convert_ihmm_to_fhmm_models(model_bag));
+                /* score */
+                RUN(score_all_vs_all(model_bag,sb,td));
+                /* analyzescores */
+                analyzescores(sb, model_bag->num_models);
+
+        }
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(write_model_bag_hdf5(model_bag,param->output));
@@ -372,6 +383,101 @@ ERROR:
         MFREE(num_state_array);
         return FAIL;
 }
+
+int analyzescores(struct seq_buffer* sb, int num_models)
+{
+        double s0,s1,s2;
+        int i,j;
+        ASSERT(sb!= NULL, "No sequences");
+
+        for(i = 0; i < 5;i++){
+                fprintf(stdout,"Seq%d\t",i);
+                for(j = 0; j < num_models;j++){
+                        fprintf(stdout,"%f ", sb->sequences[i]->score_arr[j]);
+
+                }
+                fprintf(stdout,"\n");
+
+        }
+
+        for(j = 0; j < num_models;j++){
+                s0 = 0.0;
+                s1 = 0.0;
+                s2 = 0.0;
+                for(i = 0; i < sb->num_seq;i++){
+                        s0 += 1.0;
+                        s1 += sb->sequences[i]->score_arr[j];
+                        s2 += sb->sequences[i]->score_arr[j] * sb->sequences[i]->score_arr[j];
+
+                }
+
+                s2 = sqrt((s0 * s2 - s1 * s1)/ (s0 * (s0 -1.0)));
+                s1 = s1 / s0 ;
+                fprintf(stdout,"Model %d:\t%f\t%f\n",j, s1,s2);
+        }
+        /* re-set!!!  */
+        for(i = 0; i < sb->num_seq;i++){
+                //fprintf(stdout,"Seq%d\t",i);
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->score_arr[j] = 1.0;
+
+                }
+
+
+        }
+
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+/* Score all sequences using all models */
+int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td)
+{
+        int i,j,c;
+
+        int num_threads = td[0]->num_threads;
+
+        int run;
+        c = 0;
+
+        for(run = 0; run < mb->num_models;run+= num_threads){
+                j = 0;
+                for(i = 0; i < num_threads;i++){
+                        td[i]->thread_ID = c;
+                        td[i]->fhmm = mb->finite_models[c];
+                        td[i]->sb = sb;
+                        j++;
+                        c++;
+                        if(c == mb->num_models){
+                                break;
+                        }
+
+                }
+
+#ifdef HAVE_OPENMP
+                omp_set_num_threads( MACRO_MIN(num_threads,j));
+#pragma omp parallel shared(td) private(i)
+                {
+#pragma omp for schedule(dynamic) nowait
+#endif
+
+                        for(i = 0; i < j;i++){
+                                do_score_sequences_per_model(td[i]);
+                        }
+
+
+#ifdef HAVE_OPENMP
+                }
+#endif
+
+        }
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 
 
 int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean)
@@ -438,11 +544,8 @@ ERROR:
 int score_sequences_for_command_line_reporting(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
-
         struct wims_thread_data** td = NULL;
-
         struct thr_pool* pool = NULL;
-
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;
 
@@ -495,9 +598,6 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         for(i = 0; i < limit;i++){
                 total_seq_len += sb->sequences[i]->seq_len;
         }
-
-
-
         //RUNP(all_scores = galloc(all_scores, limit,model_bag->num_models, 0.0));
 
         for(c = 0; c < model_bag->num_models;c++){

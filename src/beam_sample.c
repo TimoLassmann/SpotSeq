@@ -116,6 +116,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 td[i]->ft_bag = ft_bag;
                                 td[i]->ft = ft;
                                 td[i]->sb = sb;
+                                td[i]->thread_ID = i;
                         }
 #ifdef HAVE_OPENMP
                         omp_set_num_threads(num_threads);
@@ -135,7 +136,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 /* td[i]->ft_bag = ft_bag; */
                                 /* td[i]->ft = ft; */
                                 /* td[i]->sb = sb; */
-                                /* if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){ */
+                                /*p if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){ */
                                 /*         fprintf(stderr,"Adding job to queue failed."); */
                                 /* } */
                                 /* if(thr_pool_queue(pool,do_forward_backward,td[i]) == -1){ */
@@ -207,7 +208,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 RUN(run_build_fhmm_file(tmp_buffer));
                 }*/
                 for(i = 0; i < model_bag->num_models;i++){
-                        LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
+                        //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         model_bag->models[i]->training_iterations++;
                 }
         }

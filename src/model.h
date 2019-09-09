@@ -56,7 +56,7 @@ struct model_bag{
 
 /* Housekeeping */
 
-extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, rk_state* rndstate);
+extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed);
 extern void free_model_bag(struct model_bag* b);
 
 

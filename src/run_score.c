@@ -156,6 +156,37 @@ ERROR:
         return NULL;
 }
 
+void* do_score_sequences_per_model(void* threadarg)
+{
+        struct wims_thread_data *data;
+        struct fhmm* fhmm = NULL;
+        struct ihmm_sequence* seq = NULL;
+        int i;
+        int num_threads;
+        int thread_id;          /* this is actually the model number */
+
+        double f_score;
+        double r_score;
+        data = (struct wims_thread_data *) threadarg;
+
+        num_threads = data->num_threads;
+        thread_id = data->thread_ID;
+        fhmm = data->fhmm;
+
+        //LOG_MSG("Average sequence length: %d",expected_len);
+
+        for(i =0; i < data->sb->num_seq;i++){
+
+                        seq = data->sb->sequences[i];
+                        RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
+
+                        seq->score_arr[thread_id] = f_score;
+
+        }
+        return NULL;
+ERROR:
+        return NULL;
+}
 void* do_label_sequences(void* threadarg)
 {
         struct wims_thread_data *data;

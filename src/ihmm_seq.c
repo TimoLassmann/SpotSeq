@@ -2050,7 +2050,7 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, in
         RUNP(sequence->score_arr  = galloc(sequence->score_arr, num_models));
 
         for(i = 0; i < num_models;i++){
-                sequence->score_arr[i] = prob2scaledprob(1.0);
+                sequence->score_arr[i] = 1.0; /* default weight is one.  */
         }
 
         MMALLOC(sequence->has_path,sizeof(uint8_t) * num_models);

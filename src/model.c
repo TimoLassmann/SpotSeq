@@ -353,7 +353,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
         label = s->label_arr[model_index];
         seq = s->seq;
         len = s->seq_len;
-        score = 1.0;///s->score_arr[model_index];
+        score = s->score_arr[model_index];
 
 
         // 1.0;// - scaledprob2prob(s->score);
@@ -385,8 +385,6 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
 ERROR:
         return FAIL;
 }
-
-
 
 int iHmmHyperSample(struct ihmm_model* model, int iterations)
 {
@@ -569,17 +567,17 @@ ERROR:
         return FAIL;
 }
 
-struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, rk_state* rndstate)
+struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed)
 {
         struct model_bag* b = NULL;
 
         int i;
-        unsigned long seed;
+        //unsigned long seed;
         unsigned long local_seed;
         ASSERT(num_models > 0,"need to allocate at least one model");
 
 
-        seed = rk_ulong(rndstate);
+        //seed = rk_ulong(rndstate);
         MMALLOC(b, sizeof(struct model_bag));
 
         b->models = NULL;
@@ -597,7 +595,6 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, r
         }
         MMALLOC(b->models, sizeof(struct ihmm_model*)* b->num_models);
         MMALLOC(b->min_u , sizeof(double) * b->num_models);
-
         for(i = 0; i < b->num_models;i++){
                 /* set seed in each model based on RNG in main model bag */
                 local_seed = rk_ulong(&b->rndstate);
@@ -605,7 +602,6 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, r
                 b->min_u[i] = 0.0;
                 RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i], L,local_seed));
         }
-
         return b;
 ERROR:
         free_model_bag(b);

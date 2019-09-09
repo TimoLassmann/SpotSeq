@@ -145,6 +145,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                 if(!strncmp("Alphabet", hdf5_data->attr[i]->attr_name, 8)){
                         local_L = hdf5_data->attr[i]->int_val;
                 }
+
                 if(!strncmp("NumModels", hdf5_data->attr[i]->attr_name, 9)){
                         num_models = hdf5_data->attr[i]->int_val;
                 }
@@ -156,11 +157,9 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(local_L != -1,"No Alphabet");
         ASSERT(num_models > 0, "No models");
 
-
         hdf5_read_dataset("Names",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read beta");
         name = (char**)hdf5_data->data;
-
 
         hdf5_read_dataset("Sequences",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
@@ -169,7 +168,6 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         hdf5_read_dataset("CompetitiveScores",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         scores = (double**)hdf5_data->data;
-
 
         hdf5_read_dataset("Background",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read background");
@@ -180,18 +178,16 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                 ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
                 label = (int**)hdf5_data->data;
                 hdf5_close_group(hdf5_data);
-                //hdf5_close_file(hdf5_data);
-                //hdf5_free(hdf5_data);
         }else{
                 label= NULL;
         }
+
         hdf5_close_file(hdf5_data);
         hdf5_free(hdf5_data);
 
-
         MMALLOC(sb,sizeof(struct seq_buffer));
 
-        sb->malloc_num = num_seq ;
+        sb->malloc_num = num_seq;
         sb->num_seq = num_seq;
         sb->org_num_seq = -1;
         sb->sequences = NULL;
@@ -210,7 +206,6 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         }
         if(mode == IHMM_SEQ_READ_ALL){
                 RUN(add_multi_model_label_and_u(sb, num_models));
-
                 /* copy stuff over */
                 for(i = 0; i < sb->num_seq;i++){
                         pos = 0;
@@ -242,15 +237,13 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                                 break;
                         }
                         sb->sequences[i]->seq[j] = seq[i][j];
-                        //sb->sequences[i]->label[j] = label[i][j];
                 }
                 sb->sequences[i]->seq_len = j;
         }
         if(mode == IHMM_SEQ_READ_ALL){
                 gfree(label);
         }
-        //hdf5_close_file(hdf5_data);
-        //hdf5_free(hdf5_data);
+        gfree(scores);
         gfree(name);
         gfree(seq);
         return sb;
@@ -268,7 +261,6 @@ ERROR:
         if(seq){
                 gfree(seq);
         }
-
 
         return NULL;
 }

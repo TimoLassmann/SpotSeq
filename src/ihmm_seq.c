@@ -99,6 +99,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         char** name = NULL;
         char** seq = NULL;
         int** label = NULL;
+        double** scores = NULL;
         double* background;
 
         int num_seq;
@@ -165,6 +166,10 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
         seq = (char**)hdf5_data->data;
 
+        hdf5_read_dataset("CompetitiveScores",hdf5_data);
+        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
+        scores = (double**)hdf5_data->data;
+
 
         hdf5_read_dataset("Background",hdf5_data);
         ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read background");
@@ -185,6 +190,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
 
 
         MMALLOC(sb,sizeof(struct seq_buffer));
+
         sb->malloc_num = num_seq ;
         sb->num_seq = num_seq;
         sb->org_num_seq = -1;
@@ -193,8 +199,6 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         sb->L = local_L;
 
         sb->background = background;
-
-
 
         MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->num_seq;i++){
@@ -215,6 +219,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                                         sb->sequences[i]->label_arr[c][j] = label[i][pos];
                                         pos++;
                                 }
+                                sb->sequences[i]->score_arr[c] = scores[i][c];
                         }
                 }
         }
@@ -278,7 +283,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         char** name = NULL;
         char** seq = NULL;
         int** label = NULL;
-
+        double** scores = NULL;
         int max_name_len;
         int has_seq_info;
 
@@ -327,7 +332,19 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
                 }
         }
 
-        // RUNP(name = alloc_2)
+        /* Score matrix */
+
+        RUNP(scores = galloc(scores, sb->num_seq, num_models,0.0));
+
+        for(i = 0; i < sb->num_seq;i++){
+                len = sb->sequences[i]->seq_len;
+                pos = 0;
+                for(j = 0; j < num_models;j++){
+                        scores[i][j] = sb->sequences[i]->score_arr[j];
+
+                }
+        }
+
 
         RUNP(hdf5_data = hdf5_create());
 
@@ -382,6 +399,14 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         hdf5_data->chunk_dim[1] = (sb->max_len+1)* num_models;
         hdf5_data->native_type = H5T_NATIVE_INT;
         hdf5_write("Labels",&label[0][0], hdf5_data);
+
+        hdf5_data->rank = 2;
+        hdf5_data->dim[0] = sb->num_seq;
+        hdf5_data->dim[1] = num_models;
+        hdf5_data->chunk_dim[0] = sb->num_seq;
+        hdf5_data->chunk_dim[1] = num_models;
+        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
+        hdf5_write("CompetitiveScores",&scores[0][0], hdf5_data);
 
 
 
@@ -847,6 +872,7 @@ struct seq_buffer* load_sequences(char* in_filename, rk_state* rndstate)
 
         seq_p = 0;
         MMALLOC(sb,sizeof(struct seq_buffer));
+
         sb->malloc_num = 1024;
         sb->num_seq = -1;
         sb->org_num_seq = -1;
@@ -1978,7 +2004,7 @@ struct ihmm_sequence* alloc_ihmm_seq(void)
         sequence->label_arr = NULL;
         sequence->tmp_label_arr = NULL;
         sequence->u_arr = NULL;
-        //sequence->score_arr = NULL;
+        sequence->score_arr = NULL;
 
 
         return sequence;
@@ -2011,7 +2037,6 @@ int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models)
         for(i = 0; i < sb->num_seq;i++){
                 RUN(alloc_multi_model_label_and_u(sb->sequences[i],sb->max_len,   num_models));
 
-
         }
         return OK;
 ERROR:
@@ -2020,6 +2045,7 @@ ERROR:
 
 int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, int num_models)
 {
+        int i;
         ASSERT(sequence != NULL, "No sequence");
 
         RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, max_len+1, 0.0));
@@ -2029,18 +2055,13 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, in
         RUNP(sequence->tmp_label_arr = galloc(sequence->tmp_label_arr, num_models, max_len+1, -1));
 
 
-        /*RUNP(sequence->score_arr  = galloc(sequence->score_arr, num_models));
-
-        int i;
+        RUNP(sequence->score_arr  = galloc(sequence->score_arr, num_models));
 
         for(i = 0; i < num_models;i++){
                 sequence->score_arr[i] = prob2scaledprob(1.0);
         }
-        */
-        
+
         MMALLOC(sequence->has_path,sizeof(uint8_t) * num_models);
-
-
         return OK;
 ERROR:
         free_ihmm_sequence(sequence);

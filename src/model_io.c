@@ -505,7 +505,7 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
         ASSERT(max_K!=0, "No states???");
 
         hdf5_close_group(hdf5_data);
-        RUNP(td = create_wims_thread_data(&num_threads, max_len, max_K, NULL));
+        RUNP(td = create_wims_thread_data(&num_threads,  max_len, max_K, NULL));
 
 
         for(i = 0 ;i < num_threads;i++){
@@ -534,6 +534,7 @@ int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int nu
 
 
         hdf5_data->num_attr = 0;
+
 
         hdf5_add_attribute(hdf5_data, "Nthreads", "",num_threads, 0.0f, HDF5GLUE_INT);
         hdf5_add_attribute(hdf5_data, "Max_L", "",max_len, 0.0f, HDF5GLUE_INT);

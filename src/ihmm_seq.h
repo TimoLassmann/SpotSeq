@@ -27,7 +27,7 @@ struct ihmm_sequence{
         uint8_t* seq;
         uint8_t* has_path;
         double** u_arr;
-        //double* score_arr;
+        double* score_arr;
         int** label_arr;
         int** tmp_label_arr;
         double* u;
@@ -42,7 +42,6 @@ struct ihmm_sequence{
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         double* background;
-
         rk_state rndstate;
         int seed;
         int malloc_num;

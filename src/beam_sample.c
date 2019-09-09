@@ -37,20 +37,12 @@ int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequenc
 int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
 int collect_slice(struct wims_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, struct thr_pool* pool, int iterations, int num_threads)
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, int iterations, int num_threads)
 {
         int i;
         int iter;
-        //float min_u;
-        //float max;
-        //float** matrix = NULL;
-        //struct thr_pool* local_pool = NULL;
-        //struct wims_thread_data** td = NULL;
-        //int need_local_pool;
-
         int no_path;
 
-        //struct ihmm_model* model = NULL;
         struct fast_hmm_param* ft = NULL;
 
         ASSERT(model_bag != NULL, "no model.");
@@ -62,20 +54,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
 
         init_logsum();
 
-        /* Threading setup...  */
-        /*need_local_pool = 0;
-          if(pool){
-          local_pool = pool;
-          }else{
-          if((local_pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
-          need_local_pool =1;
-          }
-
-          RUNP(td = create_wims_thread_data(&num_threads,(sb->max_len+2)  ,ft_bag->max_last_state, &model_bag->rndstate));
-          LOG_MSG("Will use %d threads.", num_threads);*/
-
-
-        //sb->org_num_seq = sb->num_seq;
         no_path = 0;                            /* Assume that we don't have a path in the first iteration */
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* shuffle and sub-sample sequences (or not...) */

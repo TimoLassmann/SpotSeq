@@ -207,14 +207,11 @@ ERROR:
 int run_build_ihmm(struct parameters* param)
 {
         struct fast_param_bag* ft_bag = NULL;
-
         struct model_bag* model_bag = NULL;
-
         struct seq_buffer* sb = NULL;
-
         struct wims_thread_data** td = NULL;
 
-        struct thr_pool* pool = NULL;
+        //struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
 
         double average_sequence_len;
@@ -228,6 +225,7 @@ int run_build_ihmm(struct parameters* param)
 
         MMALLOC(num_state_array, sizeof(int)* param->num_models);
 
+        /* If we have saved a model continue from there */
         if(param->in_model){
                 /* PROBABLY need to re-alloc num_state_array */
                 //MMALLOC(num_state_array, sizeof(int)* param->num_models);
@@ -237,34 +235,8 @@ int run_build_ihmm(struct parameters* param)
                 for(i = 0; i < model_bag->num_models;i++){
                         num_state_array[i] = model_bag->models[i]->num_states;
                 }
-
-
-
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
-                //MFREE(num_state_array);
-                //free_ihmm_sequences(sb);
-                //free_model_bag(model_bag);
-                //return EXIT_SUCCESS;
-                /*
-                if(param->alpha != IHMM_PARAM_PLACEHOLDER){
-                        model->alpha = param->alpha;
-                        model->alpha_a = IHMM_PARAM_PLACEHOLDER;
-                        model->alpha_b = IHMM_PARAM_PLACEHOLDER;
-                }
-                if(param->gamma != IHMM_PARAM_PLACEHOLDER){
-                        model->gamma = param->gamma;
-                        model->gamma_a = IHMM_PARAM_PLACEHOLDER;
-                        model->gamma_b = IHMM_PARAM_PLACEHOLDER;
-                }
-                */
-                /*RUN(write_model_bag_hdf5(model_bag,param->output));
-                RUN(add_annotation(param->output, "wims_model_cmd", param->cmd_line));
-                RUN(add_background_emission(param->output,  sb->background, sb->L));
-
-                RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
-                RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len,  model_bag->max_num_states));
-                return EXIT_SUCCESS;*/
-        }else{
+        }else{                  /* New run - start from the beginning */
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
 
@@ -278,7 +250,6 @@ int run_build_ihmm(struct parameters* param)
                         LOG_MSG("Add revcomp sequences.");
                         RUN(add_reverse_complement_sequences_to_buffer(sb));
                 }
-
 
                 average_sequence_len = 0.0;
 
@@ -296,12 +267,6 @@ int run_build_ihmm(struct parameters* param)
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
                 RUN(init_num_state_array( num_state_array, param->num_models, param, average_sequence_len));
 
-                //num_state_array[0] = 10;
-                //for(i = 0; i < param->num_models;i++){
-                //        LOG_MSG("Num: %d",num_state_array[i]);
-                        //num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
-                //}
-
                 RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models, &param->rndstate));
 
                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
@@ -316,9 +281,7 @@ int run_build_ihmm(struct parameters* param)
 
                         RUN(fill_counts(model_bag->models[i], sb,i));
 
-
                         model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
-                        //print_counts(model_bag->models[i]);
                 }
 
                 RUN(check_labels(sb,model_bag->num_models ));
@@ -326,17 +289,15 @@ int run_build_ihmm(struct parameters* param)
                 sb->seed = rk_ulong(&model_bag->rndstate);
                 rk_seed(sb->seed, &sb->rndstate);
 
-
-
-
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
 
+
                 /* Allocating thread structure. */
-                RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+                RUNP(td = create_wims_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
         }
 
         LOG_MSG("Will use %d threads.", param->num_threads);
-        if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
@@ -365,7 +326,7 @@ int run_build_ihmm(struct parameters* param)
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
         /* Main function */
-        RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  param->num_iter,  param->num_threads));
+        RUN(run_beam_sampling(model_bag,ft_bag, sb,td,  param->num_iter,  param->num_threads));
 
 
         /* Write results */
@@ -399,7 +360,7 @@ int run_build_ihmm(struct parameters* param)
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
 ERROR:
@@ -407,7 +368,7 @@ ERROR:
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
 }

@@ -297,120 +297,14 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
 
-
-        /* Try to weight sequences  */
-        /* float sum = sb->sequences[0]->score; */
-        /* for(i = 1; i < sb->num_seq;i++){ */
-        /*         sum = logsum(sum, sb->sequences[i]->score); */
-        /* } */
-
-        /* for(i = 0 ; i < sb->num_seq;i++){ */
-        /*         //sb->sequences[i]->score = sb->sequences[i]->score -  sum; */
-        /*         fprintf(stdout,"LEN:%d  %d %f (%f)  %f \n",sb->sequences[i]->seq_len,  i,sb->sequences[i]->score , sb->sequences[i]->score -  sum,sum); */
-        /* } */
-
         /* clear transition counts */
         /* clear emission counts */
         RUN(clear_counts(ihmm));
 
-        //LOG_MSG("ITER:%d", ihmm->training_iterations);
-
-
-        /* This is how one *could* sequence weighting  */
-
-        /*double sum = prob2scaledprob(0.0);
-        for(i = 0; i < sb->num_seq;i++){
-                 if(ihmm->training_iterations > 9980){
-                         fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] - sb->sequences[i]->r_score );
-                 }
-                sum = logsum(sum,   sb->sequences[i]->score_arr[model_index]);
-
-        }
-        if(ihmm->training_iterations > 9980){
-        fprintf(stdout,"\n" );
-        }
-
-        for(i = 0; i < sb->num_seq;i++){
-                 standardise
-                sb->sequences[i]->score_arr[model_index] = sb->sequences[i]->score_arr[model_index]- logsum(sb->sequences[i]->score_arr[model_index],sb->sequences[i]->r_score);//,   sb->sequences[i]->r_score   -= sum;
-                if(sb->sequences[i]->score_arr[model_index]> 0){
-                        sb->sequences[i]->score_arr[model_index] = prob2scaledprob(1.0);
-                }
-
-
-                 if(ihmm->training_iterations > 9980){
-                       fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
-                }
-
-                subtract
-
-                sb->sequences[i]->score_arr[model_index] = 1.0 - scaledprob2prob(sb->sequences[i]->score_arr[model_index]);
-
-                if(ihmm->training_iterations > 9980){
-                        fprintf(stdout,"%f ",sb->sequences[i]->score_arr[model_index] );
-                }
-
-                simulated annealing
-
-                sb->sequences[i]->score_arr[model_index] = pow(sb->sequences[i]->score_arr[model_index], 1.0 / (double)MACRO_MAX(1000- ihmm->training_iterations  , 1.0));
-
-                if(ihmm->training_iterations > 9980){
-                        fprintf(stdout,"%f\n",sb->sequences[i]->score_arr[model_index] );
-                }
-
-
-        }
-        sum = 0.0;
-        for(i = 0; i < sb->num_seq;i++){
-                sum += sb->sequences[i]->score_arr[model_index];
-
-        }
-        sum /= (double) sb->num_seq;
-
-        for(i = 0; i < sb->num_seq;i++){
-                sb->sequences[i]->score_arr[model_index] /= sum;
-                if(ihmm->training_iterations > 9980){
-                        LOG_MSG("MODEL %d SEQ %d Weight: %f ", model_index, i,sb->sequences[i]->score_arr[model_index]);
-                }
-
-        }
-        */
 
         for(i = 0; i < sb->num_seq;i++){
                 RUN(fill_counts_i(ihmm, sb->sequences[i],model_index));
         }
-        //print_counts(ihmm);
-
-        /*
-        p = ihmm->transition_counts;
-
-
-         get transition counts
-        for(i = 0; i < sb->num_seq;i++){
-                label = sb->sequences[i]->label;
-                len = sb->sequences[i]->seq_len;
-
-                p[IHMM_START_STATE][label[0]] += 1;
-                for(j = 1; j < len;j++){
-                        p[label[j-1]][label[j]]++;
-                }
-
-                p[label[len-1]][IHMM_END_STATE] += 1;
-        }
-
-
-
-        p = ihmm->emission_counts;
-         get emission counts
-        for(i = 0; i < sb->num_seq; i++){
-                label = sb->sequences[i]->label;
-                seq = sb->sequences[i]->seq;
-                len = sb->sequences[i]->seq_len;
-                for(j =0; j < len;j++){
-                        p[(int)seq[j]][label[j]]++;
-                }
-        }
-        */
         return OK;
 ERROR:
         return FAIL;

@@ -28,7 +28,7 @@
 #include "thread_data.h"
 
 /* main runner function  */
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, struct thr_pool* pool, int iterations, int num_threads);
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, int iterations, int num_threads);
 
 
 #endif

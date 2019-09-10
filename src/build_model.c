@@ -51,6 +51,9 @@ struct parameters{
 static int run_build_ihmm(struct parameters* param);
 static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td);
 static int analyzescores(struct seq_buffer* sb, int num_models);
+static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
+static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
+
 static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
 static int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean);
@@ -74,7 +77,7 @@ int main (int argc, char *argv[])
         param->local = 0;
         param->rev = 0;
         param->num_iter = 2000;
-        param->inner_iter = 100;
+        param->inner_iter = 10;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
@@ -339,9 +342,16 @@ int run_build_ihmm(struct parameters* param)
                 /* analyzescores */
                 analyzescores(sb, model_bag->num_models);
 
+
+                if(param->competitive){ /* competitive training */
+                        set_sequence_weights(sb,  model_bag->num_models, 2.0 /   log10f( (float) (i+1) + 1.0));
+                }else{          /* reset sequence weights.  */
+                        reset_sequence_weights(sb, model_bag->num_models);
+                }
         }
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
+        RUN(score_all_vs_all(model_bag,sb,td));
         RUN(write_model_bag_hdf5(model_bag,param->output));
         RUN(add_annotation(param->output, "seqwise_model_cmd", param->cmd_line));
         RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
@@ -384,6 +394,65 @@ ERROR:
         return FAIL;
 }
 
+int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature)
+{
+        int i,j;
+        double sum;
+        double prior;
+        /* assume model prior is 1 / num model */
+/* re-set!!!  */
+        prior = prob2scaledprob(1.0 / (double) num_models);
+        for(i = 0; i < sb->num_seq;i++){
+                //fprintf(stdout,"Seq%d\t",i);
+                sum = prob2scaledprob(0.0);
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] + prior;
+                        sum = logsum(sum, sb->sequences[i]->score_arr[j]);
+
+
+                }
+                //fprintf(stdout,"Seq%d\t",i);
+                for(j = 0; j < num_models;j++){
+                       sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] - sum;
+                       //fprintf(stdout,"%f ", scaledprob2prob(sb->sequences[i]->score_arr[j]));
+                }
+                //fprintf(stdout,"\n");
+                sum = prob2scaledprob(0.0);
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] * (1.0 / temperature);
+                        sum = logsum(sum, sb->sequences[i]->score_arr[j]);
+
+                }
+                //fprintf(stdout,"Seq%d\t",i);
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] - sum;
+                        //fprintf(stdout,"%f ", scaledprob2prob(sb->sequences[i]->score_arr[j]));
+                        sb->sequences[i]->score_arr[j] = 1.0 +  (double) num_models *  scaledprob2prob(sb->sequences[i]->score_arr[j]);
+                }
+                //fprintf(stdout,"\n");
+
+
+
+        }
+        return OK;
+}
+
+
+int reset_sequence_weights(struct seq_buffer* sb, int num_models)
+{
+        int i,j;
+        /* re-set!!!  */
+        for(i = 0; i < sb->num_seq;i++){
+                //fprintf(stdout,"Seq%d\t",i);
+                for(j = 0; j < num_models;j++){
+                        sb->sequences[i]->score_arr[j] = 1.0;
+
+                }
+        }
+
+        return OK;
+}
+
 int analyzescores(struct seq_buffer* sb, int num_models)
 {
         double s0,s1,s2;
@@ -415,16 +484,6 @@ int analyzescores(struct seq_buffer* sb, int num_models)
                 s1 = s1 / s0 ;
                 fprintf(stdout,"Model %d:\t%f\t%f\n",j, s1,s2);
         }
-        /* re-set!!!  */
-        for(i = 0; i < sb->num_seq;i++){
-                //fprintf(stdout,"Seq%d\t",i);
-                for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->score_arr[j] = 1.0;
-
-                }
-
-
-        }
 
 
         return OK;
@@ -439,6 +498,9 @@ int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_th
         int num_threads = td[0]->num_threads;
 
         int run;
+
+        ASSERT(sb != NULL, "No sequences");
+        ASSERT(mb != NULL, "No models");
         c = 0;
 
         for(run = 0; run < mb->num_models;run+= num_threads){

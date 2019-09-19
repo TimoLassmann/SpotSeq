@@ -105,12 +105,12 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
 
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
 
         return OK;
 ERROR:
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         return FAIL;
 }
 

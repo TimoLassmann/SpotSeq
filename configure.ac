@@ -1,4 +1,4 @@
-AC_INIT([seqwise], [m4_esyscmd_s([git describe --always])])
+AC_INIT([seqer], [m4_esyscmd_s([git describe --always])])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
 AC_PROG_CC

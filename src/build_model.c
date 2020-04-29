@@ -342,7 +342,6 @@ int run_build_ihmm(struct parameters* param)
                 /* analyzescores */
                 analyzescores(sb, model_bag->num_models);
 
-
                 if(param->competitive){ /* competitive training */
                         set_sequence_weights(sb,  model_bag->num_models, 2.0 /   log10f( (float) (i+1) + 1.0));
                 }else{          /* reset sequence weights.  */

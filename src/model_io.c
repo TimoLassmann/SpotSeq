@@ -314,6 +314,7 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
                         model->alpha_limit =  hdf5_data->attr[i]->double_val;
                 }
                 if(!strcmp("Gamma_limit", hdf5_data->attr[i]->attr_name)){
+
                         model->gamma_limit =  hdf5_data->attr[i]->double_val;
                 }
         }

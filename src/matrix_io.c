@@ -1,5 +1,8 @@
 #include "matrix_io.h"
 
+#include "tlrng.h"
+#include <string.h>
+
 struct double_matrix* read_double_matrix(char* filename, int has_col_names,int has_row_names)
 {
         struct double_matrix* m = NULL;
@@ -379,9 +382,12 @@ ERROR:
 
 int fill_random_matrix(struct double_matrix* m)
 {
+        struct rng_state* rng = NULL;
         int i,j,a;
         double tmp;
         int real = m->real_sample;
+
+        rng = init_rng(0);
         for(i = 0; i < m->nrow;i++){
                 /* COPY real values */
                 for(j = 0;j < real;j++){
@@ -390,27 +396,33 @@ int fill_random_matrix(struct double_matrix* m)
                 }
                 /* Shuffle values */
                 for(j = m->real_sample-1; j > 0;j--){
-                        a = random_int_zero_to_x(j) + real;
+                        a = tl_random_int(rng, j)+ real;
+                        //a = random_int_zero_to_x(j) + real;
                         tmp = m->matrix[i][a];
                         m->matrix[i][a] = m->matrix[i][j+real];
                         m->matrix[i][j+real] = tmp;
                 }
         }
+        free_rng(rng);
         return OK;
 }
 
 int shuffle_double_matrix(struct double_matrix* m)
 {
+        struct rng_state* rng = NULL;
         int i,j,a;
         double tmp = 0.0;
+        rng = init_rng(0);
         for(i = 0; i < m->nrow;i++){
                 for(j = m->ncol-1;j > 0; j--){
-                        a = random_int_zero_to_x(j);
+                        //a = random_int_zero_to_x(j);
+                        a = tl_random_int(rng, j);
                         tmp = m->matrix[i][a];
                         m->matrix[i][a] =  m->matrix[i][j];
                         m->matrix[i][j] = tmp;
                 }
         }
+        free_rng(rng);
         return OK;
 }
 

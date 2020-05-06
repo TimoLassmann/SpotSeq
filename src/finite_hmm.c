@@ -1,6 +1,7 @@
 
 #include "finite_hmm.h"
 
+#include "tllogsum.h"
 
 /* Calculate the bayesian information criteria score for a finite HMM */
 /* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
@@ -322,7 +323,9 @@ int setup_model(struct fhmm* fhmm)
         /* I need to allocate tindex & convert probs to log space */
         init_logsum();
 
-        RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
+        //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
+
+        RUN(galloc(&fhmm->tindex, fhmm->K , fhmm->K+1));
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
@@ -365,8 +368,12 @@ int remove_state_for_ploting(struct fhmm*fhmm, int state)
         double** tmp_trans = NULL;
         double** tmp_emit = NULL;
 
-        RUNP(tmp_trans = galloc(tmp_trans,fhmm->K-1, fhmm->K-1, 0.0));
-        RUNP(tmp_emit = galloc(tmp_emit,fhmm->K-1, fhmm->L, 0.0));
+        //RUNP(tmp_trans = galloc(tmp_trans,fhmm->K-1, fhmm->K-1, 0.0));
+        //RUNP(tmp_emit = galloc(tmp_emit,fhmm->K-1, fhmm->L, 0.0));
+
+        RUN(galloc(&tmp_trans,fhmm->K-1, fhmm->K-1));
+        RUN(galloc(&tmp_emit,fhmm->K-1, fhmm->L));
+
         a = 0;
         for(i = 0; i < fhmm->K;i++){
                 if(i != state){
@@ -514,8 +521,11 @@ int alloc_dyn_matrices(struct fhmm* fhmm)
 
         fhmm->alloc_matrix_len = 1024;
 
-        RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
-        RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+        /* RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
+        /* RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
+
+        RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
+        RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
         return OK;
 ERROR:
         return FAIL;
@@ -531,8 +541,11 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
                 while(fhmm->alloc_matrix_len < new_len){
                         fhmm->alloc_matrix_len = fhmm->alloc_matrix_len << 1;
                 }
-                RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
-                RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0));
+                /* RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
+                /* RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
+
+                RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
+                RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
         }
         return OK;
 ERROR:

@@ -1,8 +1,9 @@
-
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 #include "config.h"
 #endif
 
+
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -11,6 +12,9 @@
 #include <ctype.h>
 
 #include "tldevel.h"
+
+#include "tllogsum.h"
+#include "tlmisc.h"
 
 #include "ihmm_seq.h"
 
@@ -65,7 +69,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Build HDPHMM model(s).");
+        //print_program_header(argv, "Build HDPHMM model(s).");
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
@@ -197,7 +201,7 @@ int main (int argc, char *argv[])
                 rk_randomseed(&param->rndstate);
         }
 
-        RUNP(param->cmd_line = make_cmd_line(argc,argv));
+        //RUNP(param->cmd_line = make_cmd_line(argc,argv));
 
         //rk_save_testing();
         //return EXIT_SUCCESS;
@@ -606,7 +610,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
         struct wims_thread_data** td = NULL;
-        struct thr_pool* pool = NULL;
+        //struct thr_pool* pool = NULL;
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;
 
@@ -640,7 +644,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         LOG_MSG("Starting thread pool.");
        /* start threadpool  */
-        if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
 
         /* allocate data for threads; */
@@ -664,7 +668,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
                 RUN(alloc_dyn_matrices(fhmm));
-                RUN(run_score_sequences(fhmm,sb,td, pool));
+                RUN(run_score_sequences(fhmm,sb,td));
 
                 max_likelihood = prob2scaledprob(1.0);
                 for(i = 0; i < limit;i++){
@@ -706,7 +710,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         //LOG_MSG("Got past writing");
         free_wims_thread_data(td);
         //LOG_MSG("Got past free thread data ");
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         //LOG_MSG("Got past poolfree");
         free_ihmm_sequences(sb);
         //LOG_MSG("Got past seq free");
@@ -715,7 +719,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         return OK;
 ERROR:
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return FAIL;

@@ -13,7 +13,7 @@
 #include <omp.h>
 
 #include "tldevel.h"
-#include "thr_pool.h"
+//#include "thr_pool.h"
 #include "ihmm_seq.h"
 
 #include "finite_hmm.h"
@@ -21,7 +21,7 @@
 #include "thread_data.h"
 
 
-extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thread_data** td, struct thr_pool* pool);
+extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thread_data** td);
 extern void* do_score_sequences(void* threadarg);
 extern void* do_score_sequences_per_model(void* threadarg);
 

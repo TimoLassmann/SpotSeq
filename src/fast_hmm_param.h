@@ -8,7 +8,7 @@
 
 #include "global.h"
 #include "tldevel.h"
-#include "rbtree.h"
+#include "tlrbtree.h"
 #include "distributions.h"
 #include <math.h>
 #include <float.h>

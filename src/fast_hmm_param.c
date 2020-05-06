@@ -144,8 +144,11 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
                 ft->background_emission[i] = 0.0;
         }
 
-        RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
-        RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
+        /* RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0)); */
+        /* RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0)); */
+
+        RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
+        RUN(galloc(&ft->transition,  ft->alloc_num_states,  ft->alloc_num_states));
 
         fp_get = &get_transition;
         fp_cmp = &compare_transition;
@@ -181,8 +184,12 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
                 while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
                 }
-                RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0));
-                RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0));
+                /* RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0)); */
+                /* RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0)); */
+
+
+                RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
+                RUN(galloc(&ft->transition,  ft->alloc_num_states,  ft->alloc_num_states));
 
                 MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
                 for(i = num_old_item; i < ft->alloc_num_states;i++){

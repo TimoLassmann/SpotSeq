@@ -1,6 +1,15 @@
+
 #include "model.h"
-#include "hdf5_glue.h"
+//#include "hdf5_glue.h"
 #include "thread_data.h"
+
+#include "tlmisc.h"
+#include <string.h>
+
+#include "tlhdf5wrap.h"
+
+
+#define BUFFER_LEN 256
 
 static int add_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a);
 
@@ -62,23 +71,13 @@ struct model_bag* read_model_bag_hdf5(char* filename)
         bag->max_num_states = 0;
         bag->best_model = -1;
 
-        hdf5_data = hdf5_create();
+        //hdf5_data = hdf5_create();
 
-        hdf5_open_file(filename,hdf5_data);
-        hdf5_read_attributes(hdf5_data,hdf5_data->file);
-        //print_attributes(hdf5_data);
+        RUN(open_hdf5_file(&hdf5_data,filename));
 
-        for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strcmp("MaxStates", hdf5_data->attr[i]->attr_name)){
-                        bag->max_num_states = hdf5_data->attr[i]->int_val;
-                }
-                if(!strcmp("Number of models", hdf5_data->attr[i]->attr_name)){
-                        bag->num_models = hdf5_data->attr[i]->int_val;
-                }
-                if(!strcmp("Seed", hdf5_data->attr[i]->attr_name)){
-                        bag->seed = hdf5_data->attr[i]->int_val;
-                }
-        }
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/","MaxStates",bag->max_num_states));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/","Number of models",bag->num_models));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/","Seed",bag->seed));
         ASSERT(bag->num_models > 0, "No models!");
         MMALLOC(bag->models, sizeof(struct ihmm_model*)* bag->num_models);
 
@@ -91,20 +90,21 @@ struct model_bag* read_model_bag_hdf5(char* filename)
         //for(i = 0; i < hdf5_data->grp_names->num_names;i++){
         //        fprintf(stdout,"%d %s\n",i,hdf5_data->grp_names->names[i]);
         //}
+        RUN(HDFWRAP_READ_DATA(hdf5_data,"/","BestModel",&bag->best_model));
+
+        /*
         RUN(hdf5_open_group("/",hdf5_data ));
         if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "BestModel",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
         //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
         hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
-        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
+        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );
         hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
         hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
         hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
         hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &bag->best_model);
         if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
         if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
-        RUN(hdf5_close_group(hdf5_data));
-
-
+        RUN(hdf5_close_group(hdf5_data));*/
 
         RUN(read_RNG_state(hdf5_data, "RNG",&bag->rndstate));
 
@@ -115,18 +115,16 @@ struct model_bag* read_model_bag_hdf5(char* filename)
                 if(bag->max_num_states < bag->models[i]->num_states){
                         bag->max_num_states = bag->models[i]->num_states;
                 }
-
-
                 bag->finite_models[i] = NULL;
-
                 snprintf(buffer, BUFFER_LEN, "models/m%d/fhmm",i+1);
                 /* get HMM parameters  */
                 RUNP(bag->finite_models[i] = read_fhmm_parameters(hdf5_data, buffer));
-
         }
+        RUN(close_hdf5_file(&hdf5_data));
 
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+
+        //hdf5_close_file(hdf5_data);
+        //hdf5_free(hdf5_data);
         return bag;
 ERROR:
         return NULL;
@@ -140,12 +138,11 @@ int write_best_model(char* filename, int best_model)
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
+        RUN(open_hdf5_file(&hdf5_data,filename));
 
-        hdf5_data = hdf5_create();
-
-        hdf5_open_file(filename,hdf5_data);
-
-        hdf5_data->rank = 1;
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/","BestModel",best_model));
+        RUN(close_hdf5_file(&hdf5_data));
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
@@ -156,11 +153,10 @@ int write_best_model(char* filename, int best_model)
         RUN(hdf5_close_group(hdf5_data));
 
         hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        hdf5_free(hdf5_data);*/
         return OK;
 ERROR:
         return FAIL;
-
 }
 
 int write_model_bag_hdf5(struct model_bag* bag, char* filename)
@@ -169,6 +165,20 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
         struct hdf5_data* hdf5_data = NULL;
         int model_i;
         int best_model = -1;
+        /* Create File  */
+        RUN(open_hdf5_file(&hdf5_data,filename));
+
+        /* write top level meta-data */
+        snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Program",buffer));
+        snprintf(buffer, BUFFER_LEN, "%s", PACKAGE_VERSION);
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Version",buffer));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Number of models",bag->num_models));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","MaxStates",bag->max_num_states ));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Seed",bag->seed));
+
+
+        /*
         RUNP(hdf5_data = hdf5_create());
         snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
         hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
@@ -184,27 +194,28 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
         hdf5_write_attributes(hdf5_data, hdf5_data->file);
 
         hdf5_data->num_attr = 0;
-
+        */
         //LOG_MSG("header done");
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/","BestModel",best_model ));
 
 
-        RUN(hdf5_create_group("/",hdf5_data));
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = 1;
-        hdf5_data->chunk_dim[0] = 1;
-        hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("BestModel",&best_model, hdf5_data));
-        RUN(hdf5_close_group(hdf5_data));
+        //RUN(hdf5_create_group("/",hdf5_data));
+        //hdf5_data->rank = 1;
+        //hdf5_data->dim[0] = 1;
+        //hdf5_data->chunk_dim[0] = 1;
+        //hdf5_data->native_type = H5T_NATIVE_INT;
+        //RUN(hdf5_write("BestModel",&best_model, hdf5_data));
+        //RUN(hdf5_close_group(hdf5_data));
 
-        RUN(add_RNG_state(hdf5_data, "RNG",&bag->rndstate));
+        RUN(add_RNG_state(hdf5_data, "/RNG",&bag->rndstate));
         //LOG_MSG("RNG top  done");
-        RUN(hdf5_create_group("models",hdf5_data));
+        //RUN(hdf5_create_group("models",hdf5_data));
 
-        RUN(hdf5_close_group(hdf5_data));
+        //RUN(hdf5_close_group(hdf5_data));
         //LOG_MSG("Create model group done.");
 
         for(model_i = 0; model_i < bag->num_models;model_i++){
-                snprintf(buffer, BUFFER_LEN, "models/m%d", model_i+1);
+                snprintf(buffer, BUFFER_LEN, "/models/m%d", model_i+1);
                 //LOG_MSG("Writing model %d.",model_i);
                 RUN(write_model_hdf5(hdf5_data, bag->models[model_i], buffer));
 
@@ -213,7 +224,7 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
                 //LOG_MSG("Done");
         }
         hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        //hdf5_free(hdf5_data);
 
 
         /*struct model_bag* bag2 = NULL;
@@ -357,7 +368,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         char buffer[BUFFER_LEN+5];
         double** tmp = NULL;
         int i,j;
-
+        int best_model = -1;
         //RUNP(hdf5_data = hdf5_create());
         //snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
         //hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
@@ -368,7 +379,27 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         //RUN(hdf5_create_file(filename,hdf5_data));
 
         //hdf5_write_attributes(hdf5_data, hdf5_data->file);
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"BestModel",best_model ));
 
+
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Number of states", model->num_states));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Number of letters",model->L));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Gamma", model->gamma));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Gamma_limit",model->gamma_limit));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"gamma_a",model->gamma_a));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"gamma_b",model->gamma_b));
+
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Alpha",model->alpha));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Alpha_limit",model->alpha_limit));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"alpha0_a",model->alpha_a));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"alpha0_b",model->alpha_b));
+
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Iteration",model->training_iterations));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Seed",model->seed));
+
+
+
+        /*
         hdf5_data->num_attr = 0;
 
         hdf5_add_attribute(hdf5_data, "Number of states", "", model->num_states, 0.0f, HDF5GLUE_INT);
@@ -390,16 +421,20 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         RUN(hdf5_create_group(group,hdf5_data));
         hdf5_write_attributes(hdf5_data, hdf5_data->group);
         hdf5_data->num_attr = 0;
-
-        hdf5_data->rank = 1;
+        */
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = model->num_states;
         hdf5_data->dim[1] = -1;
         hdf5_data->chunk_dim[0] = model->num_states;
         hdf5_data->chunk_dim[1] = -1;
         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        RUN(hdf5_write("Beta",&model->beta[0], hdf5_data));
+        RUN(hdf5_write("Beta",&model->beta[0], hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Beta",model->beta));
+        //RUNP(tmp = galloc(tmp,  model->num_states,  model->num_states, 0.0));
+        /* TODO: this may not be necessary as I use galloc to allocate model->transition_counts  */
 
-        RUNP(tmp = galloc(tmp,  model->num_states,  model->num_states, 0.0));
+        /*RUN(galloc(&tmp,  model->num_states,  model->num_states));
+
         for(i = 0; i < model->num_states;i++){
                 for(j = 0; j < model->num_states;j++){
                         tmp[i][j] = model->transition_counts[i][j];
@@ -414,9 +449,11 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         RUN(hdf5_write("transition_counts",&tmp[0][0], hdf5_data));
 
         gfree(tmp);
-        tmp= NULL;
+        tmp= NULL;*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"transition_counts",model->transition_counts));
+        //RUNP(tmp = galloc(tmp,  model->L ,  model->num_states, 0.0));
+        /*RUN(galloc(&tmp,  model->L ,  model->num_states));
 
-        RUNP(tmp = galloc(tmp,  model->L ,  model->num_states, 0.0));
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
                         tmp[i][j] = model->emission_counts[i][j];
@@ -431,9 +468,11 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         RUN(hdf5_write("emission_counts",&tmp[0][0], hdf5_data));
 
         gfree(tmp);
-        tmp= NULL;
+        tmp= NULL;*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"emission_counts",model->emission_counts));
 
-        RUN(hdf5_close_group(hdf5_data));
+        /* Don't think I need to close group with new hdf api */
+        //RUN(hdf5_close_group(hdf5_data));
 
         snprintf(buffer, BUFFER_LEN+5 , "%s/RNG", group);
         //LOG_MSG("Trying to create group: %s", buffer);
@@ -484,7 +523,7 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
         int i;
         RUNP(hdf5_data = hdf5_create());
 
-        hdf5_open_file(filename,hdf5_data);
+        //hdf5_open_file(filename,hdf5_data);
 
         hdf5_open_group("thread_data",hdf5_data);
         hdf5_read_attributes(hdf5_data, hdf5_data->group);
@@ -575,60 +614,65 @@ ERROR:
 
 int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
 {
-        hdf5_create_group(group,hdf5_data);
+        /*hdf5_create_group(group,hdf5_data);
 
         hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("K",&fhmm->K, hdf5_data));
+        RUN(hdf5_write("K",&fhmm->K, hdf5_data));*/
 
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = 1;
-        hdf5_data->chunk_dim[0] = 1;
-        hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("L",&fhmm->L, hdf5_data));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"K",&fhmm->K));
+        /* hdf5_data->rank = 1; */
+        /* hdf5_data->dim[0] = 1; */
+        /* hdf5_data->chunk_dim[0] = 1; */
+        /* hdf5_data->native_type = H5T_NATIVE_INT; */
+        /* RUN(hdf5_write("L",&fhmm->L, hdf5_data)); */
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"L",&fhmm->L));
 
-        hdf5_data->rank = 2;
+        /*hdf5_data->rank = 2;
         hdf5_data->dim[0] = fhmm->K;
         hdf5_data->dim[1] = fhmm->L;
         hdf5_data->chunk_dim[0] = fhmm->K;
         hdf5_data->chunk_dim[1] = fhmm->L;
         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("emission",  &fhmm->e[0][0], hdf5_data);
+        hdf5_write("emission",  &fhmm->e[0][0], hdf5_data);*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"emission",fhmm->e));
 
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = fhmm->K;
-        hdf5_data->dim[1] = fhmm->K;
-        hdf5_data->chunk_dim[0] = fhmm->K;
-        hdf5_data->chunk_dim[1] = fhmm->K;
-        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("transition", &fhmm->t[0][0] , hdf5_data);
+        /* hdf5_data->rank = 2; */
+        /* hdf5_data->dim[0] = fhmm->K; */
+        /* hdf5_data->dim[1] = fhmm->K; */
+        /* hdf5_data->chunk_dim[0] = fhmm->K; */
+        /* hdf5_data->chunk_dim[1] = fhmm->K; */
+        /* hdf5_data->native_type = H5T_NATIVE_DOUBLE; */
+        /* hdf5_write("transition", &fhmm->t[0][0] , hdf5_data); */
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"transition",fhmm->t));
 
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = fhmm->K;
-        hdf5_data->dim[1] = fhmm->K+1;
-        hdf5_data->chunk_dim[0] = fhmm->K;
-        hdf5_data->chunk_dim[1] = fhmm->K+1;
-        hdf5_data->native_type = H5T_NATIVE_INT;
-        hdf5_write("transition_index", &fhmm->tindex[0][0] , hdf5_data);
+        /* hdf5_data->rank = 2; */
+        /* hdf5_data->dim[0] = fhmm->K; */
+        /* hdf5_data->dim[1] = fhmm->K+1; */
+        /* hdf5_data->chunk_dim[0] = fhmm->K; */
+        /* hdf5_data->chunk_dim[1] = fhmm->K+1; */
+        /* hdf5_data->native_type = H5T_NATIVE_INT; */
+        /* hdf5_write("transition_index", &fhmm->tindex[0][0] , hdf5_data); */
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"transition_index",fhmm->tindex));
 
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = fhmm->L;
-        hdf5_data->dim[1] = -1;
-        hdf5_data->chunk_dim[0] = fhmm->L;
-        hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("background", &fhmm->background[0], hdf5_data);
-
-        hdf5_close_group(hdf5_data);
+        /* hdf5_data->rank = 1; */
+        /* hdf5_data->dim[0] = fhmm->L; */
+        /* hdf5_data->dim[1] = -1; */
+        /* hdf5_data->chunk_dim[0] = fhmm->L; */
+        /* hdf5_data->chunk_dim[1] = -1; */
+        /* hdf5_data->native_type = H5T_NATIVE_DOUBLE; */
+        /* hdf5_write("background", &fhmm->background[0], hdf5_data); */
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"background",fhmm->background));
+        //hdf5_close_group(hdf5_data);
 
         return OK;
 ERROR:
-        if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
-        }
+        /* if(hdf5_data){ */
+        /*         hdf5_close_file(hdf5_data); */
+        /*         hdf5_free(hdf5_data); */
+        /* } */
         return FAIL;
 }
 
@@ -789,61 +833,72 @@ ERROR:
 
 int add_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a)
 {
-        //struct hdf5_data* hdf5_data = NULL;
-        RUN(hdf5_create_group(group,hdf5_data));
+/*        #define RK_STATE_LEN 624
 
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = RK_STATE_LEN;
-        hdf5_data->chunk_dim[0] = RK_STATE_LEN;
-        hdf5_data->native_type = H5T_NATIVE_ULONG;
-        RUN(hdf5_write("key",&a->key, hdf5_data));
+          typedef struct rk_state_
+          {
+          unsigned long key[RK_STATE_LEN];
+*/
+        unsigned long* tmp_key = NULL;
+        int i;
+        RUN(galloc(&tmp_key,624));
+        for(i = 0; i < 624;i++){
+                tmp_key[i] = a->key[i];
+        }
 
-        hdf5_data->rank = 1;
+
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"key",&tmp_key));
+        gfree(tmp_key);
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        RUN(hdf5_write("gauss",&a->gauss, hdf5_data));
+        RUN(hdf5_write("gauss",&a->gauss, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"gauss",&a->gauss));
 
-        hdf5_data->rank = 1;
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        RUN(hdf5_write("psave",&a->psave, hdf5_data));
-
-        hdf5_data->rank = 1;
+        RUN(hdf5_write("psave",&a->psave, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"psave",&a->psave));
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("has_binomial",&a->has_binomial, hdf5_data));
+        RUN(hdf5_write("has_binomial",&a->has_binomial, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"has_binomial",&a->has_binomial));
 
 
-        hdf5_data->rank = 1;
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("has_gauss",&a->has_gauss, hdf5_data));
+        RUN(hdf5_write("has_gauss",&a->has_gauss, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"has_gauss",&a->has_gauss));
 
-
-        hdf5_data->rank = 1;
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
-        hdf5_data->native_type = H5T_NATIVE_INT;
-        RUN(hdf5_write("pos",&a->pos, hdf5_data));
+        hdf5p_data->native_type = H5T_NATIVE_INT;
+        RUN(hdf5_write("pos",&a->pos, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"pos",&a->pos));
 
-        hdf5_data->rank = 1;
+        /*hdf5_data->rank = 1;
         hdf5_data->dim[0] = 1;
         hdf5_data->chunk_dim[0] = 1;
         hdf5_data->native_type = H5T_NATIVE_LONG;
-        RUN(hdf5_write("nsave",&a->nsave, hdf5_data));
+        RUN(hdf5_write("nsave",&a->nsave, hdf5_data));*/
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"nsave",&a->nsave));
 
-        RUN(hdf5_close_group(hdf5_data));
+        //RUN(hdf5_close_group(hdf5_data));
         return OK;
 
 ERROR:
-        if(hdf5_data){
+        /*if(hdf5_data){
                 hdf5_close_file(hdf5_data);
                 hdf5_free(hdf5_data);
-        }
+                }*/
         return FAIL;
 }
 

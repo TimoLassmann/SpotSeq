@@ -1,5 +1,5 @@
 #include "hmm_conversion.h"
-#include "rb.h"
+#include "tlrbtree.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
@@ -16,7 +16,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
 
         // delete old tree...
         if(ft->root){
-                free_rbtree(ft->root->node,ft->root->fp_free);
+                ft->root->free_tree(ft->root);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
                 ft->root->cur_data_nodes = 0;
@@ -138,7 +138,8 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         // delete old tree...
 
         if(ft->root){
-                free_rbtree(ft->root->node,ft->root->fp_free);
+                ft->root->free_tree(ft->root);
+                //free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
                 ft->root->cur_data_nodes = 0;
@@ -370,11 +371,27 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         /* Set alphabet and number of states. */
 
-        RUNP(s1_e = galloc(s1_e, local_num_states, model->L, 0.0));
+        /*RUNP(s1_e = galloc(s1_e, local_num_states, model->L, 0.0));
         RUNP(s2_e = galloc(s2_e, local_num_states, model->L, 0.0));
 
         RUNP(s1_t = galloc(s1_t, local_num_states, local_num_states, 0.0));
         RUNP(s2_t = galloc(s2_t, local_num_states, local_num_states, 0.0));
+        */
+        RUN(galloc(&s1_e, local_num_states, model->L));
+        RUN(galloc(&s2_e, local_num_states, model->L));
+        RUN(galloc(&s1_t, local_num_states, local_num_states));
+        RUN(galloc(&s2_t, local_num_states, local_num_states));
+        for(i = 0; i < local_num_states;i++){
+                for(j = 0;j < model->L;j++){
+                        s1_e[i][j] = 0.0;
+                        s2_e[i][j] = 0.0;
+                }
+                for(j = 0;j < local_num_states;j++){
+                        s1_t[i][j] = 0.0;
+                        s2_t[i][j] = 0.0;
+                }
+        }
+
 
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
@@ -509,11 +526,27 @@ int run_build_fhmm_file(char* h5file, int allow_zero_counts)
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
         /* first index is state * letter ; second is sample (max = 100) */
-        RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
+        /*RUNP(s1_e = galloc(s1_e, model->num_states, model->L, 0.0));
         RUNP(s2_e = galloc(s2_e, model->num_states, model->L, 0.0));
 
         RUNP(s1_t = galloc(s1_t, model->num_states, model->num_states, 0.0));
         RUNP(s2_t = galloc(s2_t, model->num_states, model->num_states, 0.0));
+        */
+        RUN(galloc(&s1_e, model->num_states, model->L));
+        RUN(galloc(&s2_e, model->num_states, model->L));
+        RUN(galloc(&s1_t, model->num_states, model->num_states));
+        RUN(galloc(&s2_t, model->num_states, model->num_states));
+        for(i = 0; i < model->num_states;i++){
+                for(j = 0;j < model->L;j++){
+                        s1_e[i][j] = 0.0;
+                        s2_e[i][j] = 0.0;
+                }
+                for(j = 0;j < model->num_states;j++){
+                        s1_t[i][j] = 0.0;
+                        s2_t[i][j] = 0.0;
+                }
+        }
+
 
         if(allow_zero_counts){
                 for( iter=  0;iter < iterations;iter++){

@@ -1,5 +1,10 @@
 #include "ihmm_seq.h"
 
+#include <string.h>
+#include "tlmisc.h"
+
+#define LINE_LEN 512
+
 static void free_ihmm_sequence(struct ihmm_sequence* sequence);
 
 int detect_alphabet(struct seq_buffer* sb, rk_state* rndstate);
@@ -291,7 +296,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         }
         max_name_len+=1;
 
-        RUNP(name = galloc(name, sb->num_seq, max_name_len, 0));
+        RUN(galloc(&name, sb->num_seq, max_name_len));
         for(i = 0; i < sb->num_seq;i++){
                 len = strlen(sb->sequences[i]->name);
                 for (j = 0; j < len;j++){
@@ -301,17 +306,21 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
 
         /* make sequence matrix */
 
-        RUNP(seq = galloc(seq, sb->num_seq, sb->max_len, -1));
+        //RUNP(seq = galloc(seq, sb->num_seq, sb->max_len, -1));
+        RUN(galloc(&seq, sb->num_seq, sb->max_len));
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
                 for (j = 0; j < len;j++){
                         seq[i][j] = sb->sequences[i]->seq[j];
                 }
+                /* NEW  */
+                seq[i][len] = -1;
         }
 
         /* make  label matrix */
 
-        RUNP(label = galloc(label, sb->num_seq, (sb->max_len+1)* num_models, -1));
+        //RUNP(label = galloc(label, sb->num_seq, (sb->max_len+1)* num_models, -1));
+        RUN(galloc(&label, sb->num_seq, (sb->max_len+1)* num_models));
 
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
@@ -326,7 +335,8 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
 
         /* Score matrix */
 
-        RUNP(scores = galloc(scores, sb->num_seq, num_models,0.0));
+        //RUNP(scores = galloc(scores, sb->num_seq, num_models,0.0));
+        RUN(galloc(&scores, sb->num_seq, num_models));
 
         for(i = 0; i < sb->num_seq;i++){
                 len = sb->sequences[i]->seq_len;
@@ -459,7 +469,9 @@ int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, double
 
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
-        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
+        //RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
+
+        RUN(galloc(&emission, k+1,  sb->L));
 
         for(i = 0; i < k;i++){
                 sum = 0.0;
@@ -536,8 +548,8 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, double
 
         //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
 
-        RUNP(emission = galloc(emission, k+1,  sb->L , 0.0));
-        RUNP(transition = galloc(transition, k+1,  k , 0.0));
+        RUN(galloc(&emission, k+1,  sb->L));
+        RUN(galloc(&transition, k+1,  k));
 
         MMALLOC(tmp, sizeof(double) * k);
         //fprintf(stdout,"Emission\n");
@@ -658,7 +670,7 @@ int random_label_based_on_multiple_models(struct seq_buffer* sb, int K, int mode
 
                 label = sb->sequences[i]->label_arr[model_index];
                 len = sb->sequences[i]->seq_len;
-                DPRINTF3("Seq%d len %d ",i ,len);
+                //DPRINTF3("Seq%d len %d ",i ,len);
                 for(j = 0;j < len;j++){
                         label[j] = rk_interval(K-3, random)+2;
                 }
@@ -740,7 +752,7 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
 
                 label = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
-                DPRINTF3("Seq%d len %d ",i ,len);
+                //DPRINTF3("Seq%d len %d ",i ,len);
                 for(j = 0;j < len;j++){
                         r = rk_double(&rndstate);
                         sum = 0;
@@ -753,7 +765,7 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
                         }
                         label[j] = rk_interval(k-1, &rndstate) +2;
                         //label[j] = random_int_zero_to_x(k-1) + 2;
-                        DPRINTF3("%d",label[j]);
+                        //DPRINTF3("%d",label[j]);
                 }
         }
         MFREE(state_prob);
@@ -1031,14 +1043,14 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment, r
 
         if(sb->L == ALPHABET_DNA){
                 RUN(translate_internal_to_DNA(sb));
-                DPRINTF1("DNA");
+                //DPRINTF1("DNA");
         }
         if(sb->L == ALPHABET_PROTEIN){
                 RUN(translate_internal_to_PROTEIN(sb));
-                DPRINTF1("PROT");
+                //DPRINTF1("PROT");
         }
-        DPRINTF1("L: %d",sb->L);
-        DPRINTF1("numseq: %d",sb->num_seq );
+        //DPRINTF1("L: %d",sb->L);
+        //DPRINTF1("numseq: %d",sb->num_seq );
 
         /* Check if sequence names are present.. */
         has_names = 0;
@@ -1082,7 +1094,8 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment, r
                 }
         }
         //DPRINTF1("max_len:%d",sb->max_len );
-        RUNP(dwb = galloc(dwb, sb->max_len , 20, 0));
+        //RUNP(dwb = galloc(dwb, sb->max_len , 20, 0));
+        RUN(galloc(&dwb, sb->max_len , 20));
         f_ptr = NULL;
         /* open file and write */
 
@@ -1179,14 +1192,14 @@ int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename, rk_state* 
 
         if(sb->L == ALPHABET_DNA){
                 RUN(translate_internal_to_DNA(sb));
-                DPRINTF1("DNA");
+                //DPRINTF1("DNA");
         }
         if(sb->L == ALPHABET_PROTEIN){
                 RUN(translate_internal_to_PROTEIN(sb));
-                DPRINTF1("PROT");
+                //DPRINTF1("PROT");
         }
-        DPRINTF1("L: %d",sb->L);
-        DPRINTF1("numseq: %d",sb->num_seq );
+        //DPRINTF1("L: %d",sb->L);
+        //DPRINTF1("numseq: %d",sb->num_seq );
 
         /* Check if sequence names are present.. */
         has_names = 0;
@@ -1281,7 +1294,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
 
         ASSERT(in_filename != NULL,"No input file specified - this should have been caught before!");
 
-        RUNP(digit_buffer = galloc(digit_buffer,BLOCK_LEN,20,0 ) );
+        RUN(galloc(&digit_buffer,BLOCK_LEN,20) );
 
 
         seq_p = 0;
@@ -1305,7 +1318,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
 
         RUNP(f_ptr = fopen(in_filename, "r" ));
         while(fgets(line, LINE_LEN, f_ptr)){
-                DPRINTF1("%d (labpos: %d -> %d) %s",seq_p,  old_label_pos,label_pos, line);
+                //DPRINTF1("%d (labpos: %d -> %d) %s",seq_p,  old_label_pos,label_pos, line);
                 if(line[0] == '>'){
 
                         if(sb->num_seq != -1){ /* i.e. I read in the first sequence -> 0 */
@@ -2037,17 +2050,26 @@ ERROR:
 
 int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, int num_models)
 {
-        int i;
+        int i,j;
+
         ASSERT(sequence != NULL, "No sequence");
 
-        RUNP(sequence->u_arr = galloc(sequence->u_arr, num_models, max_len+1, 0.0));
+        RUN(galloc(&sequence->u_arr, num_models, max_len+1));
 
-        RUNP(sequence->label_arr = galloc(sequence->label_arr, num_models, max_len+1, -1));
+        RUN(galloc(&sequence->label_arr, num_models, max_len+1));
 
-        RUNP(sequence->tmp_label_arr = galloc(sequence->tmp_label_arr, num_models, max_len+1, -1));
+        RUN(galloc(&sequence->tmp_label_arr, num_models, max_len+1));
+
+        for(i =0; i < num_models;i++){
+                for(j = 0; j < max_len+1;j++){
+                        sequence->u_arr[i][j] = 0.0;
+                        sequence->label_arr[i][j] = -1;
+                        sequence->tmp_label_arr[i][j] = -1;
+                }
+        }
 
 
-        RUNP(sequence->score_arr  = galloc(sequence->score_arr, num_models));
+        RUN(galloc(&sequence->score_arr, num_models));
 
         for(i = 0; i < num_models;i++){
                 sequence->score_arr[i] = 1.0; /* default weight is one.  */

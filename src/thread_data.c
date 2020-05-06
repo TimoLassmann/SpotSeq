@@ -37,12 +37,12 @@ struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len,
                 td[i]->e = NULL;
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0));
-                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0));
-                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0));
-
-                RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
+                RUN(galloc(td[i]->dyn, max_len, K));
+                RUN(galloc(td[i]->F_matrix, max_len, K));
+                RUN(galloc(td[i]->B_matrix, max_len, K));
+                /* was initailized to -INFINITY  */
+                RUN(galloc(td[i]->t, K,K));
+                RUN(galloc(td[i]->e,ALPHABET_PROTEIN,K));
 
 
                 td[i]->ft = NULL;
@@ -92,20 +92,20 @@ int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int m
 
 
         for(i = local_num_treads; i < cur_threads;i++){
-
-                free_2d((void**) td[i]->dyn);
+                gfree(td[i]->dyn);
+                //free_2d((void**) td[i]->dyn);
                 MFREE(td[i]);
         }
 
         //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
         for(i = 0; i < local_num_treads;i++){
-                RUNP(td[i]->dyn = galloc(td[i]->dyn, max_len, K, 0.0));
+                RUN(galloc(td[i]->dyn, max_len, K));
 
-                RUNP(td[i]->F_matrix = galloc(td[i]->F_matrix, max_len, K, 0.0));
-                RUNP(td[i]->B_matrix = galloc(td[i]->B_matrix, max_len, K, 0.0));
+                RUN(galloc(td[i]->F_matrix, max_len, K));
+                RUN(galloc(td[i]->B_matrix, max_len, K));
 
-                RUNP(td[i]->t = galloc(td[i]->t, K,K, -INFINITY));
-                RUNP(td[i]->e = galloc(td[i]->e,ALPHABET_PROTEIN,K,-INFINITY));
+                RUN(galloc(td[i]->t, K,K));
+                RUN(galloc(td[i]->e,ALPHABET_PROTEIN,K));
 
                 td[i]->num_threads = local_num_treads;
         }

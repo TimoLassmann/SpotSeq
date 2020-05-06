@@ -1,10 +1,10 @@
-EXTRA_DIST = autogen.sh
-# Build the library in the hand subdirectory first.
-LIB_TLDEVELDIR = @LIB_TLDEVELDIR@ 
+ACLOCAL_AMFLAGS = -I m4
 
-# top_builddir = @top_builddir@
+SUBDIRS = $(TLDEVELDIR)
 
-SUBDIRS = tldevel src
+
+SUBDIRS +=  src #dev  casava_demo doc
+dist_noinst_SCRIPTS = autogen.sh
 
 
 count:

@@ -409,8 +409,11 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         last_state = model->num_states-1;
 
         /* alloc auxillary data structures  */
-        RUNP(M = galloc(M, model->num_states,model->num_states, 0.0));
-        RUNP(supp = galloc(supp, 5,model->num_states, 0.0));
+        //RUNP(M = galloc(M, model->num_states,model->num_states, 0.0));
+        RUNP(galloc(&M, model->num_states,model->num_states));
+
+        //RUNP(supp = galloc(supp, 5,model->num_states, 0.0));
+        RUN(galloc(&supp, 5,model->num_states));
 
         //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
@@ -672,9 +675,12 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         }
         model->num_states = K;
 
-        RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0));
-        RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0));
+        /* RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0)); */
+        /* RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0)); */
 
+
+        RUN(galloc(&model->transition_counts, model->alloc_num_states, model->alloc_num_states));
+        RUN(galloc(&model->emission_counts , model->L, model->alloc_num_states));
         MMALLOC(model->beta,sizeof(double) * model->alloc_num_states);
         for(i = 0; i < model->alloc_num_states;i++){
                 model->beta[i] = 0.0;
@@ -699,8 +705,13 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
                         ihmm->alloc_num_states = ihmm->alloc_num_states << 1;
                 }
                 //LOG_MSG("Resizing model to %d states",ihmm->alloc_num_states);
-                RUNP(ihmm->transition_counts = galloc(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0));
-                RUNP(ihmm->emission_counts = galloc(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0));
+                //RUNP(ihmm->transition_counts = galloc(ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states, 0.0));
+                //RUNP(ihmm->emission_counts = galloc(ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states, 0.0));
+
+
+                RUN(galloc(&ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states));
+                RUN(galloc(&ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states));
+                /* BUG - do I need to reset counts here? */
 
                 MREALLOC(ihmm->beta,sizeof(double) * ihmm->alloc_num_states);
                 for(i = old_size;i < ihmm->alloc_num_states;i++){

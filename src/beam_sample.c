@@ -3,6 +3,8 @@
 
 #include "fast_hmm_param_test_functions.h"
 
+#include "tllogsum.h"
+
 void* do_sample_path_and_posterior(void* threadarg);
 void* do_dynamic_programming(void *threadarg);
 void* do_forward_backward(void *threadarg);
@@ -1174,7 +1176,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         return OK;
 }
 
-int dynamic_programming(struct wims_thread_data* data, int target)
+/*int dynamic_programming(struct wims_thread_data* data, int target)
 {
         double** matrix = NULL;
         struct fast_hmm_param* ft = NULL;
@@ -1231,14 +1233,6 @@ int dynamic_programming(struct wims_thread_data* data, int target)
         for(i = 0; i < l;i++){
                 matrix[0][i] /= sum;
         }
-        /*sum = 0.0;
-
-          fprintf(stdout,"%d %f s:%d",i, u[0],seq[0]);
-          for(i = 0; i < ft->last_state;i++){
-          fprintf(stdout," %f",matrix[0][i]);
-          sum += matrix[0][i];
-          }
-          fprintf(stdout," sum: %f\n",sum);*/
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < ft->last_state;j++){
@@ -1263,21 +1257,8 @@ int dynamic_programming(struct wims_thread_data* data, int target)
                 for(j = 0; j < l;j++){
                         matrix[i][j] /= sum;
                 }
-                /*sum = 0.0;
-                  fprintf(stdout,"%d %f s:%d",i, u[i],seq[i]);
-                  for(j = 0; j < ft->last_state;j++){
-                  fprintf(stdout," %f",matrix[i][j]);
-                  sum += matrix[i][j];
-                  }
-                  fprintf(stdout," sum: %f\n",sum);*/
         }
-        /* Backtracking...  */
-        /* Pick last label based on probabilities in last row. Then look for
-         * transitions to that label with a prob > min_u and select ancestor
-         * based on probs in previous row */
         l = IHMM_END_STATE;
-        /* First let's check if there is a path! i.e. end is reachable.  */
-
         sum = 0.0;
 
         score = prob2scaledprob(1.0);
@@ -1331,7 +1312,7 @@ int dynamic_programming(struct wims_thread_data* data, int target)
                         score = score + prob2scaledprob( ft->emission[seq[i]][l]);
                         label[i] = l;
                 }
-                /* go from start to first state used in path... */
+
                 score = score + prob2scaledprob(  ft->transition[IHMM_START_STATE][l]);
                 ihmm_seq->score = score;
         }else{
@@ -1342,7 +1323,7 @@ int dynamic_programming(struct wims_thread_data* data, int target)
         return OK;
 ERROR:
         return FAIL;
-}
+        }*/
 
 
 int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb)

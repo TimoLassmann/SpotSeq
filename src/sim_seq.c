@@ -3,6 +3,7 @@
 #include "config.h"
 #endif
 
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -21,6 +22,8 @@
 #include "matrix_io.h"
 
 #include "make_dot_file.h"
+
+#include "tllogsum.h"
 
 struct parameters{
         //struct rng_state* rng;
@@ -52,6 +55,8 @@ struct seq_buffer{
 
 /* sum of special states above.. */
 #define NUM_ADDITIONAL_STATES 2
+
+#define BUFFER_LEN 128
 
 struct hmm{
         float** transitions;
@@ -105,7 +110,7 @@ int main (int argc, char *argv[])
         int c;
         int seed;
 
-        print_program_header(argv, "Simulate sequences.");
+        //print_program_header(argv, "Simulate sequences.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->num_seq = 1000;
@@ -1102,7 +1107,7 @@ void free_sb(struct seq_buffer* sb)
 struct hmm* malloc_hmm(int num_states, int alphabet_len, int max_seq_len)
 {
         struct hmm* hmm = NULL;
-
+        int i,j;
 
         MMALLOC(hmm, sizeof(struct hmm));
         hmm->alphabet_len =  alphabet_len;
@@ -1113,15 +1118,25 @@ struct hmm* malloc_hmm(int num_states, int alphabet_len, int max_seq_len)
 
         hmm->background = NULL;
 
-        MCALLOC(hmm->background, hmm->alphabet_len,sizeof(float));
+        MMALLOC(hmm->background, sizeof(float)* hmm->alphabet_len);
+        for(i = 0; i < hmm->alphabet_len;i++){
+                hmm->background[i] = 0.0f;
+        }
 
-        RUNP(hmm->emissions = galloc(hmm->emissions, hmm->num_states, hmm->alphabet_len, 0.0f));
-        RUNP(hmm->transitions = galloc(hmm->transitions, hmm->num_states, hmm->num_states,  0.0f));
-
-          return hmm;
+        RUN(galloc(&hmm->emissions, hmm->num_states, hmm->alphabet_len));
+        RUN(galloc(&hmm->transitions, hmm->num_states, hmm->num_states));
+        for(i = 0; i < hmm->num_states;i++){
+                for(j = 0; j < hmm->alphabet_len;j++){
+                        hmm->emissions[i][j] = 0.0f;
+                }
+                for(j = 0; j < hmm->num_states;j++){
+                        hmm->transitions[i][j] = 0.0f;
+                }
+        }
+        return hmm;
 ERROR:
-          free_hmm(hmm);
-          return NULL;
+        free_hmm(hmm);
+        return NULL;
 }
 
 void free_hmm(struct hmm* hmm)

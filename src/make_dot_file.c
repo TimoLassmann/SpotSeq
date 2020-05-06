@@ -7,7 +7,7 @@
 
 
 #include "tldevel.h"
-
+#include "tllogsum.h"
 
 #include "matrix_io.h"
 

@@ -1,5 +1,7 @@
 #include "init_seq_label.h"
 
+#include "tllogsum.h"
+
 int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha)
 {
 
@@ -36,8 +38,16 @@ int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha)
         }
 
 
-        RUNP(fhmm->e = galloc(fhmm->e, fhmm->K, fhmm->L, 0.0));
-        RUNP(fhmm->t = galloc(fhmm->t, fhmm->K, fhmm->K, 0.0));
+        RUN(galloc(&fhmm->e, fhmm->K, fhmm->L));
+        RUN(galloc(&fhmm->t, fhmm->K, fhmm->K));
+        for(i = 0;i < fhmm->K;i++){
+                for(j = 0; j < fhmm->L;j++){
+                        fhmm->e[i][j] = 0.0;
+                }
+                for(j = 0; j < fhmm->K;j++){
+                        fhmm->t[i][j] = 0.0;
+                }
+        }
         /* Fill with random counts... */
         /* First emission (cos easy...) */
 

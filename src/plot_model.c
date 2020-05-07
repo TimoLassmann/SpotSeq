@@ -8,9 +8,10 @@
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <libgen.h>
 
 #include "tldevel.h"
-
+#include "tlmisc.h"
 #include "ihmm_seq.h"
 
 //#include "beam_sample.h"
@@ -18,6 +19,7 @@
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
 
+#define BUFFER_LEN 128
 
 char* nuc_colors[ALPHABET_DNA] = {"#cbf751", "#5ec0cc", "#ffdf59", "#b51f16"};
 
@@ -81,7 +83,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Generates a model <.dot> for visualisation.");
+        //print_program_header(argv, "Generates a model <.dot> for visualisation.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
@@ -229,7 +231,7 @@ int run_plot_positional_state_distribution(struct parameters* param)
         //RUNP(model = read_model_hdf5(param->input));
         RUNP(model = read_best_imodel(param->input, &best));
 
-        RUNP(matrix = galloc(matrix, model->num_states , 1001, 0.0f));
+        RUN(galloc(&matrix, model->num_states , 1001));
         MMALLOC(state_sums, sizeof(float) *  model->num_states);
         for(i = 0; i < model->num_states;i++){
                 state_sums[i] = 0.0f;
@@ -305,9 +307,14 @@ int plot_model_entropy(struct parameters* param)
 
         /* first index is state * letter ; second is sample (max = 100) */
 
-        RUNP(s1 = galloc(s1, model->num_states, model->L, 0.0));
-        RUNP(s2 = galloc(s2, model->num_states, model->L, 0.0));
-
+        RUN(galloc(&s1, model->num_states, model->L));
+        RUN(galloc(&s2, model->num_states, model->L));
+        for(i = 0; i < model->num_states;i++){
+                for(j = 0; j < model->L;j++){
+                        s1[i][j] = 0.0f;
+                        s2[i][j] = 0.0f;
+                }
+        }
         for(iter=  0;iter < iterations;iter++){
                 RUN(fill_fast_transitions_only_matrices(model,ft));
                 for(i = 0;i < model->num_states;i++){

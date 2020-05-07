@@ -5,8 +5,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <libgen.h>
 
 #include "tldevel.h"
+#include "tlmisc.h"
+#include "tllogsum.h"
 #include "model.h"
 #include "ihmm_seq.h"
 
@@ -39,12 +42,10 @@ int main (int argc, char *argv[])
 
         struct wims_thread_data** td = NULL;
 
-        struct thr_pool* pool = NULL;
-
 
         int i,c;
 
-        print_program_header(argv, "Scores sequences.");
+        //print_program_header(argv, "Scores sequences.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
@@ -187,12 +188,12 @@ int main (int argc, char *argv[])
         }
 
        /* start threadpool  */
-        if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         /* allocate data for threads; */
         RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
-        RUN(run_score_sequences(fhmm,sb, td, pool));
+        RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */
         RUNP(fptr = fopen(param->output, "w"));
         fprintf(fptr, "Name,Score_%s\n",  param->in_model);
@@ -233,7 +234,7 @@ int main (int argc, char *argv[])
 
 
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         RUN(free_parameters(param));
@@ -245,9 +246,6 @@ ERROR:
         }
 
         free_wims_thread_data(td);
-        if(pool){
-                thr_pool_destroy(pool);
-        }
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         free_parameters(param);

@@ -3,6 +3,7 @@
 
 #include "tllogsum.h"
 
+#include "tlhdf5wrap.h"
 /* Calculate the bayesian information criteria score for a finite HMM */
 /* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
 /* data is the number of residues in the training dataset */
@@ -560,52 +561,19 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
 
         RUNP(fhmm = alloc_fhmm());
 
+        HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "K", &fhmm->K);
+
+        HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "L", &fhmm->L);
+
+        HDFWRAP_READ_DATA(hdf5_data, group, "emission", &fhmm->e);
+
+        HDFWRAP_READ_DATA(hdf5_data, group, "transition", &fhmm->t);
+
+        HDFWRAP_READ_DATA(hdf5_data, group, "transition_index", &fhmm->tindex);
+
+        HDFWRAP_READ_DATA(hdf5_data, group, "background", &fhmm->background);
 
 
-        hdf5_open_group(group,hdf5_data);
-
-        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "K",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
-        //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
-        hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
-        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
-        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
-        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
-        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
-        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &fhmm->K);
-        if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
-        if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
-
-        if((hdf5_data->dataset = H5Dopen(hdf5_data->group, "L",H5P_DEFAULT)) == -1)ERROR_MSG("H5Dopen failed\n");
-        //printf ("H5Dopen returns: %d\n", hdf5_data->dataset);
-        hdf5_read_attributes(hdf5_data,hdf5_data->dataset);
-        hdf5_data->datatype  = H5Dget_type(hdf5_data->dataset );     /* datatype handle */
-        hdf5_data->dataspace = H5Dget_space(hdf5_data->dataset);
-        hdf5_data->rank      = H5Sget_simple_extent_ndims(hdf5_data->dataspace);
-        hdf5_data->status  = H5Sget_simple_extent_dims(hdf5_data->dataspace,hdf5_data->dim , NULL);
-        hdf5_data->status = H5Dread(hdf5_data->dataset, hdf5_data->datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, &fhmm->L);
-        if((hdf5_data->status = H5Tclose(hdf5_data->datatype)) < 0) ERROR_MSG("H5Tclose failed");
-        if((hdf5_data->status = H5Dclose(hdf5_data->dataset)) < 0) ERROR_MSG("H5Dclose failed");
-
-
-        hdf5_read_dataset("emission",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
-        fhmm->e = (double**) hdf5_data->data;
-
-        hdf5_read_dataset("transition",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
-        fhmm->t = (double**) hdf5_data->data;
-
-        hdf5_read_dataset("transition_index",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_index");
-        fhmm->tindex = (int**) hdf5_data->data;
-
-
-        hdf5_read_dataset("background",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read transition_background");
-        fhmm->background = (double*) hdf5_data->data;
-
-
-        hdf5_close_group(hdf5_data);
         return fhmm;
 ERROR:
         return NULL;

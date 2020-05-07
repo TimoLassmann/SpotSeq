@@ -2,6 +2,8 @@
 
 #include <string.h>
 #include "tlmisc.h"
+#include "tlhdf5wrap.h"
+
 
 #define LINE_LEN 512
 
@@ -117,44 +119,14 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
-        hdf5_data = hdf5_create();
 
-        hdf5_open_file(filename,hdf5_data);
-        hdf5_read_attributes(hdf5_data,hdf5_data->file);
-        //print_attributes(hdf5_data);
-        get_group_names(hdf5_data);
-
-        hdf5_open_group("SequenceInformation",hdf5_data);
-        hdf5_read_attributes(hdf5_data, hdf5_data->group);
-        ASSERT(hdf5_data->num_attr != 0 , "Could not find attributes");
-        //print_attributes(hdf5_data);
-
-        num_seq = -1;
-        max_len = -1;
-        max_name_len = -1;
-        local_L = -1;
-        num_models = -1;
-        for(i = 0; i < hdf5_data->num_attr;i++){
-                if(!strncmp("NumSeq", hdf5_data->attr[i]->attr_name, 6)){
-                        num_seq = hdf5_data->attr[i]->int_val;
-                }
-
-                if(!strncmp("MaxLen", hdf5_data->attr[i]->attr_name, 6)){
-                        max_len = hdf5_data->attr[i]->int_val;
-                }
-
-                if(!strncmp("MaxNameLen", hdf5_data->attr[i]->attr_name, 10)){
-                        max_name_len = hdf5_data->attr[i]->int_val;
-                }
-
-                if(!strncmp("Alphabet", hdf5_data->attr[i]->attr_name, 8)){
-                        local_L = hdf5_data->attr[i]->int_val;
-                }
-
-                if(!strncmp("NumModels", hdf5_data->attr[i]->attr_name, 9)){
-                        num_models = hdf5_data->attr[i]->int_val;
-                }
-        }
+        open_hdf5_file(&hdf5_data, filename);
+        //hdf5_data = hdf5_create();
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "Numseq", &num_seq));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxLen", &max_len));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxNameLen",&max_name_len));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "Alphaber",&local_L));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "NumModels", &num_models));
 
         ASSERT(num_seq != -1, "No numseq");
         ASSERT(max_len != -1, "No maxlen");
@@ -162,33 +134,22 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(local_L != -1,"No Alphabet");
         ASSERT(num_models > 0, "No models");
 
-        hdf5_read_dataset("Names",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read beta");
-        name = (char**)hdf5_data->data;
 
-        hdf5_read_dataset("Sequences",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
-        seq = (char**)hdf5_data->data;
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Names", &name));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Sequences", &seq));
 
-        hdf5_read_dataset("CompetitiveScores",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read transition_counts");
-        scores = (double**)hdf5_data->data;
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "CompetitiveScores", &scores));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Background", &background));
 
-        hdf5_read_dataset("Background",hdf5_data);
-        ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 1, "Could not read background");
-        background = (double*)hdf5_data->data;
 
         if(mode == IHMM_SEQ_READ_ALL){
-                hdf5_read_dataset("Labels",hdf5_data);
-                ASSERT(hdf5_data->data != NULL && hdf5_data->rank == 2, "Could not read emission_counts");
-                label = (int**)hdf5_data->data;
-                hdf5_close_group(hdf5_data);
+                RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Labels", &label));
         }else{
                 label= NULL;
         }
-
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        RUN(close_hdf5_file(&hdf5_data));
+        //hdf5_close_file(hdf5_data);
+        //hdf5_free(hdf5_data);
 
         MMALLOC(sb,sizeof(struct seq_buffer));
 
@@ -254,8 +215,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         return sb;
 ERROR:
         if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
+                RUN(close_hdf5_file(&hdf5_data));
         }
         if(label){
                 gfree(label);
@@ -347,11 +307,13 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
                 }
         }
 
+        open_hdf5_file(&hdf5_data, filename);
 
-        RUNP(hdf5_data = hdf5_create());
+        //hdf5_open_file(struct hdf5_data *hdf5_data)
+        //RUNP(hdf5_data = hdf5_create());
 
-        hdf5_open_file(filename,hdf5_data);
-
+        //hdf5_open_file(filename,hdf5_data);
+        /*
         get_group_names(hdf5_data);
 
         has_seq_info = 0;
@@ -368,71 +330,27 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         }
 
         hdf5_data->num_attr = 0;
+        */
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "Numseq", sb->num_seq));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxLen", sb->max_len));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxNameLen",max_name_len));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "Alphaber", sb->L));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "NumModels", num_models));
 
-        hdf5_add_attribute(hdf5_data, "NumSeq",     "", sb->num_seq , 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "MaxLen",     "", sb->max_len , 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "MaxNameLen", "", max_name_len, 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "Alphabet",   "", sb->L       , 0.0f, HDF5GLUE_INT);
-        hdf5_add_attribute(hdf5_data, "NumModels",   "", num_models  , 0.0f, HDF5GLUE_INT);
-
-        hdf5_write_attributes(hdf5_data, hdf5_data->group);
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = sb->num_seq;
-        hdf5_data->dim[1] = max_name_len;
-        hdf5_data->chunk_dim[0] = sb->num_seq;
-        hdf5_data->chunk_dim[1] =max_name_len;
-        hdf5_data->native_type = H5T_NATIVE_CHAR;
-        hdf5_write("Names",&name[0][0], hdf5_data);
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = sb->num_seq;
-        hdf5_data->dim[1] = sb->max_len;
-        hdf5_data->chunk_dim[0] = sb->num_seq;
-        hdf5_data->chunk_dim[1] = sb->max_len;
-        hdf5_data->native_type = H5T_NATIVE_CHAR;
-        hdf5_write("Sequences",&seq[0][0], hdf5_data);
-
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = sb->num_seq;
-        hdf5_data->dim[1] = (sb->max_len+1)* num_models;
-        hdf5_data->chunk_dim[0] = sb->num_seq;
-        hdf5_data->chunk_dim[1] = (sb->max_len+1)* num_models;
-        hdf5_data->native_type = H5T_NATIVE_INT;
-        hdf5_write("Labels",&label[0][0], hdf5_data);
-
-        hdf5_data->rank = 2;
-        hdf5_data->dim[0] = sb->num_seq;
-        hdf5_data->dim[1] = num_models;
-        hdf5_data->chunk_dim[0] = sb->num_seq;
-        hdf5_data->chunk_dim[1] = num_models;
-        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("CompetitiveScores",&scores[0][0], hdf5_data);
-
-
-
-
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = sb->L;
-        hdf5_data->dim[1] = 0;
-        hdf5_data->chunk_dim[0] = sb->L;
-        hdf5_data->chunk_dim[1] = 0;
-        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("Background",&sb->background[0], hdf5_data);
-
-        hdf5_close_group(hdf5_data);
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
-
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Names", name));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Sequences", seq));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Labels", label));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "CompetitiveScores", scores));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Background", sb->background));
+        RUN(close_hdf5_file(&hdf5_data));
         gfree(label);
         gfree(name);
         gfree(seq);
         return OK;
 ERROR:
         if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
+                RUN(close_hdf5_file(&hdf5_data));
+
         }
         if(label){
                 gfree(label);

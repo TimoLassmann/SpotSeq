@@ -1,6 +1,8 @@
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <libgen.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +24,9 @@
 #include "benchmark_seq.h"
 
 double background[4] = {0.25,0.5,0.75,1.0};
+
+#define BUFFER_LEN 128
+
 
 struct parameters{
         char* outdir;
@@ -50,7 +55,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Generates standard challenge motif benchmarks.");
+        //print_program_header(argv, "Generates standard challenge motif benchmarks.");
 
         MMALLOC(param, sizeof(struct parameters));
 

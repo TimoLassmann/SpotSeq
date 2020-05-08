@@ -475,7 +475,7 @@ int main(const int argc,const char * argv[])
 
         rk_randomseed(&rndstate);
 
-        RUN(print_program_header((char * const*)argv,"Fast HMM param test"));
+        //RUN(print_program_header((char * const*)argv,"Fast HMM param test"));
 
         LOG_MSG("Allocating fast transition data structure.");
         RUNP(ft = alloc_fast_hmm_param(2,4));

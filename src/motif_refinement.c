@@ -328,8 +328,8 @@ struct motif_refinement* init_motif_refinement(int W, int L)
         m->background_freq = NULL;
         m->count_matrix = NULL;
         m->freq_matrix =  NULL;
-        m->count_matrix = galloc(m->count_matrix,W,L,0.0);
-        m->freq_matrix = galloc(m->freq_matrix,W,L,0.0);
+        RUN(galloc(&m->count_matrix,W,L));
+        RUN(galloc(&m->freq_matrix,W,L));
 
         MMALLOC(m->background_counts, sizeof(double) * L);
         MMALLOC(m->background_freq, sizeof(double) * L);

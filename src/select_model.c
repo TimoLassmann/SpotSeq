@@ -8,6 +8,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <libgen.h>
 
 #include "tldevel.h"
 
@@ -18,6 +19,10 @@
 #include "run_score.h"
 
 #include "model.h"
+
+#include "tlmisc.h"
+#include "tllogsum.h"
+
 
 #define SELECT_MODE_BIC 1
 #define SELECT_MODE_ML 2
@@ -41,7 +46,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Build HDPHMM model(s).");
+        //print_program_header(argv, "Build HDPHMM model(s).");
 
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
@@ -157,7 +162,7 @@ int run_model_selection(struct parameters* param)
 
         LOG_MSG("Starting thread pool.");
        /* start threadpool  */
-        if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
 
         /* allocate data for threads; */
@@ -184,7 +189,7 @@ int run_model_selection(struct parameters* param)
         for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
                 RUN(alloc_dyn_matrices(fhmm));
-                RUN(run_score_sequences(fhmm,sb,td, pool));
+                RUN(run_score_sequences(fhmm,sb,td));
 
                 max_likelihood = prob2scaledprob(1.0);
                 for(i = 0; i < limit;i++){
@@ -233,7 +238,7 @@ int run_model_selection(struct parameters* param)
         //LOG_MSG("Got past writing");
         free_wims_thread_data(td);
         //LOG_MSG("Got past free thread data ");
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         //LOG_MSG("Got past poolfree");
         free_ihmm_sequences(sb);
         //LOG_MSG("Got past seq free");
@@ -244,7 +249,7 @@ int run_model_selection(struct parameters* param)
         return OK;
 ERROR:
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         return FAIL;

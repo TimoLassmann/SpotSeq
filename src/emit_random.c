@@ -2,6 +2,9 @@
 #include "model.h"
 #include "finite_hmm.h"
 #include <getopt.h>
+#include <libgen.h>
+
+#include "tlmisc.h"
 
 static int print_help(char **argv);
 
@@ -21,7 +24,7 @@ int main(const int argc, char * argv[])
 
 
         rk_state rndstate;
-        print_program_header(argv, "Emit random sequences.");
+        //print_program_header(argv, "Emit random sequences.");
 
 
         while (1){

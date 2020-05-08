@@ -1489,7 +1489,7 @@ static int full_run_test_dna(char* output,int niter);
 
 int main(const int argc,const char * argv[])
 {
-        RUN(print_program_header((char * const*)argv,"Integration Test"));
+        //RUN(print_program_header((char * const*)argv,"Integration Test"));
         LOG_MSG("Start add state test");
         //RUN(add_state_integration_test());
 
@@ -1524,7 +1524,7 @@ int full_run_test_dna(char* output,int niter)
 
         struct wims_thread_data** td = NULL;
 
-        struct thr_pool* pool = NULL;
+        //struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
         int num_models = 4;
         int num_threads = 4;
@@ -1557,7 +1557,7 @@ int full_run_test_dna(char* output,int niter)
         for(i = 1; i < num_models;i++){
                 num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
         }
-        RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, num_models, &rndstate));
+        RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, num_models,0));
 
 
         RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
@@ -1590,7 +1590,7 @@ int full_run_test_dna(char* output,int niter)
         RUNP(td = create_wims_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
 
         LOG_MSG("Will use %d threads.", num_threads);
-        if((pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
+        //if((pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
@@ -1607,7 +1607,8 @@ int full_run_test_dna(char* output,int niter)
         //RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
         /* Main function */
-        RUN(run_beam_sampling(model_bag,ft_bag, sb,td, pool,  niter,  num_threads));
+        RUN(run_beam_sampling(model_bag,ft_bag, sb,td,  niter,  num_threads));
+
 
 
         /* Write results */
@@ -1620,7 +1621,7 @@ int full_run_test_dna(char* output,int niter)
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
 ERROR:
@@ -1628,7 +1629,7 @@ ERROR:
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_wims_thread_data(td);
-        thr_pool_destroy(pool);
+        //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
 }

@@ -68,21 +68,22 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
 
-bin_PROGRAMS = sim_seq seqwise_model seqwise_plot seqwise_score seqwise_lcs seqwise_iclu seqwise_emit cal tfbs_bench composition_bench seqwise_select seqwise_ari
+bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit cal tfbs_bench composition_bench seqer_select seqer_ari
 
+#seqer_lcs
 if ENABLE_CAIRO
-bin_PROGRAMS +=  cairo_test seqwise_pplot seqwise_seqmotif
+bin_PROGRAMS +=  cairo_test seqer_pplot seqer_seqmotif
 AM_CFLAGS += $(CAIRO_CFLAGS)
 cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-seqwise_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-seqwise_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
-seqwise_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
+seqer_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
-seqwise_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
+seqer_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
-seqwise_pplot_SOURCES = pplot.c   $(LOGO_SOURCES)  $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  
+ seqer_pplot_SOURCES = pplot.c   $(LOGO_SOURCES)  $(DIJSTRA_SOURCES) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)
 
 cairo_test_SOURCES = cairo_test.c
 
@@ -90,36 +91,36 @@ cal_SOURCES = $(CALIBRATESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(EMITSOURCE) $(SCOR
 cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
-seqwise_plot_SOURCES = \
+seqer_plot_SOURCES = \
 plot_model.c  $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 #seqwise_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-seqwise_model_SOURCES = \
+seqer_model_SOURCES = \
 build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
-#seqwise_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#seqer_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-seqwise_select_SOURCES = \
+seqer_select_SOURCES = \
 select_model.c  $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
 
 #seqwise_kmer_SOURCES = \
 #kmer_enrichment.c $(KALIGNSOURCE) $(MOTIFREFINE) $(SCORESOURCE) $(EMITSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)
 
 
-seqwise_score_SOURCES = \
+seqer_score_SOURCES = \
 score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE)
-#seqwise_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+#seqer_score_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-seqwise_lcs_SOURCES = $(ISEQSOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
-#seqwise_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
-
-
-seqwise_iclu_SOURCES = $(SCORESOURCE) $(MODELSOURCE) $(MOTIFREFINE) $(THREADSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) label_suffix_array.h label_suffix_array.c  infoclust.c infoclust.h
-#seqwise_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+# seqer_lcs_SOURCES = $(ISEQSOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
+#seqer_lcs_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
-seqwise_emit_SOURCES = $(ISEQSOURCE) $(MODELSOURCE)  $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
+seqer_iclu_SOURCES = $(SCORESOURCE) $(MODELSOURCE) $(MOTIFREFINE) $(THREADSOURCE) $(ISEQSOURCE) $(RANDOMKIT_FILES)  $(FINITEHMM) label_suffix_array.h label_suffix_array.c  infoclust.c infoclust.h
+#seqer_iclu_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-#seqwise_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
+seqer_emit_SOURCES = $(ISEQSOURCE) $(MODELSOURCE)  $(RANDOMKIT_FILES)  $(FINITEHMM) $(EMITSOURCE) emit_random.c
+
+#seqer_emit_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 sim_seq_SOURCES = $(RANDOMKIT_FILES) \
@@ -184,7 +185,8 @@ TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITES
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST pst_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST
+ # pst_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST

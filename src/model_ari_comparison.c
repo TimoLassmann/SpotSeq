@@ -8,11 +8,12 @@
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <libgen.h>
 
 #include "tldevel.h"
 
 #include "ihmm_seq.h"
-
+#include "tlmisc.h"
 
 
 
@@ -41,7 +42,7 @@ int main (int argc, char *argv[])
         int c;
 
 
-        print_program_header(argv, "Build HDPHMM model(s).");
+        //print_program_header(argv, "Build HDPHMM model(s).");
 
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;

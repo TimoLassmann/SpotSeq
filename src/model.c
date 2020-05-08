@@ -410,7 +410,7 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
 
         /* alloc auxillary data structures  */
         //RUNP(M = galloc(M, model->num_states,model->num_states, 0.0));
-        RUNP(galloc(&M, model->num_states,model->num_states));
+        RUN(galloc(&M, model->num_states,model->num_states));
 
         //RUNP(supp = galloc(supp, 5,model->num_states, 0.0));
         RUN(galloc(&supp, 5,model->num_states));
@@ -823,7 +823,7 @@ int main(const int argc,const char * argv[])
 
         rk_randomseed(&rndstate);
         //119l
-        RUN(print_program_header((char * const*)argv,"GAGA"));
+        //RUN(print_program_header((char * const*)argv,"GAGA"));
 
 
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4,&rndstate));

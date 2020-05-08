@@ -9,7 +9,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
-
+#include <libgen.h>
 #include "tldevel.h"
 
 #include "ihmm_seq.h"
@@ -22,6 +22,11 @@
 #include "motif_logo.h"
 #include "dijkstra.h"
 
+#include "tlmisc.h"
+#include "tllogsum.h"
+
+
+#define BUFFER_LEN 128
 /*char* protein_colors[ALPHABET_PROTEIN] = {
         "#FF9966",
         "#009999",
@@ -82,7 +87,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Generates iHMM image using a <.dot> file and motif png's.");
+        //print_program_header(argv, "Generates iHMM image using a <.dot> file and motif png's.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
@@ -416,7 +421,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
                 p = path_list[i];
 
                 if(p->len){
-                        count_mat = galloc(count_mat,p->len,fhmm->L,0);
+                        RUN(galloc(&count_mat,p->len,fhmm->L));
                         b = 0;
                         for(j = 0;j < p->len;j++){
                                 LOG_MSG("Making motif%d: %d ",node_merge[p->path[j]],p->path[j]);
@@ -440,7 +445,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
 
         for(i = 2; i < fhmm->K;i++){
                 if(node_merge[i] < fhmm->K && node_merge[i] != -1){
-                        count_mat = galloc(count_mat,1,fhmm->L,0);
+                        RUN(galloc(&count_mat,1,fhmm->L));
                         b= 0;
                         for(a = 0; a < model->L;a++){
                                 count_mat[0][a] = model->emission_counts[a][node_merge[i]];

@@ -907,7 +907,7 @@ struct ihmm_model* read_model(char* filename)
 
         r = fscanf(f_ptr, "%*[^\n]\n");
         for(i = 0; i < model->num_states;i++){
-                fscanf(f_ptr,"%lf\n", &model->beta[i]);
+                r = fscanf(f_ptr,"%lf\n", &model->beta[i]);
         }
         r = fscanf(f_ptr, "%*[^\n]\n");
         for(i = 0; i < model->num_states;i++){

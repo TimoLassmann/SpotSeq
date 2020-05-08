@@ -9,7 +9,7 @@
 #include <inttypes.h>
 #include <ctype.h>
 #include <float.h>
-
+#include <libgen.h>
 
 #include "tldevel.h"
 
@@ -21,7 +21,7 @@
 
 #include "benchmark_seq.h"
 
-
+#define BUFFER_LEN 128
 
 
 
@@ -57,7 +57,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Generates standard challenge motif benchmarks.");
+        //print_program_header(argv, "Generates standard challenge motif benchmarks.");
 
         MMALLOC(param, sizeof(struct parameters));
 

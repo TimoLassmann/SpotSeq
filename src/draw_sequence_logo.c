@@ -4,6 +4,11 @@
 #include "run_score.h"
 #include "model.h"
 #include <getopt.h>
+#include <libgen.h>
+
+#include "tllogsum.h"
+
+#define BUFFER_LEN 128
 
 struct parameters{
         char* input;
@@ -23,7 +28,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Extracts motifs based on sequence labelling.");
+        //print_program_header(argv, "Extracts motifs based on sequence labelling.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->out = NULL;
@@ -130,7 +135,7 @@ int run_create_motif_for_each_sequence(struct parameters* param)
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
 
-                count_mat = galloc(count_mat,s->seq_len,fhmm->L,0);
+                RUN(galloc(&count_mat,s->seq_len,fhmm->L));
                 for(j = 0;j < s->seq_len;j++){
                         for(a = 0; a < fhmm->L;a++){
                                 count_mat[j][a] = model->emission_counts[a][s->label[j]]  ;

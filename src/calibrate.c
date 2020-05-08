@@ -208,7 +208,7 @@ int esl_gumbel_FitComplete(double *x, int n, double *ret_mu, double *ret_lambda)
         if (i == 100)
         {
                 double left, right, mid;
-                DPRINTF1(("esl_gumbel_FitComplete(): Newton/Raphson failed; switchover to bisection"));
+                //DPRINTF1(("esl_gumbel_FitComplete(): Newton/Raphson failed; switchover to bisection"));
 
                 /* First bracket the root */
                 left  = 0.;	                 	/* for sure */

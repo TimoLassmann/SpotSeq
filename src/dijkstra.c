@@ -104,13 +104,13 @@ int prune_graph_brute_force(double** t, int K,float gamma)
         LOG_MSG("%d edges.", num_edges);
         LOG_MSG("will remove %d edges.",num_remove);
 
-        DECLARE_TIMER(t1);
+        //DECLARE_TIMER(t1);
 
 
 
         //num_removec= 2;
         for(c = 0; c < num_remove;c++){
-                START_TIMER(t1);
+                //START_TIMER(t1);
                 RUN(calculate_connectivity(g, &connectivity));
                 connectivity_minus_one = -DBL_MAX;
                 min_rk = DBL_MAX;
@@ -142,9 +142,9 @@ int prune_graph_brute_force(double** t, int K,float gamma)
 
                 RUN(remove_edge(g,a,b));
 
-                STOP_TIMER(t1);
+                //STOP_TIMER(t1);
 
-                LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
+                //LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
         }
 
 
@@ -174,7 +174,13 @@ int prune_graph_naive(double** t, int K,float gamma)
 
 
 
-        RUNP(use_edge = galloc(use_edge,K,K,0));
+        RUN(galloc(&use_edge,K,K));
+        for(i = 0; i < K;i++){
+                for(j = 0; j < K;j++){
+                        use_edge[i][j] = 0;
+                }
+        }
+
         /* Allocate graph and insert edges.. */
         RUNP(g = alloc_graph());
 
@@ -202,14 +208,14 @@ int prune_graph_naive(double** t, int K,float gamma)
 
         num_remove =  (int)(gamma * (double)(num_edges - (g->vertices_len-1)));
 
-            DECLARE_TIMER(t1);
+        //DECLARE_TIMER(t1);
         // 2: n ← γ ( |E| − ( |V| − 1))
         LOG_MSG("Pruning.");
         LOG_MSG("%d edges.", num_edges);
         LOG_MSG("will remove %d edges.",num_remove);
         //num_removec= 2;
         for(c = 0; c < num_remove;c++){
-                START_TIMER(t1);
+                //START_TIMER(t1);
 
                 a = -1;
                 b = -1;
@@ -236,9 +242,9 @@ int prune_graph_naive(double** t, int K,float gamma)
                         use_edge[a][b] = 0;
                 }
 
-                STOP_TIMER(t1);
+                //STOP_TIMER(t1);
 
-                LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
+                //LOG_MSG("remove edge in %f seconds.", GET_TIMING(t1));
         }
 
 
@@ -871,15 +877,15 @@ int main () {
         add_edge(g, 3, 4, 6);
         add_edge(g, 4, 5, 9);
 
-        DECLARE_TIMER(t1);
+        //DECLARE_TIMER(t1);
         for(i = 0; i < num_nodes-1;i++){
-                START_TIMER(t1);
+                //START_TIMER(t1);
                 for(j = i+1;j < num_nodes;j++){
                         dijkstra(g, i,j);
 
                 }
-                STOP_TIMER(t1);
-                LOG_MSG("done in %f seconds.",GET_TIMING(t1));
+                //STOP_TIMER(t1);
+                //LOG_MSG("done in %f seconds.",GET_TIMING(t1));
         }
 
         for(i = 0; i < num_nodes;i++){

@@ -34,7 +34,7 @@ struct sa* build_sa(struct seq_buffer* sb)
 
 
         total_sequence_len += sb->num_seq;
-        DPRINTF1("Total length is %d", total_sequence_len);
+        //DPRINTF1("Total length is %d", total_sequence_len);
 
         sa->alloc_len = total_sequence_len;
 

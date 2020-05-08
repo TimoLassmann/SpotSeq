@@ -7,6 +7,12 @@
 #include "model.h"
 #include "motif_refinement.h"
 #include <getopt.h>
+#include <libgen.h>
+
+#include "tllogsum.h"
+#include "tlhdf5wrap.h"
+
+#define BUFFER_LEN 128
 
 struct parameters{
         char* input;
@@ -88,7 +94,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         int c;
 
-        print_program_header(argv, "Extracts motifs based on sequence labelling.");
+        //print_program_header(argv, "Extracts motifs based on sequence labelling.");
 
         MMALLOC(param, sizeof(struct parameters));
         param->out = NULL;
@@ -743,8 +749,8 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         int pos;
         //int strand;
 
-        RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
-        RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
+        RUN(galloc(&motif->count_matrix, motif->len, sb->L));
+        RUN(galloc(&motif->freq_matrix, motif->len, sb->L));
         /* add dirichlet priors based on background frequencies */
         for(i =0; i < motif->len;i++){
                 sum = 0.0;
@@ -826,7 +832,7 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
         ASSERT(motif!= NULL, "No motif");
         ASSERT(sa != NULL, "No suffix array");
 
-        RUNP(motif->count_matrix = galloc(motif->count_matrix, motif->len, sb->L, 0.0f));
+        RUN(galloc(&motif->count_matrix, motif->len, sb->L));
 
         for(i = motif->start_in_sa; i < motif->end_in_sa;i++){
                 s = sb->sequences[sa->lcs[i]->seq_num];
@@ -836,7 +842,7 @@ int add_motif_count_matrix(struct seq_buffer* sb, struct paraclu_cluster* motif,
                 }
         }
 
-        RUNP(motif->freq_matrix = galloc(motif->freq_matrix, motif->len, sb->L, 0.0f));
+        RUN(galloc(&motif->freq_matrix, motif->len, sb->L));
         for(i = 0; i < motif->len;i++){
                 sum = 0.0;
                 for(j = 0; j < sb->L;j++){
@@ -1281,49 +1287,35 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
         double** tmp = NULL;
         int i,j,c;
 
-
-
         ASSERT(filename != NULL, "No file name");
         ASSERT(m != NULL, "No motifs");
 
+        RUN(open_hdf5_file(&hdf5_data,filename));
 
 
-        /* determine max_len of motif - to alloc frequency matrix */
+        char* pack_info = NULL;
+        MMALLOC(pack_info,sizeof(char)*128);
+        snprintf(pack_info, 128,"%s", PACKAGE_NAME);
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Program",pack_info));
 
-        RUNP(hdf5_data = hdf5_create());
-        snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
-        hdf5_add_attribute(hdf5_data, "Program", buffer, 0, 0.0f, HDF5GLUE_CHAR);
-        snprintf(buffer, BUFFER_LEN, "%s", PACKAGE_VERSION);
-        hdf5_add_attribute(hdf5_data, "Version", buffer, 0, 0.0f, HDF5GLUE_CHAR);
-
-
-        RUN(hdf5_create_file(filename,hdf5_data));
-
-        hdf5_write_attributes(hdf5_data, hdf5_data->file);
-
-        RUN(hdf5_create_group("MotifData",hdf5_data));
-
-
-        hdf5_data->rank = 1;
-        hdf5_data->dim[0] = fhmm->L;
-        hdf5_data->dim[1] = -1;
-        hdf5_data->chunk_dim[0] = fhmm->L;
-        hdf5_data->chunk_dim[1] = -1;
-        hdf5_data->native_type = H5T_NATIVE_DOUBLE;
-        hdf5_write("Background",&fhmm->background[0], hdf5_data);
+        snprintf(pack_info, 128,"%s", PACKAGE_VERSION);
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Version",pack_info));
+        MFREE(pack_info);
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/","MotifData",&fhmm->background));
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
                 if(p){
-                        RUNP(tmp = galloc(tmp, p->len, fhmm->L, 0.0));
+                        RUN(galloc(&tmp, p->len, fhmm->L));
 
                         for(j = 0 ; j < p->len;j++){
                                 for(c = 0; c < fhmm->L;c++){
                                         tmp[j][c] =  p->count_matrix[j][c];//   fhmm->e[p->state_sequence[j]][c];// p->matrix[j][c];//
                                 }
                         }
-
-                        hdf5_data->rank = 2;
+                        snprintf(buffer, BUFFER_LEN, "MotifData/M%03d", i+1);
+                        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/",buffer,tmp));
+                        /*hdf5_data->rank = 2;
                         hdf5_data->dim[0] = p->len;
                         hdf5_data->dim[1] = fhmm->L;
                         hdf5_data->chunk_dim[0] = p->len;
@@ -1331,20 +1323,16 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
                         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
                         snprintf(buffer, BUFFER_LEN, "M%03d", i+1);
                         hdf5_write(buffer,&tmp[0][0], hdf5_data);
-
+                        */
                         gfree(tmp);
                         tmp = NULL;
                 }
         }
-
-        RUN(hdf5_close_group(hdf5_data));
-        hdf5_close_file(hdf5_data);
-        hdf5_free(hdf5_data);
+        RUN(close_hdf5_file(&hdf5_data));
         return OK;
 ERROR:
         if(hdf5_data){
-                hdf5_close_file(hdf5_data);
-                hdf5_free(hdf5_data);
+                RUN(close_hdf5_file(&hdf5_data));
         }
         return FAIL;
 }
@@ -1548,8 +1536,9 @@ int hierarchal_merge_motif(struct motif_list* m,struct fhmm* fhmm ,struct seq_bu
                 b = m->plist[best_j];
 
                 allowed_overlap =  set_overlap(a->len, b->len);
+                RUN(galloc(&rand_freq_matrix, a->len, fhmm->L));
 
-                RUNP(rand_freq_matrix = galloc(rand_freq_matrix, a->len, fhmm->L, 0.0));
+                //RUNP(rand_freq_matrix = galloc(rand_freq_matrix, a->len, fhmm->L, 0.0));
                 for(i = 0; i < a->len;i++){
                         for(j = 0; j < fhmm->L;j++){
                                 rand_freq_matrix[i][j] = a->freq_matrix[i][j];

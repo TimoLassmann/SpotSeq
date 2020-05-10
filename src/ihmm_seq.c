@@ -122,11 +122,11 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
 
         open_hdf5_file(&hdf5_data, filename);
         //hdf5_data = hdf5_create();
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "Numseq", &num_seq));
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxLen", &max_len));
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxNameLen",&max_name_len));
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "Alphaber",&local_L));
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "SequenceInformation", "NumModels", &num_models));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Numseq", &num_seq));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxLen", &max_len));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxNameLen",&max_name_len));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphaber",&local_L));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "NumModels", &num_models));
 
         ASSERT(num_seq != -1, "No numseq");
         ASSERT(max_len != -1, "No maxlen");
@@ -135,15 +135,15 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(num_models > 0, "No models");
 
 
-        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Names", &name));
-        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Sequences", &seq));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Names", &name));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Sequences", &seq));
 
-        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "CompetitiveScores", &scores));
-        RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Background", &background));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "CompetitiveScores", &scores));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Background", &background));
 
 
         if(mode == IHMM_SEQ_READ_ALL){
-                RUN(HDFWRAP_READ_DATA(hdf5_data, "SequenceInformation", "Labels", &label));
+                RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Labels", &label));
         }else{
                 label= NULL;
         }
@@ -262,6 +262,9 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
                 for (j = 0; j < len;j++){
                         name[i][j] = sb->sequences[i]->name[j];
                 }
+                for(j = len;j < max_name_len;j++){
+                        name[i][j] = 0;
+                }
         }
 
         /* make sequence matrix */
@@ -274,7 +277,10 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
                         seq[i][j] = sb->sequences[i]->seq[j];
                 }
                 /* NEW  */
-                seq[i][len] = -1;
+                for(j = len;j < sb->max_len;j++){
+                        seq[i][j] = -1;
+                }
+
         }
 
         /* make  label matrix */
@@ -290,6 +296,9 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
                                 label[i][pos] = sb->sequences[i]->label_arr[c][j];
                                 pos++;
                         }
+                }
+                for(c = pos; c < (sb->max_len+1)* num_models;c++){
+                        label[i][c] = -1;
                 }
         }
 
@@ -328,20 +337,19 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         }else{
                 hdf5_open_group("SequenceInformation",hdf5_data);
         }
-
         hdf5_data->num_attr = 0;
         */
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "Numseq", sb->num_seq));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxLen", sb->max_len));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "MaxNameLen",max_name_len));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "Alphaber", sb->L));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "SequenceInformation", "NumModels", num_models));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Numseq", sb->num_seq));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxLen", sb->max_len));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxNameLen",max_name_len));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphaber", sb->L));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "NumModels", num_models));
 
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Names", name));
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Sequences", seq));
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Labels", label));
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "CompetitiveScores", scores));
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "SequenceInformation", "Background", sb->background));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Names", name));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Sequences", seq));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Labels", label));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "CompetitiveScores", scores));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Background", sb->background));
         RUN(close_hdf5_file(&hdf5_data));
         gfree(label);
         gfree(name);
@@ -390,6 +398,12 @@ int dirichlet_emission_label_ihmm_sequences(struct seq_buffer* sb, int k, double
         //RUNP(emission = galloc(emission, k+1,  sb->L , 0.0f));
 
         RUN(galloc(&emission, k+1,  sb->L));
+
+        for(i = 0; i < k+1;i++){
+                for(j = 0; j < sb->L;j++){
+                        emission[i][j] = 0.0;
+                }
+        }
 
         for(i = 0; i < k;i++){
                 sum = 0.0;
@@ -468,6 +482,15 @@ int label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer* sb, int k, double
 
         RUN(galloc(&emission, k+1,  sb->L));
         RUN(galloc(&transition, k+1,  k));
+
+        for(i = 0; i < k+1;i++){
+                for(j = 0; j < sb->L;j++){
+                        emission[i][j] = 0.0;
+                }
+                for(j = 0; j < k;j++){
+                        transition[i][j] = 0.0;
+                }
+        }
 
         MMALLOC(tmp, sizeof(double) * k);
         //fprintf(stdout,"Emission\n");
@@ -905,7 +928,8 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb)
         ASSERT(sb!= NULL, "No sequence buffer");
         ASSERT(sb->L != 0, "No alphabet detected");
 
-        MMALLOC(sb->background, sizeof(double)* sb->L);
+        RUN(galloc(&sb->background, sb->L));
+        //MMALLOC(sb->background, sizeof(double)* sb->L);
         for(i = 0; i < sb->L;i++){
                sb->background[i] = 0.0;
         }
@@ -1014,6 +1038,11 @@ int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment, r
         //DPRINTF1("max_len:%d",sb->max_len );
         //RUNP(dwb = galloc(dwb, sb->max_len , 20, 0));
         RUN(galloc(&dwb, sb->max_len , 20));
+        for(i = 0; i < sb->max_len;i++){
+                for(j = 0; j < 20;j++){
+                        dwb[i][j] = 0;
+                }
+        }
         f_ptr = NULL;
         /* open file and write */
 
@@ -1252,7 +1281,6 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
                         for(i =0 ; i<strlen(line);i++){
                                 if(isspace(line[i])){
                                         line[i] = 0;
-
                                 }
 
                         }
@@ -2128,7 +2156,7 @@ void free_ihmm_sequences(struct seq_buffer* sb)
                 }
                 MFREE(sb->sequences);
                 if(sb->background){
-                        MFREE(sb->background);
+                        gfree(sb->background);
                 }
                 MFREE(sb);
         }

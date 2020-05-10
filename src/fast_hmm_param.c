@@ -114,7 +114,7 @@ void free_fast_param_bag(struct fast_param_bag* b)
 struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 {
         struct fast_hmm_param* ft = NULL;
-        int i;
+        int i,j;
         /* function pointers for left leaning RB tree..  */
         void*  (*fp_get)(void* ptr) = NULL;
         long int (*fp_cmp)(void* keyA, void* keyB)= NULL;
@@ -146,9 +146,18 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 
         /* RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0)); */
         /* RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0)); */
-
-        RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
         RUN(galloc(&ft->transition,  ft->alloc_num_states,  ft->alloc_num_states));
+        for(i = 0; i < ft->alloc_num_states;i++){
+                for(j = 0; j < ft->alloc_num_states;j++){
+                        ft->transition[i][j] = 0.0;
+                }
+        }
+        RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
+        for(i = 0; i < ft->L;i++){
+                for(j = 0; j < ft->alloc_num_states;j++){
+                        ft->emission[i][j] = 0.0;
+                }
+        }
 
         fp_get = &get_transition;
         fp_cmp = &compare_transition;
@@ -175,7 +184,7 @@ ERROR:
 
 int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 {
-        int i, num_old_item;
+        int i,j, num_old_item;
         ASSERT(ft != NULL, "No ft struct!");
         ASSERT(new_num_states >2,"No states requested");
 
@@ -187,9 +196,19 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
                 /* RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0)); */
                 /* RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0)); */
 
-
-                RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
                 RUN(galloc(&ft->transition,  ft->alloc_num_states,  ft->alloc_num_states));
+                RUN(galloc(&ft->emission, ft->L, ft->alloc_num_states));
+
+                for(i = 0; i < ft->alloc_num_states;i++){
+                        for(j = 0; j < ft->alloc_num_states;j++){
+                                ft->transition[i][j] = 0.0;
+                        }
+                }
+                for(i = 0; i < ft->L;i++){
+                        for(j = 0; j < ft->alloc_num_states;j++){
+                                ft->emission[i][j] = 0.0;
+                        }
+                }
 
                 MREALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
                 for(i = num_old_item; i < ft->alloc_num_states;i++){
@@ -267,6 +286,7 @@ int make_flat_param_list(struct fast_hmm_param* ft)
 
         ft->num_items = ft->root->num_entries;
         ft->list = (struct fast_t_item**) ft->root->data_nodes;
+
         return OK;
 ERROR:
         return FAIL;

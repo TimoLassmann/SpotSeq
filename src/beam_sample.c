@@ -9,6 +9,8 @@ void* do_sample_path_and_posterior(void* threadarg);
 void* do_dynamic_programming(void *threadarg);
 void* do_forward_backward(void *threadarg);
 
+static int sort_by_p(const void *a, const void *b);
+
 int approximatelyEqual(double a, double b, double epsilon);
 
 int sum_counts_from_multiple_threads(struct wims_thread_data** td,int* num_threads,int K);
@@ -65,7 +67,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 model_bag->max_num_states = -1;
 
                 //LOG_MSG("Check labelling at start..(%d)", iter);
-                //RUN(check_labels(sb,model_bag->num_models ));
+                RUN(check_labels(sb,model_bag->num_models ));
                 //LOG_MSG("Done");
                 if(!no_path){
 
@@ -74,11 +76,13 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                                 //LOG_MSG("fill counts");
                                 RUN(fill_counts(model_bag->models[i], sb,i));
+                                //print_counts(model_bag->models[i]);
+
                                 RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
-                                //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
+                                /* LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma); */
                         }
                 }
 
@@ -89,7 +93,9 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+
                                 //print_fast_hmm_params(ft_bag->fast_params[i]);
+
                         }
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
@@ -433,6 +439,16 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
                 }
                 RUN(make_flat_param_list(ft));
                 //print_fast_hmm_params(ft);
+                /* Qsort  */
+                //qsor
+                //ft->num_items = ft->root->num_entries;
+                //ft->list = (struct fast_t_item**) ft->root->data_nodes;
+                qsort(ft->list ,ft->num_items,  sizeof(struct fast_t_item*),sort_by_p);
+                /*for(i = 0; i < ft->num_items;i++){
+                        fprintf(stdout,"%d %d %f\n",ft->list[i]->from, ft->list[i]->to, ft->list[i]->t);
+                        }*/
+                //exit(0);
+
                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state, ft->last_state);
 
         }
@@ -440,6 +456,21 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
 ERROR:
         return FAIL;
 }
+
+
+
+int sort_by_p(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
+
+        if((*one)->t > (*two)->t){
+                return -1;
+        }else{
+                return 1;
+        }
+}
+
 
 /* This function assumes (oh no!) that beta has space for an additional
    p   g * element */
@@ -1043,10 +1074,12 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         for(i = 0; i < K;i++){
                 matrix[0][i] = 0.0;
         }
+        //LOG_MSG("Boundary: %d (thres: %f)", boundary, u[0]);
         //fill first row.
         for(j = 0; j < boundary;j++){
                 if(list[j]->from == IHMM_START_STATE){
                         matrix[0][list[j]->to] = list[j]->t;
+                        //fprintf(stdout," Start-> %d : %f\n", list[j]->to,list[j]->t);
                 }
         }
         sum = 0;
@@ -1057,7 +1090,11 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         }
         for(i = 0; i < K;i++){
                 matrix[0][i] /= sum;
+                //fprintf(stdout,"%f ", matrix[0][i]);
         }
+        //fprintf(stdout,"\n");
+
+
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < K;j++){
@@ -1079,7 +1116,10 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                 }
                 for(j = 0; j < K;j++){
                         matrix[i][j] /= sum;
+
+                        //fprintf(stdout,"%f ", matrix[i][j]);
                 }
+                //fprintf(stdout,"\n");
         }
         sum = 0.0;
         //float tmp_r;
@@ -1091,6 +1131,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                         sum += matrix[len-1][a];
                 }
         }
+        //LOG_MSG("SUM:%f",sum);
 
         if(sum != 0.0 && !isnan(sum)){
                 state = IHMM_END_STATE;
@@ -1614,7 +1655,7 @@ int full_run_test_dna(char* output,int niter)
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(write_model_bag_hdf5(model_bag,output));
-        RUN(add_annotation(output, "wims_model_cmd", "Testing"));
+        //RUN(add_annotation(output, "wims_model_cmd", "Testing"));
         RUN(add_sequences_to_hdf5_model(output, sb,  model_bag->num_models));
         RUN(write_thread_data_to_hdf5(output, td, td[0]->num_threads, sb->max_len, model_bag->max_num_states));
         free_ihmm_sequences(sb);

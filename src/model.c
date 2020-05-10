@@ -411,10 +411,18 @@ int iHmmHyperSample(struct ihmm_model* model, int iterations)
         /* alloc auxillary data structures  */
         //RUNP(M = galloc(M, model->num_states,model->num_states, 0.0));
         RUN(galloc(&M, model->num_states,model->num_states));
-
+        for(i = 0; i < model->num_states;i++){
+                for(j = 0; j < model->num_states;j++){
+                        M[i][j] = 0.0;
+                }
+        }
         //RUNP(supp = galloc(supp, 5,model->num_states, 0.0));
         RUN(galloc(&supp, 5,model->num_states));
-
+        for(i = 0; i < 5;i++){
+                for(j = 0; j < model->num_states;j++){
+                        supp[i][j] = 0.0;
+                }
+        }
         //fprintf(stdout,"%f %f\n", model->alpha ,model->gamma );
         alpha = model->alpha;
         gamma = model->gamma;
@@ -640,7 +648,7 @@ void free_model_bag(struct model_bag* b)
 struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
 {
         struct ihmm_model* model = NULL;
-        int i;
+        int i,j;
         ASSERT(K>3, "No states requested");
         ASSERT(L>1, "No letters");
 
@@ -680,8 +688,23 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
 
 
         RUN(galloc(&model->transition_counts, model->alloc_num_states, model->alloc_num_states));
+        for(i = 0; i < model->alloc_num_states;i++){
+                for(j = 0; j < model->alloc_num_states;j++){
+                        model->transition_counts[i][j] = 0.0;
+                }
+
+        }
+
         RUN(galloc(&model->emission_counts , model->L, model->alloc_num_states));
-        MMALLOC(model->beta,sizeof(double) * model->alloc_num_states);
+        for(i = 0; i < model->L;i++){
+                for(j = 0; j < model->alloc_num_states;j++){
+                        model->emission_counts[i][j] = 0.0;
+                }
+
+        }
+
+        //MMALLOC(model->beta,sizeof(double) * model->alloc_num_states);
+        RUN(galloc(&model->beta, model->alloc_num_states));
         for(i = 0; i < model->alloc_num_states;i++){
                 model->beta[i] = 0.0;
         }
@@ -695,7 +718,7 @@ ERROR:
 int resize_ihmm_model(struct ihmm_model* ihmm, int K)
 {
         int old_size;
-        int i;
+        int i,j,c;
         ASSERT(ihmm != NULL, "No model");
         ASSERT(K > 3,"No states requested");
 
@@ -711,9 +734,21 @@ int resize_ihmm_model(struct ihmm_model* ihmm, int K)
 
                 RUN(galloc(&ihmm->transition_counts, ihmm->alloc_num_states, ihmm->alloc_num_states));
                 RUN(galloc(&ihmm->emission_counts , ihmm->L, ihmm->alloc_num_states));
+                for(j = 0;j < ihmm->alloc_num_states;j++){
+                        for(c = 0;c < ihmm->alloc_num_states;c++){
+                                ihmm->transition_counts[j][c] = 0.0;
+                        }
+                }
+                for(j = 0;j < ihmm->L;j++){
+                        for(c = 0;c < ihmm->alloc_num_states;c++){
+                                ihmm->emission_counts[j][c] = 0.0;
+                        }
+                }
+
                 /* BUG - do I need to reset counts here? */
 
-                MREALLOC(ihmm->beta,sizeof(double) * ihmm->alloc_num_states);
+                RUN(galloc(&ihmm->beta, ihmm->alloc_num_states));
+                //MREALLOC(ihmm->beta,sizeof(double) * ihmm->alloc_num_states);
                 for(i = old_size;i < ihmm->alloc_num_states;i++){
                         ihmm->beta[i] = -1.0;
                 }
@@ -754,7 +789,7 @@ void free_ihmm_model(struct ihmm_model* ihmm)
         if(ihmm){
                 gfree(ihmm->transition_counts);
                 gfree(ihmm->emission_counts);
-                MFREE(ihmm->beta);
+                gfree(ihmm->beta);
                 MFREE(ihmm);
         }
 }

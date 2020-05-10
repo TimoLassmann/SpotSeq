@@ -2,7 +2,6 @@
 #include "config.h"
 #endif
 
-
 #include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -201,7 +200,7 @@ int main (int argc, char *argv[])
                 rk_randomseed(&param->rndstate);
         }
 
-        //RUNP(param->cmd_line = make_cmd_line(argc,argv));
+        RUN(make_cmd_line(&param->cmd_line,argc,argv));
 
         //rk_save_testing();
         //return EXIT_SUCCESS;
@@ -356,7 +355,7 @@ int run_build_ihmm(struct parameters* param)
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(score_all_vs_all(model_bag,sb,td));
         RUN(write_model_bag_hdf5(model_bag,param->output));
-        RUN(add_annotation(param->output, "seqwise_model_cmd", param->cmd_line));
+        //RUN(add_annotation(param->output, "seqwise_model_cmd", param->cmd_line));
         RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
         RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len, model_bag->max_num_states));
         //RUN(write_thread_data_to_)
@@ -557,11 +556,16 @@ int init_num_state_array(int* num_state_array, int len, struct parameters* param
         }else{
                 rk_randomseed(&rndstate);
         }
-
-        for(i = 0; i < len;i++){
-                num_state_array[i] = (int)rk_normal(&rndstate, mean,25.0);
-                num_state_array[i] = MACRO_MIN(num_state_array[i], 1000);
-                num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
+        if(param->num_start_states){
+                for(i = 0; i < len;i++){
+                        num_state_array[i] = param->num_start_states;
+                }
+        }else{
+                for(i = 0; i < len;i++){
+                        num_state_array[i] = (int)rk_normal(&rndstate, mean,25.0);
+                        num_state_array[i] = MACRO_MIN(num_state_array[i], 1000);
+                        num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
+                }
         }
         return OK;
 ERROR:
@@ -638,7 +642,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         LOG_MSG("Loading sequences.");
 
-        RUNP(sb =get_sequences_from_hdf5_model(param->output, IHMM_SEQ_READ_ONLY_SEQ  ));
+        RUNP(sb = get_sequences_from_hdf5_model(param->output, IHMM_SEQ_READ_ONLY_SEQ  ));
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
@@ -730,7 +734,7 @@ int free_parameters(struct parameters* param)
 {
         ASSERT(param != NULL, " No param found - free'd already???");
         if(param->cmd_line){
-                MFREE(param->cmd_line);
+                gfree(param->cmd_line);
         }
         MFREE(param);
         return OK;

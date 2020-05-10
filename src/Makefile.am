@@ -39,9 +39,7 @@ ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
 FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
-fast_hmm_param_test_functions.c \
-tlrbtree.h \
-tlrbtree.c
+fast_hmm_param_test_functions.c
 
 KALIGNSOURCE = kalign.h kalign.c
 
@@ -79,6 +77,10 @@ seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
+seqer_model_SOURCES = \
+build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
+
+
 seqer_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(ISEQSOURCE) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
 seqer_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(MODELSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
@@ -95,9 +97,7 @@ seqer_plot_SOURCES = \
 plot_model.c  $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM)  $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES)  $(HDF5GLUESOURCE)
 #seqwise_plot_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-seqer_model_SOURCES = \
-build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
-#seqer_model_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+
 
 seqer_select_SOURCES = \
 select_model.c  $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)

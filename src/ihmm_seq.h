@@ -14,7 +14,6 @@
 
 #include <stdint.h>
 #include <ctype.h>
-#include "hdf5_glue.h"
 
 
 #define BLOCK_LEN 70

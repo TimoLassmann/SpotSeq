@@ -10,7 +10,7 @@
 struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len, int K,rk_state* random)
 {
         struct wims_thread_data** td = NULL;
-        int i;
+        int i,j,c;
         int local_num_treads;
         size_t mem_needed;
         ASSERT(*num_threads> 0, "no threads");
@@ -37,12 +37,30 @@ struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len,
                 td[i]->e = NULL;
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
-                RUN(galloc(td[i]->dyn, max_len, K));
-                RUN(galloc(td[i]->F_matrix, max_len, K));
-                RUN(galloc(td[i]->B_matrix, max_len, K));
+                RUN(galloc(&td[i]->dyn, max_len, K));
+                RUN(galloc(&td[i]->F_matrix, max_len, K));
+                RUN(galloc(&td[i]->B_matrix, max_len, K));
+                for(j = 0; j < max_len;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->dyn[j][c] = 0.0;
+                                td[i]->F_matrix[j][c] = 0.0;
+                                td[i]->B_matrix[j][c] = 0.0;
+                        }
+                }
+
                 /* was initailized to -INFINITY  */
-                RUN(galloc(td[i]->t, K,K));
-                RUN(galloc(td[i]->e,ALPHABET_PROTEIN,K));
+                RUN(galloc(&td[i]->t, K,K));
+                RUN(galloc(&td[i]->e,ALPHABET_PROTEIN,K));
+                for(j = 0; j < K;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->t[j][c] = -INFINITY;
+                        }
+                }
+                for(j = 0; j < ALPHABET_PROTEIN;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->e[j][c] = -INFINITY;
+                        }
+                }
 
 
                 td[i]->ft = NULL;
@@ -74,7 +92,7 @@ ERROR:
 
 int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int max_len, int K)
 {
-        int i;
+        int i,j,c;
         int local_num_treads;
         int cur_threads;
         size_t mem_needed;
@@ -99,14 +117,29 @@ int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int m
 
         //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
         for(i = 0; i < local_num_treads;i++){
-                RUN(galloc(td[i]->dyn, max_len, K));
+                RUN(galloc(&td[i]->dyn, max_len, K));
 
-                RUN(galloc(td[i]->F_matrix, max_len, K));
-                RUN(galloc(td[i]->B_matrix, max_len, K));
-
-                RUN(galloc(td[i]->t, K,K));
-                RUN(galloc(td[i]->e,ALPHABET_PROTEIN,K));
-
+                RUN(galloc(&td[i]->F_matrix, max_len, K));
+                RUN(galloc(&td[i]->B_matrix, max_len, K));
+                for(j = 0; j < max_len;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->dyn[j][c] = 0.0;
+                                td[i]->F_matrix[j][c] = 0.0;
+                                td[i]->B_matrix[j][c] = 0.0;
+                        }
+                }
+                RUN(galloc(&td[i]->t, K,K));
+                RUN(galloc(&td[i]->e,ALPHABET_PROTEIN,K));
+                for(j = 0; j < K;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->t[j][c] = -INFINITY;
+                        }
+                }
+                for(j = 0; j < ALPHABET_PROTEIN;j++){
+                        for(c = 0; c < K;c++){
+                                td[i]->e[j][c] = -INFINITY;
+                        }
+                }
                 td[i]->num_threads = local_num_treads;
         }
         *num_threads = local_num_treads;

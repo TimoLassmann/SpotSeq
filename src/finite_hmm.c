@@ -3,7 +3,7 @@
 
 #include "tllogsum.h"
 
-#include "tlhdf5wrap.h"
+
 /* Calculate the bayesian information criteria score for a finite HMM */
 /* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
 /* data is the number of residues in the training dataset */
@@ -329,6 +329,12 @@ int setup_model(struct fhmm* fhmm)
         RUN(galloc(&fhmm->tindex, fhmm->K , fhmm->K+1));
 
         for(i = 0; i < fhmm->K;i++){
+                for(j = 0; j < fhmm->K+1;j++){
+                        fhmm->tindex[i][j] = 0;
+                }
+        }
+
+        for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
                         fhmm->e[i][j] = prob2scaledprob(fhmm->e[i][j]);
                 }
@@ -374,6 +380,17 @@ int remove_state_for_ploting(struct fhmm*fhmm, int state)
 
         RUN(galloc(&tmp_trans,fhmm->K-1, fhmm->K-1));
         RUN(galloc(&tmp_emit,fhmm->K-1, fhmm->L));
+
+        for(i = 0; i < fhmm->K-1;i++){
+                for(j = 0; j < fhmm->K-1;i++){
+                        tmp_trans[i][j] = 0.0;
+                }
+        }
+        for(i = 0; i < fhmm->K-1;i++){
+                for(j = 0; j < fhmm->L;i++){
+                        tmp_emit[i][j] = 0.0;
+                }
+        }
 
         a = 0;
         for(i = 0; i < fhmm->K;i++){
@@ -519,7 +536,7 @@ ERROR:
 int alloc_dyn_matrices(struct fhmm* fhmm)
 {
         ASSERT(fhmm!= NULL, "No model");
-
+        int i,j;
         fhmm->alloc_matrix_len = 1024;
 
         /* RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
@@ -527,6 +544,12 @@ int alloc_dyn_matrices(struct fhmm* fhmm)
 
         RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
         RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
+        for(i = 0; i < fhmm->alloc_matrix_len;i++){
+                for(j = 0;j < fhmm->K;j++){
+                        fhmm->F_matrix[i][j] = 0.0;
+                        fhmm->B_matrix[i][j] = 0.0;
+                }
+        }
         return OK;
 ERROR:
         return FAIL;
@@ -534,6 +557,7 @@ ERROR:
 
 int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
 {
+        int i,j;
         ASSERT(fhmm != NULL, "No model");
         ASSERT(new_len > 0, "newlen has to be > 0");
         ASSERT(fhmm->alloc_matrix_len > 0, "No matrix allocated yet...");
@@ -547,6 +571,13 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
 
                 RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
                 RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
+                for(i = 0; i < fhmm->alloc_matrix_len;i++){
+                        for(j = 0;j < fhmm->K;j++){
+                                fhmm->F_matrix[i][j] = 0.0;
+                                fhmm->B_matrix[i][j] = 0.0;
+                        }
+                }
+
         }
         return OK;
 ERROR:
@@ -629,7 +660,7 @@ void free_fhmm(struct fhmm* fhmm)
                         //free_2d((void**) fhmm->t);
                 }
                 if(fhmm->background){
-                        MFREE(fhmm->background);
+                        gfree(fhmm->background);
                 }
                 if(fhmm->tindex){
                         gfree(fhmm->tindex);

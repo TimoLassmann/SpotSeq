@@ -2,6 +2,36 @@
 #include "tlrbtree.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
 
+struct rbtree_node{
+        struct rbtree_node* right;
+        struct rbtree_node* left;
+        void* data_node;
+        int color;
+        unsigned int num;
+};
+
+static void free_rbtree(struct rbtree_node* n,void (*free_function_pointer)(void* ptr))
+{
+
+        if(n){
+                if(n->left){
+
+                        free_rbtree(n->left,free_function_pointer);
+                }
+                if(n->right){
+
+                        free_rbtree(n->right,free_function_pointer);
+                }
+                if(free_function_pointer!= NULL){
+
+                        free_function_pointer(n->data_node);
+                }
+                //MFREE(n->data_node);
+                MFREE(n);
+        }
+}
+
+
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         double* tmp_prob = NULL;
@@ -16,7 +46,9 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
 
         // delete old tree...
         if(ft->root){
-                ft->root->free_tree(ft->root);
+                //ft->root->free_tree(ft->root);
+
+                free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
                 ft->root->cur_data_nodes = 0;
@@ -121,6 +153,8 @@ ERROR:
         return FAIL;
 }
 
+
+
 int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         struct fast_t_item* tmp = NULL;
@@ -138,8 +172,8 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         // delete old tree...
 
         if(ft->root){
-                ft->root->free_tree(ft->root);
-                //free_rbtree(ft->root->node,ft->root->fp_free);
+                //ft->root->free_tree(ft->root);
+                free_rbtree(ft->root->node,ft->root->fp_free);
                 ft->root->node = NULL;
                 ft->root->num_entries = 0;
                 ft->root->cur_data_nodes = 0;
@@ -291,11 +325,16 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 
         /* kind of important... */
         ft->last_state = last_state;
+
+        //ft->root->print_tree(ft->root,stdout);
+
+
         MFREE(tmp_prob);
         return OK;
 ERROR:
         return FAIL;
 }
+
 
 struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 {
@@ -360,7 +399,8 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         /* copy background probabilitys into fhmm */
 
-        MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
+        //MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
+        RUN(galloc(&fhmm->background, fhmm->L));
         for (i = 0; i < fhmm->L; i++){
                 fhmm->background[i] = (double) ft->background_emission[i];
         }

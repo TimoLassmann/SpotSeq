@@ -242,7 +242,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         int** label = NULL;
         double** scores = NULL;
         int max_name_len;
-        int has_seq_info;
+        //int has_seq_info;
 
         ASSERT(sb!=NULL, "No sequence buffer");
 
@@ -605,23 +605,18 @@ int random_label_based_on_multiple_models(struct seq_buffer* sb, int K, int mode
         int len;
 
         ASSERT(sb != NULL, "No sequences");
-
-
+        //LOG_MSG("Random Label: %d", K);
         for(i = 0;i< sb->num_seq;i++){
-
                 label = sb->sequences[i]->label_arr[model_index];
                 len = sb->sequences[i]->seq_len;
                 //DPRINTF3("Seq%d len %d ",i ,len);
                 for(j = 0;j < len;j++){
-                        label[j] = rk_interval(K-3, random)+2;
+                        label[j] = rk_interval(K-4, random)+2;
                 }
         }
-
-
         return OK;
 ERROR:
         return FAIL;
-
 }
 
 int check_labels(struct seq_buffer* sb, int num_models)
@@ -642,26 +637,26 @@ int check_labels(struct seq_buffer* sb, int num_models)
                                 if(label[j] == -1){
                                         ERROR_MSG("m:%d s:%d p:%d is -1",c,i,j);
                                 }
+                                /* if(i < 5){ */
+                                /*         fprintf(stdout,"%d ",label[j]); */
+                                /* } */
                         }
+                        /* if(i < 5){ */
+                        /*         fprintf(stdout," model %d, seq %d\n",c,i); */
+                        /* } */
                         /*label = sb->sequences[i]->tmp_label_arr[c];
-                        len = sb->sequences[i]->seq_len;
-                        for(j = 0;j < len;j++){
-                                if(label[j] == -1){
-                                        ERROR_MSG("m:%d s:%d p:%d is -1",c,i,j);
-                                }
-                                }*/
-
+                          len = sb->sequences[i]->seq_len;
+                          for(j = 0;j < len;j++){
+                          if(label[j] == -1){
+                          ERROR_MSG("m:%d s:%d p:%d is -1",c,i,j);
+                          }
+                          }*/
                 }
         }
-
-
         return OK;
 ERROR:
         return FAIL;
-
 }
-
-
 
 int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
 {
@@ -673,7 +668,6 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
         rk_state rndstate;
 
         ASSERT(alpha > 0.0,"alpha should not be zero");
-        //RUN(set_random_seed(void));
 
         ASSERT(sb != NULL,"No sequences");
         rk_randomseed(&rndstate);
@@ -684,16 +678,14 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
                 state_prob[i] = rk_gamma(&rndstate, alpha, 1.0);
                 sum += state_prob[i];
         }
+
         for(i = 0; i< k; i++){
                 state_prob[i] = state_prob[i] / sum;
         }
 
-
         for(i = 0;i< sb->num_seq;i++){
-
                 label = sb->sequences[i]->label;
                 len = sb->sequences[i]->seq_len;
-                //DPRINTF3("Seq%d len %d ",i ,len);
                 for(j = 0;j < len;j++){
                         r = rk_double(&rndstate);
                         sum = 0;
@@ -705,8 +697,6 @@ int random_label_ihmm_sequences(struct seq_buffer* sb, int k,double alpha)
                                 }
                         }
                         label[j] = rk_interval(k-1, &rndstate) +2;
-                        //label[j] = random_int_zero_to_x(k-1) + 2;
-                        //DPRINTF3("%d",label[j]);
                 }
         }
         MFREE(state_prob);
@@ -836,7 +826,7 @@ struct seq_buffer* load_sequences(char* in_filename, rk_state* rndstate)
         while(fgets(line, LINE_LEN, f_ptr)){
                 if(line[0] == '@' || line[0] == '>'){
                         line[strlen(line)-1] = 0;
-                        for(i =0 ; i<strlen(line);i++){
+                        for(i =0 ; i < (int) strlen(line);i++){
                                 if(isspace(line[i])){
                                         line[i] = 0;
 
@@ -1278,7 +1268,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
                         }
 
                         line[strlen(line)-1] = 0;
-                        for(i =0 ; i<strlen(line);i++){
+                        for(i =0 ; i< (int)strlen(line);i++){
                                 if(isspace(line[i])){
                                         line[i] = 0;
                                 }
@@ -1517,11 +1507,11 @@ int detect_alphabet(struct seq_buffer* sb, rk_state* rndstate)
                 query[i] = 0;
         }
 
-        for(i = 0 ; i < strlen(DNA_letters);i++){
+        for(i = 0 ; i < (int) strlen(DNA_letters);i++){
                 DNA[(int) DNA_letters[i]] = 1;
         }
 
-        for(i = 0 ; i < strlen(protein_letters);i++){
+        for(i = 0 ; i < (int) strlen(protein_letters);i++){
                 protein[(int) protein_letters[i]] = 1;
         }
 

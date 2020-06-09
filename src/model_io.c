@@ -112,19 +112,16 @@ struct model_bag* read_model_bag_hdf5(char* filename)
                 bag->models[i] = NULL;
                 snprintf(buffer, BUFFER_LEN, "/models/m%d",i+1);
                 RUNP(bag->models[i] = read_model_hdf5(hdf5_data, buffer));
-                if(bag->max_num_states < bag->models[i]->num_states){
-                        bag->max_num_states = bag->models[i]->num_states;
-                }
+                //if(bag->max_num_states < bag->models[i]->num_states){
+                //      bag->max_num_states = bag->models[i]->num_states;
+                //}
+                //LOG_MSG("MAX: %d %d\n", bag->max_num_states,bag->models[i]->num_states);
                 bag->finite_models[i] = NULL;
                 snprintf(buffer, BUFFER_LEN, "/models/m%d/fhmm",i+1);
                 /* get HMM parameters  */
                 RUNP(bag->finite_models[i] = read_fhmm_parameters(hdf5_data, buffer));
         }
         RUN(close_hdf5_file(&hdf5_data));
-
-
-        //hdf5_close_file(hdf5_data);
-        //hdf5_free(hdf5_data);
         return bag;
 ERROR:
         return NULL;
@@ -134,7 +131,7 @@ int write_best_model(char* filename, int best_model)
 {
         struct hdf5_data* hdf5_data = NULL;
 
-        void *ptr;
+        //void *ptr;
         ASSERT(filename != NULL, "No filename");
         ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
@@ -253,8 +250,8 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
 {
         char buffer[BUFFER_LEN+5];
         struct ihmm_model* model = NULL;
-        int a,b;
-        int i;
+        int a,b,c;
+        //int i;
         //ASSERT(filename != NULL, "No filename");
         //ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
 
@@ -276,13 +273,17 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         //print_attributes(hdf5_data);
         a = 0;
         b = 0;
-        LOG_MSG("Reading from: %s", group);
+        c = 0;
+        //LOG_MSG("Reading from: %s", group);
         HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "Numberofstates", &a);
         HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "Numberofletters", &b);
-        LOG_MSG("K:%d L:%d", a,b);
+        HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "MaxNumberofstates", &c);
+        //LOG_MSG("K:%d L:%d", a,b);
         ASSERT(a!=0, "No states???");
         ASSERT(b!=0, "No letters???");
-        RUNP(model = alloc_ihmm_model(a, b,0));
+        ASSERT(c!=0, "No max num states???");
+        int maxK = c;
+        RUNP(model = alloc_ihmm_model(a,maxK, b,0));
         gfree(model->emission_counts);
         gfree(model->transition_counts);
         gfree(model->beta);
@@ -302,21 +303,22 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "Alpha_limit", &model->alpha_limit);
         HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "Gamma_limit", &model->gamma_limit);
 
-        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "Beta", &model->beta));
-        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "transition_counts", &model->transition_counts));
-        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "emission_counts", &model->emission_counts));
+
 
         //hdf5_close_file(hdf5_data);
         //hdf5_free(hdf5_data);
         /* stretch matrices... */
-        model->alloc_num_states = model->num_states;
-        RUN(resize_ihmm_model(model, model->num_states+1));
 
+        //RUN(resize_ihmm_model(model, model->num_states+1));
+
+        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "Beta", &model->beta));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "transition_counts", &model->transition_counts));
+        RUN(HDFWRAP_READ_DATA(hdf5_data, group, "emission_counts", &model->emission_counts));
         snprintf(buffer, BUFFER_LEN+5 , "%s/RNG", group);
         //LOG_MSG("Trying to create group: %s", buffer);
         RUN(read_RNG_state(hdf5_data, buffer,&model->rndstate));
         //WARNING_MSG("Each time a run is continued a new RNG seed is selected...");
-
+        RUN(get_dim1(model->beta, &model->alloc_num_states));
         return model;
 ERROR:
         return NULL;
@@ -328,8 +330,8 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
 {
         //struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN+5];
-        double** tmp = NULL;
-        int i,j;
+        //double** tmp = NULL;
+        //int i,j;
         int best_model = -1;
         //RUNP(hdf5_data = hdf5_create());
         //snprintf(buffer, BUFFER_LEN, "%s",PACKAGE_NAME );
@@ -343,6 +345,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         //hdf5_write_attributes(hdf5_data, hdf5_data->file);
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"BestModel",best_model ));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Numberofstates", model->num_states));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"MaxNumberofstates", model->alloc_num_states));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Numberofletters",model->L));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Gamma", model->gamma));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Gamma_limit",model->gamma_limit));
@@ -351,8 +354,8 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
 
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Alpha",model->alpha));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Alpha_limit",model->alpha_limit));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"alpha0_a",model->alpha_a));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"alpha0_b",model->alpha_b));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"alpha_a",model->alpha_a));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"alpha_b",model->alpha_b));
 
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Iteration",model->training_iterations));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"Seed",model->seed));
@@ -509,11 +512,12 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
         ASSERT(max_K!=0, "No states???");
 
         //hdf5_close_group(hdf5_data);
+        LOG_MSG("MAXLEN: %d",max_len);
         RUNP(td = create_wims_thread_data(&num_threads,  max_len, max_K, NULL));
 
 
         for(i = 0 ;i < num_threads;i++){
-                snprintf(buffer, BUFFER_LEN , "thread_data/RNG%d",i);
+                snprintf(buffer, BUFFER_LEN , "/thread_data/RNG%d",i);
                 //LOG_MSG("Trying to create group: %s", buffer);
                 RUN(read_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
         }
@@ -649,7 +653,7 @@ ERROR:
         return FAIL;
 }
 
-int add_background_emission(char* filename,double* background,int L)
+int add_background_emission(char* filename,double* background)
 {
         struct hdf5_data* hdf5_data = NULL;
         //RUNP(hdf5_data = hdf5_create());
@@ -886,8 +890,8 @@ struct ihmm_model* read_model(char* filename)
         fprintf(stdout,"Number of states after reading! : %d\n",a);
 
 
-
-        RUNP(model = alloc_ihmm_model(a, b,0));
+        int maxK = 1000;
+        RUNP(model = alloc_ihmm_model(a,maxK, b,0));
         model->num_states = a;
 
         r = fscanf(f_ptr,"Gamma: %lf\n", &model->gamma);

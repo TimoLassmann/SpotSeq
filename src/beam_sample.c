@@ -30,6 +30,7 @@ static int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path)
 static int reset_valid_path(struct seq_buffer* sb,int num_models);
 
 static int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag);
+static int sort_fast_parameters(struct fast_param_bag* ft_bag);
 static int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft);
 
 static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max);
@@ -43,6 +44,7 @@ int collect_slice(struct wims_thread_data* data,struct ihmm_sequence* ihmm_seq, 
 
 int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, int iterations, int num_threads)
 {
+        int** tmp = NULL;
         int i;
         int iter;
         int no_path;
@@ -57,31 +59,32 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         ASSERT(num_threads > 0, "No threads");
 
         init_logsum();
-
+        //RUN(check_labels(sb,model_bag->num_models ));
+        //exit(0);
         no_path = 0;                            /* Assume that we don't have a path in the first iteration */
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
                 /* shuffle and sub-sample sequences (or not...) */
                 //RUN(shuffle_sequences_in_buffer(sb));
                 /* sample transitions / emission */
                 ft_bag->max_last_state = -1;
-                model_bag->max_num_states = -1;
+                //model_bag->max_num_states = -1;
 
                 //LOG_MSG("Check labelling at start..(%d)", iter);
                 RUN(check_labels(sb,model_bag->num_models ));
                 //LOG_MSG("Done");
                 if(!no_path){
-
                         for(i = 0; i < model_bag->num_models;i++){
                                 //LOG_MSG("removing unused states");
                                 RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
                                 //LOG_MSG("fill counts");
+
                                 RUN(fill_counts(model_bag->models[i], sb,i));
                                 //print_counts(model_bag->models[i]);
-
+                                //exit(0);
                                 RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
-                                model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
+                                //model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
                                 /* LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma); */
                         }
                 }
@@ -93,9 +96,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-
                                 //print_fast_hmm_params(ft_bag->fast_params[i]);
-
                         }
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
@@ -104,15 +105,13 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         //}
                         RUN(reset_valid_path(sb,model_bag->num_models));
                         RUN(set_u_multi(model_bag, ft_bag, sb));
-
                         //RUN(set_u(sb,model,ft, &min_u));
-
                         //exit(0);
                         /* I only want to add states if the last iteration was successful */
                         //if(!no_path){
                         RUN(expand_ihmms(model_bag, ft_bag));
+                        RUN(sort_fast_parameters(ft_bag));
                         //}
-
                         RUN(resize_wims_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
                         /*for(i = 0; i < model_bag->num_models;i++){
                           LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
@@ -140,94 +139,28 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
 #endif
 
 
-                        /* for(i = 0 ; i < num_threads;i++){ */
-                                /* td[i]->ft_bag = ft_bag; */
-                                /* td[i]->ft = ft; */
-                                /* td[i]->sb = sb; */
-                                /*p if(thr_pool_queue(pool,do_dynamic_programming,td[i]) == -1){ */
-                                /*         fprintf(stderr,"Adding job to queue failed."); */
-                                /* } */
-                                /* if(thr_pool_queue(pool,do_forward_backward,td[i]) == -1){ */
-                                /*          fprintf(stderr,"Adding job to queue failed."); */
-                                /* } */
-                                /* if(thr_pool_queue(local_pool, do_sample_path_and_posterior,td[i]) == -1){ */
-                                /*         fprintf(stderr,"Adding job to queue failed."); */
-                                /* } */
-                        //}
-                //thr_pool_wait(pool);
-                        //LOG_MSG("Check labelling after dyn (%d).",iter);
-                        //RUN(check_labels(sb,model_bag->num_models ));
-                        //LOG_MSG("Done");
                         no_path = 0;
                         RUN(detect_valid_path(sb,model_bag->num_models, &no_path));
                         if(no_path){
                                 LOG_MSG("weird split must have happened. %d",iter);
-                                //exit(0);
                                 iterations++;
                         }
                 }
                 /* swap tmp label with label */
-                int** tmp = NULL;
+                tmp = NULL;
                 for(i = 0; i < sb->num_seq;i++){
-                        tmp= sb->sequences[i]->label_arr;
+                        tmp = sb->sequences[i]->label_arr;
                         sb->sequences[i]->label_arr = sb->sequences[i]->tmp_label_arr;
                         sb->sequences[i]->tmp_label_arr = tmp;
                 }
-
-                /* if more than 1% of sequences don't have a path redo */
-
-                ///if(no_path){
-                //        LOG_MSG("weird split must have happened. %d",iter);
-                //exit(0);
-                //for(i = 0; i < model_bag->num_models;i++){
-                //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
-
-                //      ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                //}
-
-
-                //RUN(fill_fast_transitions(model,ft));
-                //iterations++;
-                //}else{
-                /* I am doing this as a pre-caution. I don't want the inital model
-                 * contain states that are not visited.. */
-                //ft_bag->max_last_state = -1;
-                //model_bag->max_num_states = -1;
-                //for(i = 0; i < model_bag->num_models;i++){
-                //        RUN(remove_unused_states_labels(model_bag->models[i], sb,i ));
-                //        RUN(fill_counts(model_bag->models[i], sb,i));
-
-                //RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
-
-                //ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
-                //        model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states, model_bag->models[i]->num_states);
-                //print_model_parameters(model_bag->models[i]);
-                //}
-
-                //}
-                //print_fast_hmm_params(ft_bag->fast_params[0]);
-                /* print out model - used for plotting  */
-                /*if((iter+1) % 10 == 0){
-                //LOG_MSG("print %d\n",iter);
-                char tmp_buffer[BUFFER_LEN];
-                snprintf(tmp_buffer,BUFFER_LEN,"model_at_%07d.h5",iter+1);
-                RUN(write_model_hdf5(model,tmp_buffer));
-                RUN(add_background_emission(tmp_buffer,ft->background_emission,ft->L));
-                RUN(run_build_fhmm_file(tmp_buffer));
-                }*/
                 for(i = 0; i < model_bag->num_models;i++){
                         //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         model_bag->models[i]->training_iterations++;
                 }
+
         }
-        //sb->num_seq = sb->org_num_seq;
-        //if(need_local_pool){
-        //        thr_pool_destroy(local_pool);
-        //}
-        //free_wims_thread_data(td, num_threads);
         return OK;
 ERROR:
-        //free_wims_thread_data(td, num_threads);
         return FAIL;
 }
 
@@ -421,6 +354,8 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
         int i;
         double max;
         double min_u;
+
+        int maxK = model_bag->max_num_states;
         for(i = 0; i < model_bag->num_models;i++){
 
                 min_u = model_bag->min_u[i];
@@ -429,7 +364,7 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
 
 
                 RUN(get_max_to_last_state_transition(ft, &max));
-                while(max >= min_u && model->num_states < MAX_NUM_STATES && max > 0.0 ){//}sb->max_len){
+                while(max >= min_u && model->num_states+1 < maxK && max > 0.0 ){//}sb->max_len){
                         //fprintf(stdout,"ITER: %d Add state! MAX:%f min_U:%f max_len: %d \n",iter , max, min_u,sb->max_len);
                         RUN(add_state_from_fast_hmm_param(model,ft));
                         RUN(get_max_to_last_state_transition(ft, &max));
@@ -437,13 +372,11 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
                         //exit(0);
                         //      break;
                 }
-                RUN(make_flat_param_list(ft));
+                //RUN(make_flat_param_list(ft));
                 //print_fast_hmm_params(ft);
                 /* Qsort  */
                 //qsor
-                //ft->num_items = ft->root->num_entries;
-                //ft->list = (struct fast_t_item**) ft->root->data_nodes;
-                qsort(ft->list ,ft->num_items,  sizeof(struct fast_t_item*),sort_by_p);
+
                 /*for(i = 0; i < ft->num_items;i++){
                         fprintf(stdout,"%d %d %f\n",ft->list[i]->from, ft->list[i]->to, ft->list[i]->t);
                         }*/
@@ -457,19 +390,19 @@ ERROR:
         return FAIL;
 }
 
-
-
-int sort_by_p(const void *a, const void *b)
+int sort_fast_parameters(struct fast_param_bag* ft_bag)
 {
-        struct fast_t_item* const *one = a;
-        struct fast_t_item* const *two = b;
-
-        if((*one)->t > (*two)->t){
-                return -1;
-        }else{
-                return 1;
+        struct fast_hmm_param* ft = NULL;
+        int i;
+        for(i = 0; i < ft_bag->num_models;i++){
+                ft = ft_bag->fast_params[i];
+                RUN(make_flat_param_list(ft));
         }
+        return OK;
+ERROR:
+        return FAIL;
 }
+
 
 
 /* This function assumes (oh no!) that beta has space for an additional
@@ -508,7 +441,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         //}
         /* Check if model needs to be extended (mainly beta of course) */
 
-        RUN(resize_ihmm_model(ihmm, ihmm->num_states + 1));
+        //RUN(resize_ihmm_model(ihmm, ihmm->num_states + 1));
 
         ihmm->num_states = ihmm->num_states + 1;
         RUN(expand_ft_if_necessary(ft, ihmm->num_states));
@@ -532,12 +465,19 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 sum += tmp_prob[i];
         }
         for(i = 0;i < new_k;i++){
-                tmp = NULL;
-                MMALLOC(tmp, sizeof(struct fast_t_item));
+                //tmp = NULL;
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp = ft->list[ft->num_trans];
                 tmp->from = new_k;
                 tmp->to = i;
                 tmp->t = tmp_prob[i] / sum;
-                ft->root->tree_insert(ft->root,tmp);
+
+
+                //ft->root->tree_insert(ft->root,tmp);
+                ft->num_trans++;
+                if(ft->num_trans == ft->alloc_num_trans){
+                        RUN(expand_num_trans(ft));
+                }
                 ft->transition[new_k][i] = tmp->t;
         }
         infinity[new_k]->from = new_k;
@@ -624,12 +564,17 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
                 pe = infinity[i]->t;
 
                 //transition to state just instantiated will go into the RB tree.
-                tmp = NULL;
-                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp = ft->list[ft->num_trans];
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
                 tmp->from = i;
                 tmp->to = new_k;
                 tmp->t = pg * pe;
-                ft->root->tree_insert(ft->root,tmp);
+
+                ft->num_trans++;
+                if(ft->num_trans == ft->alloc_num_trans){
+                        RUN(expand_num_trans(ft));
+                }
+                //ft->root->tree_insert(ft->root,tmp);
                 ft->transition[i][new_k] = tmp->t;
 
                 //transition into infinity will remain in the infinity array...
@@ -1598,7 +1543,7 @@ int full_run_test_dna(char* output,int niter)
         for(i = 1; i < num_models;i++){
                 num_state_array[i] = num_state_array[i-1] + 10;//( (sb->max_len / 2) / param->num_models);
         }
-        RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, num_models,0));
+        RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, num_models,1000,0));
 
 
         RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
@@ -1607,14 +1552,14 @@ int full_run_test_dna(char* output,int niter)
         /* We need to label sequences somehow so that we can
          * set the u arrays properly based on the initial
          * model guess */
-        model_bag->max_num_states = 0;
+        //model_bag->max_num_states = 0;
         for(i = 0; i < model_bag->num_models;i++){
                 RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                 RUN(fill_counts(model_bag->models[i], sb,i));
 
 
-                model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
+                //model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
                 //print_counts(model_bag->models[i]);
 
 

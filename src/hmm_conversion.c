@@ -45,7 +45,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
         // delete old tree...
-        if(ft->root){
+        /*if(ft->root){
                 //ft->root->free_tree(ft->root);
 
                 free_rbtree(ft->root->node,ft->root->fp_free);
@@ -55,7 +55,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
                 if(ft->root->data_nodes){
                         MFREE(ft->root->data_nodes);
                 }
-        }
+                }*/
 
         MMALLOC(tmp_prob, sizeof(double) *(model->num_states));
 
@@ -170,7 +170,16 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
         // delete old tree...
-
+        if(!ft->list){
+                ft->alloc_num_trans = 65536;
+                MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_num_trans);
+                for(i = 0; i < ft->alloc_num_trans;i++){
+                        ft->list[i] = NULL;
+                        MMALLOC(ft->list[i], sizeof(struct fast_t_item));
+                }
+        }
+        ft->num_trans = 0;
+        /*
         if(ft->root){
                 //ft->root->free_tree(ft->root);
                 free_rbtree(ft->root->node,ft->root->fp_free);
@@ -180,7 +189,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 if(ft->root->data_nodes){
                         MFREE(ft->root->data_nodes);
                 }
-        }
+                }*/
 
         MMALLOC(tmp_prob, sizeof(double) *(model->num_states));
         last_state = model->num_states -1;
@@ -201,24 +210,33 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 
         /* Disallow Start to start transitions */
 
-        tmp = NULL;
-        MMALLOC(tmp, sizeof(struct fast_t_item));
+        tmp = ft->list[ft->num_trans];
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
         tmp->from = IHMM_START_STATE;
         tmp->to = IHMM_START_STATE;
         tmp->t =  0.0;
-        ft->root->tree_insert(ft->root,tmp);
+
+        ft->num_trans++;
+        if(ft->num_trans == ft->alloc_num_trans){
+                RUN(expand_num_trans(ft));
+        }
+        //ft->root->tree_insert(ft->root,tmp);
         // insert into transition matrix.
 
         ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0;
 
 
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
-        tmp = NULL;
-        MMALLOC(tmp, sizeof(struct fast_t_item));
+        tmp = ft->list[ft->num_trans];
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
         tmp->from = IHMM_START_STATE;
         tmp->to = IHMM_END_STATE;
         tmp->t =  0.0;
-        ft->root->tree_insert(ft->root,tmp);
+        ft->num_trans++;
+        if(ft->num_trans == ft->alloc_num_trans){
+                RUN(expand_num_trans(ft));
+        }
+        //ft->root->tree_insert(ft->root,tmp);
 
         ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
@@ -234,12 +252,16 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 
         /* Normalize!  */
         for(i = 2; i < last_state;i++){
-                tmp = NULL;
-                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp = ft->list[ft->num_trans];
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
                 tmp->from = IHMM_START_STATE;
                 tmp->to = i;
                 tmp->t =  tmp_prob[i] / sum;
-                ft->root->tree_insert(ft->root,tmp);
+                ft->num_trans++;
+                if(ft->num_trans == ft->alloc_num_trans){
+                        RUN(expand_num_trans(ft));
+                }
+                //ft->root->tree_insert(ft->root,tmp);
                 ft->transition[IHMM_START_STATE][i] = tmp->t;
         }
         infinity[IHMM_START_STATE]->from = IHMM_START_STATE;
@@ -253,12 +275,16 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
          * end are zero. I am not sure if this matters in my dyn prig. code but
          * why not! */
         for(i = 0; i < last_state;i++){
-                tmp = NULL;
-                MMALLOC(tmp, sizeof(struct fast_t_item));
+                tmp = ft->list[ft->num_trans];
+                //MMALLOC(tmp, sizeof(struct fast_t_item));
                 tmp->from = IHMM_END_STATE;
                 tmp->to = i;
                 tmp->t = 0.0;
-                ft->root->tree_insert(ft->root,tmp);
+                ft->num_trans++;
+                if(ft->num_trans == ft->alloc_num_trans){
+                        RUN(expand_num_trans(ft));
+                }
+                //ft->root->tree_insert(ft->root,tmp);
                 ft->transition[IHMM_END_STATE][i] = 0.0;
         }
         infinity[IHMM_END_STATE]->from = IHMM_END_STATE;
@@ -283,12 +309,16 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 }
 
                 for(j = 1; j < last_state;j++){
-                        tmp = NULL;
-                        MMALLOC(tmp, sizeof(struct fast_t_item));
+                        tmp = ft->list[ft->num_trans];
+                        //MMALLOC(tmp, sizeof(struct fast_t_item));
                         tmp->from = i;
                         tmp->to = j;
                         tmp->t = tmp_prob[j] / sum;
-                        ft->root->tree_insert(ft->root,tmp);
+                        ft->num_trans++;
+                        if(ft->num_trans == ft->alloc_num_trans){
+                                RUN(expand_num_trans(ft));
+                        }
+                        //ft->root->tree_insert(ft->root,tmp);
                         ft->transition[i][j] = tmp->t;
                 }
                 infinity[i]->from = i;
@@ -355,6 +385,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         int* used = NULL;
         int local_num_states = 0;
 
+        //model->alloc_num_states;
 
 
         ASSERT(model != NULL, "No model");
@@ -390,6 +421,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         RUNP(fhmm = alloc_fhmm());
 
+        fhmm->alloc_K = model->alloc_num_states;
         fhmm->K = local_num_states;//model->num_states;
         fhmm->L = model->L;
 
@@ -417,10 +449,11 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         RUNP(s1_t = galloc(s1_t, local_num_states, local_num_states, 0.0));
         RUNP(s2_t = galloc(s2_t, local_num_states, local_num_states, 0.0));
         */
-        RUN(galloc(&s1_e, local_num_states, model->L));
-        RUN(galloc(&s2_e, local_num_states, model->L));
-        RUN(galloc(&s1_t, local_num_states, local_num_states));
-        RUN(galloc(&s2_t, local_num_states, local_num_states));
+        //LOG_MSG("States alloc (max) : %d", model->alloc_num_states);
+        RUN(galloc(&s1_e, fhmm->alloc_K, model->L));
+        RUN(galloc(&s2_e, fhmm->alloc_K, model->L));
+        RUN(galloc(&s1_t, fhmm->alloc_K, fhmm->alloc_K));
+        RUN(galloc(&s2_t, fhmm->alloc_K, fhmm->alloc_K));
         for(i = 0; i < local_num_states;i++){
                 for(j = 0;j < model->L;j++){
                         s1_e[i][j] = 0.0;
@@ -521,7 +554,7 @@ int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
         ASSERT(model_bag != NULL," No models");
 
         if(model_bag->finite_models){
-                WARNING_MSG("Finite hmm models exist - will over-write.");
+                //WARNING_MSG("Finite hmm models exist - will over-write.");
                 for(i = 0; i < model_bag->num_models;i++){
                         free_fhmm(model_bag->finite_models[i]);
                         model_bag->finite_models[i] = NULL;
@@ -686,12 +719,14 @@ int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_mo
 
         for(i = 0; i < model->L;i++){
                 for(j = 0 ; j < model->num_states;j++){
+                        //fprintf(stdout,"%f ", model->emission_counts[i][j]);
                         ft->background_emission[i] += model->emission_counts[i][j];
                         sum +=  model->emission_counts[i][j];
                 }
+                //fprintf(stdout,"\n");
         }
 
-        ASSERT(sum != 0.0,"No sequence counts found");
+        ASSERT(sum != 0.0,"No sequence counts found:%f ", sum);
         for(i = 0; i < ft->L;i++){
                 ft->background_emission[i] /= sum;
         }

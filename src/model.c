@@ -281,26 +281,27 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         for(i = 0; i < sb->num_seq;i++){
                 label = sb->sequences[i]->label_arr[model_index];
                 len = sb->sequences[i]->seq_len;
-
                 for(j = 0; j < len;j++){
-                        //                       fprintf(stdout,"%d ",label[j]);
+                        //fprintf(stdout,"%d ",label[j]);
                         if(label[j] > max_state_ID){
                                 max_state_ID = label[j];
                         }
                 }
-//                fprintf(stdout,"\n");
+                //fprintf(stdout,"\n");
         }
         max_state_ID += 1; // for the infinity possibility; not observed in the current labeling
         max_state_ID += 1; // so I can use the < syntax rather than <=
         ASSERT(max_state_ID > 2, "Not enough states found");
 
-        RUN(resize_ihmm_model(ihmm, max_state_ID));
+        //LOG_MSG("MAX_STATE_ID:  %d", max_state_ID);
+        //exit(0);
+        //RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
 
         /* clear transition counts */
         /* clear emission counts */
         RUN(clear_counts(ihmm));
-
+        //print_counts(ihmm);
 
         for(i = 0; i < sb->num_seq;i++){
                 RUN(fill_counts_i(ihmm, sb->sequences[i],model_index));
@@ -578,7 +579,7 @@ ERROR:
         return FAIL;
 }
 
-struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed)
+struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int max_states, int seed)
 {
         struct model_bag* b = NULL;
 
@@ -595,7 +596,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, i
         b->finite_models = NULL;
         b->min_u = NULL;
         b->num_models = num_models;
-        b->max_num_states = 0;
+        b->max_num_states = max_states;
         b->best_model = -1;
         b->seed = seed;
         /* Set seed in model */
@@ -611,13 +612,12 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, i
                 local_seed = rk_ulong(&b->rndstate);
                 b->models[i] = NULL;
                 b->min_u[i] = 0.0;
-                RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i], L,local_seed));
+                RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i],b->max_num_states, L,local_seed));
         }
         return b;
 ERROR:
         free_model_bag(b);
         return NULL;
-
 }
 
 void free_model_bag(struct model_bag* b)
@@ -645,12 +645,14 @@ void free_model_bag(struct model_bag* b)
 }
 
 
-struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
+struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed)
 {
         struct ihmm_model* model = NULL;
         int i,j;
         ASSERT(K>3, "No states requested");
         ASSERT(L>1, "No letters");
+
+        ASSERT(K <= maxK,"Too many states");
 
         MMALLOC(model, sizeof(struct ihmm_model));
 
@@ -659,7 +661,7 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
         model->emission_counts = NULL;
         model->beta = NULL;
         model->num_states = 0;
-        model->alloc_num_states = 16;
+        model->alloc_num_states = maxK;
         model->training_iterations = 0;
         model->L = L;
         model->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -678,9 +680,9 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
                 rk_randomseed(&model->rndstate);
         }
 
-        while(K > model->alloc_num_states){
-                model->alloc_num_states = model->alloc_num_states << 1;
-        }
+        //while(K > model->alloc_num_states){
+        //model->alloc_num_states = model->alloc_num_states << 1;
+        //}
         model->num_states = K;
 
         /* RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0)); */
@@ -692,7 +694,6 @@ struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed)
                 for(j = 0; j < model->alloc_num_states;j++){
                         model->transition_counts[i][j] = 0.0;
                 }
-
         }
 
         RUN(galloc(&model->emission_counts , model->L, model->alloc_num_states));

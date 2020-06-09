@@ -24,10 +24,12 @@ struct fast_t_item{
 struct fast_hmm_param{
         struct fast_t_item** list;
         struct fast_t_item** infinity;
-        struct rbtree_root* root;
+        // struct rbtree_root* root;
         double** transition;
         double** emission;
         double* background_emission;
+        int num_trans;
+        int alloc_num_trans;
         int last_state;
         int alloc_items;
         int num_items;
@@ -48,7 +50,7 @@ struct fast_param_bag{
 extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
 extern void free_fast_param_bag(struct fast_param_bag* b);
 
-
+extern int expand_num_trans(struct fast_hmm_param* ft);
 extern struct fast_hmm_param* alloc_fast_hmm_param(int k,int L);
 
 

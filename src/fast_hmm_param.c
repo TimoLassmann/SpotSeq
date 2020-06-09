@@ -19,6 +19,7 @@
 
 // auxiliary functions for RB tree...
 
+static int sort_by_p(const void *a, const void *b);
 static void* get_transition(void* ptr)
 {
         struct fast_t_item* tmp = (struct fast_t_item*)  ptr;
@@ -135,8 +136,14 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
 
         ft->L = L;
         ft->background_emission = NULL;
-
-        ft->root = NULL;
+        ft->alloc_num_trans = 65536;
+        MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_num_trans);
+        for(i = 0; i < ft->alloc_num_trans;i++){
+                ft->list[i] = NULL;
+                MMALLOC(ft->list[i], sizeof(struct fast_t_item));
+        }
+        ft->num_trans = 0;
+        //ft->root = NULL;
 
         MMALLOC(ft->background_emission, sizeof(double) * L  );
 
@@ -159,13 +166,14 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
                 }
         }
 
-        fp_get = &get_transition;
+        /*fp_get = &get_transition;
         fp_cmp = &compare_transition;
         fp_print = &print_fast_t_item_struct;
         fp_cmp_same = &resolve_default;
         fp_free = &free_fast_t_item_struct;
 
         ft->root = init_tree(fp_get,fp_cmp,fp_cmp_same,fp_print,fp_free);
+        */
 
         MMALLOC(ft->infinity, sizeof(struct fast_t_item*) * ft->alloc_num_states);
 
@@ -182,11 +190,43 @@ ERROR:
         return NULL;
 }
 
+int sort_by_p(const void *a, const void *b)
+{
+        struct fast_t_item* const *one = a;
+        struct fast_t_item* const *two = b;
+
+        if((*one)->t > (*two)->t){
+                return -1;
+        }else{
+                return 1;
+        }
+}
+
+
+int expand_num_trans(struct fast_hmm_param* ft)
+{
+        int i,o;
+        o = ft->alloc_num_trans;
+        ft->alloc_num_trans = ft->alloc_num_trans + ft->alloc_num_states /2;
+
+        MREALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_num_trans);
+        for(i = o; i < ft->alloc_num_trans;i++){
+                ft->list[i] = NULL;
+                MMALLOC(ft->list[i], sizeof(struct fast_t_item));
+        }
+        //ft->num_trans = 0;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 {
         int i,j, num_old_item;
         ASSERT(ft != NULL, "No ft struct!");
         ASSERT(new_num_states >2,"No states requested");
+
+
 
         if(new_num_states > ft->alloc_num_states){
                 num_old_item = ft->alloc_num_states;
@@ -250,8 +290,14 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
 {
         int i;
         if(ft){
-                if(ft->root){
-                        ft->root->free_tree(ft->root);
+                //if(ft->root){
+                //ft->root->free_tree(ft->root);
+                //}
+                if(ft->list){
+                        for(i = 0; i < ft->alloc_num_trans;i++){
+                                MFREE(ft->list[i]);
+                        }
+                        MFREE(ft->list);
                 }
                 if(ft->infinity){
                         for(i = 0; i < ft->alloc_num_states;i++){
@@ -276,7 +322,10 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
 
 int make_flat_param_list(struct fast_hmm_param* ft)
 {
-        ASSERT(ft != NULL, "No parameters");
+        ft->num_items = ft->num_trans;
+        //ft->list = (struct fast_t_item**) ft->root->data_nodes;
+        qsort(ft->list ,ft->num_trans,  sizeof(struct fast_t_item*),sort_by_p);
+        /*ASSERT(ft != NULL, "No parameters");
         if(ft->root->data_nodes){
                 MFREE(ft->root->data_nodes);
                 ft->root->data_nodes = NULL;
@@ -286,7 +335,7 @@ int make_flat_param_list(struct fast_hmm_param* ft)
 
         ft->num_items = ft->root->num_entries;
         ft->list = (struct fast_t_item**) ft->root->data_nodes;
-
+        */
         return OK;
 ERROR:
         return FAIL;
@@ -511,7 +560,7 @@ int main(const int argc,const char * argv[])
         //ft->root->flatten_tree(ft->root);
 
         //ft->root->print_tree(ft->root,NULL);
-        LOG_MSG("Sorted by RB tree.");
+        /*LOG_MSG("Sorted by RB tree.");
         fprintf(stdout,"%d items\n",ft->root->num_entries);
         for(i = 0; i < ft->root->num_entries;i++){
                 tmp = (struct fast_t_item*) ft->root->data_nodes[i];
@@ -520,7 +569,7 @@ int main(const int argc,const char * argv[])
         LOG_MSG("Sorted by sort function.");
         ft->num_items = ft->root->num_entries;
         ft->list = (struct fast_t_item**) ft->root->data_nodes;
-        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);
+        qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*), fast_hmm_param_cmp_by_t_desc);*/
         for(i = 0; i < ft->num_items;i++){
                 fprintf(stdout,"%d %f\n",i , ft->list[i]->t);
         }

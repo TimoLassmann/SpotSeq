@@ -325,8 +325,7 @@ int setup_model(struct fhmm* fhmm)
         init_logsum();
 
         //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
-
-        RUN(galloc(&fhmm->tindex, fhmm->K , fhmm->K+1));
+        RUN(galloc(&fhmm->tindex, fhmm->alloc_K , fhmm->alloc_K));
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < fhmm->K+1;j++){
@@ -632,7 +631,7 @@ struct fhmm* alloc_fhmm(void)
 
         fhmm->alloc_matrix_len = 0;
 
-
+        fhmm->alloc_K = 0;
         return fhmm;
 ERROR:
         free_fhmm(fhmm);

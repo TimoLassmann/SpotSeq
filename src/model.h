@@ -56,11 +56,12 @@ struct model_bag{
 
 /* Housekeeping */
 
-extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed);
+//extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed);
+extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int max_states, int seed);
 extern void free_model_bag(struct model_bag* b);
 
-
-extern struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed);
+extern struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed);
+//extern struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed);
 extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
 extern void free_ihmm_model(struct ihmm_model* ihmm);
 
@@ -72,7 +73,7 @@ extern struct model_bag* read_model_bag_hdf5(char* filename);
 extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
 //extern int add_fhmm(char* filename,double** transition,double** emission, int N, int L);
 extern int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group);
-extern int add_background_emission(char* filename,double* background,int L);
+extern int add_background_emission(char* filename,double* background);
 extern int add_annotation( char* filename, char* name, char* value);
 
 //extern int write_model_hdf5(struct ihmm_model* model, char* filename);

@@ -20,6 +20,7 @@ struct fhmm{
         double b_score;
         double r_score;
         int alloc_matrix_len;
+        int alloc_K;
         int K;
         int L;
 };

@@ -1,8 +1,5 @@
-#if HAVE_CONFIG_H
-#include "config.h"
-#endif
 
-#include <libgen.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -34,13 +31,16 @@
 
 struct parameters{
         char* input;
-        char* output;
+        //char* output;
+        //char* tmp_file_A;
+        //char* tmp_file_B;
         char* in_model;
         char* cmd_line;
         double alpha;
         double gamma;
         unsigned long seed;
         rk_state rndstate;
+        int active_file;
         int competitive;
         int num_iter;
         int inner_iter;
@@ -48,6 +48,7 @@ struct parameters{
         int num_models;
         int num_threads;
         int num_start_states;
+        int num_max_states;
         int rev;
 };
 
@@ -59,7 +60,8 @@ static int set_sequence_weights(struct seq_buffer* sb, int num_models, double te
 
 static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
-static int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean);
+
+static int init_num_state_array(int* num_state_array, int maxK, int len, struct parameters* param, double mean);
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
@@ -72,13 +74,15 @@ int main (int argc, char *argv[])
 
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
-        param->output = NULL;
         param->in_model = NULL;
         param->cmd_line = NULL;
+        //param->tmp_file_A = NULL;
+        //param->tmp_file_B = NULL;
         param->num_threads = 8;
         param->num_start_states = 0;
         param->local = 0;
         param->rev = 0;
+        param->active_file = 0;
         param->num_iter = 2000;
         param->inner_iter = 10;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
@@ -86,6 +90,7 @@ int main (int argc, char *argv[])
         param->seed = 0;
         param->num_models = 3;
         param->competitive = 0;
+        param->num_max_states = 10;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -136,7 +141,7 @@ int main (int argc, char *argv[])
                         param->input = optarg;
                         break;
                 case 'o':
-                        param->output = optarg;
+                        //param->output = optarg;
                         break;
                 case 'm':
                         param->in_model = optarg;
@@ -173,22 +178,47 @@ int main (int argc, char *argv[])
                 }
         }
 
-        if(!param->output){
+        if(!param->in_model){
                 RUN(print_help(argv));
                 ERROR_MSG("No output file! use --in <blah.fa>");
         }else{
-                if(my_file_exists(param->output)){
-                        WARNING_MSG("Will overwrite: %s.",param->output);
+                if(my_file_exists(param->in_model)){
+
+                        LOG_MSG("Will continue training models in %s.",param->in_model);
+                        if(param->input){
+                                WARNING_MSG("Sequences in %s will be ignored.", param->input);
+                                WARNING_MSG("Instead models will continue to be trained on the sequences stored alongside the model in %s", param->in_model );
+                        }
+                }else{
+                        LOG_MSG("Will construct new model(s).");
                 }
         }
 
-        if(param->in_model){
+        /*if(param->in_model){
                 if(!my_file_exists(param->in_model)){
                         RUN(print_help(argv));
                         ERROR_MSG("The file <%s> does not exist.",param->in_model);
                 }
-        }
+                }*/
+        /* Play with tmp_files  */
 
+        /*MMALLOC(param->tmp_file_A, sizeof(char) * 1024);
+        MMALLOC(param->tmp_file_B, sizeof(char) * 1024);
+        char* tmp_filename = NULL;
+        char* tmp_dirname = NULL;
+        RUN(tldirname(param->in_model, &tmp_dirname));
+        RUN(tlfilename(param->in_model, &tmp_filename));
+        fprintf(stdout,"%s\n", param->in_model);
+        snprintf(param->tmp_file_A, 1024, "%s%s%s", tmp_dirname,"seqertmpA", tmp_filename);
+        fprintf(stdout,"%s\n", param->in_model);
+        snprintf(param->tmp_file_B, 1024, "%s%s%s", tmp_dirname,"seqertmpB", tmp_filename);
+        fprintf(stdout,"%s\n", param->in_model);
+
+        fprintf(stdout,"%s\n%s\n",param->tmp_file_A,param->tmp_file_B);
+        fprintf(stdout,"%s\n", param->in_model);
+        MFREE(tmp_dirname);
+        MFREE(tmp_filename);*/
+        //exit(0);
         if(param->num_models < 1){
                 RUN(print_help(argv));
                 ERROR_MSG("To few models! use -nmodels <1+>");
@@ -201,7 +231,10 @@ int main (int argc, char *argv[])
         }
 
         RUN(make_cmd_line(&param->cmd_line,argc,argv));
-
+        int t;
+        RUN(get_dim1(param->cmd_line, &t));
+        LOG_MSG("%s\n%d\n", param->cmd_line, t);
+        //exit(0);
         //rk_save_testing();
         //return EXIT_SUCCESS;
         RUN(run_build_ihmm(param));
@@ -242,7 +275,7 @@ int run_build_ihmm(struct parameters* param)
         MMALLOC(num_state_array, sizeof(int)* param->num_models);
 
         /* If we have saved a model continue from there */
-        if(param->in_model){
+        if(my_file_exists(param->in_model)){
                 /* PROBABLY need to re-alloc num_state_array */
                 //MMALLOC(num_state_array, sizeof(int)* param->num_models);
                 RUNP(model_bag = read_model_bag_hdf5(param->in_model));
@@ -252,6 +285,8 @@ int run_build_ihmm(struct parameters* param)
                         num_state_array[i] = model_bag->models[i]->num_states;
                 }
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
+
+                //RUN(convert_ihmm_to_fhmm_models(model_bag));
         }else{                  /* New run - start from the beginning */
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
@@ -281,9 +316,10 @@ int run_build_ihmm(struct parameters* param)
                         average_sequence_len = (double) param->num_start_states;
                 }
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
-                RUN(init_num_state_array( num_state_array, param->num_models, param, average_sequence_len));
+                RUN(init_num_state_array( num_state_array,param->num_max_states,  param->num_models, param, average_sequence_len));
 
-                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models, param->seed));
+                //LOG_MSG("MAXK: %d", param->num_max_states);
+                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,param->num_max_states , param->seed));
 
                 RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
@@ -291,13 +327,13 @@ int run_build_ihmm(struct parameters* param)
                 /* We need to label sequences somehow so that we can
                  * set the u arrays properly based on the initial
                  * model guess */
-                model_bag->max_num_states = 0;
+                //model_bag->max_num_states = 0;
                 for(i = 0; i < model_bag->num_models;i++){
                         RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                         RUN(fill_counts(model_bag->models[i], sb,i));
 
-                        model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
+                        //model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
                 }
 
                 RUN(check_labels(sb,model_bag->num_models ));
@@ -344,20 +380,20 @@ int run_build_ihmm(struct parameters* param)
                 RUN(score_all_vs_all(model_bag,sb,td));
                 /* analyzescores */
                 analyzescores(sb, model_bag->num_models);
-
+                /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
-                        set_sequence_weights(sb,  model_bag->num_models, 2.0 /   log10f( (float) (i+1) + 1.0));
+                        set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));
                 }else{          /* reset sequence weights.  */
                         reset_sequence_weights(sb, model_bag->num_models);
                 }
         }
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
-        RUN(score_all_vs_all(model_bag,sb,td));
-        RUN(write_model_bag_hdf5(model_bag,param->output));
-        //RUN(add_annotation(param->output, "seqwise_model_cmd", param->cmd_line));
-        RUN(add_sequences_to_hdf5_model(param->output, sb,  model_bag->num_models));
-        RUN(write_thread_data_to_hdf5(param->output, td, param->num_threads, sb->max_len, model_bag->max_num_states));
+        //RUN(score_all_vs_all(model_bag,sb,td));
+        RUN(write_model_bag_hdf5(model_bag,param->in_model));
+        //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
+        RUN(add_sequences_to_hdf5_model(param->in_model, sb,  model_bag->num_models));
+        RUN(write_thread_data_to_hdf5(param->in_model, td, param->num_threads, sb->max_len+2, model_bag->max_num_states));
         //RUN(write_thread_data_to_)
         //RUN(write_model(model, param->output));
         /*for(i = 0; i < model_bag->num_models;i++){
@@ -459,9 +495,10 @@ int analyzescores(struct seq_buffer* sb, int num_models)
 {
         double s0,s1,s2;
         int i,j;
+        int max_print;
         ASSERT(sb!= NULL, "No sequences");
-
-        for(i = 0; i < 5;i++){
+        max_print = MACRO_MIN(5, sb->num_seq);
+        for(i = 0; i < max_print;i++){
                 fprintf(stdout,"Seq%d\t",i);
                 for(j = 0; j < num_models;j++){
                         fprintf(stdout,"%f ", sb->sequences[i]->score_arr[j]);
@@ -486,19 +523,16 @@ int analyzescores(struct seq_buffer* sb, int num_models)
                 s1 = s1 / s0 ;
                 fprintf(stdout,"Model %d:\t%f\t%f\n",j, s1,s2);
         }
-
-
         return OK;
 ERROR:
         return FAIL;
 }
+
 /* Score all sequences using all models */
 int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td)
 {
         int i,j,c;
-
         int num_threads = td[0]->num_threads;
-
         int run;
 
         ASSERT(sb != NULL, "No sequences");
@@ -516,16 +550,13 @@ int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_th
                         if(c == mb->num_models){
                                 break;
                         }
-
                 }
-
 #ifdef HAVE_OPENMP
                 omp_set_num_threads( MACRO_MIN(num_threads,j));
 #pragma omp parallel shared(td) private(i)
                 {
 #pragma omp for schedule(dynamic) nowait
 #endif
-
                         for(i = 0; i < j;i++){
                                 do_score_sequences_per_model(td[i]);
                         }
@@ -544,7 +575,7 @@ ERROR:
 
 
 
-int init_num_state_array(int* num_state_array, int len, struct parameters* param, double mean)
+int init_num_state_array(int* num_state_array, int maxK, int len, struct parameters* param, double mean)
 {
         rk_state rndstate;
         int i;
@@ -563,8 +594,8 @@ int init_num_state_array(int* num_state_array, int len, struct parameters* param
         }else{
                 for(i = 0; i < len;i++){
                         num_state_array[i] = (int)rk_normal(&rndstate, mean,25.0);
-                        num_state_array[i] = MACRO_MIN(num_state_array[i], 1000);
-                        num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
+                        num_state_array[i] = MACRO_MIN(num_state_array[i], maxK);
+                        num_state_array[i] = MACRO_MAX(num_state_array[i], 5);
                 }
         }
         return OK;
@@ -637,12 +668,12 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         LOG_MSG("Reading models.");
-        RUNP(model_bag = read_model_bag_hdf5(param->output));
+        RUNP(model_bag = read_model_bag_hdf5(param->in_model));
         LOG_MSG("Done.");
 
         LOG_MSG("Loading sequences.");
 
-        RUNP(sb = get_sequences_from_hdf5_model(param->output, IHMM_SEQ_READ_ONLY_SEQ  ));
+        RUNP(sb = get_sequences_from_hdf5_model(param->in_model , IHMM_SEQ_READ_ONLY_SEQ  ));
 
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
@@ -688,7 +719,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         }
 
         LOG_MSG("Best Model: %d",model_bag->best_model);
-        RUN(write_best_model(param->output, model_bag->best_model));
+        RUN(write_best_model(param->in_model, model_bag->best_model));
 
         /*for(i = 0; i < limit;i++){
                 s1 = 0.0;
@@ -736,6 +767,12 @@ int free_parameters(struct parameters* param)
         if(param->cmd_line){
                 gfree(param->cmd_line);
         }
+        /*if(param->tmp_file_A){
+                MFREE(param->tmp_file_A);
+        }
+        if(param->tmp_file_B){
+                MFREE(param->tmp_file_B);
+                }*/
         MFREE(param);
         return OK;
 ERROR:
@@ -745,7 +782,10 @@ ERROR:
 int print_help(char **argv)
 {
         const char usage[] = " -in <fasta> -out <outfile>";
-        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",basename(argv[0]) ,usage);
+        char* tmp = NULL;
+
+        RUN(tlfilename(argv[0], &tmp));
+        fprintf(stdout,"\nUsage: %s [-options] %s\n\n",tmp,usage);
         fprintf(stdout,"Options:\n\n");
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--states","Number of starting states." ,"[10]"  );
@@ -754,5 +794,9 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--niter","Number of iterations." ,"[1000]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--alpha","Alpha hyper parameter." ,"[NA]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--gamma","Gamma hyper oparameter." ,"[NA]"  );
+        MFREE(tmp);
         return OK;
+ERROR:
+        MFREE(tmp);
+        return FAIL;
 }

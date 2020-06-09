@@ -127,7 +127,7 @@ int run_model_selection(struct parameters* param)
 
         struct wims_thread_data** td = NULL;
 
-        struct thr_pool* pool = NULL;
+        //struct thr_pool* pool = NULL;
 
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;

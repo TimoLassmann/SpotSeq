@@ -60,7 +60,7 @@ ERROR:
 int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_threads)
 {
 
-        struct thr_pool* pool = NULL;
+        //struct thr_pool* pool = NULL;
         struct wims_thread_data** td = NULL;
         int i;
         ASSERT(fhmm != NULL,"no model");
@@ -163,14 +163,14 @@ void* do_score_sequences_per_model(void* threadarg)
         struct fhmm* fhmm = NULL;
         struct ihmm_sequence* seq = NULL;
         int i;
-        int num_threads;
+        //int num_threads;
         int thread_id;          /* this is actually the model number */
 
         double f_score;
-        double r_score;
+        //double r_score;
         data = (struct wims_thread_data *) threadarg;
 
-        num_threads = data->num_threads;
+        //num_threads = data->num_threads;
         thread_id = data->thread_ID;
         fhmm = data->fhmm;
 

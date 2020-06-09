@@ -14,9 +14,6 @@
 #include <stdint.h>
 
 
-
-
-
 struct seq_buffer;          /* forward declaration  */
 
 struct hdf5_data;               /* forward declaration`` */

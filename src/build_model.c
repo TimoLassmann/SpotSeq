@@ -50,11 +50,13 @@ struct parameters{
         int num_start_states;
         int num_max_states;
         int rev;
+
+
 };
 
 static int run_build_ihmm(struct parameters* param);
 static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td);
-static int analyzescores(struct seq_buffer* sb, int num_models);
+static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
 static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
 static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
 
@@ -90,7 +92,7 @@ int main (int argc, char *argv[])
         param->seed = 0;
         param->num_models = 3;
         param->competitive = 0;
-        param->num_max_states = 10;
+        param->num_max_states = 1000;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -379,7 +381,7 @@ int run_build_ihmm(struct parameters* param)
                 /* score */
                 RUN(score_all_vs_all(model_bag,sb,td));
                 /* analyzescores */
-                analyzescores(sb, model_bag->num_models);
+                RUN(analyzescores(sb, model_bag));
                 /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
                         set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));
@@ -491,11 +493,12 @@ int reset_sequence_weights(struct seq_buffer* sb, int num_models)
         return OK;
 }
 
-int analyzescores(struct seq_buffer* sb, int num_models)
+int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
 {
         double s0,s1,s2;
         int i,j;
         int max_print;
+        int num_models = model_bag->num_models;
         ASSERT(sb!= NULL, "No sequences");
         max_print = MACRO_MIN(5, sb->num_seq);
         for(i = 0; i < max_print;i++){
@@ -521,7 +524,7 @@ int analyzescores(struct seq_buffer* sb, int num_models)
 
                 s2 = sqrt((s0 * s2 - s1 * s1)/ (s0 * (s0 -1.0)));
                 s1 = s1 / s0 ;
-                fprintf(stdout,"Model %d:\t%f\t%f\n",j, s1,s2);
+                fprintf(stdout,"Model %d:\t%f\t%f\t(%d states)  alpha = %f, gamma = %f\n",j, s1,s2  ,model_bag->models[j]->num_states, model_bag->models[j]->alpha ,model_bag->models[j]->gamma);
         }
         return OK;
 ERROR:

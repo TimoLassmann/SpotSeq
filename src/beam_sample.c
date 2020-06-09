@@ -85,6 +85,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 //model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
+
                                 /* LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma); */
                         }
                 }

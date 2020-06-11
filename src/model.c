@@ -843,6 +843,97 @@ int print_model_parameters(struct ihmm_model* ihmm)
         return OK;
 }
 
+static int compare_model(struct ihmm_model* a, struct ihmm_model* b);
+int compare_model_bag(struct model_bag* a, struct model_bag* b)
+{
+        int i;
+        ASSERT(a != NULL, "No model in a");
+        ASSERT(b != NULL, "No model in b");
+        if(a->best_model != b->best_model){
+                WARNING_MSG("Models differ: best_model\t%d\t%d", a->best_model,b->best_model);
+        }
+
+        if(a->max_num_states != b->max_num_states){
+                WARNING_MSG("Models differ: max_num_states\t%d\t%d", a->max_num_states,b->max_num_states);
+        }
+
+        if(a->num_models != b->num_models){
+                WARNING_MSG("Models differ: num_models\t%d\t%d", a->num_models,b->num_models);
+        }
+
+        if(a->seed != b->seed){
+                  WARNING_MSG("Models differ: seed\t%lud\t%lud", a->seed,b->seed);
+
+        }
+        for(i = 0; i < a->num_models;i++){
+                if(a->min_u[i] != b->min_u[i]){
+                        /* This should be ok. */
+                        //WARNING_MSG("Models differ: min_u %d: \t%f\t%f",i, a->min_u[i],b->min_u[i]);
+                }
+        }
+        for(i = 0; i < a->num_models;i++){
+                RUN(compare_model(a->models[i],b->models[i]));
+        }
+
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int compare_model(struct ihmm_model* a, struct ihmm_model* b)
+{
+        int i;
+        ASSERT(a != NULL, "No model in a");
+        ASSERT(b != NULL, "No model in b");
+
+        if(a->alpha != b->alpha){
+                WARNING_MSG("Models differ: alpha\t%f\t%f", a->alpha,b->alpha);
+        }
+        if(a->alpha_a != b->alpha_a){
+                WARNING_MSG("Models differ: alpha_a\t%f\t%f", a->alpha_a,b->alpha_a);
+        }
+        if(a->alpha_b != b->alpha_b){
+                WARNING_MSG("Models differ: alpha_b\t%f\t%f", a->alpha_b,b->alpha_b);
+        }
+        if(a->alpha_limit != b->alpha_limit){
+                WARNING_MSG("Models differ: alpha_limit\t%f\t%f", a->alpha_limit,b->alpha_limit);
+        }
+
+        if(a->gamma != b->gamma){
+                WARNING_MSG("Models differ: gamma\t%f\t%f", a->gamma,b->gamma);
+        }
+        if(a->gamma_a != b->gamma_a){
+                WARNING_MSG("Models differ: gamma_a\t%f\t%f", a->gamma_a,b->gamma_a);
+        }
+        if(a->gamma_b != b->gamma_b){
+                WARNING_MSG("Models differ: gamma_b\t%f\t%f", a->gamma_b,b->gamma_b);
+        }
+        if(a->gamma_limit != b->gamma_limit){
+                WARNING_MSG("Models differ: gamma_limit\t%f\t%f", a->gamma_limit,b->gamma_limit);
+        }
+
+        if(a->num_states != b->num_states){
+                WARNING_MSG("Models differ: num_states\t%f\t%f", a->num_states,b->num_states);
+        }else{
+                for(i = 0; i < a->num_states;i++){
+                        if(a->beta[i] != b->beta[i]){
+                                WARNING_MSG("Models differ: beta %d \t%f\t%f",i, a->beta[i],b->beta[i]);
+                        }
+                }
+        }
+
+        if(a->seed != b->seed){
+                WARNING_MSG("Models differ: seed\t%f\t%f", a->seed,b->seed);
+        }
+
+
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
 #ifdef ITESTMODEL
 int main(const int argc,const char * argv[])
 {
@@ -868,7 +959,7 @@ int main(const int argc,const char * argv[])
 
 
 
-        RUNP(ihmm = alloc_ihmm_model(20, 4,42));
+        RUNP(ihmm = alloc_ihmm_model(20,1024, 4,42));
         /* Need to set alpha_[a/b] and gamma[a/b] manually before calling
          * hyper */
         RUN(resize_ihmm_model(ihmm, 16+3));

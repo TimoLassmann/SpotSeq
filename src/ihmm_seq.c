@@ -18,9 +18,6 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb, rk_state* rndstate);
 
 
 
-
-int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
-
 int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
@@ -2153,9 +2150,9 @@ void free_ihmm_sequences(struct seq_buffer* sb)
 }
 
 
-int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b)
+int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_models)
 {
-        int i,j;
+        int i,j,c;
 
 
         ASSERT(a != NULL, "No a");
@@ -2172,7 +2169,9 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b)
                 }
 
                 for(j = 0; j < a->sequences[i]->seq_len;j++){
-                        ASSERT(a->sequences[i]->label[j]  == b->sequences[i]->label[j], "Labels differ");
+                        for(c = 0; c < n_models;c++){
+                                ASSERT(a->sequences[i]->label_arr[c][j]  == b->sequences[i]->label_arr[c][j], "Labels differ: %d %d %d", j,a->sequences[i]->label_arr[c][j], b->sequences[i]->label_arr[c][j]);
+                        }
                 }
         }
 

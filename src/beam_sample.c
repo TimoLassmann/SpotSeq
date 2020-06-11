@@ -1,6 +1,7 @@
 
 #include "beam_sample.h"
 
+#include "randomkit_tl_add.h"
 #include "fast_hmm_param_test_functions.h"
 
 #include "tllogsum.h"
@@ -48,9 +49,10 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         int i;
         int iter;
         int no_path;
-
+        static int fug = 1;
         struct fast_hmm_param* ft = NULL;
-
+        struct model_bag* model_bag2 =  NULL;
+        struct seq_buffer*sb2 = NULL;
         ASSERT(model_bag != NULL, "no model.");
         ASSERT(sb,"no sequence buffer");
         ASSERT(sb->num_seq > 0, "No sequences");
@@ -63,6 +65,32 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         //exit(0);
         no_path = 0;                            /* Assume that we don't have a path in the first iteration */
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
+                /* TEST read */
+                if(!iter){
+
+                        char name[128];
+
+                        snprintf(name, 128, "TESTMODEL%d.h5",fug);
+
+                        RUN(convert_ihmm_to_fhmm_models(model_bag));
+                        //RUN(score_all_vs_all(model_bag,sb,td));
+                        RUN(write_model_bag_hdf5(model_bag,name ));
+                        //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
+                        RUN(add_sequences_to_hdf5_model(name, sb,  model_bag->num_models));
+                        RUN(write_thread_data_to_hdf5(name, td,  num_threads, sb->max_len+2, model_bag->max_num_states));
+
+                        fug++;
+                        /* RUNP(model_bag2 = read_model_bag_hdf5("TESTMODEL.h5")); */
+                        /* RUN(compare_model_bag(model_bag, model_bag2)); */
+                        /* for( i = 0; i < model_bag->num_models;i++){ */
+                        /*         compare_rk_state(&model_bag->models[i]->rndstate,&model_bag2->models[i]->rndstate); */
+                        /* } */
+                        /* free_model_bag(model_bag2); */
+
+                        /* RUNP(sb2 = get_sequences_from_hdf5_model("TESTMODEL.h5",IHMM_SEQ_READ_ALL)); */
+                        /* RUN(compare_sequence_buffers(sb, sb2, model_bag->num_models)); */
+                        /* free_ihmm_sequences(sb2); */
+                }
                 /* shuffle and sub-sample sequences (or not...) */
                 //RUN(shuffle_sequences_in_buffer(sb));
                 /* sample transitions / emission */
@@ -79,13 +107,12 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 //LOG_MSG("fill counts");
 
                                 RUN(fill_counts(model_bag->models[i], sb,i));
-                                //print_counts(model_bag->models[i]);
-                                //exit(0);
+                                /* print_counts(model_bag->models[i]); */
+                                /* exit(0); */
                                 RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 //model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
-
                                 /* LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma); */
                         }
                 }
@@ -158,6 +185,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         model_bag->models[i]->training_iterations++;
                 }
+                /* TEST write.....  */
 
         }
         return OK;

@@ -89,5 +89,8 @@ extern int print_labelled_ihmm_buffer(struct seq_buffer* sb, rk_state* rndstate)
 extern void free_ihmm_sequences(struct seq_buffer* sb);
 extern int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename, rk_state* rndstate);
 extern int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment,rk_state* rndstate);
-struct seq_buffer* load_ihmm_sequences(char* in_filename, rk_state* rndstate);
+extern struct seq_buffer* load_ihmm_sequences(char* in_filename, rk_state* rndstate);
+
+//extern int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
+extern int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_models);
 #endif

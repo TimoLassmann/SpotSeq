@@ -1,5 +1,4 @@
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -50,8 +49,6 @@ struct parameters{
         int num_start_states;
         int num_max_states;
         int rev;
-
-
 };
 
 static int run_build_ihmm(struct parameters* param);
@@ -233,9 +230,9 @@ int main (int argc, char *argv[])
         }
 
         RUN(make_cmd_line(&param->cmd_line,argc,argv));
-        int t;
-        RUN(get_dim1(param->cmd_line, &t));
-        LOG_MSG("%s\n%d\n", param->cmd_line, t);
+        //int t;
+        //RUN(get_dim1(param->cmd_line, &t));
+        //LOG_MSG("%s\n%d\n", param->cmd_line, t);
         //exit(0);
         //rk_save_testing();
         //return EXIT_SUCCESS;
@@ -243,6 +240,7 @@ int main (int argc, char *argv[])
         /* 1 means allow transitions that are not seen in the training
          * data */
         //
+
 
         RUN(score_sequences_for_command_line_reporting(param));
 
@@ -377,11 +375,11 @@ int run_build_ihmm(struct parameters* param)
                 RUN(run_beam_sampling(model_bag,ft_bag, sb,td, param->inner_iter, param->num_threads));
 
                 /* convert to fhmm */
-                RUN(convert_ihmm_to_fhmm_models(model_bag));
+                //RUN(convert_ihmm_to_fhmm_models(model_bag));
                 /* score */
-                RUN(score_all_vs_all(model_bag,sb,td));
+                //RUN(score_all_vs_all(model_bag,sb,td));
                 /* analyzescores */
-                RUN(analyzescores(sb, model_bag));
+                //RUN(analyzescores(sb, model_bag));
                 /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
                         set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));
@@ -415,6 +413,7 @@ int run_build_ihmm(struct parameters* param)
         //RUN(print_states_per_sequence(sb));
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
+
 
 
         free_ihmm_sequences(sb);

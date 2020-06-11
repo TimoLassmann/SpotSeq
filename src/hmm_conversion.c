@@ -1,36 +1,8 @@
 #include "hmm_conversion.h"
-#include "tlrbtree.h"
+
+
+#include "randomkit_tl_add.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
-
-struct rbtree_node{
-        struct rbtree_node* right;
-        struct rbtree_node* left;
-        void* data_node;
-        int color;
-        unsigned int num;
-};
-
-static void free_rbtree(struct rbtree_node* n,void (*free_function_pointer)(void* ptr))
-{
-
-        if(n){
-                if(n->left){
-
-                        free_rbtree(n->left,free_function_pointer);
-                }
-                if(n->right){
-
-                        free_rbtree(n->right,free_function_pointer);
-                }
-                if(free_function_pointer!= NULL){
-
-                        free_function_pointer(n->data_node);
-                }
-                //MFREE(n->data_node);
-                MFREE(n);
-        }
-}
-
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
@@ -40,10 +12,11 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         //int last_index;
         int last_state;
         double sum;
-
+        rk_state local_rk_copy;
         ASSERT(model != NULL, "No model");
         ASSERT(ft != NULL,"No fast_hmm_param structure");
 
+        RUN(copy_rk_state(&model->rndstate,&local_rk_copy));
         // delete old tree...
         /*if(ft->root){
                 //ft->root->free_tree(ft->root);
@@ -73,6 +46,9 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
 
         /* Let's start with the transitions from the start state!  */
         //last_index = list_index;
+
+        //memcpy((void *)local_rk_copy, (void *)&model->rndstate, sizeof (struct rk_state_));
+
         sum = 0.0;
 
         /* Disallow Start to start transitions */
@@ -81,13 +57,13 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
-                tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
+                tmp_prob[i] = rk_gamma(&local_rk_copy, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
                 sum += tmp_prob[i];
         }
         /* the last to infinity transition (this is just used in stick breaking
          * when adding states ). here there should be no counts as this
          * possibility was not observed in the last transition. */
-        tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+        tmp_prob[last_state] = rk_gamma(&local_rk_copy, model->beta[last_state] * model->alpha,1.0);
         sum += tmp_prob[last_state];
 
         /* Normalize!  */
@@ -111,10 +87,10 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
                 sum = 0.0;
 
                 for(j = 1; j < last_state;j++){
-                        tmp_prob[j] = rk_gamma(&model->rndstate, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
+                        tmp_prob[j] = rk_gamma(&local_rk_copy, model->transition_counts[i][j] + model->beta[j] * model->alpha,1.0);
                         sum += tmp_prob[j];
                 }
-                tmp_prob[last_state] = rk_gamma(&model->rndstate, model->beta[last_state] * model->alpha,1.0);
+                tmp_prob[last_state] = rk_gamma(&local_rk_copy, model->beta[last_state] * model->alpha,1.0);
                 sum += tmp_prob[last_state];
 
                 for(j = 1; j < last_state;j++){
@@ -131,7 +107,7 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         model->emission[i][j] /= sum;*/
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < last_state;j++){
-                        ft->emission[i][j] = rk_gamma(&model->rndstate, model->emission_counts[i][j] + EMISSION_H, 1.0);
+                        ft->emission[i][j] = rk_gamma(&local_rk_copy, model->emission_counts[i][j] + EMISSION_H, 1.0);
                 }
         }
 
@@ -414,10 +390,10 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         }
         //fprintf(stdout,"\n");
 
-        //for(i = 0; i < model->num_states;i++){
-        //        fprintf(stdout,"%d ",used[i]);
-        //}
-        //fprintf(stdout,"\n");
+        /* for(i = 0; i < model->num_states;i++){ */
+        /*         fprintf(stdout,"%d ",used[i]); */
+        /* } */
+        /* fprintf(stdout,"\n"); */
 
         RUNP(fhmm = alloc_fhmm());
 
@@ -454,12 +430,12 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         RUN(galloc(&s2_e, fhmm->alloc_K, model->L));
         RUN(galloc(&s1_t, fhmm->alloc_K, fhmm->alloc_K));
         RUN(galloc(&s2_t, fhmm->alloc_K, fhmm->alloc_K));
-        for(i = 0; i < local_num_states;i++){
+        for(i = 0; i < fhmm->alloc_K;i++){
                 for(j = 0;j < model->L;j++){
                         s1_e[i][j] = 0.0;
                         s2_e[i][j] = 0.0;
                 }
-                for(j = 0;j < local_num_states;j++){
+                for(j = 0;j < fhmm->alloc_K;j++){
                         s1_t[i][j] = 0.0;
                         s2_t[i][j] = 0.0;
                 }

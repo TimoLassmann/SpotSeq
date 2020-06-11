@@ -103,5 +103,6 @@ extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 extern int print_counts(struct ihmm_model* ihmm);
 extern int print_model_parameters(struct ihmm_model* ihmm);
 
+extern int compare_model_bag(struct model_bag* a, struct model_bag* b);
 
 #endif

@@ -327,8 +327,8 @@ int setup_model(struct fhmm* fhmm)
         //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
         RUN(galloc(&fhmm->tindex, fhmm->alloc_K , fhmm->alloc_K));
 
-        for(i = 0; i < fhmm->K;i++){
-                for(j = 0; j < fhmm->K+1;j++){
+        for(i = 0; i < fhmm->alloc_K;i++){
+                for(j = 0; j < fhmm->alloc_K;j++){
                         fhmm->tindex[i][j] = 0;
                 }
         }

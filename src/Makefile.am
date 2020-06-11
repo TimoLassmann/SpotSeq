@@ -28,12 +28,14 @@ LIBS = @TLDEVEL_LIB@ $(HDF5_LDFLAGS)  $(HDF5_LIBS) -lm
 RANDOMKIT_FILES = distributions.h \
 distributions.c \
 randomkit.h \
-randomkit.c
-
+randomkit.c \
+randomkit_TL_add.h \
+randomkit_TL_add.c
 
 ADJUSTEDRANDINDEXSOURCE = adjusted_rand_index.c adjusted_rand_index.h
 
 MOTIFREFINE = motif_refinement.h motif_refinement.c
+
 
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
@@ -185,7 +187,7 @@ TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITES
 TESTS_ENVIRONMENT = \
 	$(VALGRIND)
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST randomkit_tl_test
  # pst_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
@@ -226,9 +228,9 @@ beam_ITEST_SOURCES = $(BEAMSOURCE) $(THREADSOURCE) $(ISEQSOURCE) $(MODELSOURCE) 
 beam_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTBEAM
 beam_ITEST_LDADD = $(libihmm_a_LIBADD) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
-pst_ITEST_SOURCES = $(ISEQSOURCE)  $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
-pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTLST
-pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+# pst_ITEST_SOURCES = $(ISEQSOURCE)  $(RANDOMKIT_FILES)  $(FINITEHMM) lcs.c lcs.h
+# pst_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITESTLST
+# pst_ITEST_LDADD = $(MYLIBDIRS) $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 ari_ITEST_SOURCES = $(ADJUSTEDRANDINDEXSOURCE)
@@ -239,5 +241,8 @@ kalign_ITEST_SOURCES = $(KALIGNSOURCE)
 kalign_ITEST_CPPFLAGS = $(AM_CPPFLAGS) -DITEST
 kalign_ITEST_LDADD = $(MYLIBDIRS)
 
+randomkit_tl_test_SOURCES = $(RANDOMKIT_FILES)
+randomkit_tl_test_CPPFLAGS = $(AM_CPPFLAGS) -DTEST_COPY_RK
+randomkit_tl_test_LDADD = $(MYLIBDIRS)
 
 

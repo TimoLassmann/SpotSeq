@@ -480,6 +480,7 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
         struct wims_thread_data** td = NULL;
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];
+        unsigned int* seeds = NULL;
         int num_threads = 0;
         int max_len = 0;
         int max_K = 0;
@@ -512,17 +513,25 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
         ASSERT(max_K!=0, "No states???");
 
         //hdf5_close_group(hdf5_data);
-        LOG_MSG("MAXLEN: %d",max_len);
+        //LOG_MSG("MAXLEN: %d",max_len);
+
+
+
+
         RUNP(td = create_wims_thread_data(&num_threads,  max_len, max_K, NULL));
 
+
+        RUN(HDFWRAP_READ_DATA(hdf5_data, "/thread_data","seeds", &seeds));
 
         for(i = 0 ;i < num_threads;i++){
                 snprintf(buffer, BUFFER_LEN , "/thread_data/RNG%d",i);
                 //LOG_MSG("Trying to create group: %s", buffer);
                 RUN(read_RNG_state(hdf5_data, buffer, &td[i]->rndstate));
+                td[i]->seed = seeds[i];
         }
 
         RUN(close_hdf5_file(&hdf5_data));
+        gfree(seeds);
         return td;
 ERROR:
         return NULL;
@@ -534,7 +543,7 @@ int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int nu
 {
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];
-        //unsigned int* seeds = NULL;
+        unsigned int* seeds = NULL;
         int i;
 
         RUN(open_hdf5_file(&hdf5_data,filename));
@@ -561,13 +570,14 @@ int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int nu
         hdf5_close_group(hdf5_data);*/
 
 
-        /* MMALLOC(seeds , sizeof(unsigned int)* num_threads); */
-        /* for(i = 0; i < num_threads;i++){ */
-        /*         seeds[i] = td[i]->seed; */
-        /* } */
+        RUN(galloc(&seeds, num_threads)); // MMALLOC(seeds , sizeof(unsigned int)* num_threads);
+        for(i = 0; i < num_threads;i++){
+                 seeds[i] = td[i]->seed;
+        }
 
 
-
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/thread_data","seeds",seeds));
+        gfree(seeds);
 
         for(i = 0; i < num_threads;i++){
                 snprintf(buffer, BUFFER_LEN , "/thread_data/RNG%d",i);
@@ -576,6 +586,7 @@ int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int nu
         }
 
         RUN(close_hdf5_file(&hdf5_data));
+
         //hdf5_close_file(hdf5_data);
         //hdf5_free(hdf5_data);
         return OK;

@@ -77,7 +77,7 @@ int main (int argc, char *argv[])
         param->cmd_line = NULL;
         //param->tmp_file_A = NULL;
         //param->tmp_file_B = NULL;
-        param->num_threads = 8;
+        param->num_threads = 1;
         param->num_start_states = 0;
         param->local = 0;
         param->rev = 0;
@@ -87,7 +87,7 @@ int main (int argc, char *argv[])
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
-        param->num_models = 3;
+        param->num_models = 1;
         param->competitive = 0;
         param->num_max_states = 1000;
         while (1){
@@ -338,8 +338,8 @@ int run_build_ihmm(struct parameters* param)
 
                 RUN(check_labels(sb,model_bag->num_models ));
                 /* Set seed in sequence buffer */
-                sb->seed = rk_ulong(&model_bag->rndstate);
-                rk_seed(sb->seed, &sb->rndstate);
+                //sb->seed = rk_ulong(&model_bag->rndstate);
+                //rk_seed(sb->seed, &sb->rndstate);
 
                 RUN(set_model_hyper_parameters(model_bag, param->alpha, param->gamma));
 
@@ -362,16 +362,18 @@ int run_build_ihmm(struct parameters* param)
                 }
 
         }
+        //LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
         /* Do a random score */
         RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
         /* Main function */
-
         int outer_iter = param->num_iter / param->inner_iter;
+
 
         //RUN(convert_ihmm_to_fhmm_models(model_bag));
         for(i = 0; i < outer_iter;i++){
-                /* run inner iter beam sampling iterations */
+                LOG_MSG("Outer: %d %d", i, param->inner_iter);
+/* run inner iter beam sampling iterations */
                 RUN(run_beam_sampling(model_bag,ft_bag, sb,td, param->inner_iter, param->num_threads));
 
                 /* convert to fhmm */

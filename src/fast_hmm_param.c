@@ -229,6 +229,7 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 
 
         if(new_num_states > ft->alloc_num_states){
+                WARNING_MSG("Extending: %d %d", new_num_states,ft->alloc_num_states);
                 num_old_item = ft->alloc_num_states;
                 while(new_num_states > ft->alloc_num_states){
                         ft->alloc_num_states = ft->alloc_num_states + 64;
@@ -241,11 +242,13 @@ int expand_ft_if_necessary(struct fast_hmm_param* ft, int new_num_states)
 
                 for(i = 0; i < ft->alloc_num_states;i++){
                         for(j = 0; j < ft->alloc_num_states;j++){
-                                ft->transition[i][j] = 0.0;
+                                if(i >= num_old_item || j >= num_old_item){
+                                        ft->transition[i][j] = 0.0;
+                                }
                         }
                 }
                 for(i = 0; i < ft->L;i++){
-                        for(j = 0; j < ft->alloc_num_states;j++){
+                        for(j = num_old_item; j < ft->alloc_num_states;j++){
                                 ft->emission[i][j] = 0.0;
                         }
                 }
@@ -323,9 +326,11 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
 int make_flat_param_list(struct fast_hmm_param* ft)
 {
         ft->num_items = ft->num_trans;
+
         //ft->list = (struct fast_t_item**) ft->root->data_nodes;
         qsort(ft->list ,ft->num_trans,  sizeof(struct fast_t_item*),sort_by_p);
-        /*ASSERT(ft != NULL, "No parameters");
+        LOG_MSG("Sorted: %d ", ft->num_trans);
+/*ASSERT(ft != NULL, "No parameters");
         if(ft->root->data_nodes){
                 MFREE(ft->root->data_nodes);
                 ft->root->data_nodes = NULL;

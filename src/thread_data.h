@@ -18,7 +18,7 @@ struct wims_thread_data{
         double** B_matrix;
         double** t;
         double** e;
-        int num_seq;
+        //int num_seq;
         int thread_ID;
         int num_threads;
         unsigned int seed;
@@ -27,6 +27,8 @@ struct wims_thread_data{
 
 extern struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len, int K,rk_state* random);
 extern int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int max_len, int K);
+extern int compare_wims_data(struct wims_thread_data** a , struct wims_thread_data** b, int num);
+
 extern void free_wims_thread_data(struct wims_thread_data** td);
 
 #endif

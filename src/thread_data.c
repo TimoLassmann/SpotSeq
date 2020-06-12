@@ -4,7 +4,7 @@
 
 #include "global.h"
 
-
+#include "randomkit_tl_add.h"
 
 
 struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len, int K,rk_state* random)
@@ -148,6 +148,21 @@ ERROR:
         return FAIL;
 }
 
+int compare_wims_data(struct wims_thread_data** a , struct wims_thread_data** b, int num)
+{
+        int i;
+        for(i = 0; i < num;i++){
+                ASSERT(a[i]->seed == b[i]->seed,"Seeds differ: %d %d",a[i]->seed,b[i]->seed);
+                //ASSERT(a[i]->num_seq == b[i]->num_seq,"Num_Seqs differ: %d %d",a[i]->num_seq,b[i]->num_seq);
+                ASSERT(a[i]->thread_ID == b[i]->thread_ID,"Thread_IDs differ: %d %d",a[i]->thread_ID,b[i]->thread_ID);
+                ASSERT(a[i]->num_threads == b[i]->num_threads,"Num_Threadss differ: %d %d",a[i]->num_threads,b[i]->num_threads);
+
+                compare_rk_state(&a[i]->rndstate,&b[i]->rndstate);
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 void free_wims_thread_data(struct wims_thread_data** td)
 {

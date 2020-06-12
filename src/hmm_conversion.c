@@ -312,6 +312,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < last_state;j++){
                         ft->emission[i][j] = rk_gamma(&model->rndstate, model->emission_counts[i][j] + EMISSION_H, 1.0);
+
                 }
         }
 
@@ -326,7 +327,9 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                 }
                 for(i = 0; i < model->L;i++){
                         ft->emission[i][j] /= sum;
+                        //fprintf(stdout,"%d %d: %f\n", i,j, ft->emission[i][j]);
                 }
+
         }
 
         /* kind of important... */
@@ -458,6 +461,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                                         if(used[c] != -1){
                                                 s1_t[used[i]][used[c]] += ft->transition[i][c];
                                                 s2_t[used[i]][used[c]] += (ft->transition[i][c] * ft->transition[i][c]);
+
                                         }
                                 }
                         }
@@ -482,10 +486,11 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
                 sum = 0;
                 for(j = 0;j < local_num_states;j++){
+                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                         s2_t[i][j] = sqrt(  ((double) iterations * s2_t[i][j] - s1_t[i][j] * s1_t[i][j])/ ((double) iterations * ((double) iterations -1.0)));
                         s1_t[i][j] = s1_t[i][j] / (double) iterations;
                         sum+= s1_t[i][j];
-                        //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
+
                 }
                 if(sum){
                         //fprintf(stdout,"transition:%d\n",i);
@@ -734,8 +739,8 @@ int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
         ASSERT(sum != 0.0,"No sequence counts found");
         for(i = 0; i < ft->L;i++){
                 ft->background_emission[i] /= sum;
+                //fprintf(stdout,"BACK: %f\n", ft->background_emission[i]);
         }
-
         return OK;
 ERROR:
         return FAIL;

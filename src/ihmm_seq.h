@@ -41,8 +41,8 @@ struct ihmm_sequence{
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         double* background;
-        rk_state rndstate;
-        int seed;
+        //rk_state rndstate;
+        //int seed;
         int malloc_num;
         int num_seq;
         int org_num_seq;

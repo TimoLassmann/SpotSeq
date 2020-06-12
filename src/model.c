@@ -2,7 +2,7 @@
 #include "model.h"
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
-
+#include "randomkit_tl_add.h"
 
 int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
 
@@ -247,14 +247,14 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
 
 
         for(i = 0; i < sb->num_seq;i++){
-                //       fprintf(stdout,"%3d",i);
+                //fprintf(stdout,"%3d",i);
                 lab = sb->sequences[i]->label_arr[model_index];
                 len = sb->sequences[i]->seq_len;
                 for(j= 0; j <  len;j++){
                         lab[j] = relabel[lab[j]];
-                        //                fprintf(stdout," %d",lab[j]);
+                        //      fprintf(stdout," %d",lab[j]);
                 }
-                //       fprintf(stdout,"\n");
+                //fprintf(stdout,"\n");
         }
         MFREE(used);
         MFREE(relabel);
@@ -293,7 +293,8 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         max_state_ID += 1; // so I can use the < syntax rather than <=
         ASSERT(max_state_ID > 2, "Not enough states found");
 
-        //LOG_MSG("MAX_STATE_ID:  %d", max_state_ID);
+        //
+        LOG_MSG("MAX_STATE_ID:  %d", max_state_ID);
         //exit(0);
         //RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
@@ -381,7 +382,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
         m[label[len-1]][IHMM_END_STATE] += score;
         // r = rk_double(&ihmm->rndstate);
         // m[label[len-1]][IHMM_END_STATE] += (r*2 - 1.0f);// r / 1.0;
-
+        //LOG_MSG("SCORE: %f", score);
         return OK;
 ERROR:
         return FAIL;
@@ -874,6 +875,9 @@ int compare_model_bag(struct model_bag* a, struct model_bag* b)
         for(i = 0; i < a->num_models;i++){
                 RUN(compare_model(a->models[i],b->models[i]));
         }
+        for( i = 0; i < a->num_models;i++){
+                compare_rk_state(&a->models[i]->rndstate,&b->models[i]->rndstate);
+        }
 
 
         return OK;
@@ -883,7 +887,7 @@ ERROR:
 
 int compare_model(struct ihmm_model* a, struct ihmm_model* b)
 {
-        int i;
+        int i,j;
         ASSERT(a != NULL, "No model in a");
         ASSERT(b != NULL, "No model in b");
 
@@ -921,10 +925,21 @@ int compare_model(struct ihmm_model* a, struct ihmm_model* b)
                                 WARNING_MSG("Models differ: beta %d \t%f\t%f",i, a->beta[i],b->beta[i]);
                         }
                 }
+                for(i = 0; i < a->num_states;i++){
+                        for(j = 0; j < a->num_states;j++){
+                                if(a->transition_counts[i][j] != b->transition_counts[i][j]){
+                                        WARNING_MSG("Models differ: trans counts \t%f\t%f",a->transition_counts[i][j] != b->transition_counts[i][j]);
+                                }
+                        }
+                }
+
         }
 
         if(a->seed != b->seed){
                 WARNING_MSG("Models differ: seed\t%f\t%f", a->seed,b->seed);
+        }
+        if(a->alloc_num_states != b->alloc_num_states){
+                WARNING_MSG("Models differ: allocnum_states\t%f\t%f", a->alloc_num_states,b->alloc_num_states);
         }
 
 

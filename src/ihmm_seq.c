@@ -30,8 +30,8 @@ int shuffle_sequences_in_buffer(struct seq_buffer* sb)
         int i,j;
         ASSERT(sb!=NULL, "No sequences");
         for(i = 0; i < sb->num_seq-1; i++){
-                j = i + (int) rk_interval((sb->num_seq-1) - i, &sb->rndstate);
-
+                //j = i + (int) rk_interval((sb->num_seq-1) - i, &sb->rndstate);
+                ERROR_MSG("This fuhnction is broken....");
                 tmp = sb->sequences[j];
                 sb->sequences[j] =  sb->sequences[i];
                 sb->sequences[i] = tmp;
@@ -2160,12 +2160,17 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_mo
 
         ASSERT(a->max_len == b->max_len , "max len differs");
         ASSERT(a->num_seq == b->num_seq, "number of sequences differ");
-
+        ASSERT(a->org_num_seq == b->org_num_seq, "number of org sequences differ");
+        //ASSERT(a->seed == b->seed,"Seeds differ! %d %d", a->seed,b->seed);
         for(i = 0; i < a->num_seq;i++){
+
                 ASSERT(strcmp(a->sequences[i]->name,b->sequences[i]->name) == 0 , "Names differ");
                 ASSERT(a->sequences[i]->seq_len == b->sequences[i]->seq_len, "Sequence lengths differ" );
                 for(j = 0; j < a->sequences[i]->seq_len;j++){
                        ASSERT(a->sequences[i]->seq[j]  == b->sequences[i]->seq[j], "Sequences  differ" );
+                }
+                for(c = 0; c < n_models;c++){
+                        ASSERT(a->sequences[i]->score_arr[c] == b->sequences[i]->score_arr[c],"score differs:%d  %f %f",c,a->sequences[i]->score_arr[c],b->sequences[i]->score_arr[c]);
                 }
 
                 for(j = 0; j < a->sequences[i]->seq_len;j++){

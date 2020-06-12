@@ -1,7 +1,7 @@
 
 #include "beam_sample.h"
 
-#include "randomkit_tl_add.h"
+
 #include "fast_hmm_param_test_functions.h"
 
 #include "tllogsum.h"
@@ -53,22 +53,26 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         struct fast_hmm_param* ft = NULL;
         struct model_bag* model_bag2 =  NULL;
         struct seq_buffer*sb2 = NULL;
+        struct wims_thread_data** td2 = NULL;
         ASSERT(model_bag != NULL, "no model.");
         ASSERT(sb,"no sequence buffer");
         ASSERT(sb->num_seq > 0, "No sequences");
         ASSERT(ft_bag != NULL, "No transition struct");
-        ASSERT(iterations > 1, "No iterations");
+        ASSERT(iterations >= 1, "No iterations");
         ASSERT(num_threads > 0, "No threads");
+
+
 
         init_logsum();
         //RUN(check_labels(sb,model_bag->num_models ));
         //exit(0);
         no_path = 0;                            /* Assume that we don't have a path in the first iteration */
         for(iter = 0;iter < iterations;iter++){//}iterations;iter++){
+                LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
                 /* TEST read */
-                if(!iter){
+                if(iter){
 
-                        char name[128];
+                        /*char name[128];
 
                         snprintf(name, 128, "TESTMODEL%d.h5",fug);
 
@@ -79,17 +83,18 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         RUN(add_sequences_to_hdf5_model(name, sb,  model_bag->num_models));
                         RUN(write_thread_data_to_hdf5(name, td,  num_threads, sb->max_len+2, model_bag->max_num_states));
 
-                        fug++;
-                        /* RUNP(model_bag2 = read_model_bag_hdf5("TESTMODEL.h5")); */
-                        /* RUN(compare_model_bag(model_bag, model_bag2)); */
-                        /* for( i = 0; i < model_bag->num_models;i++){ */
-                        /*         compare_rk_state(&model_bag->models[i]->rndstate,&model_bag2->models[i]->rndstate); */
-                        /* } */
-                        /* free_model_bag(model_bag2); */
+                        fug++;*/
+                        RUNP(model_bag2 = read_model_bag_hdf5("TESTMODEL.h5"));
+                        RUN(compare_model_bag(model_bag, model_bag2));
+                        free_model_bag(model_bag2);
 
-                        /* RUNP(sb2 = get_sequences_from_hdf5_model("TESTMODEL.h5",IHMM_SEQ_READ_ALL)); */
-                        /* RUN(compare_sequence_buffers(sb, sb2, model_bag->num_models)); */
-                        /* free_ihmm_sequences(sb2); */
+                        RUNP(td2 = read_thread_data_to_hdf5("TESTMODEL.h5"));
+                        compare_wims_data(td, td2, td[0]->num_threads);
+                        free_wims_thread_data(td2);
+
+                        RUNP(sb2 = get_sequences_from_hdf5_model("TESTMODEL.h5",IHMM_SEQ_READ_ALL));
+                        RUN(compare_sequence_buffers(sb, sb2, model_bag->num_models));
+                        free_ihmm_sequences(sb2);
                 }
                 /* shuffle and sub-sample sequences (or not...) */
                 //RUN(shuffle_sequences_in_buffer(sb));
@@ -107,13 +112,13 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 //LOG_MSG("fill counts");
 
                                 RUN(fill_counts(model_bag->models[i], sb,i));
-                                /* print_counts(model_bag->models[i]); */
-                                /* exit(0); */
+                                //print_counts(model_bag->models[i]);
+                                //exit(0);
                                 RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 //model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
-                                /* LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma); */
+                                LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                         }
                 }
 
@@ -124,8 +129,10 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         for(i = 0; i < model_bag->num_models;i++){
                                 RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
                                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state,ft_bag->fast_params[i]->last_state);
+                                //LOG_MSG("DEBUGGING: %d %d", model_bag->models[i]->num_states,ft_bag->fast_params[i]->last_state);
                                 //print_fast_hmm_params(ft_bag->fast_params[i]);
                         }
+                        //LOG_MSG("DEBUGGING OUT");
                         /* Set U */ //for(i = 0; i < model_bag->num_models;i++){
                         //       RUN(fill_fast_transitions(model_bag->models[i], ft_bag->fast_params[i]));
 
@@ -166,7 +173,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         }
 #endif
 
-
                         no_path = 0;
                         RUN(detect_valid_path(sb,model_bag->num_models, &no_path));
                         if(no_path){
@@ -186,7 +192,12 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         model_bag->models[i]->training_iterations++;
                 }
                 /* TEST write.....  */
-
+                RUN(convert_ihmm_to_fhmm_models(model_bag));
+                //RUN(score_all_vs_all(model_bag,sb,td));
+                RUN(write_model_bag_hdf5(model_bag,"TESTMODEL.h5"));
+                //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
+                RUN(add_sequences_to_hdf5_model("TESTMODEL.h5", sb,  model_bag->num_models));
+                RUN(write_thread_data_to_hdf5("TESTMODEL.h5", td,  num_threads, sb->max_len+2, model_bag->max_num_states));
         }
         return OK;
 ERROR:
@@ -385,12 +396,13 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
         double min_u;
 
         int maxK = model_bag->max_num_states;
+        ft_bag->max_last_state= -1;
         for(i = 0; i < model_bag->num_models;i++){
 
                 min_u = model_bag->min_u[i];
                 model = model_bag->models[i];
                 ft = ft_bag->fast_params[i];
-
+                //fprintf(stdout,"DEBUGGING: LAST STATE %d: %d\n",i,ft->last_state);
 
                 RUN(get_max_to_last_state_transition(ft, &max));
                 while(max >= min_u && model->num_states+1 < maxK && max > 0.0 ){//}sb->max_len){
@@ -414,6 +426,7 @@ int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag)
                 ft_bag->max_last_state = MACRO_MAX(ft_bag->max_last_state, ft->last_state);
 
         }
+        //fprintf(stdout,"\n");
         return OK;
 ERROR:
         return FAIL;
@@ -436,7 +449,7 @@ ERROR:
 
 /* This function assumes (oh no!) that beta has space for an additional
    p   g * element */
-int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param* ft)
+int add_state_from_fast_hmm_param(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
         struct fast_t_item** infinity = NULL;
         struct fast_t_item* tmp = NULL;
@@ -454,7 +467,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         //int pg_hack;            /* I don't want add states that are not reachable. */
         //float* tmp_pg = NULL;
 
-        ASSERT(ihmm != NULL, "No model");
+        ASSERT(model != NULL, "No model");
         ASSERT(ft != NULL, "No ft.");
         /* Sorting is only strictly necessary if this is called after another function re-sorted it */
         //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
@@ -472,14 +485,14 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         //RUN(resize_ihmm_model(ihmm, ihmm->num_states + 1));
 
-        ihmm->num_states = ihmm->num_states + 1;
-        RUN(expand_ft_if_necessary(ft, ihmm->num_states));
+        model->num_states = model->num_states + 1;
+        RUN(expand_ft_if_necessary(ft, model->num_states));
 
-        MMALLOC(tmp_prob, sizeof(double) *(ihmm->num_states));
+        MMALLOC(tmp_prob, sizeof(double) *(model->num_states));
 
-        beta = ihmm->beta;
-        alpha = ihmm->alpha;
-        gamma = ihmm->gamma;
+        beta = model->beta;
+        alpha = model->alpha;
+        gamma = model->gamma;
 
         new_k = ft->last_state;
         infinity = ft->infinity;
@@ -487,7 +500,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         /* fill out transition FROM new state  */
         sum = 0.0;
         for(i = 0;i <= new_k;i++){
-                tmp_prob[i] =  rk_gamma(&ihmm->rndstate, beta[i] * alpha, 1.0);
+                tmp_prob[i] =  rk_gamma(&model->rndstate, beta[i] * alpha, 1.0);
                 if(i == IHMM_START_STATE){
                         tmp_prob[i] = 0.0;
                 }
@@ -539,12 +552,12 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
           ft->num_items = list_index;*/
         //first get beta for new column
         be = beta[new_k];
-        bg = rk_beta(&ihmm->rndstate, 1.0,gamma );
+        bg = rk_beta(&model->rndstate, 1.0,gamma );
 
         beta[new_k] = bg*be;
         beta[new_k+1] = (1.0 - bg) *be;
 
-        ihmm->beta = beta;
+        model->beta = beta;
         //now split prob in last columns...
         a = alpha * beta[new_k];
         b = 0.0;
@@ -586,9 +599,9 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         for(i = 0 ; i <= new_k;i++){
                 if(a < 1e-2 || b < 1e-2){     // % This is an approximation when a or b are really small.
-                        pg = rk_binomial(&ihmm->rndstate, 1.0, a / (a+b));
+                        pg = rk_binomial(&model->rndstate, 1.0, a / (a+b));
                 }else{
-                        pg = rk_beta(&ihmm->rndstate, a, b);
+                        pg = rk_beta(&model->rndstate, a, b);
                 }
                 pe = infinity[i]->t;
 
@@ -645,11 +658,11 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
 
         /* add emission  */
         sum = 0.0;
-        for(i = 0; i < ihmm->L;i++){
-                ft->emission[i][new_k] = rk_gamma(&ihmm->rndstate, ft->background_emission[i], 1.0);
+        for(i = 0; i < model->L;i++){
+                ft->emission[i][new_k] = rk_gamma(&model->rndstate, ft->background_emission[i], 1.0);
                 sum += ft->emission[i][new_k];
         }
-        for(i = 0; i < ihmm->L;i++){
+        for(i = 0; i < model->L;i++){
                 ft->emission[i][new_k] /= sum;
         }
 
@@ -657,7 +670,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm_param*
         //MFREE(tmp_pg);
         //ft->num_items = list_index;
         ft->last_state = new_k+1;
-        //ihmm->rndstate = rndstate;
+        //model->rndstate = rndstate;
         MFREE(tmp_prob);
         return OK;
 ERROR:
@@ -1047,7 +1060,9 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         for(i = 0; i < K;i++){
                 matrix[0][i] = 0.0;
+                //fprintf(stdout,"%f ", matrix[0][i]);
         }
+        //fprintf(stdout,"\n");
         //LOG_MSG("Boundary: %d (thres: %f)", boundary, u[0]);
         //fill first row.
         for(j = 0; j < boundary;j++){
@@ -1059,16 +1074,18 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         sum = 0;
         emission = ft->emission[seq[0]];
         for(i = 0; i < K;i++){
+                //fprintf(stdout,"%f,%f %d\n",matrix[0][i], emission[i],seq[0]);
                 matrix[0][i] *= emission[i];
                 sum += matrix[0][i];
         }
+        //fprintf(stdout,"\n");
         for(i = 0; i < K;i++){
                 matrix[0][i] /= sum;
                 //fprintf(stdout,"%f ", matrix[0][i]);
         }
         //fprintf(stdout,"\n");
 
-
+        //exit(0);
         for(i = 1; i < len;i++){
                 emission = ft->emission[seq[i]];
                 for(j = 0; j < K;j++){

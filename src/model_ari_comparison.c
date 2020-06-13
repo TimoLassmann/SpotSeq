@@ -159,12 +159,12 @@ int calculate_pair_wise_ari(struct parameters* param)
                         }
                         for(c = 0; c < number_of_states[i];c++){
                                 for(g = 0;g < number_of_states[j];g++){
-                                        //             fprintf(stdout,"%lld ", count_matrix[c][g]);
+                                        //fprintf(stdout,"%lld ", count_matrix[c][g]);
                                 }
                                 //fprintf(stdout,"\n");
                         }
 
-                        //  fprintf(stdout,"\n");
+                        //fprintf(stdout,"\n");
                         RUN(ari(count_matrix,   number_of_states[i], number_of_states[j] , &adjRandIndex));
                         LOG_MSG("%d-%d: %f",i,j, adjRandIndex);
                 }

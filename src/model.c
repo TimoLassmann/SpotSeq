@@ -294,7 +294,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         ASSERT(max_state_ID > 2, "Not enough states found");
 
         //
-        LOG_MSG("MAX_STATE_ID:  %d", max_state_ID);
+        //LOG_MSG("MAX_STATE_ID:  %d", max_state_ID);
         //exit(0);
         //RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;

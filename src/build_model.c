@@ -30,9 +30,6 @@
 
 struct parameters{
         char* input;
-        //char* output;
-        //char* tmp_file_A;
-        //char* tmp_file_B;
         char* in_model;
         char* cmd_line;
         double alpha;
@@ -193,31 +190,6 @@ int main (int argc, char *argv[])
                 }
         }
 
-        /*if(param->in_model){
-                if(!my_file_exists(param->in_model)){
-                        RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->in_model);
-                }
-                }*/
-        /* Play with tmp_files  */
-
-        /*MMALLOC(param->tmp_file_A, sizeof(char) * 1024);
-        MMALLOC(param->tmp_file_B, sizeof(char) * 1024);
-        char* tmp_filename = NULL;
-        char* tmp_dirname = NULL;
-        RUN(tldirname(param->in_model, &tmp_dirname));
-        RUN(tlfilename(param->in_model, &tmp_filename));
-        fprintf(stdout,"%s\n", param->in_model);
-        snprintf(param->tmp_file_A, 1024, "%s%s%s", tmp_dirname,"seqertmpA", tmp_filename);
-        fprintf(stdout,"%s\n", param->in_model);
-        snprintf(param->tmp_file_B, 1024, "%s%s%s", tmp_dirname,"seqertmpB", tmp_filename);
-        fprintf(stdout,"%s\n", param->in_model);
-
-        fprintf(stdout,"%s\n%s\n",param->tmp_file_A,param->tmp_file_B);
-        fprintf(stdout,"%s\n", param->in_model);
-        MFREE(tmp_dirname);
-        MFREE(tmp_filename);*/
-        //exit(0);
         if(param->num_models < 1){
                 RUN(print_help(argv));
                 ERROR_MSG("To few models! use -nmodels <1+>");
@@ -230,21 +202,11 @@ int main (int argc, char *argv[])
         }
 
         RUN(make_cmd_line(&param->cmd_line,argc,argv));
-        //int t;
-        //RUN(get_dim1(param->cmd_line, &t));
-        //LOG_MSG("%s\n%d\n", param->cmd_line, t);
-        //exit(0);
-        //rk_save_testing();
-        //return EXIT_SUCCESS;
-        RUN(run_build_ihmm(param));
-        /* 1 means allow transitions that are not seen in the training
-         * data */
-        //
 
+        RUN(run_build_ihmm(param));
 
         RUN(score_sequences_for_command_line_reporting(param));
 
-        /* calibrate model parameters */
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
 ERROR:
@@ -372,16 +334,16 @@ int run_build_ihmm(struct parameters* param)
 
         //RUN(convert_ihmm_to_fhmm_models(model_bag));
         for(i = 0; i < outer_iter;i++){
-                LOG_MSG("Outer: %d %d", i, param->inner_iter);
+                //LOG_MSG("Outer: %d %d", i, param->inner_iter);
 /* run inner iter beam sampling iterations */
                 RUN(run_beam_sampling(model_bag,ft_bag, sb,td, param->inner_iter, param->num_threads));
 
                 /* convert to fhmm */
-                //RUN(convert_ihmm_to_fhmm_models(model_bag));
+                RUN(convert_ihmm_to_fhmm_models(model_bag));
                 /* score */
-                //RUN(score_all_vs_all(model_bag,sb,td));
+                RUN(score_all_vs_all(model_bag,sb,td));
                 /* analyzescores */
-                //RUN(analyzescores(sb, model_bag));
+                RUN(analyzescores(sb, model_bag));
                 /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
                         set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));

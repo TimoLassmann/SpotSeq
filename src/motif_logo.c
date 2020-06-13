@@ -77,10 +77,10 @@ int make_logo(int** matrix,int len, int L, char* outname)
                         for(j = 0; j < L;j++){
                                 logo->letters[i][j]->c = "ACGT"[j];
                                 logo->letters[i][j]->freq = matrix[i][j];
-                                //        fprintf(stdout," %d", matrix[i][j]);
+                                        fprintf(stdout," %d", matrix[i][j]);
                                 total += matrix[i][j];
                         }
-                        //fprintf(stdout,"\n");
+                        fprintf(stdout,"\n");
                         max= MACRO_MAX(max, total);
 
                 }
@@ -90,10 +90,10 @@ int make_logo(int** matrix,int len, int L, char* outname)
                         for(j = 0; j < L;j++){
                                 logo->letters[i][j]->c =  "ACDEFGHIKLMNPQRSTVWY"[j];
                                 logo->letters[i][j]->freq = matrix[i][j];
-                                //fprintf(stdout," %d", matrix[i][j]);
+                                fprintf(stdout," %d", matrix[i][j]);
                                 total += matrix[i][j];
                         }
-                        //fprintf(stdout,"\n");
+                        fprintf(stdout,"\n");
                         max= MACRO_MAX(max, total);
 
                 }
@@ -147,7 +147,7 @@ int make_logo(int** matrix,int len, int L, char* outname)
                 qsort(logo->letters[i], L,  sizeof(struct logo_letter*),sort_logo_letter_by_height);
 
         }
-        run_draw_logo(logo,outname);
+        RUN(run_draw_logo(logo,outname));
         free_logo(logo);
         return OK;
 ERROR:
@@ -287,7 +287,7 @@ int  run_draw_logo(struct logo_data* logo, char* outname)
                 }
                 x+= base_w;
         }
-
+        LOG_MSG("Writing to:%s", outname);
         cairo_surface_write_to_png (surface, outname);
 
         cairo_destroy (cr);

@@ -7,9 +7,9 @@
 #include "randomkit_tl_add.h"
 
 
-struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len, int K,rk_state* random)
+struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random)
 {
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
         int i,j,c;
         int local_num_treads;
         size_t mem_needed;
@@ -26,10 +26,10 @@ struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len,
 
         }
 
-        MMALLOC(td, sizeof(struct wims_thread_data*) * local_num_treads);
+        MMALLOC(td, sizeof(struct seqer_thread_data*) * local_num_treads);
         for(i = 0; i < local_num_treads;i++){
                 td[i] = NULL;
-                MMALLOC(td[i], sizeof(struct wims_thread_data));
+                MMALLOC(td[i], sizeof(struct seqer_thread_data));
                 td[i]->dyn = NULL;
                 td[i]->F_matrix = NULL;
                 td[i]->B_matrix = NULL;
@@ -85,12 +85,12 @@ struct wims_thread_data** create_wims_thread_data(int* num_threads, int max_len,
 
         return td;
 ERROR:
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         return NULL;
 }
 
 
-int resize_wims_thread_data(struct wims_thread_data** td,int* num_threads, int max_len, int K)
+int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K)
 {
         int i,j,c;
         int local_num_treads;
@@ -148,7 +148,7 @@ ERROR:
         return FAIL;
 }
 
-int compare_wims_data(struct wims_thread_data** a , struct wims_thread_data** b, int num)
+int compare_wims_data(struct seqer_thread_data** a , struct seqer_thread_data** b, int num)
 {
         int i;
         for(i = 0; i < num;i++){
@@ -164,7 +164,7 @@ ERROR:
         return FAIL;
 }
 
-void free_wims_thread_data(struct wims_thread_data** td)
+void free_seqer_thread_data(struct seqer_thread_data** td)
 {
         int i;
         if(td){

@@ -313,11 +313,9 @@ int run_infoclust(struct parameters* param)
 
         for(i = 0; i < m->num_items;i++){
                 if(m->plist[i]){
-                        // em_algorithm(m->plist[i]->count_matrix,m->plist[i]->len,sb->L , sb_temp);
+                        //em_algorithm(m->plist[i]->count_matrix,m->plist[i]->len,sb->L , sb_temp);
                 }
         }
-
-
 
         RUN(write_para_motif_data_for_plotting(param->out, m, fhmm));
 
@@ -1279,7 +1277,7 @@ ERROR:
         return FAIL;
 }
 
-int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm*  fhmm)
+int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, struct fhmm* fhmm)
 {
         char buffer[BUFFER_LEN];
         struct hdf5_data* hdf5_data = NULL;
@@ -1301,7 +1299,7 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
         snprintf(pack_info, 128,"%s", PACKAGE_VERSION);
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/","Version",pack_info));
         MFREE(pack_info);
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/","MotifData",&fhmm->background));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/","Background",fhmm->background));
 
         for(i = 0 ; i < m->num_items;i++){
                 p = m->plist[i];
@@ -1313,8 +1311,8 @@ int write_para_motif_data_for_plotting(char* filename,struct motif_list* m, stru
                                         tmp[j][c] =  p->count_matrix[j][c];//   fhmm->e[p->state_sequence[j]][c];// p->matrix[j][c];//
                                 }
                         }
-                        snprintf(buffer, BUFFER_LEN, "MotifData/M%03d", i+1);
-                        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/",buffer,tmp));
+                        snprintf(buffer, BUFFER_LEN, "M%03d", i+1);
+                        RUN(HDFWRAP_WRITE_DATA(hdf5_data,"/MotifData",buffer,tmp));
                         /*hdf5_data->rank = 2;
                         hdf5_data->dim[0] = p->len;
                         hdf5_data->dim[1] = fhmm->L;
@@ -2103,9 +2101,6 @@ int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len
 
         m[0][0] = 0.0f;
 
-
-
-
         j = len_a - min_aln_len;
 
         for(i = 1; i < j+1;i++){
@@ -2192,9 +2187,6 @@ int motif_dyn_programming(struct fhmm* fhmm, double** e_a, double** e_b, int len
         }
         return OK;
 }
-
-
-
 
 /* just compare - decision what to do later */
 int compare_motif(struct fhmm* fhmm, struct paraclu_cluster* a,struct paraclu_cluster* b, double* kl_div)

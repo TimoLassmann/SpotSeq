@@ -381,12 +381,12 @@ int remove_state_for_ploting(struct fhmm*fhmm, int state)
         RUN(galloc(&tmp_emit,fhmm->K-1, fhmm->L));
 
         for(i = 0; i < fhmm->K-1;i++){
-                for(j = 0; j < fhmm->K-1;i++){
+                for(j = 0; j < fhmm->K-1;j++){
                         tmp_trans[i][j] = 0.0;
                 }
         }
         for(i = 0; i < fhmm->K-1;i++){
-                for(j = 0; j < fhmm->L;i++){
+                for(j = 0; j < fhmm->L;j++){
                         tmp_emit[i][j] = 0.0;
                 }
         }
@@ -400,13 +400,11 @@ int remove_state_for_ploting(struct fhmm*fhmm, int state)
                                         tmp_trans[a][b] = fhmm->t[i][j];
                                         b++;
                                 }
-
                         }
                         a++;
                 }
-
         }
-         a = 0;
+        a = 0;
         for(i = 0; i < fhmm->K;i++){
                 if(i != state){
                         for(j = 0; j < fhmm->L;j++){

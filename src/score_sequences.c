@@ -40,7 +40,7 @@ int main (int argc, char *argv[])
         struct seq_buffer* sb = NULL;
         struct seq_buffer* sb_back = NULL;
 
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
 
 
         int i,c;
@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
         //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         /* allocate data for threads; */
-        RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */
@@ -233,7 +233,7 @@ int main (int argc, char *argv[])
         }
 
 
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
@@ -245,7 +245,7 @@ ERROR:
                 fclose(fptr);
         }
 
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         free_parameters(param);

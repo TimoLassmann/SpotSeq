@@ -49,7 +49,7 @@ struct parameters{
 };
 
 static int run_build_ihmm(struct parameters* param);
-static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td);
+static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td);
 static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
 static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
 static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
@@ -220,7 +220,7 @@ int run_build_ihmm(struct parameters* param)
         struct fast_param_bag* ft_bag = NULL;
         struct model_bag* model_bag = NULL;
         struct seq_buffer* sb = NULL;
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
 
         //struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
@@ -307,7 +307,7 @@ int run_build_ihmm(struct parameters* param)
 
 
                 /* Allocating thread structure. */
-                RUNP(td = create_wims_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+                RUNP(td = create_seqer_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
         }
 
         LOG_MSG("Will use %d threads.", param->num_threads);
@@ -383,7 +383,7 @@ int run_build_ihmm(struct parameters* param)
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
@@ -391,7 +391,7 @@ ERROR:
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
@@ -495,7 +495,7 @@ ERROR:
 }
 
 /* Score all sequences using all models */
-int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct wims_thread_data** td)
+int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
 {
         int i,j,c;
         int num_threads = td[0]->num_threads;
@@ -610,7 +610,7 @@ ERROR:
 int score_sequences_for_command_line_reporting(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
         //struct thr_pool* pool = NULL;
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;
@@ -649,7 +649,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         /* allocate data for threads; */
-        RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
 
         LOG_MSG("Done.");
@@ -709,7 +709,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         //LOG_MSG("Mean KL divergence: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
         gfree(all_scores);*/
         //LOG_MSG("Got past writing");
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //LOG_MSG("Got past free thread data ");
         //thr_pool_destroy(pool);
         //LOG_MSG("Got past poolfree");
@@ -719,7 +719,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         //LOG_MSG("Got past model bag free");
         return OK;
 ERROR:
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);

@@ -21,7 +21,7 @@
 #include "thread_data.h"
 
 
-extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct wims_thread_data** td);
+extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td);
 extern void* do_score_sequences(void* threadarg);
 extern void* do_score_sequences_per_model(void* threadarg);
 

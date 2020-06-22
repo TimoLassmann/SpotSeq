@@ -14,7 +14,7 @@ static int sort_by_p(const void *a, const void *b);
 
 int approximatelyEqual(double a, double b, double epsilon);
 
-int sum_counts_from_multiple_threads(struct wims_thread_data** td,int* num_threads,int K);
+int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_threads,int K);
 
 int transfer_counts(struct ihmm_model* ihmm, double** t, double** e);
 
@@ -37,13 +37,13 @@ static int add_state_from_fast_hmm_param(struct ihmm_model* ihmm,struct fast_hmm
 static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max);
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
-int dynamic_programming(struct wims_thread_data* data, int target);
+int dynamic_programming(struct seqer_thread_data* data, int target);
 static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path ,rk_state* random);
 int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
 int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
-int collect_slice(struct wims_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
+int collect_slice(struct seqer_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct wims_thread_data** td, int iterations, int num_threads)
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct seqer_thread_data** td, int iterations, int num_threads)
 {
         int** tmp = NULL;
         int i;
@@ -115,7 +115,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         RUN(expand_ihmms(model_bag, ft_bag));
                         RUN(sort_fast_parameters(ft_bag));
                         //}
-                        RUN(resize_wims_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
+                        RUN(resize_seqer_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
                         /*for(i = 0; i < model_bag->num_models;i++){
                           LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                           }*/
@@ -199,14 +199,14 @@ int reset_valid_path(struct seq_buffer* sb,int num_models)
 
 void* do_forward_backward(void *threadarg)
 {
-        struct wims_thread_data *data;
+        struct seqer_thread_data *data;
         int i,j;
         int num_threads;
         int thread_id;
 
         double f_score;
         double b_score;
-        data = (struct wims_thread_data *) threadarg;
+        data = (struct seqer_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -246,7 +246,7 @@ ERROR:
 
 void* do_sample_path_and_posterior(void* threadarg)
 {
-        struct wims_thread_data *data;
+        struct seqer_thread_data *data;
         struct ihmm_sequence* seq = NULL;
         int i;
         int num_threads;
@@ -255,7 +255,7 @@ void* do_sample_path_and_posterior(void* threadarg)
         double b_score;
         double r_score;
 
-        data = (struct wims_thread_data *) threadarg;
+        data = (struct seqer_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -288,14 +288,14 @@ ERROR:
 
 void* do_dynamic_programming(void *threadarg)
 {
-        struct wims_thread_data *data;
+        struct seqer_thread_data *data;
         struct ihmm_sequence* s = NULL;
         int i;
         int j;
         int num_threads;
         int thread_id;
         //int safety = 10;
-        data = (struct wims_thread_data *) threadarg;
+        data = (struct seqer_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
@@ -730,7 +730,7 @@ ERROR:
         return FAIL;
 }
 
-int sum_counts_from_multiple_threads(struct wims_thread_data** td,int* num_threads,int K)
+int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_threads,int K)
 {
         int i,j,c;
         int local_num_treads;
@@ -780,7 +780,7 @@ int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double*
         return OK;
 }
 
-int collect_slice(struct wims_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
+int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
 {
         double** e = data->e;
         double** t = data->t;
@@ -1169,7 +1169,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         return OK;
 }
 
-/*int dynamic_programming(struct wims_thread_data* data, int target)
+/*int dynamic_programming(struct seqer_thread_data* data, int target)
 {
         double** matrix = NULL;
         struct fast_hmm_param* ft = NULL;
@@ -1515,7 +1515,7 @@ int full_run_test_dna(char* output,int niter)
 
         struct seq_buffer* sb = NULL;
 
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
 
         //struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
@@ -1580,7 +1580,7 @@ int full_run_test_dna(char* output,int niter)
         RUN(set_model_hyper_parameters(model_bag, IHMM_PARAM_PLACEHOLDER,IHMM_PARAM_PLACEHOLDER));
 
         /* Allocating thread structure. */
-        RUNP(td = create_wims_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+        RUNP(td = create_seqer_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
 
         LOG_MSG("Will use %d threads.", num_threads);
         //if((pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
@@ -1607,13 +1607,13 @@ int full_run_test_dna(char* output,int niter)
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         RUN(write_model_bag_hdf5(model_bag,output));
-        //RUN(add_annotation(output, "wims_model_cmd", "Testing"));
+        //RUN(add_annotation(output, "seqer_model_cmd", "Testing"));
         RUN(add_sequences_to_hdf5_model(output, sb,  model_bag->num_models));
         RUN(write_thread_data_to_hdf5(output, td, td[0]->num_threads, sb->max_len, model_bag->max_num_states));
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return OK;
@@ -1621,7 +1621,7 @@ ERROR:
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;

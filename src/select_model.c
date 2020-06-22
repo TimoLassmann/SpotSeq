@@ -125,7 +125,7 @@ int run_model_selection(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
 
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
 
         //struct thr_pool* pool = NULL;
 
@@ -166,7 +166,7 @@ int run_model_selection(struct parameters* param)
 
 
         /* allocate data for threads; */
-        RUNP(td = create_wims_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
 
         LOG_MSG("Done.");
@@ -236,7 +236,7 @@ int run_model_selection(struct parameters* param)
         //LOG_MSG("Mean KL divergence: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
         gfree(all_scores);*/
         //LOG_MSG("Got past writing");
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //LOG_MSG("Got past free thread data ");
         //thr_pool_destroy(pool);
         //LOG_MSG("Got past poolfree");
@@ -248,7 +248,7 @@ int run_model_selection(struct parameters* param)
 
         return OK;
 ERROR:
-        free_wims_thread_data(td);
+        free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
         free_ihmm_sequences(sb);
         free_fhmm(fhmm);

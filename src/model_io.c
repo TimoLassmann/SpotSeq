@@ -475,9 +475,9 @@ ERROR:
 
 
 
-struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
+struct seqer_thread_data** read_thread_data_to_hdf5(char* filename)
 {
-        struct wims_thread_data** td = NULL;
+        struct seqer_thread_data** td = NULL;
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];
         unsigned int* seeds = NULL;
@@ -518,7 +518,7 @@ struct wims_thread_data** read_thread_data_to_hdf5(char* filename)
 
 
 
-        RUNP(td = create_wims_thread_data(&num_threads,  max_len, max_K, NULL));
+        RUNP(td = create_seqer_thread_data(&num_threads,  max_len, max_K, NULL));
 
 
         RUN(HDFWRAP_READ_DATA(hdf5_data, "/thread_data","seeds", &seeds));
@@ -539,7 +539,7 @@ ERROR:
 }
 
 
-int write_thread_data_to_hdf5(char* filename,struct wims_thread_data** td,int num_threads,int max_len,int max_K)
+int write_thread_data_to_hdf5(char* filename,struct seqer_thread_data** td,int num_threads,int max_len,int max_K)
 {
         struct hdf5_data* hdf5_data = NULL;
         char buffer[BUFFER_LEN];

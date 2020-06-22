@@ -127,28 +127,17 @@ int run_model_selection(struct parameters* param)
 
         struct seqer_thread_data** td = NULL;
 
-        //struct thr_pool* pool = NULL;
-
         struct seq_buffer* sb = NULL;
         struct fhmm* fhmm = NULL;
 
-
-        //double** all_scores = NULL;
-        //double s1,s2;
         double best_score;
-        //double sum;
         double max_likelihood;
-
         double BIC;
         double total_seq_len;
-        //int max = 1000;
+
         int c;
         int i;
         int limit;
-
-        //char buffer[BUFFER_LEN];
-
-
 
         LOG_MSG("Reading models.");
         RUNP(model_bag = read_model_bag_hdf5(param->in_model));

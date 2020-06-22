@@ -174,7 +174,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
         int len;
         int* relabel = NULL;
         int* used = NULL;
-        int* lab = NULL;
+        uint16_t* lab = NULL;
 
         ASSERT(ihmm != NULL, "no model");
         ASSERT(sb != NULL, "no seq struct");
@@ -268,7 +268,7 @@ ERROR:
 int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
 {
         int i,j;
-        int* label = NULL;
+        uint16_t* label = NULL;
         int max_state_ID;
         int len;
         ASSERT(ihmm != NULL,"No model.");
@@ -339,7 +339,7 @@ ERROR:
 
 int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index)
 {
-        int* label = NULL;
+        uint16_t* label = NULL;
         uint8_t* seq = NULL;
         double** e = NULL;
         double** m = NULL;

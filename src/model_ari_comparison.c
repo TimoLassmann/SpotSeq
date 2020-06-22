@@ -107,7 +107,7 @@ int calculate_pair_wise_ari(struct parameters* param)
 
         long long** count_matrix = NULL;
         double adjRandIndex = 0.0;
-        int** tmp_l;
+        uint16_t** tmp_l;
 
         int* number_of_states = NULL;
         int num_models = -1;

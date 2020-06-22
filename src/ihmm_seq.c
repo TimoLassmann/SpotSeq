@@ -598,7 +598,7 @@ ERROR:
 int random_label_based_on_multiple_models(struct seq_buffer* sb, int K, int model_index, rk_state* random)
 {
         int i,j;
-        int* label;
+        uint16_t* label;
         int len;
 
         ASSERT(sb != NULL, "No sequences");
@@ -619,7 +619,7 @@ ERROR:
 int check_labels(struct seq_buffer* sb, int num_models)
 {
         int i,j,c;
-        int* label;
+        uint16_t* label;
         int len;
 
         ASSERT(sb != NULL, "No sequences");
@@ -1996,11 +1996,10 @@ int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, in
         for(i =0; i < num_models;i++){
                 for(j = 0; j < max_len+1;j++){
                         sequence->u_arr[i][j] = 0.0;
-                        sequence->label_arr[i][j] = -1;
-                        sequence->tmp_label_arr[i][j] = -1;
+                        sequence->label_arr[i][j] = 0;
+                        sequence->tmp_label_arr[i][j] = 0;
                 }
         }
-
 
         RUN(galloc(&sequence->score_arr, num_models));
 

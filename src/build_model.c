@@ -24,6 +24,8 @@
 #include "init_seq_label.h"
 
 
+#include "esl_stopwatch.h"
+
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 #define OPT_COMPETITIVE 3
@@ -53,6 +55,8 @@ static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct 
 static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
 static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
 static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
+static int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread);
+
 
 static int random_score_sequences(struct seq_buffer* sb,double* background );
 static int score_sequences_for_command_line_reporting(struct parameters* param);
@@ -80,7 +84,7 @@ int main (int argc, char *argv[])
         param->rev = 0;
         param->active_file = 0;
         param->num_iter = 2000;
-        param->inner_iter = 10;
+        param->inner_iter = 50;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
@@ -322,7 +326,6 @@ int run_build_ihmm(struct parameters* param)
                 for(j = 0; j < sb->L;j++){
                         ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
                 }
-
         }
         //LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
         /* Do a random score */
@@ -331,13 +334,19 @@ int run_build_ihmm(struct parameters* param)
         /* Main function */
         int outer_iter = param->num_iter / param->inner_iter;
 
-
+        DECLARE_TIMER(n);
         //RUN(convert_ihmm_to_fhmm_models(model_bag));
         for(i = 0; i < outer_iter;i++){
                 //LOG_MSG("Outer: %d %d", i, param->inner_iter);
 /* run inner iter beam sampling iterations */
+                LOG_MSG("Start beam");
+                START_TIMER(n);
                 RUN(run_beam_sampling(model_bag,ft_bag, sb,td, param->inner_iter, param->num_threads));
+                STOP_TIMER(n);
+                GET_TIMING(n);
 
+                LOG_MSG("Start scoring");
+                START_TIMER(n);
                 /* convert to fhmm */
                 RUN(convert_ihmm_to_fhmm_models(model_bag));
                 /* score */
@@ -350,7 +359,20 @@ int run_build_ihmm(struct parameters* param)
                 }else{          /* reset sequence weights.  */
                         reset_sequence_weights(sb, model_bag->num_models);
                 }
+                STOP_TIMER(n);
+                GET_TIMING(n);
+
+                /* write temporary results */
+                LOG_MSG("Writing model");
+                START_TIMER(n);
+                write_program_state(param->in_model, model_bag, sb, td, param->num_threads);
+                STOP_TIMER(n);
+                GET_TIMING(n);
+
         }
+
+        DESTROY_TIMER(n);
+
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
         //RUN(score_all_vs_all(model_bag,sb,td));
@@ -378,8 +400,6 @@ int run_build_ihmm(struct parameters* param)
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
 
-
-
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
@@ -395,6 +415,21 @@ ERROR:
         //thr_pool_destroy(pool);
         MFREE(num_state_array);
         return FAIL;
+}
+
+int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread)
+{
+
+        RUN(convert_ihmm_to_fhmm_models(mb));
+        //RUN(score_all_vs_all(model_bag,sb,td));
+        RUN(write_model_bag_hdf5(mb,filename));
+        //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
+        RUN(add_sequences_to_hdf5_model(filename, sb, mb->num_models));
+        RUN(write_thread_data_to_hdf5(filename, td, n_thread, sb->max_len+2, mb->max_num_states));
+        return OK;
+ERROR:
+        return FAIL;
+
 }
 
 int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature)
@@ -463,7 +498,7 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
         int max_print;
         int num_models = model_bag->num_models;
         ASSERT(sb!= NULL, "No sequences");
-        max_print = MACRO_MIN(5, sb->num_seq);
+        /*max_print = MACRO_MIN(5, sb->num_seq);
         for(i = 0; i < max_print;i++){
                 fprintf(stdout,"Seq%d\t",i);
                 for(j = 0; j < num_models;j++){
@@ -472,7 +507,7 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
                 }
                 fprintf(stdout,"\n");
 
-        }
+                }*/
 
         for(j = 0; j < num_models;j++){
                 s0 = 0.0;
@@ -526,14 +561,10 @@ int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_t
                         for(i = 0; i < j;i++){
                                 do_score_sequences_per_model(td[i]);
                         }
-
-
 #ifdef HAVE_OPENMP
                 }
 #endif
-
         }
-
         return OK;
 ERROR:
         return FAIL;

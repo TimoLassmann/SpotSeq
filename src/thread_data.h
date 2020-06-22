@@ -16,8 +16,8 @@ struct seqer_thread_data{
         double** dyn;
         double** F_matrix;
         double** B_matrix;
-        double** t;
-        double** e;
+        double** t;             /* for forward backward - to collect estimated */
+        double** e;             /* for forward backward - to collect estimated */
         //int num_seq;
         int thread_ID;
         int num_threads;

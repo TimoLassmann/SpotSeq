@@ -38,14 +38,14 @@ static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max
 //static int check_if_ft_is_indexable(struct fast_hmm_param* ft, int num_states);
 
 int dynamic_programming(struct seqer_thread_data* data, int target);
-static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path ,rk_state* random);
+static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,uint16_t* label,double* u,int len,uint8_t* has_path ,rk_state* random);
 int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
 int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
 int collect_slice(struct seqer_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
 int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct seqer_thread_data** td, int iterations, int num_threads)
 {
-        int** tmp = NULL;
+        uint16_t** tmp = NULL;
         int i;
         int iter;
         int no_path;
@@ -1001,7 +1001,7 @@ ERROR:
         return FAIL;
 }
 
-int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,int* label,double* u,int len,uint8_t* has_path,rk_state* random)
+int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,uint16_t* label,double* u,int len,uint8_t* has_path,rk_state* random)
 {
         struct fast_t_item** list = NULL;
         int i,j,boundary;
@@ -1335,7 +1335,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
 {
         int i,j;
         double* u = 0;
-        int* label =0;
+        uint16_t* label =0;
         double x;
         //double r;
         int len;

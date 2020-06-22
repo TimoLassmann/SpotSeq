@@ -19,6 +19,7 @@ static int read_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a);
 static struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group);
 static int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char* group);
 
+
 struct ihmm_model* read_best_imodel(char* filename, int* best_model)
 {
         struct ihmm_model* m = NULL;

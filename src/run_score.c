@@ -177,12 +177,9 @@ void* do_score_sequences_per_model(void* threadarg)
         //LOG_MSG("Average sequence length: %d",expected_len);
 
         for(i =0; i < data->sb->num_seq;i++){
-
                         seq = data->sb->sequences[i];
                         RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
-
                         seq->score_arr[thread_id] = f_score;
-
         }
         return NULL;
 ERROR:

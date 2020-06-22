@@ -27,8 +27,8 @@ struct ihmm_sequence{
         uint8_t* has_path;
         double** u_arr;
         double* score_arr;
-        int** label_arr;
-        int** tmp_label_arr;
+        uint16_t** label_arr;
+        uint16_t** tmp_label_arr;
         double* u;
         int* label;
         char* name;

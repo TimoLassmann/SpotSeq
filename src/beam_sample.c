@@ -108,14 +108,13 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         //}
                         RUN(reset_valid_path(sb,model_bag->num_models));
                         RUN(set_u_multi(model_bag, ft_bag, sb));
-                        //RUN(set_u(sb,model,ft, &min_u));
+//RUN(set_u(sb,model,ft, &min_u));
                         //exit(0);
-                        /* I only want to add states if the last iteration was successful */
-                        //if(!no_path){
                         RUN(expand_ihmms(model_bag, ft_bag));
+
                         RUN(sort_fast_parameters(ft_bag));
-                        //}
-                        RUN(resize_seqer_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
+
+                        //RUN(resize_seqer_thread_data(td, &num_threads,(sb->max_len+2)  , ft_bag->max_last_state));
                         /*for(i = 0; i < model_bag->num_models;i++){
                           LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
                           }*/

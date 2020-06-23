@@ -191,7 +191,7 @@ int main (int argc, char *argv[])
         //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL,THREAD_DATA_FULL));
 
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */

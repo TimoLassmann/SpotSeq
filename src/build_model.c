@@ -84,7 +84,7 @@ int main (int argc, char *argv[])
         param->rev = 0;
         param->active_file = 0;
         param->num_iter = 2000;
-        param->inner_iter = 50;
+        param->inner_iter = 100;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
         param->seed = 0;
@@ -311,7 +311,7 @@ int run_build_ihmm(struct parameters* param)
 
 
                 /* Allocating thread structure. */
-                RUNP(td = create_seqer_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+                RUNP(td = create_seqer_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate, THREAD_DATA_BEAM));
         }
 
         LOG_MSG("Will use %d threads.", param->num_threads);
@@ -590,9 +590,9 @@ int init_num_state_array(int* num_state_array, int maxK, int len, struct paramet
                 }
         }else{
                 for(i = 0; i < len;i++){
-                        num_state_array[i] = (int)rk_normal(&rndstate, mean,25.0);
+                        num_state_array[i] = (int)rk_normal(&rndstate, mean,1.0);
                         num_state_array[i] = MACRO_MIN(num_state_array[i], maxK);
-                        num_state_array[i] = MACRO_MAX(num_state_array[i], 5);
+                        num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
                 }
         }
         return OK;
@@ -680,7 +680,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL, THREAD_DATA_FULL));
 
 
         LOG_MSG("Done.");

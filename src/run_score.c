@@ -72,7 +72,7 @@ int run_label_sequences(struct fhmm* fhmm, struct seq_buffer* sb, int num_thread
 
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ,NULL));// & sb->rndstate));
+        RUNP(td = create_seqer_thread_data(&num_threads,(sb->max_len+2)  , fhmm->K ,NULL, THREAD_DATA_FULL));// & sb->rndstate));
 
         /* score sequences  */
 
@@ -178,7 +178,7 @@ void* do_score_sequences_per_model(void* threadarg)
 
         for(i =0; i < data->sb->num_seq;i++){
                         seq = data->sb->sequences[i];
-                        RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
+                        RUN(forward(fhmm, data->dyn, &f_score, seq->seq, seq->seq_len ));
                         seq->score_arr[thread_id] = f_score;
         }
         return NULL;

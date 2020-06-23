@@ -8,6 +8,11 @@
 #include "tldevel.h"
 #include "randomkit.h"
 
+
+#define THREAD_DATA_FULL 1
+#define THREAD_DATA_BEAM 2
+
+
 struct seqer_thread_data{
         struct fast_param_bag* ft_bag;
         struct fast_hmm_param* ft;
@@ -25,7 +30,7 @@ struct seqer_thread_data{
         rk_state rndstate;
 };
 
-extern struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random);
+extern struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random, int mode);
 extern int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K);
 extern int compare_seqer_thread_data(struct seqer_thread_data** a , struct seqer_thread_data** b, int num);
 

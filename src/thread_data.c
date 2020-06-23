@@ -7,7 +7,7 @@
 #include "randomkit_tl_add.h"
 
 
-struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random)
+struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random,int mode)
 {
         struct seqer_thread_data** td = NULL;
         int i,j,c;
@@ -38,27 +38,38 @@ struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_le
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
                 RUN(galloc(&td[i]->dyn, max_len, K));
-                RUN(galloc(&td[i]->F_matrix, max_len, K));
-                RUN(galloc(&td[i]->B_matrix, max_len, K));
+
+                //RUN(galloc(&td[i]->F_matrix, max_len, K));
+                //RUN(galloc(&td[i]->B_matrix, max_len, K));
                 for(j = 0; j < max_len;j++){
                         for(c = 0; c < K;c++){
                                 td[i]->dyn[j][c] = 0.0;
-                                td[i]->F_matrix[j][c] = 0.0;
-                                td[i]->B_matrix[j][c] = 0.0;
+                                //td[i]->F_matrix[j][c] = 0.0;
+                                //td[i]->B_matrix[j][c] = 0.0;
                         }
                 }
 
                 /* was initailized to -INFINITY  */
-                RUN(galloc(&td[i]->t, K,K));
-                RUN(galloc(&td[i]->e,ALPHABET_PROTEIN,K));
-                for(j = 0; j < K;j++){
-                        for(c = 0; c < K;c++){
-                                td[i]->t[j][c] = -INFINITY;
+                if(mode == THREAD_DATA_FULL){
+                        RUN(galloc(&td[i]->t, K,K));
+                        RUN(galloc(&td[i]->e,ALPHABET_PROTEIN,K));
+                        for(j = 0; j < K;j++){
+                                for(c = 0; c < K;c++){
+                                        td[i]->t[j][c] = -INFINITY;
+                                }
                         }
-                }
-                for(j = 0; j < ALPHABET_PROTEIN;j++){
-                        for(c = 0; c < K;c++){
-                                td[i]->e[j][c] = -INFINITY;
+                        for(j = 0; j < ALPHABET_PROTEIN;j++){
+                                for(c = 0; c < K;c++){
+                                        td[i]->e[j][c] = -INFINITY;
+                                }
+                        }
+                        RUN(galloc(&td[i]->F_matrix, max_len, K));
+                        RUN(galloc(&td[i]->B_matrix, max_len, K));
+                        for(j = 0; j < max_len;j++){
+                                for(c = 0; c < K;c++){
+                                        td[i]->F_matrix[j][c] = 0.0;
+                                        td[i]->B_matrix[j][c] = 0.0;
+                                }
                         }
                 }
 

@@ -9,21 +9,7 @@
 #include "global.h"
 
 
-struct fhmm{
-        double** F_matrix;
-        double** B_matrix;
-        double** e;
-        double** t;
-        int** tindex;
-        double* background;
-        double f_score;
-        double b_score;
-        double r_score;
-        int alloc_matrix_len;
-        int alloc_K;
-        int K;
-        int L;
-};
+#include "finite_hmm_struct.h"
 
 extern int remove_state_for_ploting(struct fhmm*fhmm, int state);
 

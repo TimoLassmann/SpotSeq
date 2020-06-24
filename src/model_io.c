@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include "tlhdf5wrap.h"
-
+#include "model_alloc.h"
 
 #define BUFFER_LEN 256
 

@@ -46,7 +46,7 @@ fast_hmm_param_test_functions.c
 
 KALIGNSOURCE = kalign.h kalign.c
 
-MODELSOURCE = model.h model.c model_io.c global.h $(NULLMODEL)
+MODELSOURCE = model.h model.c model_io.c model_struct.h model_alloc.h model_alloc.c global.h $(NULLMODEL)
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 
@@ -62,7 +62,7 @@ CALIBRATESOURCE = calibrate.c calibrate.h
 
 CONVERSION = hmm_conversion.h hmm_conversion.c
 
-FINITEHMM = finite_hmm.c finite_hmm.h
+FINITEHMM = finite_hmm.c finite_hmm.h finite_hmm_struct.h finite_hmm_alloc.h finite_hmm_alloc.c
 
 DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 

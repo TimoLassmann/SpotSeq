@@ -1,9 +1,13 @@
 
-#include "randomkit_tl_add.h"
+
 
 #include "tldevel.h"
 
 #include <string.h>
+
+#define RANDOMKIT_TL_ADD_IMPORT
+#include "randomkit_TL_add.h"
+
 
 
 #ifdef TEST_COPY_RK

@@ -36,6 +36,7 @@ ADJUSTEDRANDINDEXSOURCE = adjusted_rand_index.c adjusted_rand_index.h
 
 MOTIFREFINE = motif_refinement.h motif_refinement.c
 
+NULLMODEL = null_model_emission.h null_model_emission.c
 
 ISEQSOURCE = ihmm_seq.h ihmm_seq.c
 
@@ -45,7 +46,7 @@ fast_hmm_param_test_functions.c
 
 KALIGNSOURCE = kalign.h kalign.c
 
-MODELSOURCE = model.h model.c model_io.c global.h
+MODELSOURCE = model.h model.c model_io.c global.h $(NULLMODEL)
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 

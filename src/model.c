@@ -4,6 +4,8 @@
 #include "finite_hmm.h"
 #include "randomkit_tl_add.h"
 
+#include "null_model_emission.h"
+
 static int init_model_background(double* background, int L);
 static int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
 
@@ -315,65 +317,6 @@ ERROR:
 }
 
 
-int init_model_background(double* background, int L)
-{
-        double sum;
-        int i;
-
-        ASSERT(background != NULL, "No background allocated");
-        if(L == 20){
-                /* taken from hmmer  */
-                /* Function:  p7_AminoFrequencies()
-                 * Incept:    SRE, Fri Jan 12 13:46:41 2007 [Janelia]
-                 *
-                 * Purpose:   Fills a vector <f> with amino acid background frequencies,
-                 *            in [A..Y] alphabetic order, same order that Easel digital
-                 *            alphabet uses. Caller must provide <f> allocated for at
-                 *            least 20 floats.
-                 *
-                 *            These were updated 4 Sept 2007, from Swiss-Prot 50.8,
-                 *            (Oct 2006), counting over 85956127 (86.0M) residues.
-                 *
-                 * Returns:   <eslOK> on success.
-                 */
-                background[0] = 0.0787945;		/* A */
-                background[1] = 0.0151600;		/* C */
-                background[2] = 0.0535222;		/* D */
-                background[3] = 0.0668298;		/* E */
-                background[4] = 0.0397062;		/* F */
-                background[5] = 0.0695071;		/* G */
-                background[6] = 0.0229198;		/* H */
-                background[7] = 0.0590092;		/* I */
-                background[8] = 0.0594422;		/* K */
-                background[9] = 0.0963728;		/* L */
-                background[10]= 0.0237718;		/* M */
-                background[11]= 0.0414386;		/* N */
-                background[12]= 0.0482904;		/* P */
-                background[13]= 0.0395639;		/* Q */
-                background[14]= 0.0540978;		/* R */
-                background[15]= 0.0683364;		/* S */
-                background[16]= 0.0540687;		/* T */
-                background[17]= 0.0673417;		/* V */
-                background[18]= 0.0114135;		/* W */
-                background[19]= 0.0304133;		/* Y */
-
-        }else{
-                for(i = 0; i < L;i++){
-                        background[i] = 1.0 / (double) L;
-                }
-        }
-        sum = 0.0;
-        for(i = 0; i < L;i++){
-                sum += background[i];
-        }
-
-        ASSERT(sum == 1.0,"background sum is != 1.0");
-
-
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 int add_pseudocounts_emission(struct ihmm_model* model, double alpha)
 {
@@ -755,12 +698,10 @@ struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed)
 
         /* RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0)); */
         /* RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0)); */
-        RUN(galloc(&model->background,model->L));
-        for(i = 0; i < model->L;i++){
-                model->background[i] = 0.0;
-        }
+        model->background = NULL;
 
-        RUN(init_model_background(model->background, model->L));
+        RUN(get_null_model_emissions(&model->background, model->L));
+
 
         RUN(galloc(&model->transition_counts, model->alloc_num_states, model->alloc_num_states));
         for(i = 0; i < model->alloc_num_states;i++){

@@ -57,7 +57,7 @@ AC_DEFUN([ADD_DEBUG_COMPILE_WARNINGS],
   AX_CHECK_COMPILE_FLAG([-Wuninitialized],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -Wuninitialized"],,)
   AX_CHECK_COMPILE_FLAG([-Wunsafe-loop-optimizations],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -Wunsafe-loop-optimizations"],,)
   AX_CHECK_COMPILE_FLAG([-Wextra],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -Wextra"],,)
-  AX_CHECK_COMPILE_FLAG([-Wfloat-equal],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -Wfloat-equal"],,)
+    # AX_CHECK_COMPILE_FLAG([-Wfloat-equal],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -Wfloat-equal"],,)
 
   AX_CHECK_COMPILE_FLAG([-ffunction-sections],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -ffunction-sections"],,)
   AX_CHECK_COMPILE_FLAG([-fdata-sections],[TLDEVEL_CFLAGS="${TLDEVEL_CFLAGS} -fdata-sections"],,)

@@ -68,7 +68,7 @@ DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 LOGO_SOURCES = motif_logo.c motif_logo.h
 
 
-bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit cal tfbs_bench composition_bench seqer_select seqer_ari
+bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit cal tfbs_bench composition_bench seqer_select seqer_ari pst_test
 
 #seqer_lcs
 if ENABLE_CAIRO
@@ -78,6 +78,7 @@ cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
+
 
 seqer_model_SOURCES = \
 build_model.c init_seq_label.h init_seq_label.c  $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
@@ -246,3 +247,9 @@ randomkit_tl_test_CPPFLAGS = $(AM_CPPFLAGS) -DTEST_COPY_RK
 randomkit_tl_test_LDADD = $(MYLIBDIRS)
 
 
+pst_test_SOURCES = \
+pst.h \
+pst.c \
+pst_test.c \
+sim_seq_lib.h \
+sim_seq_lib.c

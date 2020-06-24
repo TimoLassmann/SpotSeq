@@ -69,6 +69,7 @@ extern struct fhmm* read_best_fmodel(char* filename, int* best_model);
 
 extern struct model_bag* read_model_bag_hdf5(char* filename);
 extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
+extern int write_best_model(char* filename, int best_model);
 //extern int add_fhmm(char* filename,double** transition,double** emission, int N, int L);
 extern int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group);
 extern int add_background_emission(char* filename,double* background);
@@ -76,14 +77,14 @@ extern int add_annotation( char* filename, char* name, char* value);
 
 //extern int write_model_hdf5(struct ihmm_model* model, char* filename);
 //struct ihmm_model* read_model_hdf5(char* filename);
-extern int write_model(struct ihmm_model* model, char* filename);
-extern struct ihmm_model* read_model( char* filename);
 
-extern int write_best_model(char* filename, int best_model);
+
 
 /* Write RNG states in threads to file to ensure reproducibility.... */
 struct seqer_thread_data** read_thread_data_to_hdf5(char* filename);
 int write_thread_data_to_hdf5(char* filename,struct seqer_thread_data** td,int num_threads,int max_len,int max_K);
+
+
 
 /* Initialize number of states.  */
 extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K);

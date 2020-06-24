@@ -21,8 +21,10 @@
 
 #include "run_score.h"
 
-#include "init_seq_label.h"
-
+#include "model.h"
+#include "fast_hmm_param.h"
+//#include "init_seq_label.h"
+#include "hmm_conversion.h"
 
 #include "esl_stopwatch.h"
 
@@ -232,7 +234,7 @@ int run_build_ihmm(struct parameters* param)
         double average_sequence_len;
 
         //int initial_states;
-        int i,j;
+        int i;
 
         ASSERT(param!= NULL, "No parameters found.");
         init_logsum();
@@ -495,7 +497,7 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
 {
         double s0,s1,s2;
         int i,j;
-        int max_print;
+        //int max_print;
         int num_models = model_bag->num_models;
         ASSERT(sb!= NULL, "No sequences");
         /*max_print = MACRO_MIN(5, sb->num_seq);

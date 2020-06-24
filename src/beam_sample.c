@@ -1,10 +1,34 @@
 
-#include "beam_sample.h"
+#include "distributions.h"
+#include <math.h>
+#include <float.h>
+#include <stdint.h>
+
+#include <omp.h>
+
+
+//#include "thr_pool.h"
+//#include "rbtree.h"
+//#include "fast_hmm_param.h"
+#include "ihmm_seq.h"
+#include "model.h"
+#include "global.h"
+
+#include "hmm_conversion.h"
+#include "finite_hmm.h"
+
+#include "thread_data.h"
+
 
 
 #include "fast_hmm_param_test_functions.h"
 
+#include "tldevel.h"
 #include "tllogsum.h"
+
+#define BEAM_SAMPLE_IMPORT
+#include "beam_sample.h"
+
 
 //void* do_sample_path_and_posterior(void* threadarg);
 void* do_dynamic_programming(void *threadarg);

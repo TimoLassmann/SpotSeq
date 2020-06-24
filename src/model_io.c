@@ -128,6 +128,7 @@ ERROR:
         return NULL;
 }
 
+
 int write_best_model(char* filename, int best_model)
 {
         struct hdf5_data* hdf5_data = NULL;
@@ -840,112 +841,4 @@ ERROR:
         return FAIL;
 }
 
-/* Function to write and read  a model (hyperparameters and counts) */
-int write_model(struct ihmm_model* model, char* filename)
-{
-        FILE* f_ptr = NULL;
-        int i,j;
 
-
-        ASSERT(model != NULL, "No model.");
-
-        RUNP(f_ptr = fopen(filename, "w"));
-        fprintf(f_ptr,"Number of states: %d\n", model->num_states);
-        fprintf(f_ptr,"Number of letters: %d\n", model->L);
-
-        fprintf(f_ptr,"Gamma: %f\n", model->gamma);
-        fprintf(f_ptr,"gamma_a: %f\n", model->gamma_a);
-        fprintf(f_ptr,"gamma_b: %f\n", model->gamma_b);
-
-        fprintf(f_ptr,"alpha: %f\n", model->alpha);
-        fprintf(f_ptr,"alpha_a: %f\n", model->alpha_a);
-        fprintf(f_ptr,"alpha_b: %f\n", model->alpha_b);
-
-        fprintf(f_ptr,"Beta:\n");
-        for(i = 0; i < model->num_states;i++){
-                fprintf(f_ptr,"%f\n", model->beta[i]);
-        }
-        fprintf(f_ptr,"Transition counts:\n");
-        for(i = 0; i < model->num_states;i++){
-                for(j = 0; j < model->num_states;j++){
-                        fprintf(f_ptr,"%f\n", model->transition_counts[i][j]);
-                }
-        }
-        fprintf(f_ptr,"Emission counts:\n");
-        for(i = 0; i < model->L;i++){
-                for(j = 0; j < model->num_states;j++){
-                        fprintf(f_ptr,"%f\n", model->emission_counts[i][j]);
-                }
-        }
-
-        fclose(f_ptr);
-        return OK;
-ERROR:
-        if(f_ptr){
-                fclose(f_ptr);
-        }
-        return FAIL;
-}
-
-struct ihmm_model* read_model(char* filename)
-{
-        struct ihmm_model* model = NULL;
-        FILE* f_ptr = NULL;
-        int a,b;
-        int i,j;
-        int r;
-        ASSERT(filename != NULL, "No filename");
-        ASSERT(my_file_exists(filename) != 0,"File %s does not exist.",filename);
-        RUNP(f_ptr = fopen(filename, "r"));
-        r = fscanf(f_ptr,"Number of states: %d\n",&a);
-        ASSERT(r == 1, "fscanf failed");
-        r = fscanf(f_ptr,"Number of letters: %d\n", &b);
-        ASSERT(r == 1, "fscanf failed");
-        fprintf(stdout,"Number of states after reading! : %d\n",a);
-
-
-        int maxK = 1000;
-        RUNP(model = alloc_ihmm_model(a,maxK, b,0));
-        model->num_states = a;
-
-        r = fscanf(f_ptr,"Gamma: %lf\n", &model->gamma);
-        ASSERT(r == 1, "fscanf failed");
-        r = fscanf(f_ptr,"gamma_a: %lf\n", &model->gamma_a);
-        ASSERT(r == 1, "fscanf failed");
-        r = fscanf(f_ptr,"gamma_b: %lf\n", &model->gamma_b);
-        ASSERT(r == 1, "fscanf failed");
-
-        r = fscanf(f_ptr,"alpha: %lf\n", &model->alpha);
-        ASSERT(r == 1, "fscanf failed");
-        r = fscanf(f_ptr,"alpha0_a: %lf\n", &model->alpha_a);
-        ASSERT(r == 1, "fscanf failed");
-        r = fscanf(f_ptr,"alpha0_b: %lf\n", &model->alpha_b);
-        ASSERT(r == 1, "fscanf failed");
-
-        r = fscanf(f_ptr, "%*[^\n]\n");
-        for(i = 0; i < model->num_states;i++){
-                r = fscanf(f_ptr,"%lf\n", &model->beta[i]);
-        }
-        r = fscanf(f_ptr, "%*[^\n]\n");
-        for(i = 0; i < model->num_states;i++){
-                for(j = 0; j < model->num_states;j++){
-                        r = fscanf(f_ptr,"%lf\n", &model->transition_counts[i][j]);
-                        ASSERT(r == 1, "fscanf failed");
-                }
-        }
-        r = fscanf(f_ptr, "%*[^\n]\n");
-         for(i = 0; i < model->L;i++){
-                for(j = 0; j < model->num_states;j++){
-                        r = fscanf(f_ptr,"%lf\n", &model->emission_counts[i][j]);
-                        ASSERT(r == 1, "fscanf failed");
-                }
-        }
-        rk_randomseed(&model->rndstate);
-        fclose(f_ptr);
-        return model;
-ERROR:
-        if(f_ptr){
-                fclose(f_ptr);
-        }
-        return NULL;
-}

@@ -27,7 +27,7 @@ struct fast_hmm_param{
         // struct rbtree_root* root;
         double** transition;
         double** emission;
-        double* background_emission;
+        //double* background_emission;
         int num_trans;
         int alloc_num_trans;
         int last_state;

@@ -16,7 +16,7 @@ static int add_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a);
 static int read_RNG_state(struct hdf5_data* hdf5_data, char* group,rk_state* a);
 
 
-static struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group);
+struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group);
 static int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char* group);
 
 
@@ -313,6 +313,7 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         //RUN(resize_ihmm_model(model, model->num_states+1));
 
         RUN(HDFWRAP_READ_DATA(hdf5_data, group, "Beta", &model->beta));
+        RUN(HDFWRAP_READ_DATA(hdf5_data ,group,"Background",&model->background));
         RUN(HDFWRAP_READ_DATA(hdf5_data, group, "transition_counts", &model->transition_counts));
         RUN(HDFWRAP_READ_DATA(hdf5_data, group, "emission_counts", &model->emission_counts));
         snprintf(buffer, BUFFER_LEN+5 , "%s/RNG", group);
@@ -394,6 +395,7 @@ int write_model_hdf5(struct hdf5_data* hdf5_data,struct ihmm_model* model, char*
         hdf5_data->native_type = H5T_NATIVE_DOUBLE;
         RUN(hdf5_write("Beta",&model->beta[0], hdf5_data));*/
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Beta",model->beta));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"Background",model->background));
         //RUNP(tmp = galloc(tmp,  model->num_states,  model->num_states, 0.0));
         /* TODO: this may not be necessary as I use galloc to allocate model->transition_counts  */
 

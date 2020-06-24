@@ -19,8 +19,8 @@ struct seq_buffer* emit_kmers_from_state(struct fhmm* fhmm,int start_state, int 
         sb_out->max_len = 0.0;
         sb_out->L = fhmm->L;
 
-        sb_out->background = NULL;
-        MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
+        //sb_out->background = NULL;
+        //MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
 
         MMALLOC(sb_out->sequences, sizeof(struct ihmm_sequence*) *sb_out->malloc_num );
 
@@ -80,8 +80,8 @@ struct seq_buffer* emit_sequences_from_fhmm_model(struct fhmm* fhmm, int num, rk
         sb_out->max_len = 0.0;
         sb_out->L = fhmm->L;
 
-        sb_out->background = NULL;
-        MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
+        //sb_out->background = NULL;
+        //MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
 
         MMALLOC(sb_out->sequences, sizeof(struct ihmm_sequence*) *sb_out->malloc_num );
 
@@ -245,16 +245,16 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
         sb_out->max_len = 0.0;
         sb_out->L = sb_in->L;
 
-        sb_out->background = NULL;
-        MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
+        //sb_out->background = NULL;
+        //MMALLOC(sb_out->background,sizeof(double) * sb_out->L );
         for(i = 0;i < sb_out->L;i++){
-                sb_out->background[i] = sb_in->background[i];
+                //        sb_out->background[i] = sb_in->background[i];
                 //fprintf(stdout,"%d %f",i,sb_out->background[i]);
         }
 
 
         for(i = 1;i < sb_out->L;i++){
-                sb_out->background[i] += sb_out->background[i-1];
+                //sb_out->background[i] += sb_out->background[i-1];
         }
 
 
@@ -288,10 +288,11 @@ struct seq_buffer* emit_sequences_from_random_model(struct seq_buffer* sb_in, in
 
                          //fprintf(stdout,"%f\n",r);
                          for(c = 0 ; c < sb_out->L;c++){
-                                 if(r <= sb_out->background[c]){
-                                         sb_out->sequences[i]->seq[j] = c;
-                                         break;
-                                 }
+
+                                 //if(r <= sb_out->background[c]){
+                                 //sb_out->sequences[i]->seq[j] = c;
+                                 //break;
+                                 //}
                          }
                 }
         }

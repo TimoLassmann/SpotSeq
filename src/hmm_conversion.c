@@ -406,14 +406,14 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
 
-        RUN(fill_background_emission_from_model(ft,model));
+        //RUN(fill_background_emission_from_model(ft,model));
 
         /* copy background probabilitys into fhmm */
 
         //MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
         RUN(galloc(&fhmm->background, fhmm->L));
         for (i = 0; i < fhmm->L; i++){
-                fhmm->background[i] = (double) ft->background_emission[i];
+                fhmm->background[i] = (double) model->background[i];//  ft->background_emission[i];
         }
 
         /* Note: there is a possibility that un-visited states exist
@@ -688,6 +688,7 @@ ERROR:
         return FAIL;
 }
 
+/*
 int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model)
 {
         int i,j;
@@ -744,4 +745,4 @@ int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb)
         return OK;
 ERROR:
         return FAIL;
-}
+}*/

@@ -221,6 +221,8 @@ int run_infoclust(struct parameters* param)
         /* Step one: calculate relative entropy for each state */
         RUN(calc_per_state_rel_entrophy(fhmm, rel_entropy));
 
+
+
         /* Step two: label sequences with rel entropy perstate */
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
@@ -241,7 +243,6 @@ int run_infoclust(struct parameters* param)
 
 
         double log_odds_threshold = 5.0;
-
 
         m = init_motif_list(sb->num_seq);
 
@@ -753,7 +754,7 @@ int add_motif_count_matrix_based_on_hits(struct seq_buffer* sb, struct paraclu_c
         for(i =0; i < motif->len;i++){
                 sum = 0.0;
                 for(j = 0; j < sb->L;j++){
-                        motif->count_matrix[i][j] = sb->background[j] * beta;// rk_gamma(&rndstate, sb->background[j], 1.0);
+                        motif->count_matrix[i][j] =  (1.0 / (double) sb->L) * beta;// rk_gamma(&rndstate, sb->background[j], 1.0);
                         sum += motif->count_matrix[i][j];
                 }
                 for(j = 0; j < sb->L;j++){

@@ -320,16 +320,16 @@ int run_build_ihmm(struct parameters* param)
         RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */
-        RUN(fill_background_emission(ft_bag->fast_params[0], sb));
+        //RUN(fill_background_emission(ft_bag->fast_params[0], sb));
         /* Now copy remaining 1:N first fast hmm param structs */
-        for(i = 1; i < ft_bag->num_models;i++){
+        /*for(i = 1; i < ft_bag->num_models;i++){
                 for(j = 0; j < sb->L;j++){
                         ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
                 }
-        }
+                }*/
         //LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
         /* Do a random score */
-        RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
+        RUN(random_score_sequences(sb, model_bag->models[0]->background  ));
 
         /* Main function */
         int outer_iter = param->num_iter / param->inner_iter;

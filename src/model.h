@@ -23,6 +23,7 @@ struct ihmm_model{
         double** transition_counts;
         double** emission_counts;
         double* beta;
+        double* background;
         unsigned int seed;
         rk_state rndstate;
         double gamma;
@@ -89,7 +90,7 @@ extern int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, in
 /* Fill counts from sequences  */
 extern int clear_counts(struct ihmm_model* ihmm);
 extern int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index);
-extern int add_pseudocounts_emission(struct ihmm_model* model, double* background, double alpha);
+extern int add_pseudocounts_emission(struct ihmm_model* model, double alpha);
 //extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb);
 extern int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index);
 

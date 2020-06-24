@@ -18,7 +18,7 @@ int translate_PROTEIN_to_internal(struct seq_buffer* sb, rk_state* rndstate);
 
 
 
-int add_background_to_sequence_buffer(struct seq_buffer* sb);
+//int add_background_to_sequence_buffer(struct seq_buffer* sb);
 
 int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
 
@@ -64,12 +64,12 @@ struct seq_buffer* concatenate_sequences(struct seq_buffer* sb)
         sb_concat->max_len = new_len;
         sb_concat->L = sb->L;
 
-        sb_concat->background = NULL;
+        //sb_concat->background = NULL;
 
-        MMALLOC(sb_concat->background, sizeof(double)*  sb->L);
-        for(i = 0;i < sb->L;i++){
-                sb_concat->background[i] = sb->background[i];
-        }
+        //MMALLOC(sb_concat->background, sizeof(double)*  sb->L);
+        //for(i = 0;i < sb->L;i++){
+        //sb_concat->background[i] = sb->background[i];
+        //}
 
 
         MMALLOC(sb_concat->sequences, sizeof(struct ihmm_sequence*) *sb_concat->malloc_num );
@@ -104,7 +104,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         char** seq = NULL;
         int** label = NULL;
         double** scores = NULL;
-        double* background;
+        //double* background;
 
         int num_seq;
         int max_len;
@@ -136,7 +136,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Sequences", &seq));
 
         RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "CompetitiveScores", &scores));
-        RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Background", &background));
+        //RUN(HDFWRAP_READ_DATA(hdf5_data, "/SequenceInformation", "Background", &background));
 
 
         if(mode == IHMM_SEQ_READ_ALL){
@@ -157,7 +157,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         sb->max_len = max_len;
         sb->L = local_L;
 
-        sb->background = background;
+        //sb->background = background;
 
         MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->num_seq;i++){
@@ -346,7 +346,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Sequences", seq));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Labels", label));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "CompetitiveScores", scores));
-        RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Background", sb->background));
+        //RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Background", sb->background));
         RUN(close_hdf5_file(&hdf5_data));
         gfree(label);
         gfree(name);
@@ -718,7 +718,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq, rk_state* r
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
-        sb->background = NULL;
+        //sb->background = NULL;
 
 
         while(sb->malloc_num <= numseq){
@@ -783,7 +783,7 @@ struct seq_buffer* create_ihmm_sequences_mem(char** seq, int numseq, rk_state* r
         }
         sb->num_seq = numseq;
         RUN(detect_alphabet(sb,rndstate));
-        RUN(add_background_to_sequence_buffer(sb));
+        //RUN(add_background_to_sequence_buffer(sb));
         return sb;
 ERROR:
         free_ihmm_sequences(sb);
@@ -811,7 +811,7 @@ struct seq_buffer* load_sequences(char* in_filename, rk_state* rndstate)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
-        sb->background = NULL;
+        //sb->background = NULL;
 
         MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
@@ -895,7 +895,7 @@ struct seq_buffer* load_sequences(char* in_filename, rk_state* rndstate)
         sb->num_seq++;
         RUN(detect_alphabet(sb,rndstate));
 
-        RUN(add_background_to_sequence_buffer(sb));
+        //RUN(add_background_to_sequence_buffer(sb));
 
 
 
@@ -908,14 +908,14 @@ ERROR:
         return NULL;
 }
 
-int add_background_to_sequence_buffer(struct seq_buffer* sb)
+/*int add_background_to_sequence_buffer(struct seq_buffer* sb)
 {
         int i,j;
         double sum = 0.0;
         ASSERT(sb!= NULL, "No sequence buffer");
         ASSERT(sb->L != 0, "No alphabet detected");
 
-        RUN(galloc(&sb->background, sb->L));
+        //RUN(galloc(&sb->background, sb->L));
         //MMALLOC(sb->background, sizeof(double)* sb->L);
         for(i = 0; i < sb->L;i++){
                sb->background[i] = 0.0;
@@ -937,7 +937,7 @@ int add_background_to_sequence_buffer(struct seq_buffer* sb)
         return OK;
 ERROR:
         return FAIL;
-}
+        }*/
 
 int get_res_counts(struct seq_buffer* sb, double* counts)
 {
@@ -1238,7 +1238,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
-        sb->background = NULL;
+        //sb->background = NULL;
 
         label_pos = 0;
         old_label_pos = 0;
@@ -1353,7 +1353,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
         fclose(f_ptr);
         sb->num_seq++;
         RUN(detect_alphabet(sb, rndstate));
-        RUN(add_background_to_sequence_buffer(sb));
+        //RUN(add_background_to_sequence_buffer(sb));
         gfree(digit_buffer);
         return sb;
 ERROR:
@@ -2141,9 +2141,9 @@ void free_ihmm_sequences(struct seq_buffer* sb)
                         free_ihmm_sequence(sb->sequences[i]);
                 }
                 MFREE(sb->sequences);
-                if(sb->background){
-                        gfree(sb->background);
-                }
+                //if(sb->background){
+                //gfree(sb->background);
+                //}
                 MFREE(sb);
         }
 }

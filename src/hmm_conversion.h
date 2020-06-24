@@ -26,8 +26,8 @@ extern int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct f
 extern int run_build_fhmm_file(char* h5file, int allow_zero_counts);
 extern struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model);
 /* Get background emissions from either sequence buffer or ihmm model */
-extern int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb);
-extern int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model);
+//extern int fill_background_emission(struct fast_hmm_param*ft,struct seq_buffer* sb);
+//extern int fill_background_emission_from_model(struct fast_hmm_param*ft, struct ihmm_model* model);
 
 
 

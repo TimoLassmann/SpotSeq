@@ -135,7 +135,7 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->transition = NULL;
 
         ft->L = L;
-        ft->background_emission = NULL;
+        //ft->background_emission = NULL;
         ft->alloc_num_trans = 65536;
         MMALLOC(ft->list, sizeof(struct fast_t_item*) * ft->alloc_num_trans);
         for(i = 0; i < ft->alloc_num_trans;i++){
@@ -145,11 +145,11 @@ struct fast_hmm_param* alloc_fast_hmm_param(int k, int L)
         ft->num_trans = 0;
         //ft->root = NULL;
 
-        MMALLOC(ft->background_emission, sizeof(double) * L  );
+        //MMALLOC(ft->background_emission, sizeof(double) * L  );
 
-        for(i = 0; i < L; i++){
-                ft->background_emission[i] = 0.0;
-        }
+        //for(i = 0; i < L; i++){
+        //ft->background_emission[i] = 0.0;
+        //}
 
         /* RUNP(ft->emission = galloc(ft->emission, ft->L, ft->alloc_num_states, 0.0)); */
         /* RUNP(ft->transition = galloc(ft->transition,  ft->alloc_num_states,  ft->alloc_num_states, 0.0)); */
@@ -325,9 +325,10 @@ void free_fast_hmm_param(struct fast_hmm_param* ft)
                 if(ft->transition){
                         gfree(ft->transition);
                 }
-                if(ft->background_emission){
-                        MFREE(ft->background_emission);
-                }
+                //if(ft->background_emission){
+                //MFREE(ft->background_emission);
+                //}
+
                 MFREE(ft);
         }
 }

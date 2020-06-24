@@ -6,7 +6,7 @@
 
 #include "tllogsum.h"
 
-void* do_sample_path_and_posterior(void* threadarg);
+//void* do_sample_path_and_posterior(void* threadarg);
 void* do_dynamic_programming(void *threadarg);
 void* do_forward_backward(void *threadarg);
 
@@ -82,7 +82,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                                 RUN(fill_counts(model_bag->models[i], sb,i));
                                 //print_counts(model_bag->models[i]);
                                 //exit(0);
-                                RUN(add_pseudocounts_emission(model_bag->models[i],ft_bag->fast_params[i]->background_emission, 0.01 ));
+                                RUN(add_pseudocounts_emission(model_bag->models[i], 0.01 ));
                                 //LOG_MSG("hyper");
                                 RUN(iHmmHyperSample(model_bag->models[i], 20));
                                 //model_bag->max_num_states  = MACRO_MAX(model_bag->max_num_states ,model_bag->models[i]->num_states);
@@ -243,7 +243,7 @@ ERROR:
 }
 
 
-void* do_sample_path_and_posterior(void* threadarg)
+/*void* do_sample_path_and_posterior(void* threadarg)
 {
         struct seqer_thread_data *data;
         struct ihmm_sequence* seq = NULL;
@@ -283,7 +283,7 @@ void* do_sample_path_and_posterior(void* threadarg)
         return NULL;
 ERROR:
         return NULL;
-}
+        }*/
 
 void* do_dynamic_programming(void *threadarg)
 {
@@ -619,7 +619,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* model,struct fast_hmm_param
         /* add emission  */
         sum = 0.0;
         for(i = 0; i < model->L;i++){
-                ft->emission[i][new_k] = rk_gamma(&model->rndstate, ft->background_emission[i], 1.0);
+                ft->emission[i][new_k] = rk_gamma(&model->rndstate,  model->background[i], 1.0);
                 sum += ft->emission[i][new_k];
         }
         for(i = 0; i < model->L;i++){

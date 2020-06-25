@@ -5,7 +5,7 @@
 #include "finite_hmm_io.h"
 #include "label_suffix_array.h"
 #include "run_score.h"
-#include "model.h"
+//#include "model.h"
 #include "motif_refinement.h"
 #include <getopt.h>
 #include <libgen.h>

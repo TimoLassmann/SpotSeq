@@ -50,6 +50,7 @@ struct seq_buffer{
         int L;
 };
 
+
 extern struct ihmm_sequence* alloc_ihmm_seq(void);
 
 extern int translate_internal_to_DNA(struct seq_buffer* sb);

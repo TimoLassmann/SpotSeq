@@ -2,6 +2,7 @@ ACLOCAL_AMFLAGS= -I m4
 # Build the library in the hand subdirectory first.
 LIB_TLDEVELDIR = @LIB_TLDEVELDIR@
 
+@VALGRIND_CHECK_RULES@
 
 CLEANFILES = ihmm_seq_itest_read_test.fa test_model_file.txt test.lfa test_dna.lfa libhdf5gluetest_exp.h5 libhdf5gluetest.h5 model_at_*h5 test1.h5 test2.h5
 
@@ -51,6 +52,7 @@ KALIGNSOURCE = kalign.h kalign.c
 MODELSOURCE = \
 model_core.h \
 model_core.c \
+model_io.h \
 model_io.c \
 model_struct.h \
 model_alloc.h \
@@ -214,9 +216,6 @@ make_dot_file.c
 
 TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   ari_ITEST
 
-TESTS_ENVIRONMENT = \
-	$(VALGRIND)
-
 check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST randomkit_tl_test
  # pst_ITEST
 
@@ -279,6 +278,7 @@ randomkit_tl_test_LDADD = $(MYLIBDIRS)
 pst_test_SOURCES = \
 pst.h \
 pst.c \
+pst_structs.h \
 pst_test.c \
 sim_seq_lib.h \
 sim_seq_lib.c

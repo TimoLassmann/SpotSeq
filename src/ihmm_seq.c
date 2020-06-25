@@ -24,6 +24,7 @@ int reverse_complement(struct ihmm_sequence*  org,struct ihmm_sequence* dest);
 
 static int alloc_multi_model_label_and_u(struct ihmm_sequence* sequence,int max_len, int num_models);
 
+
 int shuffle_sequences_in_buffer(struct seq_buffer* sb)
 {
         struct ihmm_sequence* tmp = NULL;
@@ -1238,6 +1239,7 @@ struct seq_buffer* load_ihmm_sequences(char* in_filename,rk_state* rndstate)
         sb->sequences = NULL;
         sb->max_len = 0;
         sb->L = -1;
+        sb->org_num_seq = -1;
         //sb->background = NULL;
 
         label_pos = 0;
@@ -2125,9 +2127,11 @@ void free_ihmm_sequence(struct ihmm_sequence* sequence)
                         gfree(sequence->tmp_label_arr);
                 }
 
-                /*if(sequence->score_arr){
+
+
+                if(sequence->score_arr){
                         gfree(sequence->score_arr);
-                        }*/
+                }
                 MFREE(sequence);
         }
 }
@@ -2168,6 +2172,7 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_mo
                 for(j = 0; j < a->sequences[i]->seq_len;j++){
                        ASSERT(a->sequences[i]->seq[j]  == b->sequences[i]->seq[j], "Sequences  differ" );
                 }
+                if(n_models != -1){
                 for(c = 0; c < n_models;c++){
                         ASSERT(a->sequences[i]->score_arr[c] == b->sequences[i]->score_arr[c],"score differs:%d  %f %f",c,a->sequences[i]->score_arr[c],b->sequences[i]->score_arr[c]);
                 }
@@ -2176,6 +2181,7 @@ int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_mo
                         for(c = 0; c < n_models;c++){
                                 ASSERT(a->sequences[i]->label_arr[c][j]  == b->sequences[i]->label_arr[c][j], "Labels differ: %d %d %d", j,a->sequences[i]->label_arr[c][j], b->sequences[i]->label_arr[c][j]);
                         }
+                }
                 }
         }
 
@@ -2336,7 +2342,7 @@ int main(const int argc,const char * argv[])
 
         RUNP(iseq_b  = load_ihmm_sequences("test_dna.lfa",&rndstate));
 
-        RUN(compare_sequence_buffers(iseq,iseq_b));
+        RUN(compare_sequence_buffers(iseq,iseq_b,-1));
         free_ihmm_sequences(iseq);
         free_ihmm_sequences(iseq_b);
 
@@ -2374,7 +2380,7 @@ int main(const int argc,const char * argv[])
 
         RUNP(iseq_b  =load_ihmm_sequences("test.lfa",&rndstate));
 
-        RUN(compare_sequence_buffers(iseq,iseq_b));
+        RUN(compare_sequence_buffers(iseq,iseq_b,-1));
 
         RUN(print_labelled_ihmm_buffer(iseq,&rndstate));
         free_ihmm_sequences(iseq);

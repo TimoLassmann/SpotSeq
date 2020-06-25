@@ -10,7 +10,7 @@
 #include "tldevel.h"
 #include "tlmisc.h"
 #include "tllogsum.h"
-#include "model.h"
+//#include "model.h"
 #include "ihmm_seq.h"
 
 #include "finite_hmm.h"

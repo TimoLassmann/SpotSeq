@@ -202,6 +202,7 @@ ERROR:
 void free_ihmm_model(struct ihmm_model* ihmm)
 {
         if(ihmm){
+                gfree(ihmm->background);
                 gfree(ihmm->transition_counts);
                 gfree(ihmm->emission_counts);
                 gfree(ihmm->beta);

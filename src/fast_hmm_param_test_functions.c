@@ -84,7 +84,8 @@ int fill_with_random_transitions(struct fast_hmm_param* ft, int k)
                 for(j = 0;j < k;j++){
                         tmp_probs[j] /= sum;
                         tmp = ft->list[ft->num_trans];
-                        MMALLOC(tmp, sizeof(struct fast_t_item));
+
+                        //MMALLOC(tmp, sizeof(struct fast_t_item));
                         tmp->from = i;
                         tmp->to = j;
                         tmp->t = tmp_probs[j];

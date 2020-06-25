@@ -31,6 +31,25 @@ m4_include([m4/ax_openmp.m4])
 
 AX_ENABLE_DEBUG
 
+AX_LIB_HDF5([serial])
+if test "$with_hdf5" = "yes"; then
+
+dnl CC="$HDF5_CC"
+nCFLAGS="${CFLAGS} ${HDF5_CFLAGS}"
+CPPFLAGS="${CPPFLAGS} ${HDF5_CPPFLAGS}"
+LDFLAGS="${LDFLAGS} ${HDF5_LDFLAGS}"
+LIBS="${LIBS} ${HDF5_LIBS}"
+else
+AC_MSG_WARN([
+
+Unable to find HDF5, we need parallel HDF5.
+Install on fedora:
+sudo dnf install hdf5 hdf5-devel
+
+])
+fi
+
+AM_CONDITIONAL([ENABLE_HDF5], [test "$with_hdf5" = "yes"])
 
 # test for working C11 _Generic support
 AN_IDENTIFIER([_Generic], [AC_C__GENERIC])
@@ -68,6 +87,7 @@ fi
 # Check for C11 _Generic support
 AC_C__GENERIC
 
+AC_C_INLINE
 
 AX_WITH_TLDEVEL
 
@@ -150,27 +170,6 @@ DEAD_STRIP="-Wl,--gc-sections -Wl,--as-needed"
 esac
 AC_SUBST(DEAD_STRIP)
 
-
-
-AX_LIB_HDF5([serial])
-if test "$with_hdf5" = "yes"; then
-
-dnl CC="$HDF5_CC"
-CFLAGS="${CFLAGS} ${HDF5_CFLAGS}"
-CPPFLAGS="${CPPFLAGS} ${HDF5_CPPFLAGS}"
-LDFLAGS="${LDFLAGS} ${HDF5_LDFLAGS}"
-LIBS="${LIBS} ${HDF5_LIBS}"
-else
-AC_MSG_WARN([
-
-Unable to find HDF5, we need parallel HDF5.
-Install on fedora:
-sudo dnf install hdf5 hdf5-devel
-
-])
-fi
-
-AM_CONDITIONAL([ENABLE_HDF5], [test "$with_hdf5" = "yes"])
 
 AX_VALGRIND_DFLT([memcheck], [on])
 AX_VALGRIND_CHECK()

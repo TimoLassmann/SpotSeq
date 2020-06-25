@@ -7,7 +7,8 @@
 
 #include "tldevel.h"
 
-#include "model.h"
+//#include "model.h"
+#include "model_struct.h"
 #include "model_alloc.h"
 #include "finite_hmm.h"
 

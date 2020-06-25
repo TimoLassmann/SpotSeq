@@ -24,41 +24,6 @@ static int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int m
 
 //static int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha);
 
-int inititalize_model(struct seq_buffer* sb, int K)
-{
-        int i;
-        int average_input_seq_len = 0;
-        for(i = 0; i < sb->num_seq;i++){
-                average_input_seq_len += sb->sequences[i]->seq_len;
-        }
-        average_input_seq_len /= sb->num_seq;
-
-        if(K == 0){
-                K = average_input_seq_len;
-        }
-        LOG_MSG("Will start with %d states",K);
-
-        RUN(random_label_ihmm_sequences(sb, K, 3));
-        //allocfloat** malloc_2d_float(float**m,int newdim1, int newdim2,float fill_value)
-
-        //RUNP(emission = malloc_2d_float(emission, k+1,  sb->L , 0.0f));
-
-
-        // emission[i][j] = rk_gamma(&rndstate,alpha , 1.0);
-        //RUN(dirichlet_emission_label_ihmm_sequences( sb, K, 0.3));
-
-        //RUN(label_ihmm_sequences_based_on_guess_hmm(sb, K,0.3));
-
-        //RUN(fill_counts(model,sb));
-        /* I am doing this as a pre-caution. I don't want the inital model
-         * contain states that are not visited.. */
-        //RUN(remove_unused_states_labels(model, sb));
-        //RUN(fill_counts(model,sb));
-        return OK;
-ERROR:
-        return FAIL;
-
-}
 
 
 
@@ -634,6 +599,8 @@ ERROR:
 
 
 #ifdef ITESTMODEL
+
+#include "model_help.h"
 int main(const int argc,const char * argv[])
 {
         struct ihmm_model* ihmm = NULL;
@@ -654,7 +621,7 @@ int main(const int argc,const char * argv[])
 
         RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4,&rndstate));
         RUN(random_label_ihmm_sequences(sb, 10, 0.3));
-        rk_seed(1802, &sb->rndstate);
+        rk_seed(1802, &rndstate);
 
 
 
@@ -668,7 +635,7 @@ int main(const int argc,const char * argv[])
          * initialized. */
 
         RUN(add_multi_model_label_and_u(sb, 1));
-        RUN(random_label_based_on_multiple_models(sb, 10, 0, &sb->rndstate));
+        RUN(random_label_based_on_multiple_models(sb, 10, 0, &rndstate));
         RUN(fill_counts(ihmm,sb,0));
         RUN(print_counts(ihmm));
         LOG_MSG("%d %d", sb->L, sb->num_seq);

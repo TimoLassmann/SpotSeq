@@ -11,8 +11,8 @@
 //#include "rbtree.h"
 //#include "fast_hmm_param.h"
 #include "ihmm_seq.h"
-#include "model.h"
-#include "model_struct.h"
+#include "model_core.h"
+
 #include "model_alloc.h"
 #include "global.h"
 
@@ -1598,29 +1598,21 @@ int full_run_test_dna(char* output,int niter)
         }
 
         RUN(check_labels(sb,model_bag->num_models ));
+
         /* Set seed in sequence buffer */
-        sb->seed = rk_ulong(&model_bag->rndstate);
-        rk_seed(sb->seed, &sb->rndstate);
+        //model_bag->seed = rk_ulong(&model_bag->rndstate);
+        //rk_seed(sb->seed, &sb->rndstate);
 
         RUN(set_model_hyper_parameters(model_bag, IHMM_PARAM_PLACEHOLDER,IHMM_PARAM_PLACEHOLDER));
 
         /* Allocating thread structure. */
-        RUNP(td = create_seqer_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
+        RUNP(td = create_seqer_thread_data(&num_threads,(sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate, THREAD_DATA_BEAM));
 
         LOG_MSG("Will use %d threads.", num_threads);
         //if((pool = thr_pool_create(num_threads,num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-        /* fill background of first fast hmm param struct  */
-        RUN(fill_background_emission(ft_bag->fast_params[0], sb));
-        /* Now copy remaining 1:N first fast hmm param structs */
-        for(i = 1; i < ft_bag->num_models;i++){
-                for(j = 0; j < sb->L;j++){
-                        ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
-                }
-
-        }
 
         //RUN(random_score_sequences(sb, ft_bag->fast_params[0]->background_emission  ));
 
@@ -1631,10 +1623,10 @@ int full_run_test_dna(char* output,int niter)
 
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
-        RUN(write_model_bag_hdf5(model_bag,output));
+        //RUN(write_model_bag_hdf5(model_bag,output));
         //RUN(add_annotation(output, "seqer_model_cmd", "Testing"));
-        RUN(add_sequences_to_hdf5_model(output, sb,  model_bag->num_models));
-        RUN(write_thread_data_to_hdf5(output, td, td[0]->num_threads, sb->max_len, model_bag->max_num_states));
+        //RUN(add_sequences_to_hdf5_model(output, sb,  model_bag->num_models));
+        //RUN(write_thread_data_to_hdf5(output, td, td[0]->num_threads, sb->max_len, model_bag->max_num_states));
         free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);

@@ -28,6 +28,8 @@
 
 #include "esl_stopwatch.h"
 
+#include "thread_data_io.h"
+
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 #define OPT_COMPETITIVE 3

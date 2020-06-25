@@ -580,32 +580,3 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
 ERROR:
         return FAIL;
 }
-
-struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
-{
-        struct fhmm* fhmm = NULL;
-
-        ASSERT(hdf5_data != NULL, "No filename");
-
-        RUNP(fhmm = alloc_fhmm());
-
-        HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "K", &fhmm->K);
-
-        HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "L", &fhmm->L);
-
-        HDFWRAP_READ_DATA(hdf5_data, group, "emission", &fhmm->e);
-
-        HDFWRAP_READ_DATA(hdf5_data, group, "transition", &fhmm->t);
-
-        HDFWRAP_READ_DATA(hdf5_data, group, "transition_index", &fhmm->tindex);
-
-        HDFWRAP_READ_DATA(hdf5_data, group, "background", &fhmm->background);
-
-
-        return fhmm;
-ERROR:
-        return NULL;
-
-}
-
-

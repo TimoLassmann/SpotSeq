@@ -20,8 +20,6 @@ extern int forward(struct fhmm* fhmm,double** matrix,double* ret_score, uint8_t*
 extern int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len);
 extern int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path);
 
-//extern int read_fhmm_parameters(struct fhmm* fhmm, char* filename, char* model_name);
-struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group);
 
 extern struct fhmm* alloc_fhmm(void);
 extern int setup_model(struct fhmm* fhmm);

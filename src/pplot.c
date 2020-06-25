@@ -19,6 +19,7 @@
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
 
+#include "finite_hmm_io.h"
 #include "motif_logo.h"
 #include "dijkstra.h"
 

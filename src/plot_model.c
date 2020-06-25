@@ -18,6 +18,7 @@
 #include "model.h"
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
+#include "finite_hmm_io.h"
 
 #define BUFFER_LEN 128
 

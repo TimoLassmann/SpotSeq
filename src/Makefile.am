@@ -29,8 +29,10 @@ RANDOMKIT_FILES = distributions.h \
 distributions.c \
 randomkit.h \
 randomkit.c \
-randomkit_TL_add.h \
-randomkit_TL_add.c
+randomkit_tl_add.h \
+randomkit_tl_add.c \
+randomkit_io.h \
+randomkit_io.c
 
 ADJUSTEDRANDINDEXSOURCE = adjusted_rand_index.c adjusted_rand_index.h
 
@@ -50,7 +52,12 @@ MODELSOURCE = model.h model.c model_io.c model_struct.h model_alloc.h model_allo
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 
-THREADSOURCE = thread_data.c thread_data.h
+THREADSOURCE = \
+thread_data.h \
+thread_data.c \
+thread_data_io.h \
+thread_data_io.c
+
 
 # HDF5GLUESOURCE = hdf5_glue.c hdf5_glue.h #save_random_state.c
 
@@ -62,7 +69,15 @@ CALIBRATESOURCE = calibrate.c calibrate.h
 
 CONVERSION = hmm_conversion.h hmm_conversion.c
 
-FINITEHMM = finite_hmm.c finite_hmm.h finite_hmm_struct.h finite_hmm_alloc.h finite_hmm_alloc.c
+FINITEHMM = \
+finite_hmm.c \
+finite_hmm.h \
+finite_hmm_struct.h \
+finite_hmm_alloc.h \
+finite_hmm_alloc.c \
+finite_hmm_io.h \
+finite_hmm_io.c
+
 
 DIJSTRA_SOURCES = dijkstra.c dijkstra.h
 

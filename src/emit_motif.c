@@ -1,5 +1,7 @@
 #include "ihmm_seq.h"
+
 #include "finite_hmm.h"
+#include "finite_hmm_io.h"
 #include "run_score.h"
 #include "model.h"
 

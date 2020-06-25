@@ -1,5 +1,6 @@
 #include "emit_random.h"
 #include "model.h"
+#include "finite_hmm_io.h"
 #include "finite_hmm.h"
 #include <getopt.h>
 #include <libgen.h>

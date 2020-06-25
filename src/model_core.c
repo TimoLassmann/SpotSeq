@@ -557,10 +557,6 @@ int set_model_hyper_parameters(struct model_bag* b, double alpha, double gamma)
                 for(j = 0; j < model->num_states;j++){
                         model->beta[j] = (double)(model->num_states);
                 }
-                //for(j = 0;j < 10;j++){
-                //        RUN(iHmmHyperSample(model, 20));
-                //}
-                //print_model_parameters(model);
         }
         return OK;
 ERROR:

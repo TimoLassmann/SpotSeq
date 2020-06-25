@@ -40,9 +40,6 @@ struct ihmm_sequence{
 
 struct seq_buffer{
         struct ihmm_sequence** sequences;
-        //double* background;
-        //rk_state rndstate;
-        //int seed;
         int malloc_num;
         int num_seq;
         int org_num_seq;
@@ -50,21 +47,16 @@ struct seq_buffer{
         int L;
 };
 
-
 extern struct ihmm_sequence* alloc_ihmm_seq(void);
 
 extern int translate_internal_to_DNA(struct seq_buffer* sb);
 
-
 extern int translate_internal_to_PROTEIN(struct seq_buffer* sb);
-
 
 extern int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models);
 extern int check_labels(struct seq_buffer* sb, int num_models);
 
 extern int get_res_counts(struct seq_buffer* sb, double* counts);
-
-
 extern int realloc_ihmm_seq(struct ihmm_sequence* sequence);
 
 extern struct seq_buffer* get_sequences_from_hdf5_model(char* filename,int mode);
@@ -92,6 +84,5 @@ extern int write_ihmm_sequences_fasta(struct seq_buffer* sb, char* filename, rk_
 extern int write_ihmm_sequences(struct seq_buffer* sb, char* filename, char* comment,rk_state* rndstate);
 extern struct seq_buffer* load_ihmm_sequences(char* in_filename, rk_state* rndstate);
 
-//extern int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b);
 extern int compare_sequence_buffers(struct seq_buffer* a, struct seq_buffer* b,int n_models);
 #endif

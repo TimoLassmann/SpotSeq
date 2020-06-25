@@ -21,8 +21,6 @@
 
 #include "thread_data.h"
 
-
-
 #include "fast_hmm_param_test_functions.h"
 
 #include "tldevel.h"

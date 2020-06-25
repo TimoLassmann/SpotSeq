@@ -216,7 +216,7 @@ make_dot_file.c
 
 TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST 	iseq_ITEST beam_ITEST dtest_ITEST   ari_ITEST
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST randomkit_tl_test
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST model_ITEST iseq_ITEST beam_ITEST dtest_ITEST ari_ITEST randomkit_tl_test sequences_TEST
  # pst_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
@@ -282,3 +282,11 @@ pst_structs.h \
 pst_test.c \
 sim_seq_lib.h \
 sim_seq_lib.c
+
+sequences_TEST_SOURCES = \
+sequence_alloc.h \
+sequence_alloc.c \
+sequence_io.h \
+sequence_io.c \
+sequence_test.c
+

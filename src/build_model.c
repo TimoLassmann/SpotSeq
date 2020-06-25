@@ -263,7 +263,6 @@ int run_build_ihmm(struct parameters* param)
         }else{                  /* New run - start from the beginning */
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
-
                 RUNP(sb = load_sequences(param->input,&param->rndstate));
 
                 //sb = concatenate_sequences(sb);

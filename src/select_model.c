@@ -19,7 +19,8 @@
 #include "run_score.h"
 
 #include "model.h"
-
+#include "model_io.h"
+#include "model_alloc.h"
 #include "tlmisc.h"
 #include "tllogsum.h"
 

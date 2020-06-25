@@ -16,72 +16,9 @@
 
 struct seq_buffer;          /* forward declaration  */
 
-struct hdf5_data;               /* forward declaration`` */
+//struct hdf5_data;               /* forward declaration`` */
 
-
-struct ihmm_model{
-        double** transition_counts;
-        double** emission_counts;
-        double* beta;
-        double* background;
-        unsigned int seed;
-        rk_state rndstate;
-        double gamma;
-        double alpha;
-        double alpha_a;
-        double alpha_b;
-        double gamma_a;
-        double gamma_b;
-        double log_likelihood;
-        double alpha_limit;
-        double gamma_limit;
-        int num_states;         /* this excludes the start and stop states (0,1) */
-        int alloc_num_states;
-        int L;
-        int training_iterations;
-};
-
-struct model_bag{
-        struct ihmm_model** models;
-        struct fhmm** finite_models;
-        double* min_u;
-        int best_model;
-        int max_num_states;
-        int num_models;
-        unsigned int seed;      /* Starting value */
-        rk_state rndstate;      /* main seed */
-};
-
-/* Housekeeping */
-
-//extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int seed);
-extern struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int max_states, int seed);
-extern void free_model_bag(struct model_bag* b);
-
-extern struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed);
-//extern struct ihmm_model* alloc_ihmm_model(int K, int L, unsigned int seed);
-extern int resize_ihmm_model(struct ihmm_model* ihmm, int K);
-extern void free_ihmm_model(struct ihmm_model* ihmm);
-
-/* Model IO */
-extern struct ihmm_model* read_best_imodel(char* filename, int* best_model);
-//extern struct fhmm* read_best_fmodel(char* filename, int* best_model);
-
-extern struct model_bag* read_model_bag_hdf5(char* filename);
-extern int write_model_bag_hdf5(struct model_bag* bag, char* filename);
-extern int write_best_model(char* filename, int best_model);
-//extern int add_fhmm(char* filename,double** transition,double** emission, int N, int L);
-//extern int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group);
-
-
-
-//extern int write_model_hdf5(struct ihmm_model* model, char* filename);
-//struct ihmm_model* read_model_hdf5(char* filename);
-
-
-
-/* Write RNG states in threads to file to ensure reproducibility.... */
-
+#include "model_struct.h"
 
 
 /* Initialize number of states.  */
@@ -99,10 +36,5 @@ extern int set_model_hyper_parameters(struct model_bag* b, double alpha, double 
 /* re-estimate hyper parameters */
 extern int iHmmHyperSample(struct ihmm_model* model, int iterations);
 
-/* help functions */
-extern int print_counts(struct ihmm_model* ihmm);
-extern int print_model_parameters(struct ihmm_model* ihmm);
-
-extern int compare_model_bag(struct model_bag* a, struct model_bag* b);
 
 #endif

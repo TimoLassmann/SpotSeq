@@ -3,7 +3,10 @@
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
 #include "run_score.h"
-#include "model.h"
+//#include "model.h"
+#include "model_struct.h"
+#include "model_alloc.h"
+#include "model_io.h"
 #include <getopt.h>
 #include <libgen.h>
 

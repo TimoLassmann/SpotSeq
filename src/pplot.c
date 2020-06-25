@@ -15,7 +15,8 @@
 #include "ihmm_seq.h"
 
 //#include "beam_sample.h"
-#include "model.h"
+//#include "model.h"
+#include "model_io.h"
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
 

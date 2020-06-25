@@ -8,6 +8,7 @@
 #include "tldevel.h"
 
 #include "model.h"
+#include "model_alloc.h"
 #include "finite_hmm.h"
 
 #include "fast_hmm_param.h"

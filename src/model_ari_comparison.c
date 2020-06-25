@@ -19,7 +19,8 @@
 
 
 #include "model.h"
-
+#include "model_io.h"
+#include "model_alloc.h"
 #include "adjusted_rand_index.h"
 
 

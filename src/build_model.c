@@ -22,6 +22,8 @@
 #include "run_score.h"
 
 #include "model.h"
+#include "model_struct.h"
+#include "model_io.h"
 #include "fast_hmm_param.h"
 //#include "init_seq_label.h"
 #include "hmm_conversion.h"

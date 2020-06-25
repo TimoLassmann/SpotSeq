@@ -12,6 +12,8 @@
 //#include "fast_hmm_param.h"
 #include "ihmm_seq.h"
 #include "model.h"
+#include "model_struct.h"
+#include "model_alloc.h"
 #include "global.h"
 
 #include "hmm_conversion.h"

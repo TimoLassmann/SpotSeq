@@ -48,7 +48,17 @@ fast_hmm_param_test_functions.c
 
 KALIGNSOURCE = kalign.h kalign.c
 
-MODELSOURCE = model.h model.c model_io.c model_struct.h model_alloc.h model_alloc.c global.h $(NULLMODEL)
+MODELSOURCE = \
+model.h \
+model.c \
+model_io.c \
+model_struct.h \
+model_alloc.h \
+model_alloc.c \
+model_help.h \
+model_help.c \
+global.h \
+$(NULLMODEL)
 
 BEAMSOURCE = beam_sample.h beam_sample.c
 

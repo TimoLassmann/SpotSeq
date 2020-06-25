@@ -49,8 +49,8 @@ fast_hmm_param_test_functions.c
 KALIGNSOURCE = kalign.h kalign.c
 
 MODELSOURCE = \
-model.h \
-model.c \
+model_core.h \
+model_core.c \
 model_io.c \
 model_struct.h \
 model_alloc.h \

@@ -36,7 +36,7 @@
 void* do_dynamic_programming(void *threadarg);
 void* do_forward_backward(void *threadarg);
 
-static int sort_by_p(const void *a, const void *b);
+//static int sort_by_p(const void *a, const void *b);
 
 int approximatelyEqual(double a, double b, double epsilon);
 

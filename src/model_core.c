@@ -1,5 +1,13 @@
 
-#include "model.h"
+
+#include "global.h"
+#include "tldevel.h"
+#include "distributions.h"
+
+#include "finite_hmm.h"
+#include <math.h>
+#include <stdint.h>
+
 #include "model_alloc.h"
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
@@ -7,12 +15,16 @@
 
 #include "null_model_emission.h"
 
-static int init_model_background(double* background, int L);
+
+#define MODEL_CORE_IMPORT
+#include "model_core.h"
+
+
 static int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
 
-static int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha);
+//static int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha);
 
-int inititalize_model(struct ihmm_model* model, struct seq_buffer* sb, int K)
+int inititalize_model(struct seq_buffer* sb, int K)
 {
         int i;
         int average_input_seq_len = 0;

@@ -10,7 +10,11 @@
 #include "tldevel.h"
 #include "tlmisc.h"
 #include "tllogsum.h"
+#include "tlrng.h"
 //#include "model.h"
+#include "sequence_io.h"
+#include "sequence_prep.h"
+
 #include "ihmm_seq.h"
 
 #include "finite_hmm.h"
@@ -26,6 +30,8 @@ struct parameters{
         char* summary_file;
         int num_threads;
         rk_state rndstate;
+        struct rng_state* rng;
+
 };
 
 
@@ -55,6 +61,7 @@ int main (int argc, char *argv[])
         param->output = NULL;
         param->num_threads = 8;
         param->summary_file = NULL;
+        param->rng = NULL;
 
         while (1){
                 static struct option long_options[] ={
@@ -105,6 +112,7 @@ int main (int argc, char *argv[])
 
         if(42){
                 rk_seed(42, &param->rndstate);
+                RUNP(param->rng = init_rng(42));
         }else{
                 rk_randomseed(&param->rndstate);
         }
@@ -156,7 +164,11 @@ int main (int argc, char *argv[])
         RUN(alloc_dyn_matrices(fhmm));
         /* load sequences.  */
         LOG_MSG("Loading sequences.");
-        RUNP(sb = load_sequences(param->in_sequences, &param->rndstate));
+
+
+        RUN(read_sequences_file(&sb, param->in_sequences));
+        RUN(prep_sequences(sb,param->rng, 1,0,0.0));
+        //RUNP(sb = load_sequences(param->in_sequences, &param->rndstate));
         LOG_MSG("Read %d sequences.",sb->num_seq);
         /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
 
@@ -167,7 +179,10 @@ int main (int argc, char *argv[])
         RUN(get_res_counts(sb, fhmm->background));
         if(param->background_sequences){
                 LOG_MSG("Loading background sequences.");
-                RUNP(sb_back = load_sequences(param->background_sequences, &param->rndstate));
+                RUN(read_sequences_file(&sb_back, param->background_sequences));
+                RUN(prep_sequences(sb_back,param->rng, 1,0,0.0));
+
+                //RUNP(sb_back = load_sequences(param->background_sequences, &param->rndstate));
                 LOG_MSG("Read %d sequences.",sb->num_seq);
                 RUN(get_res_counts(sb_back, fhmm->background));
         }
@@ -256,6 +271,9 @@ ERROR:
 int free_parameters(struct parameters* param)
 {
         ASSERT(param != NULL, " No param found - free'd already???");
+        if(param->rng){
+                free_rng(param->rng);
+        }
         MFREE(param);
         return OK;
 ERROR:

@@ -12,7 +12,11 @@
 
 #include "tldevel.h"
 #include "tlmisc.h"
-#include "ihmm_seq.h"
+
+#include "sequence_struct.h"
+#include "sequence_alloc.h"
+#include "sequence_io.h"
+//#include "ihmm_seq.h"
 
 //#include "beam_sample.h"
 //#include "model.h"
@@ -20,6 +24,8 @@
 #include "fast_hmm_param.h"
 #include "hmm_conversion.h"
 #include "finite_hmm_io.h"
+
+#include "sequence_io.h"
 
 #define BUFFER_LEN 128
 

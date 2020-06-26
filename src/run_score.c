@@ -1,6 +1,8 @@
 
 #include "run_score.h"
 
+#include "sequence_struct.h"
+
 #include "tllogsum.h"
 
 int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td)

@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
         int l;
         const int p_limit = 100;
 
+
+
         RUNP(rng = init_rng(0));
 
         RUN(read_sequences_file(&sb, argv[1]));

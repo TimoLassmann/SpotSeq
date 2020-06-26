@@ -14,7 +14,7 @@
 
 #include "tldevel.h"
 //#include "thr_pool.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 
 #include "finite_hmm.h"
 

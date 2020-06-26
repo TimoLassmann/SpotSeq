@@ -176,3 +176,18 @@ int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng)
 ERROR:
         return FAIL;
 }
+
+int get_res_counts(struct seq_buffer* sb, double* counts)
+{
+        int i,j;
+        ASSERT(sb!= NULL, "No sequence buffer");
+        ASSERT(counts!= NULL, "No sequence buffer");
+        for(i = 0; i < sb->num_seq;i++){
+                for(j = 0;j < sb->sequences[i]->seq_len;j++){
+                        counts[sb->sequences[i]->seq[j]]++;
+                }
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}

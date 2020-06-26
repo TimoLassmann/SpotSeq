@@ -10,9 +10,9 @@
 
 #include "tllogsum.h"
 #include "tlmisc.h"
+#include "tlrng.h"
 
-#include "ihmm_seq.h"
-
+//#include "ihmm_seq.h"
 #include "beam_sample.h"
 
 #include "finite_hmm.h"
@@ -20,6 +20,12 @@
 #include "distributions.h"
 
 #include "run_score.h"
+
+#include "sequence_alloc.h"
+#include "sequence_io.h"
+#include "sequence_struct.h"
+#include "sequence_prep.h"
+
 
 #include "model_core.h"
 
@@ -45,6 +51,7 @@ struct parameters{
         double gamma;
         unsigned long seed;
         rk_state rndstate;
+        struct rng_state* rng;
         int active_file;
         int competitive;
         int num_iter;
@@ -98,6 +105,7 @@ int main (int argc, char *argv[])
         param->num_models = 1;
         param->competitive = 0;
         param->num_max_states = 1000;
+        param->rng = NULL;
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
@@ -207,8 +215,10 @@ int main (int argc, char *argv[])
         }
 
         if(param->seed){
+                RUNP(param->rng = init_rng(param->seed));
                 rk_seed(param->seed, &param->rndstate);
         }else{
+                RUNP(param->rng = init_rng(0));
                 rk_randomseed(&param->rndstate);
         }
 
@@ -236,7 +246,7 @@ int run_build_ihmm(struct parameters* param)
         //struct thr_pool* pool = NULL;
         int* num_state_array = NULL;
 
-        double average_sequence_len;
+
 
         //int initial_states;
         int i;
@@ -263,37 +273,23 @@ int run_build_ihmm(struct parameters* param)
         }else{                  /* New run - start from the beginning */
                 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
-                RUNP(sb = load_sequences(param->input,&param->rndstate));
+                //RUNP(rng = init_rng(0));
+
+                RUN(read_sequences_file(&sb, param->input));
+
+
+                RUN(prep_sequences(sb,param->rng, param->num_models,param->num_start_states,0.0));
+
+                //RUNP(sb = load_sequences(param->input,&param->rndstate));
 
                 //sb = concatenate_sequences(sb);
                 //RUN(label_seq_based_on_random_fhmm(sb, initial_states, 0.3));
-                LOG_MSG("%d models ",param->num_models);
-
-                if(param->rev && sb->L == ALPHABET_DNA){
-                        LOG_MSG("Add revcomp sequences.");
-                        RUN(add_reverse_complement_sequences_to_buffer(sb));
-                }
-
-                average_sequence_len = 0.0;
-
-                for(i = 0; i < sb->num_seq;i++){
-                        average_sequence_len += sb->sequences[i]->seq_len;
-                }
-
-                average_sequence_len /= (double) sb->num_seq;
-                average_sequence_len = sqrt(average_sequence_len);
-
-                /* If the user specified the number of states use this instead. */
-                if(param->num_start_states){
-                        average_sequence_len = (double) param->num_start_states;
-                }
+                //LOG_MSG("%d models ",param->num_models);
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
-                RUN(init_num_state_array( num_state_array,param->num_max_states,  param->num_models, param, average_sequence_len));
 
                 //LOG_MSG("MAXK: %d", param->num_max_states);
                 RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,param->num_max_states , param->seed));
 
-                RUN(add_multi_model_label_and_u(sb, model_bag->num_models));
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
                 /* New label sequences  */
                 /* We need to label sequences somehow so that we can
@@ -301,14 +297,13 @@ int run_build_ihmm(struct parameters* param)
                  * model guess */
                 //model_bag->max_num_states = 0;
                 for(i = 0; i < model_bag->num_models;i++){
-                        RUN(random_label_based_on_multiple_models(sb, model_bag->models[i]->num_states,i,&model_bag->rndstate));
 
                         RUN(fill_counts(model_bag->models[i], sb,i));
 
                         //model_bag->max_num_states = MACRO_MAX(model_bag->max_num_states,model_bag->models[i]->num_states);
                 }
 
-                RUN(check_labels(sb,model_bag->num_models ));
+                //RUN(check_labels(sb,model_bag->num_models ));
                 /* Set seed in sequence buffer */
                 //sb->seed = rk_ulong(&model_bag->rndstate);
                 //rk_seed(sb->seed, &sb->rndstate);
@@ -576,36 +571,6 @@ ERROR:
         return FAIL;
 }
 
-
-
-int init_num_state_array(int* num_state_array, int maxK, int len, struct parameters* param, double mean)
-{
-        rk_state rndstate;
-        int i;
-
-        ASSERT(param != NULL,"No parameter");
-
-        if(param->seed){
-                rk_seed(param->seed, &rndstate);
-        }else{
-                rk_randomseed(&rndstate);
-        }
-        if(param->num_start_states){
-                for(i = 0; i < len;i++){
-                        num_state_array[i] = param->num_start_states;
-                }
-        }else{
-                for(i = 0; i < len;i++){
-                        num_state_array[i] = (int)rk_normal(&rndstate, mean,1.0);
-                        num_state_array[i] = MACRO_MIN(num_state_array[i], maxK);
-                        num_state_array[i] = MACRO_MAX(num_state_array[i], 10);
-                }
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}
-
 int random_score_sequences(struct seq_buffer* sb,double* background )
 {
         struct ihmm_sequence* s;
@@ -770,6 +735,7 @@ int free_parameters(struct parameters* param)
         if(param->cmd_line){
                 gfree(param->cmd_line);
         }
+        free_rng(param->rng);
         /*if(param->tmp_file_A){
                 MFREE(param->tmp_file_A);
         }

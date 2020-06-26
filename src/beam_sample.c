@@ -6,11 +6,12 @@
 
 #include <omp.h>
 
+#include "sequence_struct.h"
 
 //#include "thr_pool.h"
 //#include "rbtree.h"
 //#include "fast_hmm_param.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 #include "model_core.h"
 
 #include "model_alloc.h"
@@ -95,7 +96,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 //model_bag->max_num_states = -1;
 
                 //LOG_MSG("Check labelling at start..(%d)", iter);
-                RUN(check_labels(sb,model_bag->num_models ));
+                //RUN(check_labels(sb,model_bag->num_models ));
                 //LOG_MSG("Done");
                 if(!no_path){
                         for(i = 0; i < model_bag->num_models;i++){

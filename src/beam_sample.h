@@ -10,6 +10,7 @@
 struct model_bag;
 struct seqer_thread_data;
 struct fast_param_bag;
+struct seq_buffer;
 
 EXTERN int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag*ft_bag, struct seq_buffer* sb,struct seqer_thread_data** td, int iterations, int num_threads);
 

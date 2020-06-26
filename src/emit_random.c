@@ -107,7 +107,7 @@ int main(const int argc, char * argv[])
                 free_fhmm(fhmm);
         }
 
-        RUN( write_ihmm_sequences_fasta(sb, out, &rndstate));
+        //RUN( write_ihmm_sequences_fasta(sb, out, &rndstate));
 
         free_ihmm_sequences(sb);
         free_ihmm_sequences(sb_in);

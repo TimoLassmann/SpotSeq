@@ -18,6 +18,8 @@ EXTERN int alloc_ihmm_seq(struct ihmm_sequence** is);
 EXTERN int realloc_ihmm_seq(struct ihmm_sequence* sequence, int new_len);
 EXTERN void free_ihmm_sequences(struct seq_buffer* sb);
 
+EXTERN int add_multi_model_label_and_u(struct seq_buffer* sb,int num_models);
+
 #undef SEQUENCE_ALLOC_IMPORT
 #undef EXTERN
 

@@ -3,6 +3,8 @@
 
 #include <inttypes.h>
 
+#include "tlalphabet.h"
+
 struct ihmm_sequence{
         uint8_t* seq;
         uint8_t* has_path;
@@ -21,6 +23,7 @@ struct ihmm_sequence{
 
 struct seq_buffer{
         struct ihmm_sequence** sequences;
+        struct alphabet* alphabet;
         int malloc_num;
         int num_seq;
         int org_num_seq;

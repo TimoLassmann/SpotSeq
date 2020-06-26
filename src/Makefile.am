@@ -288,5 +288,7 @@ sequence_alloc.h \
 sequence_alloc.c \
 sequence_io.h \
 sequence_io.c \
+sequence_prep.h \
+sequence_prep.c \
 sequence_test.c
 

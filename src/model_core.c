@@ -8,8 +8,9 @@
 #include <math.h>
 #include <stdint.h>
 
+#include "sequence_struct.h"
 #include "model_alloc.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 #include "finite_hmm.h"
 
 
@@ -192,7 +193,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
         j = 0;
         sum = 0.0;
         for(i = 0; i < ihmm->num_states;i++){
-                if(used[i] != 0){
+                if(used[i] > sb->num_seq /2){  //} != 0){
                         ihmm->beta[j] = ihmm->beta[i];
                         relabel[i] = j;
                         j++;
@@ -258,7 +259,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
 
         /* First I need to check what the largest state ID is and see if we have sufficient space allocated in the model.  */
         max_state_ID = -1;
-
+        //LOG_MSG("SEQ: %d",sb->)
         //fprintf(stdout,"%d numseq\n",sb->num_seq );
         for(i = 0; i < sb->num_seq;i++){
                 label = sb->sequences[i]->label_arr[model_index];
@@ -592,71 +593,3 @@ ERROR:
 
 
 
-
-
-#ifdef ITESTMODEL
-
-#include "model_help.h"
-int main(const int argc,const char * argv[])
-{
-        struct ihmm_model* ihmm = NULL;
-        struct seq_buffer* sb = NULL;
-        rk_state rndstate;
-        int i;
-        char *tmp_seq[4] = {
-                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
-                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
-                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT",
-                "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"};
-
-
-        rk_randomseed(&rndstate);
-        //119l
-        //RUN(print_program_header((char * const*)argv,"GAGA"));
-
-
-        RUNP(sb = create_ihmm_sequences_mem(tmp_seq ,4,&rndstate));
-        RUN(random_label_ihmm_sequences(sb, 10, 0.3));
-        rk_seed(1802, &rndstate);
-
-
-
-        RUNP(ihmm = alloc_ihmm_model(20,1024, 4,42));
-        /* Need to set alpha_[a/b] and gamma[a/b] manually before calling
-         * hyper */
-        RUN(resize_ihmm_model(ihmm, 16+3));
-        RUN(resize_ihmm_model(ihmm, 2+3));
-
-        /* At this stage there are no counts AND the model parameters are not
-         * initialized. */
-
-        RUN(add_multi_model_label_and_u(sb, 1));
-        RUN(random_label_based_on_multiple_models(sb, 10, 0, &rndstate));
-        RUN(fill_counts(ihmm,sb,0));
-        RUN(print_counts(ihmm));
-        LOG_MSG("%d %d", sb->L, sb->num_seq);
-
-
-        /* I am doing this as a pre-caution. I don't want the inital model
-         * contain states that are not visited.. */
-        LOG_MSG("remove unused states");
-
-        RUN(remove_unused_states_labels(ihmm, sb,0));
-        RUN(fill_counts(ihmm,sb,0));
-        RUN(print_counts(ihmm));
-
-
-        free_ihmm_model(ihmm);
-        free_ihmm_sequences(sb);
-
-
-
-
-
-
-        return EXIT_SUCCESS;
-ERROR:
-        return EXIT_FAILURE;
-
-}
-#endif

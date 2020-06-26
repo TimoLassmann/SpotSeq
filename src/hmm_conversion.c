@@ -1,3 +1,5 @@
+#include <omp.h>
+
 #include "hmm_conversion.h"
 
 
@@ -546,12 +548,24 @@ int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)
         //ASSERT(model_bag->finite_models == NULL, "Warning fhmm models already exist?");
 
         MMALLOC(model_bag->finite_models, sizeof(struct fhmm*)* model_bag->num_models);
-        for(miter = 0; miter < model_bag->num_models;miter++){
-                //LOG_MSG("Looking at model: %d ",miter);
-                model_bag->finite_models[miter] = NULL;
 
-                RUNP(model_bag->finite_models[miter] = build_finite_hmm_from_infinite_hmm(model_bag->models[miter]));
+#ifdef HAVE_OPENMP
+
+#pragma omp parallel shared(model_bag) private(miter)
+        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                for(miter = 0; miter < model_bag->num_models;miter++){
+                        //LOG_MSG("Looking at model: %d ",miter);
+                        model_bag->finite_models[miter] = NULL;
+
+                        model_bag->finite_models[miter] = build_finite_hmm_from_infinite_hmm(model_bag->models[miter]);
+                }
+#ifdef HAVE_OPENMP
         }
+#endif
+
+
         return OK;
 ERROR:
         return FAIL;

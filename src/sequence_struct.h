@@ -24,6 +24,7 @@ struct ihmm_sequence{
 struct seq_buffer{
         struct ihmm_sequence** sequences;
         struct alphabet* alphabet;
+        int* num_state_arr;
         int malloc_num;
         int num_seq;
         int org_num_seq;

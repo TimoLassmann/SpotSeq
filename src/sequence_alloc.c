@@ -22,6 +22,7 @@ int alloc_sequence_buffer(struct seq_buffer** seq_buf,int num_seq)
         sb->L = -1;
         sb->org_num_seq = -1;
         sb->alphabet = NULL;
+        sb->num_state_arr = NULL;
         MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
         for(i = 0; i < sb->malloc_num;i++){
                 sb->sequences[i] = NULL;
@@ -129,6 +130,9 @@ void free_ihmm_sequences(struct seq_buffer* sb)
                 MFREE(sb->sequences);
                 if(sb->alphabet){
                         free_alphabet(sb->alphabet);
+                }
+                if(sb->num_state_arr){
+                        MFREE(sb->num_state_arr);
                 }
                 //if(sb->background){
                 //gfree(sb->background);

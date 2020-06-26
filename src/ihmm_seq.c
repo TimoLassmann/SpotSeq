@@ -204,6 +204,8 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                 }
                 sb->sequences[i]->seq_len = j;
         }
+
+
         if(mode == IHMM_SEQ_READ_ALL){
                 gfree(label);
         }

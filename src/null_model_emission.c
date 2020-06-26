@@ -3,7 +3,7 @@
 
 #define NULL_MODEL_EMISSION_IMPORT
 #include "null_model_emission.h"
-
+static int approximatelyEqual(double a, double b, double epsilon);
 int get_null_model_emissions(double** b, int L)
 {
         double sum;
@@ -54,15 +54,23 @@ int get_null_model_emissions(double** b, int L)
                         background[i] = 1.0 / (double) L;
                 }
         }
+        //LOG_MSG("L:%d", L);
         sum = 0.0;
         for(i = 0; i < L;i++){
                 sum += background[i];
+                //LOG_MSG("%d %f",i ,sum);
         }
+        //LOG_MSG("%d %d", sum == 1.0, approximatelyEqual(1.0, sum, FLT_EPSILON));
 
-        ASSERT(sum == 1.0,"background sum is != 1.0");
+        ASSERT( approximatelyEqual(1.0, sum, FLT_EPSILON),"background sum is != 1.0: %f",sum);
 
         *b = background;
         return OK;
 ERROR:
         return FAIL;
+}
+
+int approximatelyEqual(double a, double b, double epsilon)
+{
+        return fabs(a - b) <= ( (fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * epsilon);
 }

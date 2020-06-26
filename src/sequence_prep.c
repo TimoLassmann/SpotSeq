@@ -40,7 +40,7 @@ int prep_sequences(struct seq_buffer* sb, struct rng_state* rng, int num_models,
         /* randomly label sequences  */
         /* I know the number of models ; unknown are number of states  */
         RUN(init_labelling(sb, rng, num_models, num_states, sigma));
-
+        LOG_MSG("SEQUENCES: %d", sb->num_seq);
         return OK;
 ERROR:
         return FAIL;
@@ -48,8 +48,6 @@ ERROR:
 
 int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma)
 {
-        int* num_state_arr = NULL;
-
         double average_sequence_len = 0.0;
 
         int i;
@@ -57,32 +55,28 @@ int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,
         if(sigma == 0){
                 sigma = 1.0;
         }
-        MMALLOC(num_state_arr, sizeof(int) * num_models);
+
+        MMALLOC(sb->num_state_arr, sizeof(int) * num_models);
 
         if(!num_states){
                 average_sequence_len = 0.0;
                 for(i = 0; i < sb->num_seq;i++){
                         average_sequence_len += sb->sequences[i]->seq_len;
                 }
-
                 average_sequence_len /= (double) sb->num_seq;
-                average_sequence_len *= 0.5;
+                average_sequence_len = sqrt(average_sequence_len);
                 num_states = round(average_sequence_len);
         }
-        for(i = 0; i < num_models;i++){
-                num_state_arr[i] = tl_random_gaussian(rng, num_states,sigma);
-                num_state_arr[i] = MACRO_MIN(num_state_arr[i], MAX_NUM_STATES-2);
-                num_state_arr[i] = MACRO_MAX(num_state_arr[i], 10);
 
-                num_state_arr[i] = 16;
+        for(i = 0; i < num_models;i++){
+                sb->num_state_arr[i] = tl_random_gaussian(rng, num_states,sigma);
+                sb->num_state_arr[i] = MACRO_MIN(sb->num_state_arr[i], MAX_NUM_STATES-2);
+                sb->num_state_arr[i] = MACRO_MAX(sb->num_state_arr[i], 10);
         }
 
         for(i = 0; i < num_models;i++){
-                random_label_sequences(sb, num_state_arr[i], i, rng);
+                RUN(random_label_sequences(sb, sb->num_state_arr[i], i, rng));
         }
-
-
-        MFREE(num_state_arr);
 
         return OK;
 ERROR:

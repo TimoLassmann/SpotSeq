@@ -243,19 +243,10 @@ int run_build_ihmm(struct parameters* param)
         struct seq_buffer* sb = NULL;
         struct seqer_thread_data** td = NULL;
 
-        //struct thr_pool* pool = NULL;
-        int* num_state_array = NULL;
-
-
-
-        //int initial_states;
         int i;
 
         ASSERT(param!= NULL, "No parameters found.");
         init_logsum();
-
-
-        MMALLOC(num_state_array, sizeof(int)* param->num_models);
 
         /* If we have saved a model continue from there */
         if(my_file_exists(param->in_model)){
@@ -264,9 +255,11 @@ int run_build_ihmm(struct parameters* param)
                 RUNP(model_bag = read_model_bag_hdf5(param->in_model));
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model,IHMM_SEQ_READ_ALL));
 
+                MMALLOC(sb->num_state_arr, sizeof(int) * model_bag->num_models);
                 for(i = 0; i < model_bag->num_models;i++){
-                        num_state_array[i] = model_bag->models[i]->num_states;
+                        sb->num_state_arr[i] = model_bag->models[i]->num_states;
                 }
+
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
 
                 //RUN(convert_ihmm_to_fhmm_models(model_bag));
@@ -288,7 +281,7 @@ int run_build_ihmm(struct parameters* param)
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
 
                 //LOG_MSG("MAXK: %d", param->num_max_states);
-                RUNP(model_bag = alloc_model_bag(num_state_array, sb->L, param->num_models,param->num_max_states , param->seed));
+                RUNP(model_bag = alloc_model_bag(sb->num_state_arr, sb->L, param->num_models,MAX_NUM_STATES , param->seed));
 
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
                 /* New label sequences  */
@@ -296,6 +289,7 @@ int run_build_ihmm(struct parameters* param)
                  * set the u arrays properly based on the initial
                  * model guess */
                 //model_bag->max_num_states = 0;
+                LOG_MSG("%d ",sb->num_seq);
                 for(i = 0; i < model_bag->num_models;i++){
 
                         RUN(fill_counts(model_bag->models[i], sb,i));
@@ -318,7 +312,7 @@ int run_build_ihmm(struct parameters* param)
         LOG_MSG("Will use %d threads.", param->num_threads);
         //if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
-        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, num_state_array, sb->L));
+        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, sb->num_state_arr, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */
         //RUN(fill_background_emission(ft_bag->fast_params[0], sb));
@@ -406,7 +400,7 @@ int run_build_ihmm(struct parameters* param)
         free_fast_param_bag(ft_bag);
         free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
-        MFREE(num_state_array);
+        //MFREE(num_state_array);
         return OK;
 ERROR:
         free_ihmm_sequences(sb);
@@ -414,7 +408,7 @@ ERROR:
         free_fast_param_bag(ft_bag);
         free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
-        MFREE(num_state_array);
+        //MFREE(num_state_array);
         return FAIL;
 }
 
@@ -679,7 +673,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
                 }
 
                 RUN(calculate_BIC(fhmm, max_likelihood, total_seq_len, &BIC));
-                LOG_MSG("Model: %d ML: %.2f BIC %f (based on first %d seqs)",c,max_likelihood,BIC,limit);
+                LOG_MSG("Model: %d (%d states) ML: %.2f BIC %f (based on first %d seqs)",c,fhmm->K, max_likelihood,BIC,limit);
                 if(BIC > best_score){
                         best_score = BIC;
                         model_bag->best_model = c;

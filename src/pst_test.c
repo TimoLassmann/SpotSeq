@@ -7,12 +7,17 @@
 #include "tlmisc.h"
 #include "tlrng.h"
 #include "tlseqio.h"
+#include "tlalphabet.h"
 
 #include "esl_stopwatch.h"
 #include "sim_seq_lib.h"
 
+
+
 #define PST_IMPORT
 #include "pst.h"
+
+
 
 static int test_match_insert(char* infile);
 
@@ -48,6 +53,8 @@ int test_match_insert(char* infile)
         struct pst* p = NULL;
         struct rng_state* rng = NULL;
         struct kmer_counts* k = NULL;
+        struct alphabet* a = NULL;
+        struct count_hash* h = NULL;
 
         double s[5];
         char* test_seq = NULL;
@@ -68,10 +75,28 @@ int test_match_insert(char* infile)
         RUN(alloc_kmer_counts(&k, 16));
         RUN(add_counts(k, sb));
 
-        RUN(run_build_pst(&p, 0.05,k));
-        RUN(rm_counts(k,sb));
-        RUN(test_kmer_counts(k));
         RUNP(rng = init_rng(0));
+        if(sb->L == TL_SEQ_BUFFER_DNA){
+                RUN(create_alphabet(&a, rng, TLALPHABET_DEFAULT_DNA));
+        }else if(sb->L == TL_SEQ_BUFFER_PROTEIN){
+                RUN(create_alphabet(&a, rng, TLALPHABET_DEFAULT_PROTEIN));
+        }
+        for(i = 0; i < sb->num_seq;i++){
+                RUN(convert_to_internal(a, (uint8_t*)sb->sequences[i]->seq, sb->sequences[i]->len));
+        }
+        LOG_MSG("L: %d",sb->L);
+
+        RUN(fill_exact_hash(&h, sb));
+
+        LOG_MSG("L: %d",h->L);
+        RUN(run_build_pst(&p, 0.01,h,k));
+        RUN(rm_counts(k,sb));
+        free_exact_hash(h);
+        exit(0);
+
+        RUN(test_kmer_counts(k));
+
+
 
         DECLARE_TIMER(timer);
 

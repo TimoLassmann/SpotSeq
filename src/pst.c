@@ -3,13 +3,17 @@
 #include "tllogsum.h"
 #include <string.h>
 
+
+
 #include "pst.h"
-#define MAX_PST_LEN 14
+
 
 struct pst_node{
-        struct pst_node* next[4];
-        float nuc_probability[4];
+        struct pst_node* next[20];
+        float probability[20];
         char* label;
+        int label_len;
+
 };
 
 #include "pst_structs.h"
@@ -20,8 +24,10 @@ struct kmer_counts{
 };
 
 //static int init_pst(struct pst** pst, int len);
-static int init_pst(struct pst** pst,float expected_error, int len);
-static int init_helper(struct pst_node** helper, uint32_t* counts,float gamma_min);
+
+static int init_pst(struct pst** pst,float expected_error, int len, int L);
+static int init_helper(struct pst_node** helper, struct count_hash* ch,float gamma_min);
+//static int init_helper(struct pst_node** helper, uint32_t* counts,float gamma_min);
 static float get_pst_prob(struct pst_node* n, char* string,int target, int pos);
 
 static float get_ppt_prob(struct pst_node* n, char* string,int target, int pos);
@@ -30,7 +36,9 @@ static float get_fpst_prob(struct fpst* f, char* string,int target, int pos);
 static float get_fppt_prob(struct fpst* f, char* string,int target, int pos, int len);
 //static struct pst_node* build_pst(struct pst* pst,struct pst_node* n );
 //static struct pst_node* build_pst(struct pst* pst, struct fpst* f, struct pst_node* n,struct kmer_counts* k);
-struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n,struct kmer_counts* k);
+//struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n,struct kmer_counts* k);
+
+struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n,struct kmer_counts* k, struct count_hash* h);
 struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_node* n ,struct kmer_counts* k);
 //static struct pst_node* build_ppt(struct pst* pst,struct pst_node* n ,struct kmer_counts* k);
 //static struct pst_node* build_ppt(struct pst* pst,struct pst_node* n );
@@ -39,12 +47,15 @@ static void print_pst(struct pst* pst,struct pst_node* n);
 //static void print_pst(struct pst* pst,struct pst_node* n,int* num);
 static void free_pst_node(struct pst_node* n);
 
-static struct pst_node* alloc_node(struct pst_node* n,char* string,int len);
+//static struct pst_node* alloc_node(struct pst_node* n,char* string,int len);
 
+static int alloc_node(struct pst_node** node,uint8_t* string,int len, int L);
 static inline int nuc_to_internal(const char c);
 
-static int alloc_fpst(struct fpst** fast_pst, int size);
-static int resize_fpst(struct fpst* f);
+static int alloc_fpst(struct fpst** fast_pst, int size, int L);
+//static int alloc_fpst(struct fpst** fast_pst, int size);
+
+static int resize_fpst(struct fpst* f, int L);
 static int prob2scaledprob_fpst(struct fpst* f);
 static void free_fpst(struct fpst* f);
 
@@ -149,7 +160,7 @@ int scan_read_with_pst(struct pst* pst, char* seq, int len, float*r)
 float get_pst_prob(struct pst_node* n, char* string,int target, int pos)
 {
         if(pos == 0){
-                return n->nuc_probability[target];
+                return n->probability[target];
         }
         pos = pos -1;
         int c;
@@ -157,7 +168,7 @@ float get_pst_prob(struct pst_node* n, char* string,int target, int pos)
         if(n->next[c]){
                 return get_pst_prob(n->next[c], string, target,pos);
         }else{
-                return n->nuc_probability[target];
+                return n->probability[target];
         }
 }
 
@@ -183,7 +194,7 @@ float get_ppt_prob(struct pst_node* n, char* string,int target, int pos)
 {
 
         if(string[pos+1] == 0){
-                return n->nuc_probability[target];
+                return n->probability[target];
         }
         int c;
         pos = pos +1;
@@ -193,7 +204,7 @@ float get_ppt_prob(struct pst_node* n, char* string,int target, int pos)
                 return get_ppt_prob(n->next[c], string, target,pos);
         }else{
 
-                return n->nuc_probability[target];
+                return n->probability[target];
         }
 }
 
@@ -215,33 +226,44 @@ float get_fppt_prob(struct fpst* f, char* string,int target, int pos, int len)
         return f->prob[n][target];
 }
 
-int run_build_pst(struct pst** pst, float expected_error, struct kmer_counts* k)//  struct tl_seq_buffer* sb)
+int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h, struct kmer_counts* k)//  struct tl_seq_buffer* sb)
 {
         struct pst* p = NULL;
         struct pst_node* helper = NULL;
         float sum;
         int i;
         float c;
-        int x;
+        uint64_t x;
+        uint64_t key;
+        khiter_t hi;
 
         init_logsum();
 
-        RUN(init_pst(&p,expected_error,  k->L));
-
+        RUN(init_pst(&p,expected_error,  h->len,h->L));
+        LOG_MSG("%d " , h->L);
         sum = 0.0;
-        for(i = 0;i < 4;i++){
+        for(i = 0;i < p->L;i++){
                 c = (float) k->counts[0][i];
-                //LOG_MSG("%c: %f", "ACGT"[i],c);
+                LOG_MSG("%d: %f", i,c);
+                uint64_t x;
+                key =  (1ULL<< 60ULL) | (uint64_t)i;
+
+
+                hi= kh_get(exact, h->hash, key);
+                if(hi != kh_end(h->hash)){
+                        LOG_MSG("%d: %d", i,kh_value(h->hash, hi));
+                }
+
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] = c;
                 //p->fppt_root->prob[x][i] = c;
                 sum += p->fpst_root->prob[x][i];
         }
 
-        for(i = 0;i < 4;i++){
+        for(i = 0;i < p->L;i++){
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] /=sum;
-                p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] *(1.0f  - 4.0f * p->gamma_min) + p->gamma_min;
+                //p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] *(1.0f  - (float) (p->L) * p->gamma_min) + p->gamma_min;
                 p->fpst_root->links[x][i] = 0;
 
                 /*x = p->fppt_root->l;
@@ -251,16 +273,16 @@ int run_build_pst(struct pst** pst, float expected_error, struct kmer_counts* k)
 
 
                 //fprintf(stdout," %f", p->fppt_root->prob[x][i]);
-                //fprintf(stdout,"%c %f\n", alphabet[i],p->pst_root->nuc_probability[i]);
+                //fprintf(stdout,"%d %f\n", i,p->pst_root->probability[i]);
         }
         //fprintf(stdout,"\n");
         //exit(0);
         p->fpst_root->l = 0;
         //p->fppt_root->l = 0;
 
-        RUN(init_helper(&helper, k->counts[0], p->gamma_min));
-        helper = build_pst(p,p->fpst_root,0, helper,k);
-
+        RUN(init_helper(&helper,h, p->gamma_min));
+        helper = build_pst(p,p->fpst_root,0, helper,k,h);
+        print_pst(p,helper);
         p->fpst_root->l++;
         free_pst_node(helper);
         helper = NULL;
@@ -281,23 +303,38 @@ ERROR:
         return FAIL;
 }
 
-int init_helper(struct pst_node** helper, uint32_t* counts,float gamma_min)
+int init_helper(struct pst_node** helper, struct count_hash* ch,float gamma_min)
 {
         struct pst_node* h = NULL;
         int i;
         float c;
         float sum;
-        RUNP(h = alloc_node(h,"",0));
+        khiter_t hi;
+        uint64_t x;
+        uint8_t* null = NULL;
+        RUN(alloc_node(&h,null,0,ch->L));
         sum = 0.0;
-        for(i = 0;i < 4;i++){
-                c = (float) counts[i];
-                h->nuc_probability[i] = c;
-                sum += h->nuc_probability[i];
+        for(i = 0;i < ch->L;i++){
+                x =  (1ULL<< 60ULL) | (uint64_t)i;
+
+                c = 0;
+                hi= kh_get(exact, ch->hash, x);
+                if(hi != kh_end(ch->hash)){
+                        //LOG_MSG("%c: %f", "ACGT"[i],kh_value(h->hash, hi));
+                        c = kh_value(ch->hash, hi);
+                }
+
+                //c = (float) counts[i];
+                h->probability[i] = c;
+                sum += h->probability[i];
         }
-        for(i = 0;i < 4;i++){
-                h->nuc_probability[i] /= sum;
-                h->nuc_probability[i] = h->nuc_probability[i] *(1.0f  - 4.0f * gamma_min) + gamma_min;
+        for(i = 0;i < ch->L;i++){
+                h->probability[i] /= sum;
+                //h->probability[i] = h->probability[i] *(1.0f  - (float) (ch->L) * gamma_min) + gamma_min;
+                //fprintf(stdout,"%d %f\n", i, h->probability[i]);
+
         }
+
         *helper = h;
         return OK;
 ERROR:
@@ -305,65 +342,77 @@ ERROR:
 
 }
 
-struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n,struct kmer_counts* k)
+struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n,struct kmer_counts* k, struct count_hash* h)
 {
+        khiter_t hi;
+        //char alphabet[] = "ACGT";
 
-        char alphabet[] = "ACGT";
-
-        char tmp[MAX_PST_LEN+4];
+        uint8_t tmp[MAX_PST_LEN+20];
         int i;
         int j;
         int c;
         int add;
 
-        int len = (int) strlen(n->label);
+        int len = n->label_len;
         float sum = 0.0f;
-        float tmp_counts_s[4];
+        float tmp_counts_s[20];
 
-        uint32_t x;
+        uint64_t x;
+        uint64_t key;
         int maxlen;
 
-        maxlen = k->L;
+        maxlen = h->len;
         //step 2 test expansion
         //loop though letters at present node
-        if(len + 1 < maxlen ){
-                for(i = 0; i < 4;i++){
 
-                        if(n->nuc_probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
+        //LOG_MSG("%d < %d", len+1, maxlen);
+        if(len + 1 < maxlen ){
+                for(i = 0; i < pst->L;i++){
+                        //LOG_MSG("%f , min: %f", n->probability[i], pst->p_min);
+                        if(n->probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
 
                                 //init longer suffix
-                                x = i;
-                                tmp[0] = alphabet[i];
+                                x = (uint64_t)i;
+                                tmp[0] = i;//alphabet[i];
                                 for(j = 1; j < len+1;j++){
-                                        x = x << 2 | nuc_to_internal(n->label[j-1]);
+                                        x = (x << 5ULL) | (uint64_t)n->label[j-1];
                                         tmp[j] = n->label[j-1];
                                 }
 
-                                sum = 0.0;
-                                for(j = 0; j < 4;j++){
-                                        x = x << 2 | j;
-                                        c = k->counts[len+1][x];
-                                        tmp[len+1] = alphabet[j];
+                                sum = 0.0f;
+                                //LOG_MSG("len: %d L:%d", len,pst->L);
+                                for(j = 0; j < pst->L;j++){
+                                        x = x << 5ULL | (uint64_t)j;
+                                        //c = k->counts[len+1][x];
+                                        c = 0;
+                                        key = ((uint64_t)(len+2) << 60ULL) | x;
+                                        hi= kh_get(exact, h->hash, key);
+                                        if(hi != kh_end(h->hash)){
+                                                //LOG_MSG("%c: %f", "ACGT"[i],kh_value(h->hash, hi));
+                                                c  = kh_value(h->hash, hi);
+                                        }
+                                        tmp[len+1] = j;
                                         tmp[len+2] = 0;
                                         //c = count_string(tmp,(const char**)pst->suffix_array,pst->suffix_len-1,len+2);
                                         tmp_counts_s[j] = c;
-                                        sum+= c;
-                                        //LOG_MSG("Counts: %d %d %s", c, pst->counts[len+1][x], tmp);
+                                        sum += c;
+                                        //LOG_MSG("Counts: %d %d", j,c);
                                         //ASSERT(c ==pst->counts[len+1][x],"Counts: %d %d %s", c, pst->counts[len+1][x], tmp);
-                                        x = x >> 2;
+                                        x = x >> 5ULL;
                                 }
 
-                                for(j = 0; j < 4;j++){
+                                for(j = 0; j < pst->L;j++){
                                         tmp_counts_s[j] = tmp_counts_s[j]/sum;
+                                        //LOG_MSG("%d %f",j,tmp_counts_s[j]);
                                 }
 
                                 add = 0;
-
-                                for(j = 0; j < 4;j++){
-                                        if(tmp_counts_s[j] / n->nuc_probability[j] >= pst->r){
+                                for(j = 0; j < pst->L;j++){
+                                        //LOG_MSG("COMP: %f",tmp_counts_s[j] / n->probability[j]  );
+                                        if(tmp_counts_s[j] / n->probability[j] >= pst->r){
                                                 add = 1;
                                         }
-                                        if(tmp_counts_s[j] / n->nuc_probability[j] <= (1.0f/ pst->r)){
+                                        if(tmp_counts_s[j] / n->probability[j] <= (1.0f/ pst->r)){
                                                 add = 1;
                                         }
                                 }
@@ -372,27 +421,30 @@ struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_no
 
                                         f->l++;
                                         if(f->l== f->m){
-                                                resize_fpst(f);
+                                                resize_fpst(f,pst->L);
                                         }
-                                        n->next[i] = alloc_node(n->next[i] ,tmp,len+1);
-                                        for(j = 0; j < 4;j++){
-                                                f->prob[f->l][j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
+                                        RUN(alloc_node(&n->next[i] ,tmp,len+1,pst->L));
+                                        for(j = 0; j < pst->L;j++){
+                                                f->prob[f->l][j] = tmp_counts_s[j];// *(1.0f  - (float)(pst->L) *  pst->gamma_min) + pst->gamma_min;
                                                 f->links[f->l][j] = 0;
-                                                n->next[i]->nuc_probability[j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
+                                                n->next[i]->probability[j] = tmp_counts_s[j];// *(1.0f  - (float)(pst->L) *  pst->gamma_min) + pst->gamma_min;
                                         }
-                                        n->next[i] = build_pst(pst,f, f->links[curf][i], n->next[i] ,k );
+                                        //LOG_MSG("Going to %d, %d", i,f->links[curf][i]);
+                                        n->next[i] = build_pst(pst,f, f->links[curf][i], n->next[i] ,k,h );
                                 }
                         }
                 }
         }
         return n;
+ERROR:
+        return NULL;
 }
 
 struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_node* n ,struct kmer_counts* k)
 {
         char alphabet[] = "ACGT";
 
-        char tmp[MAX_PST_LEN+4];
+        uint8_t tmp[MAX_PST_LEN+20];
         int i;
         int j;
         int c;
@@ -422,7 +474,7 @@ struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_nod
 
 
                 for(i = 0; i < 4;i++){
-                        if(n->nuc_probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
+                        if(n->probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
                                 //init longer prefix!!!!
                                 x = 0;
                                 for(j = 0; j < len;j++){
@@ -462,11 +514,11 @@ struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_nod
 
                                 add = 0;
                                 for(j = 0; j < 4;j++){
-                                        if(tmp_counts_s[j] / n->nuc_probability[j] >= pst->r){
+                                        if(tmp_counts_s[j] / n->probability[j] >= pst->r){
                                                 add++;
                                         }
 
-                                        if(tmp_counts_s[j] / n->nuc_probability[j] <= 1.0/ pst->r){
+                                        if(tmp_counts_s[j] / n->probability[j] <= 1.0/ pst->r){
                                                 add++;
                                         }
                                 }
@@ -475,14 +527,14 @@ struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_nod
                                         f->links[curf][i] = f->l+1;
                                         f->l++;
                                         if(f->l== f->m){
-                                                resize_fpst(f);
+                                                resize_fpst(f,pst->L);
                                         }
-                                        n->next[i] = alloc_node(n->next[i] ,tmp+1,len+1);
+                                        RUN(alloc_node(&n->next[i] ,tmp+1,len+1,pst->L));
                                         //sum = 0;
                                         for(j = 0; j < 4;j++){
                                                 f->prob[f->l][j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
                                                 f->links[f->l][j] = 0;
-                                                n->next[i]->nuc_probability[j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
+                                                n->next[i]->probability[j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
                                         }
                                         n->next[i] = build_ppt(pst,f, f->links[curf][i], n->next[i] ,k );
                                 }
@@ -490,24 +542,26 @@ struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_nod
                 }
         }
         return n;
+ERROR:
+        return NULL;
 }
 
-int init_pst(struct pst** pst,float expected_error, int len)//, struct tl_seq_buffer* sb)
+int init_pst(struct pst** pst,float expected_error, int len, int L)//, struct tl_seq_buffer* sb)
 {
         struct pst* p = NULL;
         MMALLOC(p, sizeof(struct pst));
-        p->L = len;
-
+        p->len = len;
+        p->L = L;
         p->gamma_min = 0.02f;
         if(expected_error){
                 p->gamma_min = expected_error;
         }
-        p->p_min = 0.0001f;
+        p->p_min = 0.01f;
         p->r = 1.02f;
         p->fpst_root = NULL;
         p->mean = 0.0f;
         p->var = 0.0f;
-        RUN(alloc_fpst(&p->fpst_root, 64));
+        RUN(alloc_fpst(&p->fpst_root, 64,p->L));
         *pst = p;
         return OK;
 ERROR:
@@ -537,21 +591,30 @@ void free_pst_node(struct pst_node* n)
 }
 
 
-struct pst_node* alloc_node(struct pst_node* n,char* string,int len)
+int alloc_node(struct pst_node** node,uint8_t* string,int len, int L)
 {
+        struct pst_node* n =  NULL;
         int i;
         MMALLOC(n, sizeof(struct pst_node));
         n->label = NULL;
         MMALLOC(n->label, sizeof(char) * (len+1));
-        strncpy(n->label, string, len);
-        n->label[len] = 0;
-        for(i =0; i < 4;i++){
-                n->next[i] = NULL;
-                n->nuc_probability[i] = 0.25f;
+        //LOG_MSG("adding: ");
+        for(i = 0; i < len;i++){
+                n->label[i] = string[i];
+                //fprintf(stdout,"%d ", n->label[i]);
+
         }
-        return n;
+        //fprintf(stdout,"\n");
+        n->label[len] = 0;
+        n->label_len = len;
+        for(i =0; i < L;i++){
+                n->next[i] = NULL;
+                n->probability[i] = 1.0f / (float) L;
+        }
+        *node = n;
+        return OK;
 ERROR:
-        return NULL;
+        return FAIL;
 }
 
 
@@ -559,20 +622,32 @@ void print_pst(struct pst* pst,struct pst_node* n)
 {
         int i;
         int c = 0;
-        for(i = 0;i < 4;i++){
+
+        for(i = 0;i < pst->L;i++){
                 if(n->next[i]){
                         c++;
                 }
         }
         if(!c){
-                fprintf(stdout,"%s\t",n->label);
-                for(i = 0;i < 4;i++){
-                        fprintf(stdout,"%f ",n->nuc_probability[i]);
+                if(pst->L == 4){
+                for(i = 0; i < n->label_len;i++){
+                        fprintf(stdout,"%c","ACGT"[n->label[i]]);
+                }
+                }else{
+                        for(i = 0; i < n->label_len;i++){
+                                fprintf(stdout,"%c","ACDEFGHIKLMNPQRSTVWY"[n->label[i]]);
+                        }
+
+
+                }
+                fprintf(stdout,"\t");
+                for(i = 0;i < pst->L;i++){
+                        fprintf(stdout,"%f ",n->probability[i]);
                 }
                 fprintf(stdout,"\n");
         }
 
-        for(i = 0;i < 4;i++){
+        for(i = 0;i < pst->L;i++){
                 if(n->next[i]){
                         //if(n->next[i]->in_T){
                         //fprintf(stderr,"Going:%d\n",i);
@@ -715,7 +790,7 @@ void free_kmer_counts(struct kmer_counts* k)
 }
 
 
-int alloc_fpst(struct fpst** fast_pst, int size)
+int alloc_fpst(struct fpst** fast_pst, int size, int L)
 {
         struct fpst*f = NULL;
         MMALLOC(f, sizeof(struct fpst));
@@ -724,8 +799,8 @@ int alloc_fpst(struct fpst** fast_pst, int size)
         f->m = size;
         f->l= 0;
 
-        RUN(galloc(&f->prob,f->m,4));
-        RUN(galloc(&f->links,f->m,4));
+        RUN(galloc(&f->prob,f->m,L));
+        RUN(galloc(&f->links,f->m,L));
 
         *fast_pst = f;
         return OK;
@@ -733,12 +808,12 @@ ERROR:
         return FAIL;
 }
 
-int resize_fpst(struct fpst* f)
+int resize_fpst(struct fpst* f, int L)
 {
         //LOG_MSG("Resizing");
         f->m = f->m + f->m /2;
-        RUN(galloc(&f->prob,f->m,4));
-        RUN(galloc(&f->links,f->m,4));
+        RUN(galloc(&f->prob,f->m,L));
+        RUN(galloc(&f->links,f->m,L));
         return OK;
 ERROR:
         return FAIL;

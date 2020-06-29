@@ -3,6 +3,10 @@
 
 #include "tlseqio.h"
 
+#include "pst_hash.h"
+
+#define MAX_PST_LEN 12
+
 #ifdef PST_IMPORT
 #define EXTERN
 #else
@@ -14,7 +18,10 @@ struct kmer_counts;
 struct pst_node;
 struct pst;
 
-EXTERN int run_build_pst(struct pst** pst, float expected_error, struct kmer_counts* k);
+
+
+EXTERN int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h, struct kmer_counts* k);
+//EXTERN int run_build_pst(struct pst** pst, float expected_error, struct kmer_counts* k);
 ///EXTERN int run_build_pst(struct pst** pst, struct kmer_counts* k);
 //EXTERN int run_build_pst(struct pst** pst, struct tl_seq_buffer* sb);
 //aEXTERN int score_pst(struct pst* pst, char* seq, int len, float*r);

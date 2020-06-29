@@ -23,6 +23,7 @@ struct pst {
         float mean;
         float var;
         int L;
+        int len;
 };
 
 

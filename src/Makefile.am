@@ -216,8 +216,7 @@ make_dot_file.c
 
 TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST
- # pst_ITEST
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST 
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -254,6 +253,8 @@ randomkit_tl_test_LDADD = $(MYLIBDIRS)
 pst_test_SOURCES = \
 pst.h \
 pst.c \
+pst_hash.h \
+pst_hash.c \
 pst_structs.h \
 pst_test.c \
 sim_seq_lib.h \

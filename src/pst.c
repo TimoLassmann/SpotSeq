@@ -239,12 +239,16 @@ int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h, 
 
         init_logsum();
 
+        //h->len = ;
         RUN(init_pst(&p,expected_error,  h->len,h->L));
+
+        /*  */
+        p->r = MACRO_MAX(h->min_prop, p->r);
+        
+        
         LOG_MSG("%d " , h->L);
         sum = 0.0;
         for(i = 0;i < p->L;i++){
-                c = (float) k->counts[0][i];
-                LOG_MSG("%d: %f", i,c);
                 uint64_t x;
                 key =  (1ULL<< 60ULL) | (uint64_t)i;
 
@@ -255,7 +259,7 @@ int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h, 
                 }
 
                 x = p->fpst_root->l;
-                p->fpst_root->prob[x][i] = c;
+                p->fpst_root->prob[x][i] = c+1;
                 //p->fppt_root->prob[x][i] = c;
                 sum += p->fpst_root->prob[x][i];
         }
@@ -263,17 +267,7 @@ int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h, 
         for(i = 0;i < p->L;i++){
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] /=sum;
-                //p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] *(1.0f  - (float) (p->L) * p->gamma_min) + p->gamma_min;
                 p->fpst_root->links[x][i] = 0;
-
-                /*x = p->fppt_root->l;
-                p->fppt_root->prob[x][i] /=sum;
-                p->fppt_root->prob[x][i] = p->fppt_root->prob[x][i] *(1.0f  - 4.0f * p->gamma_min) + p->gamma_min;
-                p->fppt_root->links[x][i] = 0;*/
-
-
-                //fprintf(stdout," %f", p->fppt_root->prob[x][i]);
-                //fprintf(stdout,"%d %f\n", i,p->pst_root->probability[i]);
         }
         //fprintf(stdout,"\n");
         //exit(0);
@@ -348,6 +342,10 @@ struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_no
         //char alphabet[] = "ACGT";
 
         uint8_t tmp[MAX_PST_LEN+20];
+
+        uint8_t ask[MAX_PST_LEN+20];
+
+
         int i;
         int j;
         int c;
@@ -356,8 +354,12 @@ struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_no
         int len = n->label_len;
         float sum = 0.0f;
         float tmp_counts_s[20];
-
+        float P_ask;
+        float P_as;
+        float Err;
         uint64_t x;
+        uint64_t ask_code;
+
         uint64_t key;
         int maxlen;
 
@@ -368,62 +370,91 @@ struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_no
         //LOG_MSG("%d < %d", len+1, maxlen);
         if(len + 1 < maxlen ){
                 for(i = 0; i < pst->L;i++){
+
                         //LOG_MSG("%f , min: %f", n->probability[i], pst->p_min);
-                        if(n->probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
+                        //if(n->probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
 
-                                //init longer suffix
-                                x = (uint64_t)i;
-                                tmp[0] = i;//alphabet[i];
-                                for(j = 1; j < len+1;j++){
-                                        x = (x << 5ULL) | (uint64_t)n->label[j-1];
-                                        tmp[j] = n->label[j-1];
-                                }
+                        /* Let's calculate whether extending the suffix by letter A (indexed by i)
+                           (i.e. adding it to the left of the existing label)
+                           adds statistically significantly information to the PST.
 
+p                           What I need is the probability of:
+                           1) - P(ASK) probability of observing string ASK;
+                           where 'A' is the letter by which I extend the suffix,
+                           S is the existing suffix and K is any letter in the alphabet L
+                           2) - P(SK) probability of observing string SK
+                           3) - P(K | S) - probability of observing K after S
+
+                           Stastistical error = (sum over all K) P(ASK) * log( P(ASK) / ( P(K|S)  * P (AS))
+
+                        */
+
+                        //init longer suffix
+                        // here I start constructing the ASK by adding A and then copying the existing suffix S
+                        ask_code = (uint64_t)i;
+                        ask[0] = i;//alphabet[i];
+                        for(j = 1; j < len+1;j++){
+                                ask_code = (ask_code << 5ULL) | (uint64_t)n->label[j-1];
+                                ask[j] = n->label[j-1];
+
+                        }
+
+                        c = 0;
+                        key = ((uint64_t)(len+1) << 60ULL) | ask_code;
+                        hi= kh_get(exact, h->hash, key);
+                        if(hi != kh_end(h->hash)){
+                                //LOG_MSG("%c: %f", "ACGT"[i],kh_value(h->hash, hi));
+                                c  = kh_value(h->hash, hi);
+                        }
+                        P_as = (float) (c+1) / (float)(h->counts_l[len+1] + pst->L);
+                        //fprintf(stdout,"counts: %d %f   P_as: %f thres: %f\n",c, h->counts_l[len+1],   P_as,pst->r);
+
+                        if(P_as > pst->r){
+                                Err = 0.0f;
                                 sum = 0.0f;
-                                //LOG_MSG("len: %d L:%d", len,pst->L);
+                                //to calculate the probabilities I add K
                                 for(j = 0; j < pst->L;j++){
-                                        x = x << 5ULL | (uint64_t)j;
-                                        //c = k->counts[len+1][x];
+                                        ask_code = ask_code << 5ULL | (uint64_t)j;
+                                        ask[len+1] = j;
+                                        ask[len+2] = 0;
+
+                                        /* now the ask code is complete - I can start looking up their counts to get to P(ask) and P(as) */
+
+                                        //for(c = 0; c < len+2;c++){
+                                        //      fprintf(stdout,"%d",ask[c]);
+                                        //}
+
                                         c = 0;
-                                        key = ((uint64_t)(len+2) << 60ULL) | x;
+                                        key = ((uint64_t)(len+2) << 60ULL) | ask_code;
                                         hi= kh_get(exact, h->hash, key);
                                         if(hi != kh_end(h->hash)){
                                                 //LOG_MSG("%c: %f", "ACGT"[i],kh_value(h->hash, hi));
                                                 c  = kh_value(h->hash, hi);
                                         }
-                                        tmp[len+1] = j;
-                                        tmp[len+2] = 0;
-                                        //c = count_string(tmp,(const char**)pst->suffix_array,pst->suffix_len-1,len+2);
                                         tmp_counts_s[j] = c;
                                         sum += c;
-                                        //LOG_MSG("Counts: %d %d", j,c);
-                                        //ASSERT(c ==pst->counts[len+1][x],"Counts: %d %d %s", c, pst->counts[len+1][x], tmp);
-                                        x = x >> 5ULL;
-                                }
 
-                                for(j = 0; j < pst->L;j++){
-                                        tmp_counts_s[j] = tmp_counts_s[j]/sum;
-                                        //LOG_MSG("%d %f",j,tmp_counts_s[j]);
-                                }
+                                        P_ask =   (float) (c+1) / (float)(h->counts_l[len+2] + pst->L);
+                                        //fprintf(stdout,"\t %d P_ask: %f P(K|S):%f \t",c,P_ask, n->probability[j]);
+                                        ask_code = ask_code >> 5ULL;
 
-                                add = 0;
-                                for(j = 0; j < pst->L;j++){
-                                        //LOG_MSG("COMP: %f",tmp_counts_s[j] / n->probability[j]  );
-                                        if(tmp_counts_s[j] / n->probability[j] >= pst->r){
-                                                add = 1;
-                                        }
-                                        if(tmp_counts_s[j] / n->probability[j] <= (1.0f/ pst->r)){
-                                                add = 1;
-                                        }
+                                        Err += P_ask * logf(P_ask /  ( n->probability[j] * P_as));
+                                        //fprintf(stdout,"\t d: %f   error: %f\n",P_ask * logf(P_ask /  ( n->probability[j] * P_as)), Err);
+
                                 }
-                                if(add){
+                                //LOG_MSG("ERR: %f", Err);
+                                /* Shall we add this suffix ?  */
+                                if (Err > pst->r){
+                                        for(j = 0; j < pst->L;j++){
+                                                tmp_counts_s[j] = (tmp_counts_s[j] + 1.0f) / (sum + (float)pst->L);
+                                        }
                                         f->links[curf][i] = f->l+1;
 
                                         f->l++;
                                         if(f->l== f->m){
                                                 resize_fpst(f,pst->L);
                                         }
-                                        RUN(alloc_node(&n->next[i] ,tmp,len+1,pst->L));
+                                        RUN(alloc_node(&n->next[i] ,ask,len+1,pst->L));
                                         for(j = 0; j < pst->L;j++){
                                                 f->prob[f->l][j] = tmp_counts_s[j];// *(1.0f  - (float)(pst->L) *  pst->gamma_min) + pst->gamma_min;
                                                 f->links[f->l][j] = 0;
@@ -431,8 +462,11 @@ struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_no
                                         }
                                         //LOG_MSG("Going to %d, %d", i,f->links[curf][i]);
                                         n->next[i] = build_pst(pst,f, f->links[curf][i], n->next[i] ,k,h );
+
+
                                 }
                         }
+
                 }
         }
         return n;
@@ -440,111 +474,6 @@ ERROR:
         return NULL;
 }
 
-struct pst_node* build_ppt(struct pst* pst,struct fpst*f,int curf,struct pst_node* n ,struct kmer_counts* k)
-{
-        char alphabet[] = "ACGT";
-
-        uint8_t tmp[MAX_PST_LEN+20];
-        int i;
-        int j;
-        int c;
-        int add;
-        int len = (int) strlen(n->label);
-        float sum = 0.0f;
-
-        float tmp_counts_s[4];
-
-        uint32_t x;
-        uint32_t y;
-        int maxlen;
-
-        maxlen = k->L;
-        //fprintf(stderr,"NODE: %s\n", n->label);
-        //for(i = 0;i < 5;i++){
-        //	fprintf(stderr,"%c+%s\t%f\n",alphabet[i], n->label, n->nuc_probability[i]);
-        //}
-
-        //step 2 test expansion
-
-        //loop though letters at present node
-        if(len + 1 < maxlen ){
-                /// search for all strings and record probabilities S+ACGT...
-                /// don't search rare strings...
-                /// - super mega simple ...
-
-
-                for(i = 0; i < 4;i++){
-                        if(n->probability[i] >= pst->p_min){ /// string (suffix  + letter is not rare compared to all other letters  ) // e.g. acgC = 0.2 and not acgC = 0.0000001. hence it makes sense to "extend the suffix - test [A,C,G,T] - acgC
-                                //init longer prefix!!!!
-                                x = 0;
-                                for(j = 0; j < len;j++){
-                                        tmp[j+1] = n->label[j];
-                                        x = x << 2 |nuc_to_internal(n->label[j]);
-
-                                        //x = x |  (nuc_to_internal(n->label[j]) << (2*(j+1)));
-                                }
-                                tmp[len+1] = alphabet[i];
-                                x = x << 2 | i;
-
-                                //x = x |  (i << (2*(len+1)));
-
-                                sum = 0.0;
-                                for(j = 0; j < 4;j++){
-                                        y = j << (2 * (len+1));
-//x = (x & 0xFFFFFFFC) | j;
-                                        //x | j
-                                        tmp[0] = alphabet[j];
-                                        tmp[len+2] = 0;
-                                        c = k->counts[len+1][x+y];
-                                        //c = pst->counts[len+1][x];
-                                        //c = count_string(tmp,(const char**)pst->suffix_array,pst->suffix_len-1,len+2);
-                                        tmp_counts_s[j] = c;
-                                        //if(c != pst->counts[len+1][x+ y]){
-                                        //LOG_MSG("Counts: %d %d %s", c, pst->counts[len+1][x+ y], tmp);
-                                        //}
-                                        sum+= c;
-                                }
-
-                                for(j = 0; j < 4;j++){
-                                        tmp_counts_s[j] = tmp_counts_s[j] /sum;
-                                }
-
-                                        // here I know that probablility of 'X' is non-neglible AND that there existsa string 'X' - [A,C,G,T,N] which is frequent in the data - hence I add...
-                                        //n->next[i] = alloc_node(n->next[i],tmp+1,len+1);
-
-                                add = 0;
-                                for(j = 0; j < 4;j++){
-                                        if(tmp_counts_s[j] / n->probability[j] >= pst->r){
-                                                add++;
-                                        }
-
-                                        if(tmp_counts_s[j] / n->probability[j] <= 1.0/ pst->r){
-                                                add++;
-                                        }
-                                }
-
-                                if(add){
-                                        f->links[curf][i] = f->l+1;
-                                        f->l++;
-                                        if(f->l== f->m){
-                                                resize_fpst(f,pst->L);
-                                        }
-                                        RUN(alloc_node(&n->next[i] ,tmp+1,len+1,pst->L));
-                                        //sum = 0;
-                                        for(j = 0; j < 4;j++){
-                                                f->prob[f->l][j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
-                                                f->links[f->l][j] = 0;
-                                                n->next[i]->probability[j] = tmp_counts_s[j] *(1.0f  - 4.0f *  pst->gamma_min) + pst->gamma_min;
-                                        }
-                                        n->next[i] = build_ppt(pst,f, f->links[curf][i], n->next[i] ,k );
-                                }
-                        }
-                }
-        }
-        return n;
-ERROR:
-        return NULL;
-}
 
 int init_pst(struct pst** pst,float expected_error, int len, int L)//, struct tl_seq_buffer* sb)
 {
@@ -556,8 +485,9 @@ int init_pst(struct pst** pst,float expected_error, int len, int L)//, struct tl
         if(expected_error){
                 p->gamma_min = expected_error;
         }
-        p->p_min = 0.01f;
-        p->r = 1.02f;
+        p->p_min = 0.1f;
+        p->r = 0.00000001f;
+
         p->fpst_root = NULL;
         p->mean = 0.0f;
         p->var = 0.0f;

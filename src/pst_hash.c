@@ -5,6 +5,8 @@
 #define PST_HASH_IMPORT
 #include "pst_hash.h"
 
+static int sanity_check_hash(struct count_hash* hash);
+
 int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
 {
 
@@ -27,6 +29,8 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
         h_struct->mask = NULL;
         h_struct->len = MAX_PST_LEN;
         h_struct->L = 0;
+        h_struct->counts_l = NULL;
+
         if(sb->L == TL_SEQ_BUFFER_DNA){
                 h_struct->L = 4;
         }else if(sb->L == TL_SEQ_BUFFER_PROTEIN){
@@ -35,10 +39,29 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
 
         MMALLOC(h_struct->mask, sizeof(uint64_t) * MAX_PST_LEN);
 
+        MMALLOC(h_struct->counts_l, sizeof(float) * (MAX_PST_LEN+1));
 
+        for(i = 0;i <= h_struct->len;i++){
+                h_struct->counts_l[i] = 0.0f;
+        }
+        /* count  how many strings of length i there are in the set of sequences */
+        for(i = 1;i <= h_struct->len;i++){
+                for(j = 0; j < sb->num_seq;j++){
+                        if(sb->sequences[j]->len >= i){
+                                h_struct->counts_l[i] += (sb->sequences[j]->len  - (i -1));
+                        }
+                }
+        }
+
+        h_struct->min_prop = 0.0f;
+        for(i = 1;i <= h_struct->len;i++){
+                if(2.0 / h_struct->counts_l[i] > h_struct->min_prop){
+                        h_struct->min_prop = 2.0 / h_struct->counts_l[i];
+                }
+                LOG_MSG("Min prob: %f %f %f ", 2.0 / h_struct->counts_l[i], h_struct->counts_l[i], h_struct->min_prop);
+        }
 
         h_struct->mask[0] = 0x1FULL;
-
         for(i = 1;i < h_struct->len;i++){
                 h_struct->mask[i] = (h_struct->mask[i-1] << 5ULL) | 0x1FULL;
         }
@@ -94,16 +117,63 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
         fprintf(stdout," hash size: %d, count: %d L:%d\n", kh_size(h),i, h_struct->L);
 
         //exit(0);
+
+
+        RUN(sanity_check_hash(h_struct));
         *hash = h_struct;
         return OK;
 ERROR:
         return FAIL;
 }
 
+
+int sanity_check_hash(struct count_hash* hash)
+{
+        khiter_t hi;
+        uint64_t key;
+
+        int i,j,c;
+        int sum;
+
+
+
+        sum = 0;
+        for(i = 0; i < hash->L;i++){
+                for(j = 0; j < hash->L;j++){
+                        key = (2ULL << 60ULL) | ((uint64_t) i << 5ULL) | (uint64_t)j ;
+                        c = 0;
+                        hi= kh_get(exact, hash->hash, key);
+                        if(hi != kh_end(hash->hash)){
+                                //fprintf(stdout, "%lud %d\n",kh_key(hash->hash,hi),kh_value(hash->hash, hi));
+                                //LOG_MSG("%c: %f", "ACGT"[i],kh_value(h->hash, hi));
+                                c  = kh_value(hash->hash, hi);
+                        }
+                        sum += c;
+                        if(hash->L == 4){
+                                fprintf(stdout,"%c","ACGT"[i]);
+                                fprintf(stdout,"%c","ACGT"[j]);
+                                fprintf(stdout,"\t%d (sum: %d)\n",c,sum);
+
+                        }else{
+                                fprintf(stdout,"%c","ACDEFGHIKLMNPQRSTVWY"[i]);
+                                fprintf(stdout,"%c","ACDEFGHIKLMNPQRSTVWY"[j]);
+                                fprintf(stdout,"\t%d (sum: %d)\n",c,sum);
+
+                        }
+                }
+        }
+
+        fprintf(stdout,"counted %d <-> %f",sum, hash->counts_l[2]);
+        return OK;
+
+}
+
+
 void free_exact_hash(struct count_hash* hash)
 {
         if(hash){
                 kh_destroy(exact, hash->hash);
+                MFREE(hash->counts_l);
                 MFREE(hash->mask);
                 MFREE(hash);
         }

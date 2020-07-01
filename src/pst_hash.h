@@ -18,6 +18,8 @@ KHASH_MAP_INIT_INT64(exact, int)
 struct count_hash{
         khash_t(exact) * hash;
         uint64_t* mask;
+        float* counts_l;
+        float min_prop;
         int L;
         int len;
 };

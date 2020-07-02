@@ -17,11 +17,12 @@ struct pst {
         //struct pst_node* ppt_root;
         struct fpst* fpst_root;
         //struct fpst* fppt_root;
+        double* background;
         float p_min;
         float gamma_min;
-        float r;
-        float mean;
-        float var;
+        //float r;
+        //float mean;
+        //float var;
         int L;
         int len;
 };

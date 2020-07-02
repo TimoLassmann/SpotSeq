@@ -58,7 +58,7 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
                 if(2.0 / h_struct->counts_l[i] > h_struct->min_prop){
                         h_struct->min_prop = 2.0 / h_struct->counts_l[i];
                 }
-                LOG_MSG("Min prob: %f %f %f ", 2.0 / h_struct->counts_l[i], h_struct->counts_l[i], h_struct->min_prop);
+                //LOG_MSG("Min prob: %f %f %f ", 2.0 / h_struct->counts_l[i], h_struct->counts_l[i], h_struct->min_prop);
         }
 
         h_struct->mask[0] = 0x1FULL;
@@ -104,7 +104,7 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
         h_struct->hash = h;
 
         *hash = h_struct;
-        i = 0;
+        /*i = 0;
         for (k = kh_begin(h); k != kh_end(h); ++k){
                 if (kh_exist(h, k)){
                         //dkey = kh_key(h, k);
@@ -113,8 +113,9 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
                         //kh_value(h, k) = 1;
                 }
         }
+        */
 
-        fprintf(stdout," hash size: %d, count: %d L:%d\n", kh_size(h),i, h_struct->L);
+        //fprintf(stdout," hash size: %d, count: %d L:%d\n", kh_size(h),i, h_struct->L);
 
         //exit(0);
 
@@ -149,7 +150,7 @@ int sanity_check_hash(struct count_hash* hash)
                                 c  = kh_value(hash->hash, hi);
                         }
                         sum += c;
-                        if(hash->L == 4){
+                        /*if(hash->L == 4){
                                 fprintf(stdout,"%c","ACGT"[i]);
                                 fprintf(stdout,"%c","ACGT"[j]);
                                 fprintf(stdout,"\t%d (sum: %d)\n",c,sum);
@@ -159,13 +160,16 @@ int sanity_check_hash(struct count_hash* hash)
                                 fprintf(stdout,"%c","ACDEFGHIKLMNPQRSTVWY"[j]);
                                 fprintf(stdout,"\t%d (sum: %d)\n",c,sum);
 
-                        }
+                                }*/
                 }
         }
 
-        fprintf(stdout,"counted %d <-> %f",sum, hash->counts_l[2]);
+        //fprintf(stdout,"counted %d <-> %f",sum, hash->counts_l[2]);
+        ASSERT(fabsf((float)sum - hash->counts_l[2]) < 0.5f,"counts don't add up");
         return OK;
 
+ERROR:
+        return FAIL;
 }
 
 

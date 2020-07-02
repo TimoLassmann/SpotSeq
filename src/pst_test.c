@@ -12,7 +12,7 @@
 #include "esl_stopwatch.h"
 #include "sim_seq_lib.h"
 
-
+#include "pst_io.h"
 
 #define PST_IMPORT
 #include "pst.h"
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
         struct tl_seq_buffer* sb = NULL;
         struct pst* p = NULL;
         struct rng_state* rng = NULL;
-        struct kmer_counts* k;
+
         int i,j,c;
         float out;
         LOG_MSG("%d",argc);
@@ -51,8 +51,9 @@ int test_match_insert(char* infile)
         struct file_handler* f = NULL;
         struct tl_seq_buffer* sb = NULL;
         struct pst* p = NULL;
+        struct pst* p_io = NULL;
         struct rng_state* rng = NULL;
-        struct kmer_counts* k = NULL;
+
         struct alphabet* a = NULL;
         struct count_hash* h = NULL;
 
@@ -72,8 +73,10 @@ int test_match_insert(char* infile)
 
 
         RUN(read_fasta_fastq_file(f, &sb, 1000000));
-        RUN(alloc_kmer_counts(&k, 16));
-        RUN(add_counts(k, sb));
+
+
+        RUN(close_seq_file(&f));
+
 
         RUNP(rng = init_rng(0));
         if(sb->L == TL_SEQ_BUFFER_DNA){
@@ -89,14 +92,13 @@ int test_match_insert(char* infile)
         RUN(fill_exact_hash(&h, sb));
 
         LOG_MSG("L: %d",h->L);
-        RUN(run_build_pst(&p, 0.01,h,k));
-        RUN(rm_counts(k,sb));
+        RUN(run_build_pst(&p, 0.01,h));
         free_exact_hash(h);
-        exit(0);
 
-        RUN(test_kmer_counts(k));
+        RUN(write_pst_hdf5(p, "test_pst.h5"));
 
 
+        RUN(read_pst_hdf5(&p_io, "test_pst.h5"));
 
         DECLARE_TIMER(timer);
 
@@ -105,9 +107,9 @@ int test_match_insert(char* infile)
                 s[j] = 0.0;
         }
         for (j = 0; j < sb->num_seq;j++){
-
                 RUN(score_pst(p, sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
-                LOG_MSG("M:%f R:%f", P_M,P_R);
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
+                P_M = P_M - P_R;
                 s[0]++;
                 s[1] += P_M;
                 s[2] += P_M* P_M;
@@ -117,7 +119,9 @@ int test_match_insert(char* infile)
         s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
         STOP_TIMER(timer);
         GET_TIMING(timer);
-        LOG_MSG("TRAIN %f %f", s[3],s[4]);
+
+        LOG_MSG("TRAIN: %f %f  (average p = %f)", s[3],s[4],   exp2f(s[3]) / (1.0 + exp2f(s[3])));
+        //LOG_MSG("TRAIN %f %f", s[3],s[4]);
         //START_TIMER(timer);
 
         for(j = 0;j <  5;j++){
@@ -139,9 +143,12 @@ int test_match_insert(char* infile)
         }
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
+                RUN(convert_to_internal(a, test_seq, test_len));
                 //RUN(insert_seq(test_seq, test_len, sb->sequences[0]->seq, sb->sequences[0]->len, rng));
                 RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
-                LOG_MSG("M:%f R:%f", P_M,P_R);
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
+                P_M = P_M - P_R;
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 s[0]++;
                 s[1] += P_M;
                 s[2] += P_M* P_M;
@@ -158,15 +165,85 @@ int test_match_insert(char* infile)
         STOP_TIMER(timer);
         GET_TIMING(timer);
 //LOG_MSG("RANDOM: %f %f", s[3],s[4]);
-        LOG_MSG("RANDOM: %f %f", s[3],s[4]);
+        LOG_MSG("RANDOM: %f %f  (average p = %f)", s[3],s[4],   exp2f(s[3]) / (1.0 + exp2f(s[3])));
+
+        //if()
+        free_pst(p);
+        p = p_io;
+        //DECLARE_TIMER(timer);
+
+        START_TIMER(timer);
+        for(j = 0;j <  5;j++){
+                s[j] = 0.0;
+        }
+        for (j = 0; j < sb->num_seq;j++){
+                RUN(score_pst(p, sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
+                P_M = P_M - P_R;
+                s[0]++;
+                s[1] += P_M;
+                s[2] += P_M* P_M;
+        }
+        s[3] = s[1] / s[0];
+
+        s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
+        STOP_TIMER(timer);
+        GET_TIMING(timer);
+
+        LOG_MSG("TRAIN: %f %f  (average p = %f)", s[3],s[4],   exp2f(s[3]) / (1.0 + exp2f(s[3])));
+        //LOG_MSG("TRAIN %f %f", s[3],s[4]);
+        //START_TIMER(timer);
+
+        for(j = 0;j <  5;j++){
+                s[j] = 0.0;
+        }
+
+        for (j = 0; j < sb->num_seq;j++){
+                s[0]++;
+                s[1] += sb->sequences[j]->len;
+                s[2] += sb->sequences[j]->len * sb->sequences[j]->len;
+        }
+        s[3] = s[1] / s[0];
+
+        s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
+        test_len = s[3];
+
+        for(j = 0;j <  5;j++){
+                s[j] = 0.0;
+        }
+        for (j = 0; j < sb->num_seq;j++){
+                RUN(generate_random_seq(&test_seq, &test_len, rng));
+                RUN(convert_to_internal(a, test_seq, test_len));
+                //RUN(insert_seq(test_seq, test_len, sb->sequences[0]->seq, sb->sequences[0]->len, rng));
+                RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
+                P_M = P_M - P_R;
+                //LOG_MSG("M:%f R:%f", P_M,P_R);
+                s[0]++;
+                s[1] += P_M;
+                s[2] += P_M* P_M;
+
+        }
+        s[3] = s[1] / s[0];
+
+        s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
+        START_TIMER(timer);
+        for (j = 0; j <  sb->num_seq;j++){
+                score_pst(p, test_seq, test_len, &P_M,&P_R);
+
+        }
+        STOP_TIMER(timer);
+        GET_TIMING(timer);
+//LOG_MSG("RANDOM: %f %f", s[3],s[4]);
+        LOG_MSG("RANDOM: %f %f  (average p = %f)", s[3],s[4],   exp2f(s[3]) / (1.0 + exp2f(s[3])));
 
 
         DESTROY_TIMER(timer);
         if(test_seq){
                 MFREE(test_seq);
         }
-        free_kmer_counts(k);
-        //if()
+        free_alphabet(a);
+
         free_pst(p);
         free_tl_seq_buffer(sb);
         free_rng(rng);

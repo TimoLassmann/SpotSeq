@@ -255,10 +255,14 @@ pst.h \
 pst.c \
 pst_hash.h \
 pst_hash.c \
+pst_io.h \
+pst_io.c \
 pst_structs.h \
 pst_test.c \
 sim_seq_lib.h \
-sim_seq_lib.c
+sim_seq_lib.c \
+null_model_emission.h \
+null_model_emission.c 
 
 sequences_TEST_SOURCES = \
 sequence_alloc.h \

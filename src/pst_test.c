@@ -86,10 +86,14 @@ int test_match_insert(char* infile)
         }
         for(i = 0; i < sb->num_seq;i++){
                 RUN(convert_to_internal(a, (uint8_t*)sb->sequences[i]->seq, sb->sequences[i]->len));
-        }
-        LOG_MSG("L: %d",sb->L);
 
+        }
+
+        DECLARE_TIMER(timer);
+        START_TIMER(timer);
         RUN(fill_exact_hash(&h, sb));
+        STOP_TIMER(timer);
+        GET_TIMING(timer);
 
         LOG_MSG("L: %d",h->L);
         RUN(run_build_pst(&p, 0.01,h));
@@ -100,7 +104,7 @@ int test_match_insert(char* infile)
 
         RUN(read_pst_hdf5(&p_io, "test_pst.h5"));
 
-        DECLARE_TIMER(timer);
+
 
         START_TIMER(timer);
         for(j = 0;j <  5;j++){

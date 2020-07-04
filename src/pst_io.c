@@ -18,6 +18,7 @@ int write_pst_hdf5(struct pst* p, char* filename)
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/PstModel","Size",p->fpst_root->l ));
 
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","Background", p->background));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","LogBackground", p->lbg ));
 
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","Links", p->fpst_root->links));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","Probabilities", p->fpst_root->prob));
@@ -47,7 +48,7 @@ int read_pst_hdf5(struct pst** pst, char* filename)
         p->gamma_min = 0.0f;
         p->p_min = 0.0f;
         p->len = 0;
-
+        p->lbg = NULL;
 
         MMALLOC(f, sizeof(struct fpst));
         f->prob = NULL;
@@ -55,7 +56,6 @@ int read_pst_hdf5(struct pst** pst, char* filename)
         f->m = 0;
         f->l= 0;
         p->fpst_root = f;
-
 
         RUN(open_hdf5_file(&hdf5_data,filename));
 
@@ -66,17 +66,15 @@ int read_pst_hdf5(struct pst** pst, char* filename)
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","Size",&p->fpst_root->l ));
 
         RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","Background", &p->background));
+        RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","LogBackground", &p->lbg ));
 
         RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","Links", &p->fpst_root->links));
-
         RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","Probabilities", &p->fpst_root->prob));
 
 
         close_hdf5_file(&hdf5_data);
 
         *pst = p;
-
-
         return OK;
 ERROR:
         if(hdf5_data){

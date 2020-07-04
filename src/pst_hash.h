@@ -20,6 +20,8 @@ struct count_hash{
         uint64_t* mask;
         float* counts_l;
         float min_prop;
+        float mean;
+        float var;
         int L;
         int len;
 };

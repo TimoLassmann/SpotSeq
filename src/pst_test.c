@@ -14,18 +14,19 @@
 
 #include "pst_io.h"
 
+#include "pst_calibrate.h"
+
 #define PST_IMPORT
 #include "pst.h"
 
-
-
-static int test_match_insert(char* infile);
+static int test_match_insert(char* infile,char* dbname);
 
 int main(int argc, char *argv[])
 {
         char alphabet[] = "ACGT";
         LOG_MSG("Hello World");
         char* filename = NULL;
+        char* dbname = NULL;
         char* test_seq = NULL;
         struct tl_seq_buffer* sb = NULL;
         struct pst* p = NULL;
@@ -34,9 +35,10 @@ int main(int argc, char *argv[])
         int i,j,c;
         float out;
         LOG_MSG("%d",argc);
-        if(argc == 2){
+        if(argc == 3){
                 filename = argv[1];
-                RUN(test_match_insert(filename));
+                dbname = argv[2];
+                RUN(test_match_insert(filename,dbname));
         }else{
 
         }
@@ -46,7 +48,7 @@ ERROR:
         return EXIT_FAILURE;
 }
 
-int test_match_insert(char* infile)
+int test_match_insert(char* infile,char* dbname)
 {
         struct file_handler* f = NULL;
         struct tl_seq_buffer* sb = NULL;
@@ -84,9 +86,9 @@ int test_match_insert(char* infile)
         }else if(sb->L == TL_SEQ_BUFFER_PROTEIN){
                 RUN(create_alphabet(&a, rng, TLALPHABET_DEFAULT_PROTEIN));
         }
+
         for(i = 0; i < sb->num_seq;i++){
                 RUN(convert_to_internal(a, (uint8_t*)sb->sequences[i]->seq, sb->sequences[i]->len));
-
         }
 
         DECLARE_TIMER(timer);
@@ -95,16 +97,12 @@ int test_match_insert(char* infile)
         STOP_TIMER(timer);
         GET_TIMING(timer);
 
-        LOG_MSG("L: %d",h->L);
-        RUN(run_build_pst(&p, 0.01,h));
+        //LOG_MSG("L: %d",h->L);
+        RUN(run_build_pst(&p,0.0001f,0.01f,h));
         free_exact_hash(h);
-
+        //exit(0);
         RUN(write_pst_hdf5(p, "test_pst.h5"));
-
-
         RUN(read_pst_hdf5(&p_io, "test_pst.h5"));
-
-
 
         START_TIMER(timer);
         for(j = 0;j <  5;j++){
@@ -112,7 +110,6 @@ int test_match_insert(char* infile)
         }
         for (j = 0; j < sb->num_seq;j++){
                 RUN(score_pst(p, sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 P_M = P_M - P_R;
                 s[0]++;
                 s[1] += P_M;
@@ -148,15 +145,11 @@ int test_match_insert(char* infile)
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
                 RUN(convert_to_internal(a, test_seq, test_len));
-                //RUN(insert_seq(test_seq, test_len, sb->sequences[0]->seq, sb->sequences[0]->len, rng));
                 RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 P_M = P_M - P_R;
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 s[0]++;
                 s[1] += P_M;
                 s[2] += P_M* P_M;
-
         }
         s[3] = s[1] / s[0];
 
@@ -182,7 +175,6 @@ int test_match_insert(char* infile)
         }
         for (j = 0; j < sb->num_seq;j++){
                 RUN(score_pst(p, sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 P_M = P_M - P_R;
                 s[0]++;
                 s[1] += P_M;
@@ -218,11 +210,8 @@ int test_match_insert(char* infile)
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
                 RUN(convert_to_internal(a, test_seq, test_len));
-                //RUN(insert_seq(test_seq, test_len, sb->sequences[0]->seq, sb->sequences[0]->len, rng));
                 RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 P_M = P_M - P_R;
-                //LOG_MSG("M:%f R:%f", P_M,P_R);
                 s[0]++;
                 s[1] += P_M;
                 s[2] += P_M* P_M;
@@ -242,6 +231,12 @@ int test_match_insert(char* infile)
         LOG_MSG("RANDOM: %f %f  (average p = %f)", s[3],s[4],   exp2f(s[3]) / (1.0 + exp2f(s[3])));
 
 
+
+        LOG_MSG("Lets calibrate");
+        START_TIMER(timer);
+        RUN(calibrate_pst(p, dbname,10.0));
+        STOP_TIMER(timer);
+        GET_TIMING(timer);
         DESTROY_TIMER(timer);
         if(test_seq){
                 MFREE(test_seq);

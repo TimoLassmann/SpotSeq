@@ -13,16 +13,14 @@ struct fpst{
 };
 
 struct pst {
-//        struct pst_node* pst_root;
-        //struct pst_node* ppt_root;
         struct fpst* fpst_root;
-        //struct fpst* fppt_root;
         double* background;
+        float* lbg;
         float p_min;
         float gamma_min;
-        //float r;
-        //float mean;
-        //float var;
+        float mean;
+        double var;
+        double a,b;
         int L;
         int len;
 };

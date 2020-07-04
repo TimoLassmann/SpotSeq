@@ -18,14 +18,14 @@ struct pst_node{
 
 #include "pst_structs.h"
 
-static int init_pst(struct pst** pst,float expected_error, int len, int L);
 
+static int init_pst(struct pst** pst,float min_error, float expected_error, int len, int L);
 
 struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n, struct count_hash* h);
 static void print_pst(struct pst* pst,struct pst_node* n);
 static void free_pst_node(struct pst_node* n);
 
-static int prob2scaledprob_fpst(struct fpst* f);
+static int prob2scaledprob_fpst(struct fpst* f,int L);
 
 static int alloc_node(struct pst_node** node,uint8_t* string,int len, int L);
 static int alloc_fpst(struct fpst** fast_pst, int size, int L);
@@ -36,7 +36,7 @@ int score_pst(const struct pst* pst, const char* seq,const int len, float* P_M, 
 {
         int** s = pst->fpst_root->links;
         float** s_prob = pst->fpst_root->prob;
-        const float* base_p = pst->fpst_root->prob[0];
+        const float* base_p = pst->lbg;//  fpst_root->prob[0];
         float a, b;
         register int i,c,l,pos,n;
         a = prob2scaledprob(1.0);
@@ -56,6 +56,7 @@ int score_pst(const struct pst* pst, const char* seq,const int len, float* P_M, 
                         n = s[n][c];
                 }
                 a += s_prob[n][l];
+                //LOG_MSG("%d:%d %f %f %f ", i,l,a,b, s_prob[n][l]);
         }
         *P_M = a;
         *P_R = b;
@@ -63,7 +64,7 @@ int score_pst(const struct pst* pst, const char* seq,const int len, float* P_M, 
 }
 
 
-int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h)//  struct tl_seq_buffer* sb)
+int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_hash* h)
 {
         struct pst* p = NULL;
         struct pst_node* helper = NULL;
@@ -76,7 +77,7 @@ int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h)/
 
         init_logsum();
 
-        RUN(init_pst(&p,expected_error,  h->len,h->L));
+        RUN(init_pst(&p, min_error, gamma, h->len, h->L));
 
         p->p_min = MACRO_MAX(h->min_prop, p->p_min);
 
@@ -102,27 +103,23 @@ int run_build_pst(struct pst** pst, float expected_error, struct count_hash* h)/
         for(i = 0;i < p->L;i++){
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] /=sum;
+                //fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
                 p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
+                //p->fpst_root->prob[x][i] = p->background[i];
+                //fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
                 helper->probability[i] = p->fpst_root->prob[x][i];
                 p->fpst_root->links[x][i] = 0;
         }
         p->fpst_root->l = 0;
+        //exit(0);
 
         helper = build_pst(p,p->fpst_root,0, helper,h);
-        print_pst(p,helper);
+
         p->fpst_root->l++;
         free_pst_node(helper);
         helper = NULL;
-        /*RUN(init_helper(&helper, k->counts[0], p->gamma_min));
-        helper = build_ppt(p,p->fppt_root,0, helper,k);
-        p->fppt_root->l++;
-        free_pst_node(helper);
-        helper = NULL;*/
-        RUN(prob2scaledprob_fpst(p->fpst_root));
-        //RUN(prob2scaledprob_fpst(p->fppt_root));
-        //fprintf(stdout,"Size: %d\n", p->fppt_root->l + p->fpst_root->l * 8 *4);
-//LOG_MSG("PPT:");
-        //exit(0);
+
+        RUN(prob2scaledprob_fpst(p->fpst_root,p->L));
         *pst = p;
         return OK;
 ERROR:
@@ -188,7 +185,6 @@ p                           What I need is the probability of:
                         if(hi != kh_end(h->hash)){
                                 c  = kh_value(h->hash, hi);
                         }
-
                         P_as = (float) (c+1) / (float)(h->counts_l[len+1] + pst->L);
 
                         if(P_as > pst->p_min){
@@ -216,13 +212,22 @@ p                           What I need is the probability of:
 
                                         Err += P_ask * logf(P_ask /  ( n->probability[j] * P_as));
 
+
                                 }
+
                                 /* Shall we add this suffix ?  */
-                                if (Err > pst->p_min){
+                                /* NOTE: the check for sum in necessary as it is possible for a suffic P(as)
+                                 to occur at the end of sequences. In this case we have P(as) but no string
+                                in the input that is "AS*" */
+                                //LOG_MSG("Sum %f Err %f min%f", sum , Err, pst->p_min);
+                                if (sum > 0.0f && Err > pst->p_min){
+                                        //LOG_MSG("f: %d\t",f->l);
                                         for(j = 0; j < pst->L;j++){
                                                 tmp_counts_s[j] = tmp_counts_s[j] / sum;
                                                 tmp_counts_s[j] = tmp_counts_s[j] * ( 1.0 -  pst->gamma_min) + pst->background[j]* pst->gamma_min;
+
                                         }
+
                                         f->links[curf][i] = f->l+1;
 
                                         f->l++;
@@ -245,9 +250,10 @@ ERROR:
         return NULL;
 }
 
-int init_pst(struct pst** pst,float expected_error, int len, int L)//, struct tl_seq_buffer* sb)
+int init_pst(struct pst** pst,float min_error, float expected_error, int len, int L)
 {
         struct pst* p = NULL;
+        int i;
         MMALLOC(p, sizeof(struct pst));
         p->len = len;
         p->L = L;
@@ -255,15 +261,34 @@ int init_pst(struct pst** pst,float expected_error, int len, int L)//, struct tl
         if(expected_error){
                 p->gamma_min = expected_error;
         }
-        ASSERT(p->gamma_min * L <= 1.0,"expected error is too high.");
+        if(p->gamma_min > 1.0){
+                WARNING_MSG("expected error is too high.");
+                p->gamma_min = 1.0 ;
+        }
+
+
         p->p_min = 0.0001f;
+        if(min_error){
+                p->p_min = min_error;
+        }
         //p->r = 0.0001f;
         p->background = NULL;
+        p->lbg = NULL;
         p->fpst_root = NULL;
 
         RUN(alloc_fpst(&p->fpst_root, 64,p->L));
 
         RUN(get_null_model_emissions(&p->background, p->L));
+
+        RUN(galloc(&p->lbg,p->L));
+
+        for(i = 0; i < p->L;i++){
+                p->lbg[i] = prob2scaledprob((float) p->background[i]);
+                //fprintf(stdout,"%d %f %f\n", i, p->background[i], p->lbg[i]);
+                //sum = logsum(sum, p->lbg[i]);
+        }
+        //fprintf(stdout,"SUM:%f\n", scaledprob2prob(sum));
+        //exit(0);
         *pst = p;
         return OK;
 ERROR:
@@ -276,6 +301,9 @@ void free_pst(struct pst* p)
         if(p){
                 free_fpst(p->fpst_root);
                 gfree(p->background);
+                if(p->lbg){
+                        gfree(p->lbg);
+                }
                 MFREE(p);
         }
 }
@@ -403,18 +431,38 @@ ERROR:
         return FAIL;
 }
 
-int prob2scaledprob_fpst(struct fpst* f)
+int prob2scaledprob_fpst(struct fpst* f,int L)
 {
         int i,j;
 
         ASSERT(f != NULL,"No F");
 
         for(i = 0; i < f->l;i++){
-                for (j = 0; j < 4; j++) {
+                int c;
+                float sum = 0.0;
+
+                /*fprintf(stdout,"%d\t",i);
+                for(c = 0;c < L;c++){
+                        sum += f->prob[i][c];
+                        fprintf(stdout,"%f,",f->prob[i][c]);
+                }
+                fprintf(stdout,"SUM: %f\n", sum);*/
+
+                for (j = 0; j < L; j++) {
+                        /*if(TLSAFE_EQ(f->prob[i][j], 0.0f)){
+                                for(c = 0;c < L;c++){
+                                        sum += f->prob[i][c];
+                                        fprintf(stdout,"%f\n",f->prob[i][c]);
+                                }
+                                fprintf(stdout,"SUM: %f", sum);
+                                exit(0);
+
+                        }*/
                         f->prob[i][j] = prob2scaledprob(f->prob[i][j]);
 
                 }
         }
+        //exit(0);
         /*fprintf(stdout,"\n");
         fprintf(stdout,"l: %d m: %d\n", f->l, f->m);
         i = f->l-1;

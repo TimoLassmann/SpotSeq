@@ -252,6 +252,10 @@ randomkit_tl_test_LDADD = $(MYLIBDIRS)
 
 pst_test_SOURCES = \
 pst_structs.h \
+pst_build.h \
+pst_build.c \
+pst_search.h \
+pst_search.c \
 pst.h \
 pst.c \
 pst_hash.h \

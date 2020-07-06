@@ -19,34 +19,49 @@
 #define PST_IMPORT
 #include "pst.h"
 
+#include "pst_build.h"
+#include "pst_search.h"
+
 static int test_match_insert(char* infile,char* dbname);
 
 int main(int argc, char *argv[])
 {
-        char alphabet[] = "ACGT";
         LOG_MSG("Hello World");
         char* filename = NULL;
         char* dbname = NULL;
-        char* test_seq = NULL;
-        struct tl_seq_buffer* sb = NULL;
-        struct pst* p = NULL;
         struct rng_state* rng = NULL;
 
-        int i,j,c;
-        float out;
-        LOG_MSG("%d",argc);
-        if(argc == 3){
-                filename = argv[1];
-                dbname = argv[2];
-                RUN(test_match_insert(filename,dbname));
+        struct pst* p = NULL;
+        RUNP(rng = init_rng(0));
+
+
+
+        /*filename = argv[1];
+        dbname = argv[2];
+        RUN(test_match_insert(filename,dbname));
+        free_rng(rng);
+        //GGTTTACT
+        return EXIT_SUCCESS;*/
+        if(argc == 4){
+                RUN(create_pst_model(rng,argv[1], argv[2], argv[3], 0.0, 0.0, 0.0));
+        }else if(argc == 3){
+
+                RUN(read_pst_hdf5(&p, argv[1]));
+
+                RUN(search_db(p,argv[2], 10.0));
+
+                free_pst(p);
         }else{
 
         }
+
+        free_rng(rng);
         //GGTTTACT
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;
 }
+
 
 int test_match_insert(char* infile,char* dbname)
 {
@@ -65,7 +80,7 @@ int test_match_insert(char* infile,char* dbname)
         float P_M;
         float P_R;
         int test_len = 0;
-        int i_point;
+        //int i_point;
         int i,j;
         LOG_MSG("%s",infile);
         if(!my_file_exists(infile)){
@@ -98,7 +113,7 @@ int test_match_insert(char* infile,char* dbname)
         GET_TIMING(timer);
 
         //LOG_MSG("L: %d",h->L);
-        RUN(run_build_pst(&p,0.0001f,0.01f,h));
+        RUN(run_build_pst(&p,0.001f,0.1f,h));
         free_exact_hash(h);
         //exit(0);
         RUN(write_pst_hdf5(p, "test_pst.h5"));
@@ -144,7 +159,7 @@ int test_match_insert(char* infile,char* dbname)
         }
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
-                RUN(convert_to_internal(a, test_seq, test_len));
+                RUN(convert_to_internal(a, (uint8_t*)test_seq, test_len));
                 RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
                 P_M = P_M - P_R;
                 s[0]++;
@@ -209,7 +224,7 @@ int test_match_insert(char* infile,char* dbname)
         }
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
-                RUN(convert_to_internal(a, test_seq, test_len));
+                RUN(convert_to_internal(a, (uint8_t*)test_seq, test_len));
                 RUN(score_pst(p, test_seq, test_len, &P_M,&P_R));
                 P_M = P_M - P_R;
                 s[0]++;

@@ -23,13 +23,14 @@ static int init_pst(struct pst** pst,float min_error, float expected_error, int 
 
 struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n, struct count_hash* h);
 static void print_pst(struct pst* pst,struct pst_node* n);
-static void free_pst_node(struct pst_node* n);
+
 
 static int prob2scaledprob_fpst(struct fpst* f,int L);
 
 static int alloc_node(struct pst_node** node,uint8_t* string,int len, int L);
 static int alloc_fpst(struct fpst** fast_pst, int size, int L);
 static int resize_fpst(struct fpst* f, int L);
+static void free_pst_node(struct pst_node* n, int L);
 static void free_fpst(struct fpst* f);
 
 int score_pst(const struct pst* pst, const char* seq,const int len, float* P_M, float* P_R)
@@ -105,7 +106,7 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
                 p->fpst_root->prob[x][i] /=sum;
                 //fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
                 p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
-                //p->fpst_root->prob[x][i] = p->background[i];
+                p->fpst_root->prob[x][i] = p->background[i];
                 //fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
                 helper->probability[i] = p->fpst_root->prob[x][i];
                 p->fpst_root->links[x][i] = 0;
@@ -114,9 +115,9 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
         //exit(0);
 
         helper = build_pst(p,p->fpst_root,0, helper,h);
-
+        //print_pst(p, helper);
         p->fpst_root->l++;
-        free_pst_node(helper);
+        free_pst_node(helper,p->L);
         helper = NULL;
 
         RUN(prob2scaledprob_fpst(p->fpst_root,p->L));
@@ -308,13 +309,13 @@ void free_pst(struct pst* p)
         }
 }
 
-void free_pst_node(struct pst_node* n)
+void free_pst_node(struct pst_node* n, int L)
 {
         int i;
         if(n){
-                for(i = 0;i < 4;i++){
+                for(i = 0;i < L;i++){
                         if(n->next[i]){
-                                free_pst_node(n->next[i]);
+                                free_pst_node(n->next[i],L);
                         }
                 }
                 MFREE(n->label);
@@ -438,8 +439,8 @@ int prob2scaledprob_fpst(struct fpst* f,int L)
         ASSERT(f != NULL,"No F");
 
         for(i = 0; i < f->l;i++){
-                int c;
-                float sum = 0.0;
+                //int c;
+                //float sum = 0.0;
 
                 /*fprintf(stdout,"%d\t",i);
                 for(c = 0;c < L;c++){

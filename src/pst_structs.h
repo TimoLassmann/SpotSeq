@@ -14,6 +14,7 @@ struct fpst{
 
 struct pst {
         struct fpst* fpst_root;
+        double** fit;
         double* background;
         float* lbg;
         float p_min;
@@ -24,6 +25,12 @@ struct pst {
         int L;
         int len;
 };
+
+#define PST_FIT_MIN 0
+#define PST_FIT_MAX 1
+#define PST_FIT_A 2
+#define PST_FIT_B 3
+#define PST_FIT_V 4
 
 
 #endif

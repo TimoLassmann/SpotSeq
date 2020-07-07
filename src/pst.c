@@ -24,7 +24,6 @@ static int init_pst(struct pst** pst,float min_error, float expected_error, int 
 struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n, struct count_hash* h);
 static void print_pst(struct pst* pst,struct pst_node* n);
 
-
 static int prob2scaledprob_fpst(struct fpst* f,int L);
 
 static int alloc_node(struct pst_node** node,uint8_t* string,int len, int L);
@@ -256,6 +255,12 @@ int init_pst(struct pst** pst,float min_error, float expected_error, int len, in
         struct pst* p = NULL;
         int i;
         MMALLOC(p, sizeof(struct pst));
+        p->a = 0.0;
+        p->b = 0.0;
+        p->var = 0.0;
+        p->fit = NULL;
+        p->fit_index = NULL;
+        p->max_observed_len = -1;
         p->len = len;
         p->L = L;
         p->gamma_min = 0.02f;
@@ -300,6 +305,12 @@ ERROR:
 void free_pst(struct pst* p)
 {
         if(p){
+                if(p->fit){
+                        gfree(p->fit);
+                }
+                if(p->fit_index){
+                        gfree(p->fit_index);
+                }
                 free_fpst(p->fpst_root);
                 gfree(p->background);
                 if(p->lbg){

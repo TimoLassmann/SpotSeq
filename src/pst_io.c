@@ -19,6 +19,13 @@ int write_pst_hdf5(struct pst* p, char* filename)
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/PstModel","L",p->L ));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/PstModel","len",p->len ));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/PstModel","Size",p->fpst_root->l ));
+        //LOG_MSG("p->max_ob: %d", p->max_observed_len);
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data,"/PstModel","MaxObsLen",p->max_observed_len));
+        //LOG_MSG("p->fit: %p", p->fit);
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","Fit", p->fit));
+        //LOG_MSG("p->fit: %p", p->fit_index);
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","FitIndex", p->fit_index));
+
 
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","Background", p->background));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,"/PstModel","LogBackground", p->lbg ));
@@ -67,7 +74,10 @@ int read_pst_hdf5(struct pst** pst, char* filename)
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","a",&p->a));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","b",&p->b));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","var",&p->var));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","MaxObsLen",&p->max_observed_len));
 
+        RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","Fit", &p->fit));
+        RUN(HDFWRAP_READ_DATA(hdf5_data ,"/PstModel","FitIndex", &p->fit_index));
 
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","L",&p->L ));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data,"/PstModel","len",&p->len ));

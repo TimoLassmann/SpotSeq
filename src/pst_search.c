@@ -18,9 +18,9 @@ int search_db(struct pst* p, char* filename, double thres)
         struct rng_state* rng = NULL;
         struct alphabet* alphabet = NULL;
 
-        double m,z_score;
+        double z_score;
         float P_M, P_R;
-        int chunk,i,len;
+        int chunk,i,len,index;
         double a,b,v;
 
         a = p->a;
@@ -35,7 +35,9 @@ int search_db(struct pst* p, char* filename, double thres)
 
         RUN(open_fasta_fastq_file(&f, filename, TLSEQIO_READ));
 
+        FILE* f_ptr = NULL;
 
+        f_ptr = fopen("scores.txt", "w");
         chunk =1;
         while(1){
                 RUN(read_fasta_fastq_file(f, &sb, 100000));
@@ -55,20 +57,24 @@ int search_db(struct pst* p, char* filename, double thres)
                         RUN(convert_to_internal(alphabet, (uint8_t*)sb->sequences[i]->seq,len));
                         RUN(score_pst(p, sb->sequences[i]->seq, len, &P_M,&P_R));
                         P_M = P_M - P_R;
+                        index = MACRO_MIN(p->max_observed_len, len);
+                        index = p->fit_index[index];
+                        a = p->fit[index][PST_FIT_A];
+                        b = p->fit[index][PST_FIT_B];
+                        v = p->fit[index][PST_FIT_V];
 
-                        m = a + b * (double) len;
-                        z_score = (P_M - m) / v;
+                        z_score = (P_M - (a + b * (double)len )) / v;
                         if(z_score >= thres){
                                 fprintf(stdout,"Hit: %f\t%s\n",z_score,sb->sequences[i]->name);
                         }
-
+                        fprintf(f_ptr,"%d,%f\n",len,z_score);
 
                 }
                 chunk++;
         }
 
         RUN(close_seq_file(&f));
-
+        fclose(f_ptr);
         free_rng(rng);
         free_tl_seq_buffer(sb);
         free_alphabet(alphabet);

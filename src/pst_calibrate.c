@@ -38,14 +38,13 @@ static int sort_sl(struct slen_store* sls);
 
 static int sort_sl_by_len(const void *a, const void *b);
 
-
 KHASH_MAP_INIT_INT(whash, wscore)
 
 //static int score_all(struct pst* p, char* filename, double** sa, int** la, int* n);
 static int score_all(struct pst* p, char* filename , struct slen_store** sls);
 static int merge_bins(struct window_score** arr, int num,int bin_size);
 
-static int parcel_out_linear_regression(struct window_score** arr, int num, struct slen_store* sls);
+static int parcel_out_linear_regression(double*** fit, struct window_score** arr, int num, struct slen_store* sls,double threshold);
 static int average_scores_in_bins(struct window_score** arr, int num);
 static int linear_regression(struct scorelen** arr, int s, int e, double* a_var,double* b_var);
 //static int linear_regression(struct window_score** arr, int num, double* a_var,double* b_var);
@@ -68,26 +67,16 @@ int calibrate_pst(struct pst* p, char* filename,double threshold)
         struct window_score** ws_arr = NULL;
         struct slen_store* sls = NULL;
         struct scorelen* sl = NULL;
-        int* len_arr = NULL;
-        double* score_arr = NULL;
 
-        int n_score;
-
-        //double s0,s1,s2;
-        double mean;
-        double z_score;
-
-        int i;
-
-        FILE* f_ptr = NULL;
+        int i,j,len,last;
 
         khash_t(whash) *hash = kh_init(whash);
         khiter_t k;
         int num_hash_items;
         int ret;
-        int outliers = 100;
 
-        int iter = 1;
+
+
 
         /* score everything  */
         RUN(score_all(p, filename,&sls));//   &score_arr, &len_arr, &n_score));
@@ -127,89 +116,30 @@ int calibrate_pst(struct pst* p, char* filename,double threshold)
 
         /* average scores  */
         //RUN(average_scores_in_bins(ws_arr, num_hash_items));
-        parcel_out_linear_regression(ws_arr, num_hash_items, sls);
-        exit(0);
-        /* linear regression  */
-        //RUN(linear_regression(ws_arr, num_hash_items, &p->a, &p->b));
+        RUN(parcel_out_linear_regression(&p->fit, ws_arr, num_hash_items, sls, threshold));
+
+        RUN(get_dim1(p->fit, &len));
+
+        p->fit_index = NULL;
+
+        p->max_observed_len = (int)( p->fit[len-1][PST_FIT_MAX]);
+        RUN(galloc(&p->fit_index, p->max_observed_len+1));
+
+
+        last = 0;
+        for(i = 0; i < len; i++){
+                for(j = last;j <= p->fit[i][PST_FIT_MAX];j++){
+                        p->fit_index[j] = i;
+                }
+                last = p->fit[i][PST_FIT_MAX]+1;
+        }
+
+
         MFREE(ws_arr);
+        free_sl(sls);
 
-        /* stdev from fitted curve  */
-        /* calculate standard deviation of scores from fitted curve  */
-        RUN(standard_deviation_from_fitted(score_arr, len_arr, n_score, p->a, p->b, &p->var));
-
-        /* start outlier detection */
-        //exit(0);
-        outliers = 1;
-        while (outliers){
-                kh_clear(whash,hash);
-
-                ws_arr = NULL;
-                outliers = 0;
-                for(i = 0; i < n_score;i++){
-                        if(len_arr[i] > 0){
-                                RUN(return_y(p->a, p->b, len_arr[i] , &mean));
-                                //mean = score_arr[i] - mean;
-                                z_score = (score_arr[i]- mean) / p->var;
-                                if(fabs(z_score) >= threshold){
-                                        outliers++;
-                                        len_arr[i] = len_arr[i] * -1;
-                                }else{
-
-                                        k = kh_put(whash, hash, len_arr[i], &ret);
-                                        if (!ret){
-                                                kh_value(hash, k).s0++;
-                                                kh_value(hash, k).s1 += score_arr[i];
-                                        }else{
-                                                kh_value(hash, k).len = (double) len_arr[i];
-                                                kh_value(hash, k).s0 = 1.0;
-                                                kh_value(hash, k).s1 = score_arr[i];
-                                        }
-                                }
-                        }
-                }
-                LOG_MSG("Iter: %d outliers: %d", iter, outliers);
-                num_hash_items = kh_size(hash);
-                MMALLOC(ws_arr, sizeof(struct window_score*) * num_hash_items);
-                i = 0;
-                for (k = kh_begin(hash); k != kh_end(hash); ++k){
-                        if (kh_exist(hash, k)){
-                                ws_arr[i] = &kh_value(hash, k);
-                                i++;
-                        }
-                }
-
-                /* merge small bins */
-                RUN(merge_bins(ws_arr, num_hash_items,1000));
-
-                /* average scores  */
-                RUN(average_scores_in_bins(ws_arr, num_hash_items));
-
-                /* linear regression  */
-                //RUN(linear_regression(ws_arr, num_hash_items, &p->a, &p->b));
-
-                RUN(standard_deviation_from_fitted(score_arr, len_arr, n_score, p->a, p->b, &p->var));
-                MFREE(ws_arr);
-
-                iter++;
-
-        }
-
-
-        f_ptr = fopen("logscores.txt", "w");
-        for(i = 0; i < n_score;i++){
-                if(len_arr[i] < 0){
-                        len_arr[i] = len_arr[i] * -1;
-                }
-                RUN(return_y(p->a, p->b, len_arr[i] , &mean));
-                //mean = score_arr[i] - mean;
-                z_score = (score_arr[i]- mean) / p->var;
-                fprintf(f_ptr,"%d,%f,%f\n", len_arr[i] , score_arr[i], z_score);
-        }
-        fclose(f_ptr);
 
         kh_destroy(whash,hash);
-        MFREE(score_arr);
-        MFREE(len_arr);
 
         return OK;
 ERROR:
@@ -396,12 +326,14 @@ ERROR:
         return FAIL;
 }
 
-int parcel_out_linear_regression(struct window_score** arr, int num, struct slen_store* sls)
+int parcel_out_linear_regression(double*** fit, struct window_score** arr, int num, struct slen_store* sls,double threshold)
 {
+
+        double** fit_param = NULL;
         double s0 = 0.0;
         double s1 = 0.0;
         double s2 = 0.0;
-        double threshold = 10.0;
+        //double threshold = 10.0;
         double mean;
         double v;
         double z_score;
@@ -421,6 +353,7 @@ int parcel_out_linear_regression(struct window_score** arr, int num, struct slen
         }
 
         LOG_MSG("C: %d - %d",c,num);
+        RUN(galloc(&fit_param, num-c, 5));
         FILE* f_ptr = NULL;
         index= 0;
         f_ptr = fopen("piece.csv", "w");
@@ -434,7 +367,6 @@ int parcel_out_linear_regression(struct window_score** arr, int num, struct slen
                                 sanity_score_count++;
                         }
                 }
-
                 //LOG_MSG("%d %f", sanity_score_count, arr[i]->s0);
                 //LOG_MSG("%d %d", start_sl , j);
                 //LOG_MSG("LEN: %d %d", arr[i]->min_len, arr[i]->max_len);
@@ -469,7 +401,13 @@ int parcel_out_linear_regression(struct window_score** arr, int num, struct slen
                                 }
                         }
                 }
-                LOG_MSG("%d a:%f\tb:%f\tv:%f",index,a,b,v);
+                fit_param[index][PST_FIT_MIN] = arr[i]->min_len;
+                fit_param[index][PST_FIT_MAX] = arr[i]->max_len;
+                fit_param[index][PST_FIT_A] = a;
+                fit_param[index][PST_FIT_B] = b;
+                fit_param[index][PST_FIT_V] = v;
+
+                LOG_MSG("%d a:%f\tb:%f\tv:%f  (%d -%d)",index,a,b,v,arr[i]->min_len,arr[i]->max_len);
                 index++;
                 for(j = start_sl;j < stop_sl;j++){
                         if(sls->sl[j]->l < 0.0){
@@ -484,6 +422,7 @@ int parcel_out_linear_regression(struct window_score** arr, int num, struct slen
 
         }
         fclose(f_ptr);
+        *fit = fit_param;
         return OK;
 ERROR:
         return FAIL;
@@ -564,7 +503,7 @@ int standard_deviation_from_fitted(double* score_arr, int* len_arr, int n_score,
         double mean;
         double v;
         int  i;
-
+        ASSERT(score_arr != NULL, "No scores");
         /*double* len_s0 = NULL;
         double* len_s1 = NULL;
         double* len_s2 = NULL;

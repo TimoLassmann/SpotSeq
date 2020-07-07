@@ -17,6 +17,8 @@ struct pst {
         double** fit;
         double* background;
         float* lbg;
+        int* fit_index;
+        int max_observed_len;
         float p_min;
         float gamma_min;
         float mean;

@@ -32,12 +32,12 @@ static int resize_fpst(struct fpst* f, int L);
 static void free_pst_node(struct pst_node* n, int L);
 static void free_fpst(struct fpst* f);
 
-int score_pst(const struct pst* pst, const char* seq,const int len, float* P_M, float* P_R)
+int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* P_M, float* P_R)
 {
         int** s = pst->fpst_root->links;
         float** s_prob = pst->fpst_root->prob;
         const float* base_p = pst->lbg;//  fpst_root->prob[0];
-        float a, b;
+        register float a, b;
         register int i,c,l,pos,n;
         a = prob2scaledprob(1.0);
         b = a;

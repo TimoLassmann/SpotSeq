@@ -106,7 +106,7 @@ int read_training_sequences(struct tl_seq_buffer** seq_buf,struct rng_state* rng
         *seq_buf = sb;
         return OK;
 ERROR:
-        return NULL;
+        return FAIL;
 }
 
 int recursive_rename(char* name,  int i)

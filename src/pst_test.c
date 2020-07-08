@@ -43,12 +43,12 @@ int main(int argc, char *argv[])
         //GGTTTACT
         return EXIT_SUCCESS;*/
         if(argc == 4){
-                RUN(create_pst_model(rng,argv[1], argv[2], argv[3], 0.0, 0.0, 0.0));
+                RUN(create_pst_model(rng,argv[1], argv[2], argv[3], 0.000001, 0.01, 20.0));
         }else if(argc == 3){
 
                 RUN(read_pst_hdf5(&p, argv[1]));
 
-                RUN(search_db(p,argv[2], 10.0));
+                RUN(search_db(p,argv[2], 5.0));
 
                 free_pst(p);
         }else{

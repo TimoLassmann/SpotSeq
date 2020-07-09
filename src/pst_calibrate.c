@@ -68,115 +68,6 @@ static int make_intervals(struct  scorelen** arr, int l, double min_ivlen, doubl
 /* linear regression  */
 /* run pst again (?) to calculate standard deviation from fitted curve  */
 
-int make_intervals(struct  scorelen** arr, int l, double min_ivlen, double min_items,struct window_score*** ws_ret, int* ws_num)
-{
-        struct window_score** ws_arr = NULL;
-//        khash_t(whash) *hash = kh_init(whash);
-        //      khiter_t k;
-        struct scorelen* sl = NULL;
-
-        double  min_len;
-        double max_len;
-        double avg_len;
-        double old_len;
-        double s0;
-        double m;
-        double av,bv;
-        int i,c,ret,num;
-        int num_alloc;
-
-
-        num_alloc = 1000;
-        num = 0;
-
-        MMALLOC(ws_arr, sizeof(struct window_score*) * num_alloc);
-
-        s0 = 0.0;
-        min_len = 100000000.0;
-        max_len = 0.0;
-        avg_len = 0.0;
-
-        old_len = 0.0;
-
-        for(i = 0; i < l;i++){
-                sl = arr[i];
-                if(sl->l > 0.0){
-
-                        if(sl->l !=old_len){
-                                if(s0 > min_items && fabs(max_len - min_len) >= min_ivlen){
-                                        ws_arr[num] = NULL;
-                                        MMALLOC(ws_arr[num], sizeof(struct window_score));
-
-
-                                        ws_arr[num]->len = avg_len / s0;
-                                        ws_arr[num]->min_len = min_len;
-                                        ws_arr[num]->max_len = max_len;
-                                        ws_arr[num]->s0 = s0;
-                                        num++;
-
-                                        if(num == num_alloc){
-                                                num_alloc = num_alloc + num_alloc / 2;
-                                                MREALLOC(ws_arr, sizeof(struct window_score*) * num_alloc);
-                                                for(c = num ; c < num_alloc;c++){
-                                                        ws_arr[c] = NULL;
-                                                        MMALLOC(ws_arr[c], sizeof(struct window_score));
-                                                }
-                                        }
-
-                                        /*LOG_MSG("Min: %f max= %f  num:%f",min_len,max_len, s0);
-                                        k = kh_put(whash, hash, min_len, &ret);
-                                        if (!ret){
-                                                LOG_MSG("Weird - already exists... ");
-                                        }else{
-                                                kh_value(hash, k).len = avg_len /s0;
-                                                kh_value(hash, k).min_len = min_len;
-                                                kh_value(hash, k).max_len = max_len;
-                                                kh_value(hash, k).s0 = s0;
-                                                }*/
-                                        s0 = 0.0;
-                                        min_len = max_len+1;
-                                        max_len = 0.0;
-                                        avg_len = 0.0;
-                                }
-                                old_len = sl->l;
-                        }
-                        min_len = MACRO_MIN(min_len,sl->l);
-                        max_len = MACRO_MAX(max_len,sl->l);
-                        avg_len += sl->l;
-                        s0++;
-
-                }
-        }
-        ws_arr[num] = NULL;
-        MMALLOC(ws_arr[num], sizeof(struct window_score));
-
-        ws_arr[num]->len = avg_len / s0;
-        ws_arr[num]->min_len = min_len;
-        ws_arr[num]->max_len = max_len;
-        ws_arr[num]->s0 = s0;
-        num++;
-
-        qsort(ws_arr , num,  sizeof( wscore*),sort_wscore_by_len);
-
-         /* clean up last interval  */
-        if(num > 1){
-
-                ws_arr[num-2]->min_len = MACRO_MIN(ws_arr[num-1]->min_len,ws_arr[num-2]->min_len);
-                ws_arr[num-2]->max_len = MACRO_MAX(ws_arr[num-1]->max_len,ws_arr[num-2]->max_len);
-                ws_arr[num-2]->s0 = ws_arr[num-1]->s0+ws_arr[num-2]->s0;
-        }
-        MFREE(ws_arr[num-1]);
-        num--;
-
-        //LOG_MSG("%f - %f: %f %f",min_len,max_len,avg_len,m);
-        //kh_destroy(whash,hash);
-
-        *ws_ret = ws_arr;
-        *ws_num = num;
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 int calibrate_pst(struct pst* p, char* filename,double threshold)
 {
@@ -346,6 +237,7 @@ ERROR:
 }
 
 
+
 int score_all(struct pst* p, char* filename , struct slen_store** sls)
 {
         struct slen_store* sl_store = NULL;
@@ -433,7 +325,114 @@ ERROR:
         return FAIL;
 }
 
+int make_intervals(struct  scorelen** arr, int l, double min_ivlen, double min_items,struct window_score*** ws_ret, int* ws_num)
+{
+        struct window_score** ws_arr = NULL;
+//        khash_t(whash) *hash = kh_init(whash);
+        //      khiter_t k;
+        struct scorelen* sl = NULL;
 
+        double  min_len;
+        double max_len;
+        double avg_len;
+        double old_len;
+        double s0;
+        double m;
+        double av,bv;
+        int i,c,ret,num;
+        int num_alloc;
+
+
+        num_alloc = 1000;
+        num = 0;
+
+        MMALLOC(ws_arr, sizeof(struct window_score*) * num_alloc);
+
+        s0 = 0.0;
+        min_len = 100000000.0;
+        max_len = 0.0;
+        avg_len = 0.0;
+
+        old_len = 0.0;
+
+        for(i = 0; i < l;i++){
+                sl = arr[i];
+                if(sl->l > 0.0){
+
+                        if(sl->l !=old_len){
+                                if(s0 > min_items && fabs(max_len - min_len) >= min_ivlen){
+                                        ws_arr[num] = NULL;
+                                        MMALLOC(ws_arr[num], sizeof(struct window_score));
+
+
+                                        ws_arr[num]->len = avg_len / s0;
+                                        ws_arr[num]->min_len = min_len;
+                                        ws_arr[num]->max_len = max_len;
+                                        ws_arr[num]->s0 = s0;
+                                        num++;
+
+                                        if(num == num_alloc){
+                                                num_alloc = num_alloc + num_alloc / 2;
+                                                MREALLOC(ws_arr, sizeof(struct window_score*) * num_alloc);
+                                                for(c = num ; c < num_alloc;c++){
+                                                        ws_arr[c] = NULL;
+                                                        MMALLOC(ws_arr[c], sizeof(struct window_score));
+                                                }
+                                        }
+
+                                        /*LOG_MSG("Min: %f max= %f  num:%f",min_len,max_len, s0);
+                                        k = kh_put(whash, hash, min_len, &ret);
+                                        if (!ret){
+                                                LOG_MSG("Weird - already exists... ");
+                                        }else{
+                                                kh_value(hash, k).len = avg_len /s0;
+                                                kh_value(hash, k).min_len = min_len;
+                                                kh_value(hash, k).max_len = max_len;
+                                                kh_value(hash, k).s0 = s0;
+                                                }*/
+                                        s0 = 0.0;
+                                        min_len = max_len+1;
+                                        max_len = 0.0;
+                                        avg_len = 0.0;
+                                }
+                                old_len = sl->l;
+                        }
+                        min_len = MACRO_MIN(min_len,sl->l);
+                        max_len = MACRO_MAX(max_len,sl->l);
+                        avg_len += sl->l;
+                        s0++;
+
+                }
+        }
+        ws_arr[num] = NULL;
+        MMALLOC(ws_arr[num], sizeof(struct window_score));
+
+        ws_arr[num]->len = avg_len / s0;
+        ws_arr[num]->min_len = min_len;
+        ws_arr[num]->max_len = max_len;
+        ws_arr[num]->s0 = s0;
+        num++;
+
+        qsort(ws_arr , num,  sizeof( wscore*),sort_wscore_by_len);
+
+         /* clean up last interval  */
+        if(num > 1){
+
+                ws_arr[num-2]->min_len = MACRO_MIN(ws_arr[num-1]->min_len,ws_arr[num-2]->min_len);
+                ws_arr[num-2]->max_len = MACRO_MAX(ws_arr[num-1]->max_len,ws_arr[num-2]->max_len);
+                ws_arr[num-2]->s0 = ws_arr[num-1]->s0+ws_arr[num-2]->s0;
+        }
+        MFREE(ws_arr[num-1]);
+        num--;
+
+        //LOG_MSG("%f - %f: %f %f",min_len,max_len,avg_len,m);
+        //kh_destroy(whash,hash);
+        *ws_ret = ws_arr;
+        *ws_num = num;
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int merge_bins(struct window_score** arr, int num,int bin_size)
 {

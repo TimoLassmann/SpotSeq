@@ -63,7 +63,6 @@ int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* P_
         return OK;
 }
 
-
 int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_hash* h)
 {
         struct pst* p = NULL;
@@ -89,23 +88,20 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
                 hi= kh_get(exact, h->hash, key);
                 c = 0;
                 if(hi != kh_end(h->hash)){
-                        //LOG_MSG("%d: %d", i,kh_value(h->hash, hi));
                         c = kh_value(h->hash, hi);
                 }
-
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] = c;
                 //p->fppt_root->prob[x][i] = c;
                 sum += p->fpst_root->prob[x][i];
         }
 
-
         for(i = 0;i < p->L;i++){
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] /=sum;
                 //fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
                 p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
-                p->fpst_root->prob[x][i] = p->background[i];
+                //p->fpst_root->prob[x][i] = p->background[i];
                 //fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
                 helper->probability[i] = p->fpst_root->prob[x][i];
                 p->fpst_root->links[x][i] = 0;

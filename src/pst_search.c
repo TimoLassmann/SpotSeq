@@ -23,6 +23,7 @@ int search_db(struct pst* p, char* filename, double thres)
         //LOG_MSG("%s",infile);
         if(!my_file_exists(filename)){
                 ERROR_MSG("File %s not found");
+
         }
 
         RUNP(rng = init_rng(0));
@@ -30,6 +31,12 @@ int search_db(struct pst* p, char* filename, double thres)
         chunk =1;
         while(1){
                 RUN(read_fasta_fastq_file(f, &sb, 1000000));
+                int alloc = 0;
+
+                for(i = 0; i < sb->num_seq;i++){
+                        alloc+= sb->sequences[i]->malloc_len;
+                }
+                LOG_MSG("CHUNK:%d %d",chunk, alloc);
                 if(chunk == 1){
                         if(sb->L == TL_SEQ_BUFFER_DNA){
                                 RUN(create_alphabet(&alphabet, rng, TLALPHABET_NOAMBIGUOUS_DNA));
@@ -65,12 +72,14 @@ int search_db(struct pst* p, char* filename, double thres)
                                 v = p->fit[index][PST_FIT_V];
                                 z_score = (P_M - (a + b * (double)len )) / v;
                                 if(z_score >= thres){
-                                        fprintf(stdout,"Hit: %f\t%s\n",z_score,seq->name);
+                                        //fprintf(stdout,"Hit: %f\t%s\n",z_score,seq->name);
                                 }
                         }
 #ifdef HAVE_OPENMP
                 }
 #endif
+                //free_tl_seq_buffer(sb);
+                //sb = NULL;
                 chunk++;
         }
         RUN(close_seq_file(&f));

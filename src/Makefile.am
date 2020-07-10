@@ -109,6 +109,7 @@ seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
 makedb_SOURCES = $(SEQUENCE_DB)
+makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST
 
 seqer_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
@@ -270,7 +271,9 @@ pst_test.c \
 sim_seq_lib.h \
 sim_seq_lib.c \
 null_model_emission.h \
-null_model_emission.c 
+null_model_emission.c \
+$(SEQUENCE_DB)
+
 
 sequences_TEST_SOURCES = \
 sequence_alloc.h \

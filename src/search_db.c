@@ -19,6 +19,7 @@ void free_hdf_seq_store(struct hdf_seq_store* h);
 int write_hdf_seq_store(struct hdf_seq_store* h, char* filename);
 int read_hdf_seq_store_chunk(struct hdf_seq_store** hs, char* filename);
 
+#ifdef SEQDBTEST
 int main(int argc, char *argv[])
 {
         if(argc == 3){
@@ -26,18 +27,22 @@ int main(int argc, char *argv[])
 
         }else if(argc == 2){
                 struct hdf_seq_store*h = NULL;
+                int numseq = 0;
                 while(1){
                         RUN(read_hdf_seq_store_chunk(&h, argv[1]));
                         if(!h->num_seq){
                                 break;
                         }
+                        numseq+= h->num_seq;
                 }
                 free_hdf_seq_store(h);
+                LOG_MSG("Read %d", numseq);
         }
         return EXIT_SUCCESS;
 ERROR:
         return EXIT_FAILURE;
 }
+#endif
 
 int build_sequence_database(char* filename, char* out,int seed)
 {

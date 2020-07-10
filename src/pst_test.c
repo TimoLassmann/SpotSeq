@@ -47,8 +47,15 @@ int main(int argc, char *argv[])
         }else if(argc == 3){
 
                 RUN(read_pst_hdf5(&p, argv[1]));
+                LOG_MSG("%s",argv[2]);
+                if(!strcmp(".h5", argv[2] + (strlen(argv[2] ) - 3))){
+                        RUN(search_db_hdf5(p,argv[2], 5.0));
+                }else{
+                        RUN(search_db(p,argv[2], 5.0));
+                }
 
-                RUN(search_db(p,argv[2], 5.0));
+
+
 
                 free_pst(p);
         }else{

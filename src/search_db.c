@@ -11,16 +11,6 @@
 #define SEARCH_DB_IMPORT
 #include "search_db.h"
 
-struct hdf_seq_store{
-        uint8_t* seq;
-        uint32_t* len;
-        char** seq_names;
-        int num_seq;
-        int alloc_num_seq;
-        int seq_buf_size;
-        int chunk_number;
-};
-
 int alloc_hdf_seq_store(struct hdf_seq_store** hs);
 int reset_hdf_seq_store(struct hdf_seq_store* h);
 int resize_hdf_seq_store(struct hdf_seq_store* h);

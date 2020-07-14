@@ -13,22 +13,38 @@
 #define  PST_SEARCH_IMPORT
 #include "pst_search.h"
 
-int search_db(struct pst* p, char* filename, double thres)
+static int copy_sequences(struct tl_seq_buffer* sb, struct tl_seq* a);
+
+int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer** hits)
 {
+
+#ifdef HAVE_OPENMP
+        omp_lock_t writelock;
+        omp_set_num_threads(8);
+
+
+        omp_init_lock(&writelock);
+#endif
         struct file_handler* f = NULL;
         struct tl_seq_buffer* sb = NULL;
         struct rng_state* rng = NULL;
         struct alphabet* alphabet = NULL;
-
+        struct tl_seq_buffer* h = NULL;
         int chunk,i;
-        int hits = 0;
+        int n_hits = 0;
+
+        if(*hits){
+                h = *hits;
+        }else{
+                RUN(alloc_tl_seq_buffer(&h, 10000));
+        }
+
         //LOG_MSG("%s",infile);
         if(!my_file_exists(filename)){
                 ERROR_MSG("File %s not found");
-
         }
 
-        RUNP(rng = init_rng(0));
+        RUNP(rng = init_rng(42));
         RUN(open_fasta_fastq_file(&f, filename, TLSEQIO_READ));
         chunk =1;
         while(1){
@@ -49,38 +65,38 @@ int search_db(struct pst* p, char* filename, double thres)
                 if(sb->num_seq == 0){
                         break;
                 }
+                for(i = 0; i < sb->num_seq;i++){
+                        struct tl_seq* seq = sb->sequences[i];
+                        int len = seq->len;
+                        convert_to_internal(alphabet, (uint8_t*)seq->seq,len);
+                }
 #ifdef HAVE_OPENMP
-                omp_set_num_threads(4);
-#pragma omp parallel shared(sb,alphabet,p) private(i)
-                {
+
+
+#pragma omp parallel default(shared)
 #pragma omp for schedule(dynamic) nowait
 #endif
                         for(i = 0; i < sb->num_seq;i++){
-                                struct tl_seq* seq = sb->sequences[i];
-                                double a,b,v;
-                                int len = seq->len;
                                 double z_score;
                                 float P_M, P_R;
 
-                                convert_to_internal(alphabet, (uint8_t*)seq->seq,len);
                                 //len = MACRO_MIN(len, 100);
-                                score_pst(p, seq->seq, len, &P_M,&P_R);
-
-                                P_M = P_M - P_R;
-                                int index = MACRO_MIN(p->max_observed_len, len);
-                                index = p->fit_index[index];
-                                a = p->fit[index][PST_FIT_A];
-                                b = p->fit[index][PST_FIT_B];
-                                v = p->fit[index][PST_FIT_V];
-                                z_score = (P_M - (a + b * (double)len )) / v;
+                                score_pst(p, sb->sequences[i]->seq, sb->sequences[i]->len, &P_M,&P_R);
+                                z_score_pst(p, sb->sequences[i]->len, P_M, P_R, &z_score);
                                 if(z_score >= thres){
-                                        hits++;
+                                        omp_set_lock(&writelock);
+                                        //int thread_id  = omp_get_thread_num();
+                                        //LOG_MSG("Thread %d locking ", thread_id);
+                                        copy_sequences(h, sb->sequences[i]);
+                                        n_hits++;
+                                        omp_unset_lock(&writelock);
+
                                         //fprintf(stdout,"Hit: %f\t%s\n",z_score,seq->name);
                                 }
                         }
-#ifdef HAVE_OPENMP
-                }
-#endif
+//#ifdef HAVE_OPENMP
+                        //              }
+//#endif
                 //free_tl_seq_buffer(sb);
                 //sb = NULL;
                 chunk++;
@@ -89,17 +105,52 @@ int search_db(struct pst* p, char* filename, double thres)
         free_rng(rng);
         free_tl_seq_buffer(sb);
         free_alphabet(alphabet);
-        LOG_MSG("Found %d hits", hits);
+        LOG_MSG("Found %d hits", n_hits);
+        *hits = h;
+#ifdef HAVE_OPENMP
+        omp_destroy_lock(&writelock);
+#endif
         return OK;
 ERROR:
         return FAIL;
 }
 
+int copy_sequences(struct tl_seq_buffer* sb, struct tl_seq* a)
+{
+        int printed;
+        struct tl_seq* target = NULL;
+        if(sb->num_seq == sb->malloc_num){
+                RUN(resize_tl_seq_buffer(sb));
+        }
 
+        target = sb->sequences[sb->num_seq];
+
+        printed = snprintf(target->name, TL_SEQ_MAX_NAME_LEN, "%s", a->name);
+        ASSERT(printed < TL_SEQ_MAX_NAME_LEN ,"characters printed entirely fills buffer");
+
+        while(target->malloc_len <= a->len){
+                RUN(resize_tl_seq(target));
+        }
+        memcpy(target->seq, a->seq, a->len);
+        target->len = a->len;
+
+        sb->num_seq++;
+        return OK;
+ERROR:
+        return FAIL;
+}
 
 int search_db_hdf5(struct pst* p, char* filename, double thres)
 {
         int chunk,i;
+#ifdef HAVE_OPENMP
+        omp_lock_t writelock;
+        omp_set_num_threads(8);
+
+
+        omp_init_lock(&writelock);
+#endif
+
 
         //LOG_MSG("%s",infile);
         if(!my_file_exists(filename)){
@@ -117,7 +168,7 @@ int search_db_hdf5(struct pst* p, char* filename, double thres)
                         break;
                 }
 #ifdef HAVE_OPENMP
-                omp_set_num_threads(8);
+
 #pragma omp parallel shared(h) private(i)
                 {
 #pragma omp for schedule(dynamic) nowait
@@ -129,21 +180,14 @@ int search_db_hdf5(struct pst* p, char* filename, double thres)
                                 uint8_t* seq = h->seq + h->len[i];
                                 int len = h->len[i+1] - h->len[i];
 
-                                double a,b,v;
-
                                 double z_score;
                                 float P_M, P_R;
                                 score_pst(p, seq, len, &P_M,&P_R);
-
-                                P_M = P_M - P_R;
-                                int index = MACRO_MIN(p->max_observed_len, len);
-                                index = p->fit_index[index];
-                                a = p->fit[index][PST_FIT_A];
-                                b = p->fit[index][PST_FIT_B];
-                                v = p->fit[index][PST_FIT_V];
-                                z_score = (P_M - (a + b * (double)len )) / v;
+                                z_score_pst(p, len, P_M, P_R, &z_score);
                                 if(z_score >= thres){
+                                        omp_set_lock(&writelock);
                                         hits++;
+                                        omp_unset_lock(&writelock);
                                         //fprintf(stdout,"Hit: %f\t%s\n",z_score,seq->name);
                                 }
                         }
@@ -158,6 +202,11 @@ int search_db_hdf5(struct pst* p, char* filename, double thres)
         }
         free_hdf_seq_store(h);
         LOG_MSG("Found %d hits", hits);
+
+#ifdef HAVE_OPENMP
+        omp_destroy_lock(&writelock);
+#endif
+
         return OK;
 ERROR:
         return FAIL;

@@ -23,6 +23,8 @@ EXTERN int build_sequence_database(char* filename, char* out,int seed);
 
 EXTERN int read_hdf_seq_store_chunk(struct hdf_seq_store** hs, char* filename);
 
+EXTERN void free_hdf_seq_store(struct hdf_seq_store* h);
+
 #undef SEARCH_DB_IMPORT
 #undef EXTERN
 

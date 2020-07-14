@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
         struct rng_state* rng = NULL;
 
         struct pst* p = NULL;
+        struct tl_seq_buffer* hits = NULL;
+        int i;
         RUNP(rng = init_rng(0));
 
 
@@ -51,11 +53,14 @@ int main(int argc, char *argv[])
                 if(!strcmp(".h5", argv[2] + (strlen(argv[2] ) - 3))){
                         RUN(search_db_hdf5(p,argv[2], 5.0));
                 }else{
-                        RUN(search_db(p,argv[2], 5.0));
+                        RUN(search_db(p,argv[2], 5.0,&hits));
+                        for(i = 0; i < hits->num_seq;i++){
+                                fprintf(stdout,"%d: %s\n", i, hits->sequences[i]->name);
+                        }
                 }
 
 
-
+                free_tl_seq_buffer(hits);
 
                 free_pst(p);
         }else{

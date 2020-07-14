@@ -10,7 +10,8 @@
 
 struct pst;
 
-EXTERN int search_db(struct pst* p, char* filename, double thres);
+EXTERN int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer** hits);
+//EXTERN int search_db(struct pst* p, char* filename, double thres);
 EXTERN int search_db_hdf5(struct pst* p, char* filename, double thres);
 
 #undef PST_SEARCH_IMPORT

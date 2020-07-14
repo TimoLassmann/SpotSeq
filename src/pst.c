@@ -63,6 +63,22 @@ int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* P_
         return OK;
 }
 
+int z_score_pst(const struct pst* p, int len, float P_M, float P_R,double*z_score)
+{
+
+        double a,b,v;
+        int index = MACRO_MIN(p->max_observed_len, len);
+        P_M = P_M - P_R;
+
+        index = p->fit_index[index];
+        a = p->fit[index][PST_FIT_A];
+        b = p->fit[index][PST_FIT_B];
+        v = p->fit[index][PST_FIT_V];
+        *z_score = (P_M - (a + b * (double)len )) / v;
+        return OK;
+}
+
+
 int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_hash* h)
 {
         struct pst* p = NULL;

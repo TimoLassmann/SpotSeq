@@ -14,7 +14,7 @@
 int alloc_hdf_seq_store(struct hdf_seq_store** hs);
 int reset_hdf_seq_store(struct hdf_seq_store* h);
 int resize_hdf_seq_store(struct hdf_seq_store* h);
-void free_hdf_seq_store(struct hdf_seq_store* h);
+
 
 int write_hdf_seq_store(struct hdf_seq_store* h, char* filename);
 int read_hdf_seq_store_chunk(struct hdf_seq_store** hs, char* filename);
@@ -103,7 +103,6 @@ int build_sequence_database(char* filename, char* out,int seed)
                         len = sb->sequences[i]->len;
 
                         /* Do I have to write? */
-
                         if(pos + len >= hs->seq_buf_size){
 
                                 LOG_MSG("Need to write:    %d %d",pos + len, hs->seq_buf_size);

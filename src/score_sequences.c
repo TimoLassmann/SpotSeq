@@ -11,11 +11,23 @@
 #include "tlmisc.h"
 #include "tllogsum.h"
 #include "tlrng.h"
+#include "tlseqio.h"
+#include "tlalphabet.h"
+
 //#include "model.h"
+#include "sequence_struct.h"
+
 #include "sequence_io.h"
 #include "sequence_prep.h"
 
-#include "ihmm_seq.h"
+#include "pst.h"
+#include "pst_io.h"
+#include "pst_search.h"
+
+
+#include "thread_data.h"
+
+//#include "ihmm_seq.h"
 
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
@@ -28,12 +40,14 @@ struct parameters{
         char* background_sequences;
         char* output;
         char* summary_file;
+        double threshold;
         int num_threads;
         rk_state rndstate;
         struct rng_state* rng;
 
 };
 
+static int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hits);
 
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
@@ -61,6 +75,7 @@ int main (int argc, char *argv[])
         param->output = NULL;
         param->num_threads = 8;
         param->summary_file = NULL;
+        param->threshold = 5.0;   /* z_score cutoff for pst model scores  */
         param->rng = NULL;
 
         while (1){
@@ -158,8 +173,34 @@ int main (int argc, char *argv[])
 
         LOG_MSG("Loading model.");
 
+
+
         int best = -1;
         init_logsum();
+
+        struct tl_seq_buffer* hits = NULL;
+        RUN(scan_sequences_pst(param, &hits));
+
+        RUN(convert_tl_seq_buf_into_ihmm_seq_buf(hits, &sb));
+        free_tl_seq_buffer(hits);
+
+        RUNP(fhmm = read_best_fmodel(param->in_model, &best));
+        RUN(alloc_dyn_matrices(fhmm));
+        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL,THREAD_DATA_FULL));
+
+        RUN(run_score_sequences(fhmm,sb, td));
+         /* Print scores.. */
+        RUNP(fptr = fopen(param->output, "w"));
+        fprintf(fptr, "Name,Score_%s\n",  param->in_model);
+        for(i = 0; i < sb->num_seq;i++){
+                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
+        }
+        fclose(fptr);
+
+exit(0);
+        //LOG_MSG("Load PST model")
+        //RUN(read_pst_hdf5(&p, param->in_model));
+
         RUNP(fhmm = read_best_fmodel(param->in_model, &best));
         RUN(alloc_dyn_matrices(fhmm));
         /* load sequences.  */
@@ -251,7 +292,7 @@ int main (int argc, char *argv[])
 
         free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
-        free_ihmm_sequences(sb);
+        //free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -262,7 +303,8 @@ ERROR:
         }
 
         free_seqer_thread_data(td);
-        free_ihmm_sequences(sb);
+        //
+        //free_ihmm_sequences(sb);
         free_fhmm(fhmm);
         free_parameters(param);
         return EXIT_FAILURE;
@@ -289,4 +331,27 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--background","Background sequences - residue counts from these will be ADDED to the background model. " ,"[8]"  );
         return OK;
+}
+
+
+int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hits)
+{
+        struct tl_seq_buffer* h = NULL;
+        struct pst* p = NULL;
+        int i;
+        init_logsum();
+        LOG_MSG("Load PST model");
+        RUN(read_pst_hdf5(&p, param->in_model));
+        RUN(search_db(p, param->in_sequences, param->threshold,&h));
+        for(i = 0; i < h->num_seq;i++){
+                fprintf(stdout,"%d: %s\n", i, h->sequences[i]->name);
+        }
+        free_pst(p);
+
+        //free_tl_seq_buffer(hits);
+
+        *hits = h;
+        return OK;
+ERROR:
+        return FAIL;
 }

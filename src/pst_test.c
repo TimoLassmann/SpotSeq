@@ -136,7 +136,7 @@ int test_match_insert(char* infile,char* dbname)
                 s[j] = 0.0;
         }
         for (j = 0; j < sb->num_seq;j++){
-                RUN(score_pst(p, sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
+                RUN(score_pst(p,(uint8_t*) sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
                 P_M = P_M - P_R;
                 s[0]++;
                 s[1] += P_M;

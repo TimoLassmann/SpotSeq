@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 #include "tldevel.h"
 #include "tlalphabet.h"
 #include "tlseqbuffer.h"
@@ -119,7 +121,7 @@ int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng)
 {
         struct alphabet* a = NULL;
         int max = -1;
-        int i;
+        int i,j;
 
 
         /* create alphabet */
@@ -147,6 +149,10 @@ int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng)
                 uint8_t* seq;
                 len = sb->sequences[i]->seq_len;
                 seq = sb->sequences[i]->seq;
+                for(j = 0;j < len;j++){
+                        seq[j] = toupper(seq[j]);
+
+                }
                 RUN(convert_to_internal(a, seq, len));
 
         }

@@ -26,6 +26,8 @@
 #include "sequence_struct.h"
 #include "sequence_prep.h"
 
+#include "pst_build.h"
+
 
 #include "model_core.h"
 
@@ -42,10 +44,12 @@
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 #define OPT_COMPETITIVE 3
+#define OPT_SEQDB 4
 
 struct parameters{
         char* input;
         char* in_model;
+        char* seq_db;
         char* cmd_line;
         double alpha;
         double gamma;
@@ -89,6 +93,7 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
         param->in_model = NULL;
+        param->seq_db = NULL;
         param->cmd_line = NULL;
         //param->tmp_file_A = NULL;
         //param->tmp_file_B = NULL;
@@ -109,6 +114,7 @@ int main (int argc, char *argv[])
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
+                        {"seqdb",required_argument,0,OPT_SEQDB},
                         {"out",required_argument,0,'o'},
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
@@ -131,6 +137,9 @@ int main (int argc, char *argv[])
                         break;
                 }
                 switch(c) {
+                case OPT_SEQDB:
+                        param->seq_db = optarg;
+                        break;
                 case OPT_COMPETITIVE:
                         param->competitive =1;
                         break;
@@ -209,6 +218,17 @@ int main (int argc, char *argv[])
                 }
         }
 
+        if(!param->seq_db){
+                RUN(print_help(argv));
+                ERROR_MSG("No seqDB use --seqdb <blah.fa>");
+
+        }else{
+                if(!my_file_exists(param->seq_db)){
+                        RUN(print_help(argv));
+                        ERROR_MSG("The file <%s> does not exist.",param->seq_db);
+                }
+        }
+
         if(param->num_models < 1){
                 RUN(print_help(argv));
                 ERROR_MSG("To few models! use -nmodels <1+>");
@@ -264,7 +284,9 @@ int run_build_ihmm(struct parameters* param)
 
                 //RUN(convert_ihmm_to_fhmm_models(model_bag));
         }else{                  /* New run - start from the beginning */
-                /* Step one read in sequences */
+                /* create pst search model  */
+                RUN(create_pst_model(param->rng, param->input,param->seq_db, param->in_model,0.000001, 0.01, 20.0));
+/* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
                 //RUNP(rng = init_rng(0));
 

@@ -37,6 +37,7 @@ struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_le
                 td[i]->e = NULL;
                 td[i]->fhmm = NULL;
                 //  RUNP(matrix = malloc_2d_float(matrix,sb->max_len+1, ft->last_state, 0.0f));
+                //LOG_MSG("Alloc: %d %d", max_len,K);
                 RUN(galloc(&td[i]->dyn, max_len, K));
 
                 //RUN(galloc(&td[i]->F_matrix, max_len, K));

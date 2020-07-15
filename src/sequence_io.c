@@ -1,6 +1,6 @@
 #include <string.h>
-#include <ctype.h>
 
+#include "tlseqbuffer.h"
 #include "tldevel.h"
 #include "tlseqio.h"
 #include "tlhdf5wrap.h"
@@ -19,9 +19,8 @@ int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
         struct seq_buffer* sb = NULL; /* structure used in seqer */
         struct file_handler* f_hand = NULL;
         struct tl_seq_buffer* tlsb = NULL; /* structure used for genetic fasta/ fastq reader  */
-
-        int i,j;
-        int printed;
+        //int i,j;
+        //int printed;
         RUN(open_fasta_fastq_file(&f_hand, filename, TLSEQIO_READ));
 
         RUN(read_fasta_fastq_file(f_hand, &tlsb,MAX_SEQ_READ));
@@ -34,6 +33,22 @@ int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
 
         RUN(detect_format(tlsb));
 
+        RUN(convert_tl_seq_buf_into_ihmm_seq_buf(tlsb, &sb));
+
+        free_tl_seq_buffer(tlsb);
+        RUN(close_seq_file(&f_hand));
+        *seq_buf = sb;
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+int convert_tl_seq_buf_into_ihmm_seq_buf(struct tl_seq_buffer* tlsb, struct seq_buffer** ret)
+{
+        struct seq_buffer* sb = NULL;
+        int i,j;
+        int printed;
         RUN(alloc_sequence_buffer(&sb, tlsb->num_seq));
 
 
@@ -45,29 +60,24 @@ int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
                 printed = snprintf(sb->sequences[i]->name, MAX_SEQUENCE_NAME_LEN, "%s", tlsb->sequences[i]->name);
                 ASSERT(printed < MAX_SEQUENCE_NAME_LEN,"characters printed entirely fills buffer");
 
-                printed = snprintf(sb->sequences[i]->seq , sb->sequences[i]->malloc_len, "%s", tlsb->sequences[i]->seq);
-                ASSERT(printed < sb->sequences[i]->malloc_len,"characters printed entirely fills buffer");
-
                 sb->sequences[i]->seq_len = tlsb->sequences[i]->len;
-                /* upper case for good measure */
-                for(j = 0; j < sb->sequences[i]->seq_len;j++){
-                        sb->sequences[i]->seq[j] = toupper((int)sb->sequences[i]->seq[j]);
+                for(j = 0; j < tlsb->sequences[i]->len;j++){
+                        sb->sequences[i]->seq[j] = tlsb->sequences[i]->seq[j];
                 }
+
                 if(sb->sequences[i]->seq_len > sb->max_len){
                         sb->max_len = sb->sequences[i]->seq_len;
                 }
-
         }
 
         sb->num_seq = tlsb->num_seq;
         sb->L = tlsb->L;
-        free_tl_seq_buffer(tlsb);
-        RUN(close_seq_file(&f_hand));
-        *seq_buf = sb;
 
+        *ret = sb;
         return OK;
 ERROR:
         return FAIL;
+
 }
 
 int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_models)

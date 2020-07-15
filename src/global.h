@@ -1,8 +1,15 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-#define IHMM_START_STATE 0
-#define IHMM_END_STATE 1
+#define START_STATE 0
+#define END_STATE 1
+
+#define N_STATE 2
+#define B_STATE 3
+#define E_STATE 4
+#define C_STATE 5
+#define J_STATE 6
+
 
 #define EMISSION_H 0.3
 

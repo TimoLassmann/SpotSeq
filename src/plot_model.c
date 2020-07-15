@@ -417,8 +417,8 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
         for(i = 0; i < model->num_states;i++){
                 total_counts[i] = 0;
         }
-        total_counts[IHMM_START_STATE] = 100000;
-        total_counts[IHMM_END_STATE] = 100000;
+        total_counts[START_STATE] = 100000;
+        total_counts[END_STATE] = 100000;
         for(i = 0; i < model->L;i++){
                 for(j = 0; j < model->num_states;j++){
                         total_counts[j] +=   model->emission_counts[i][j];

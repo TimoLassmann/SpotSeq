@@ -54,12 +54,12 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
         sum = 0.0;
 
         /* Disallow Start to start transitions */
-        ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0;
+        ft->transition[START_STATE][START_STATE] = 0.0;
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
-        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
+        ft->transition[START_STATE][END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
-                tmp_prob[i] = rk_gamma(&local_rk_copy, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
+                tmp_prob[i] = rk_gamma(&local_rk_copy, model->transition_counts[START_STATE][i] + model->beta[i] * model->alpha,1.0);
                 sum += tmp_prob[i];
         }
         /* the last to infinity transition (this is just used in stick breaking
@@ -70,18 +70,18 @@ int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm
 
         /* Normalize!  */
         for(i = 2; i < last_state;i++){
-                ft->transition[IHMM_START_STATE][i] =  tmp_prob[i] / sum;
+                ft->transition[START_STATE][i] =  tmp_prob[i] / sum;
         }
-        ft->transition[IHMM_START_STATE][last_state] = tmp_prob[last_state] / sum;
+        ft->transition[START_STATE][last_state] = tmp_prob[last_state] / sum;
 
         /* And now the stop state...  */
         /* There is no possibility escape the end state - all transitions from
          * end are zero. I am not sure if this matters in my dyn prig. code but
          * why not! */
         for(i = 0; i < last_state;i++){
-                ft->transition[IHMM_END_STATE][i] = 0.0;
+                ft->transition[END_STATE][i] = 0.0;
         }
-        ft->transition[IHMM_END_STATE][last_state] = 0.0;
+        ft->transition[END_STATE][last_state] = 0.0;
 
         for(i = 2; i < last_state;i++){
                 /* Remeber where I started filling...  */
@@ -190,8 +190,8 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
 
         tmp = ft->list[ft->num_trans];
                 //MMALLOC(tmp, sizeof(struct fast_t_item));
-        tmp->from = IHMM_START_STATE;
-        tmp->to = IHMM_START_STATE;
+        tmp->from = START_STATE;
+        tmp->to = START_STATE;
         tmp->t =  0.0;
 
         ft->num_trans++;
@@ -201,14 +201,14 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         //ft->root->tree_insert(ft->root,tmp);
         // insert into transition matrix.
 
-        ft->transition[IHMM_START_STATE][IHMM_START_STATE] = 0.0;
+        ft->transition[START_STATE][START_STATE] = 0.0;
 
 
         /* Disallow Start to end transitions i.e. zero length sequences are not allowed*/
         tmp = ft->list[ft->num_trans];
                 //MMALLOC(tmp, sizeof(struct fast_t_item));
-        tmp->from = IHMM_START_STATE;
-        tmp->to = IHMM_END_STATE;
+        tmp->from = START_STATE;
+        tmp->to = END_STATE;
         tmp->t =  0.0;
         ft->num_trans++;
         if(ft->num_trans == ft->alloc_num_trans){
@@ -216,10 +216,10 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         }
         //ft->root->tree_insert(ft->root,tmp);
 
-        ft->transition[IHMM_START_STATE][IHMM_END_STATE] = 0.0;
+        ft->transition[START_STATE][END_STATE] = 0.0;
         /* Now to the remaining existing transitions... */
         for(i = 2; i < last_state;i++){
-                tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[IHMM_START_STATE][i] + model->beta[i] * model->alpha,1.0);
+                tmp_prob[i] = rk_gamma(&model->rndstate, model->transition_counts[START_STATE][i] + model->beta[i] * model->alpha,1.0);
                 sum += tmp_prob[i];
         }
         /* the last to infinity transition (this is just used in stick breaking
@@ -232,7 +232,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         for(i = 2; i < last_state;i++){
                 tmp = ft->list[ft->num_trans];
                 //MMALLOC(tmp, sizeof(struct fast_t_item));
-                tmp->from = IHMM_START_STATE;
+                tmp->from = START_STATE;
                 tmp->to = i;
                 tmp->t =  tmp_prob[i] / sum;
                 ft->num_trans++;
@@ -240,12 +240,12 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                         RUN(expand_num_trans(ft));
                 }
                 //ft->root->tree_insert(ft->root,tmp);
-                ft->transition[IHMM_START_STATE][i] = tmp->t;
+                ft->transition[START_STATE][i] = tmp->t;
         }
-        infinity[IHMM_START_STATE]->from = IHMM_START_STATE;
-        infinity[IHMM_START_STATE]->to = last_state;
-        infinity[IHMM_START_STATE]->t = tmp_prob[last_state] / sum;;
-        ft->transition[IHMM_START_STATE][last_state] = infinity[IHMM_START_STATE]->t;
+        infinity[START_STATE]->from = START_STATE;
+        infinity[START_STATE]->to = last_state;
+        infinity[START_STATE]->t = tmp_prob[last_state] / sum;;
+        ft->transition[START_STATE][last_state] = infinity[START_STATE]->t;
 
 
         /* And now the stop state...  */
@@ -255,7 +255,7 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
         for(i = 0; i < last_state;i++){
                 tmp = ft->list[ft->num_trans];
                 //MMALLOC(tmp, sizeof(struct fast_t_item));
-                tmp->from = IHMM_END_STATE;
+                tmp->from = END_STATE;
                 tmp->to = i;
                 tmp->t = 0.0;
                 ft->num_trans++;
@@ -263,12 +263,12 @@ int fill_fast_transitions(struct ihmm_model* model,struct fast_hmm_param* ft)
                         RUN(expand_num_trans(ft));
                 }
                 //ft->root->tree_insert(ft->root,tmp);
-                ft->transition[IHMM_END_STATE][i] = 0.0;
+                ft->transition[END_STATE][i] = 0.0;
         }
-        infinity[IHMM_END_STATE]->from = IHMM_END_STATE;
-        infinity[IHMM_END_STATE]->to = last_state;
-        infinity[IHMM_END_STATE]->t = 0.0;
-        ft->transition[IHMM_END_STATE][last_state] = 0.0;
+        infinity[END_STATE]->from = END_STATE;
+        infinity[END_STATE]->to = last_state;
+        infinity[END_STATE]->t = 0.0;
+        ft->transition[END_STATE][last_state] = 0.0;
 
 
         for(i = 2; i < last_state;i++){

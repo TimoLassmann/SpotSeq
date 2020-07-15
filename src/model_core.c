@@ -167,8 +167,8 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
                 used[i] = 0;
                 relabel[i] = -1;
         }
-        used[IHMM_START_STATE] = 100;
-        used[IHMM_END_STATE] = 100;
+        used[START_STATE] = 100;
+        used[END_STATE] = 100;
         int max = -1;
         for(i = 0; i < sb->num_seq;i++){
                 lab = sb->sequences[i]->label_arr[model_index];
@@ -354,7 +354,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
         e = ihmm->emission_counts;
         m = ihmm->transition_counts;
 
-        m[IHMM_START_STATE][label[0]]  += score;
+        m[START_STATE][label[0]]  += score;
         e[(int)seq[0]][label[0]]+= score;
 
         for(i = 1; i < len;i++){
@@ -367,7 +367,7 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
                 //e[(int)seq[i]][label[i]]+=  (r - 0.5f);//r / 1.0;
 
         }
-        m[label[len-1]][IHMM_END_STATE] += score;
+        m[label[len-1]][END_STATE] += score;
         // r = rk_double(&ihmm->rndstate);
         // m[label[len-1]][IHMM_END_STATE] += (r*2 - 1.0f);// r / 1.0;
         //LOG_MSG("SCORE: %f", score);

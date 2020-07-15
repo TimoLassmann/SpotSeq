@@ -111,10 +111,10 @@ ERROR:
 
 int emit_a_sequence(struct fhmm* fhmm,  struct ihmm_sequence* s, rk_state* rndstate)
 {
-        int state = IHMM_START_STATE;
+        int state = START_STATE;
         int j;
         double r;
-        while(state != IHMM_END_STATE){
+        while(state != END_STATE){
                 /* transistion */
 
                 r = rk_double(rndstate);
@@ -155,7 +155,7 @@ int emit_a_kmer(struct fhmm* fhmm,  struct ihmm_sequence* s,int state, int len, 
         int j;
         double r;
 
-        while(state != IHMM_END_STATE &&  s->seq_len != len ){
+        while(state != END_STATE &&  s->seq_len != len ){
 
                 /* emission */
                 r = rk_double(rndstate);

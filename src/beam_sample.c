@@ -486,7 +486,7 @@ int add_state_from_fast_hmm_param(struct ihmm_model* model,struct fast_hmm_param
         sum = 0.0;
         for(i = 0;i <= new_k;i++){
                 tmp_prob[i] =  rk_gamma(&model->rndstate, beta[i] * alpha, 1.0);
-                if(i == IHMM_START_STATE){
+                if(i == START_STATE){
                         tmp_prob[i] = 0.0;
                 }
                 sum += tmp_prob[i];
@@ -682,8 +682,8 @@ int transfer_counts(struct ihmm_model* ihmm, double** t, double** e)
                 used_states[i] = 0.0;
         }
 
-        used_states[IHMM_END_STATE] = 100;
-        used_states[IHMM_START_STATE] = 100;
+        used_states[END_STATE] = 100;
+        used_states[START_STATE] = 100;
 
         for(i = 0; i <K; i++){
                 for(j = 0; j < K; j++){
@@ -829,8 +829,8 @@ int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         //fill first row.
         for(j = 0; j < boundary;j++){
-                if(list[j]->from == IHMM_START_STATE){
-                        t[IHMM_START_STATE][list[j]->to] = logsum(t[IHMM_START_STATE][list[j]->to], prob2scaledprob(list[j]->t) + B[0][list[j]->to] - total);
+                if(list[j]->from == START_STATE){
+                        t[START_STATE][list[j]->to] = logsum(t[START_STATE][list[j]->to], prob2scaledprob(list[j]->t) + B[0][list[j]->to] - total);
 
                 }
         }
@@ -861,7 +861,7 @@ int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
                 b = list[j]->to;
-                if(b == IHMM_END_STATE){
+                if(b == END_STATE){
                         t[a][b]  = logsum( t[a][b], F[len-1][a] + prob2scaledprob(list[j]->t)  - total);
                 }
         }
@@ -900,7 +900,7 @@ int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequenc
         boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
         //fill first row.
         for(j = 0; j < boundary;j++){
-                if(list[j]->from == IHMM_START_STATE){
+                if(list[j]->from == START_STATE){
                         cur[list[j]->to] = logsum(cur[list[j]->to], prob2scaledprob( list[j]->t));
                 }
         }
@@ -939,7 +939,7 @@ int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequenc
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
                 b = list[j]->to;
-                if(b == IHMM_END_STATE){
+                if(b == END_STATE){
                         *score = logsum(*score, matrix[len-1][a] + prob2scaledprob(list[j]->t));
                 }
         }
@@ -982,7 +982,7 @@ int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequen
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         //fill first row.
         for(j = 0; j < boundary;j++){
-                if(list[j]->to  == IHMM_END_STATE){
+                if(list[j]->to  == END_STATE){
                         cur[list[j]->from] = logsum(cur[list[j]->from], prob2scaledprob( list[j]->t));
                 }
         }
@@ -1016,7 +1016,7 @@ int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequen
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
                 b = list[j]->to;
-                if(a == IHMM_START_STATE){
+                if(a == START_STATE){
                         *score = logsum(*score, matrix[0][b]+ prob2scaledprob(list[j]->t));
                 }
         }
@@ -1051,7 +1051,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         //LOG_MSG("Boundary: %d (thres: %f)", boundary, u[0]);
         //fill first row.
         for(j = 0; j < boundary;j++){
-                if(list[j]->from == IHMM_START_STATE){
+                if(list[j]->from == START_STATE){
                         matrix[0][list[j]->to] = list[j]->t;
                         //fprintf(stdout," Start-> %d : %f\n", list[j]->to,list[j]->t);
                 }
@@ -1103,14 +1103,14 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
                 b = list[j]->to;
-                if(b == IHMM_END_STATE){
+                if(b == END_STATE){
                         sum += matrix[len-1][a];
                 }
         }
         //LOG_MSG("SUM:%f",sum);
 
         if(sum != 0.0 && !isnan(sum)){
-                state = IHMM_END_STATE;
+                state = END_STATE;
                 //double score = prob2scaledprob(1.0);//    1.0;
                 for(i = len-1; i >= 0; i--){
                         //fprintf(stdout,"pick: %d %d\n", i,state);
@@ -1122,7 +1122,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                         for(j = 0; j < boundary;j++){
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(b == state && a != IHMM_START_STATE){
+                                if(b == state && a != START_STATE){
                                         tmp_row[a] = matrix[i][a];
                                         sum += matrix[i][a];
                                 }
@@ -1155,7 +1155,7 @@ int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_
                                 //}
                                 a = list[j]->from;
                                 b = list[j]->to;
-                                if(b == state && a != IHMM_START_STATE){
+                                if(b == state && a != START_STATE){
                                         r -= tmp_row[a];
                                         if(r <= DBL_EPSILON){
                                                 state = a;
@@ -1375,7 +1375,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
                 u = sb->sequences[i]->u_arr[model_index];
                 len = sb->sequences[i]->seq_len;
 
-                x = ft->transition[IHMM_START_STATE][label[0]];
+                x = ft->transition[START_STATE][label[0]];
                 //c = IHMM_START_STATE * last_state + label[0];
                 //c = a* (num_states-1) + b;
                 //u[0] = rk_beta(&model->rndstate, 1.0, 11) * x;
@@ -1409,7 +1409,7 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
 
 
                 }
-                x = ft->transition[label[len-1]][IHMM_END_STATE];
+                x = ft->transition[label[len-1]][END_STATE];
 
                 //r = rk_beta(&model->rndstate, 1.0, 1.0) * x;
                 //while(fabs(r-0.0) < FLT_EPSILON ){
@@ -1434,13 +1434,13 @@ int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len
 {
         double x;
         int j;
-        x = ft->transition[IHMM_START_STATE][label[0]];
+        x = ft->transition[START_STATE][label[0]];
         u[0] = rk_double(rndstate) *x;
         for (j = 1; j < len;j++){
                 x = ft->transition[label[j-1]][label[j]];
                 u[j] = rk_double(rndstate) * x;
         }
-        x = ft->transition[label[len-1]][IHMM_END_STATE];
+        x = ft->transition[label[len-1]][END_STATE];
         u[len] = rk_double(rndstate) * x;
         return OK;
 }

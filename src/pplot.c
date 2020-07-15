@@ -237,7 +237,7 @@ int make_pretty_plot_file(struct fhmm* fhmm, struct ihmm_model* model, struct pa
                 }
                 for(i = 0;i < fhmm->K;i++){
                         //fprintf(stdout,"%d\t%d\t%f\n",i,state_count[i],(double)state_count[i] / sum);
-                        if(state_count[i] < 5 && i != IHMM_START_STATE && i != IHMM_END_STATE){
+                        if(state_count[i] < 5 && i != START_STATE && i != END_STATE){
                                 LOG_MSG("Removing state: %d",i);
                                 RUN(remove_state_for_ploting(fhmm, i));
                                 c = 1;

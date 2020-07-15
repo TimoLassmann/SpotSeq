@@ -103,7 +103,7 @@ int forward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, in
         for(j = 0; j < fhmm->K;j++){
                 cur[j]  = -INFINITY;
         }
-        cur[IHMM_START_STATE] = 0.0;
+        cur[START_STATE] = 0.0;
 
         for(i = 1; i < len+1;i++){
                 last = cur;
@@ -133,10 +133,10 @@ int forward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, in
         }
 
         for(j = 2; j < fhmm->K;j++){
-                cur[IHMM_END_STATE] = logsum(cur[IHMM_END_STATE],last[j] + fhmm->t[j][IHMM_END_STATE]);
+                cur[END_STATE] = logsum(cur[END_STATE],last[j] + fhmm->t[j][END_STATE]);
         }
-        *ret_score = cur[IHMM_END_STATE];
-        //fhmm->f_score = cur[IHMM_END_STATE];// matrix[ENDSTATE][i];
+        *ret_score = cur[END_STATE];
+        //fhmm->f_score = cur[END_STATE];// matrix[ENDSTATE][i];
         return OK;
 ERROR:
         return FAIL;
@@ -162,13 +162,13 @@ int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, i
                 cur[j] = -INFINITY;
         }
 
-        cur[IHMM_END_STATE] = 0.0f;
+        cur[END_STATE] = 0.0f;
 
         next = cur;
 
         cur = matrix[len];
         for(j = 0; j < fhmm->K;j++){
-                cur[j] = fhmm->t[j][IHMM_END_STATE] + next[IHMM_END_STATE];
+                cur[j] = fhmm->t[j][END_STATE] + next[END_STATE];
         }
         for(c = 2;c < fhmm->K;c++){
                 cur[c] += fhmm->e[c][a[len-1]];
@@ -198,9 +198,9 @@ int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, i
                 cur[j] = -INFINITY;// prob2scaledprob(0.0f);
         }
         for(i = 0; i < fhmm->K;i++){
-                cur[IHMM_START_STATE] = logsum(cur[IHMM_START_STATE], fhmm->t[IHMM_START_STATE][i] + next[i]);//  + hmm->emissions[i][(int)a[0]]  );
+                cur[START_STATE] = logsum(cur[START_STATE], fhmm->t[START_STATE][i] + next[i]);//  + hmm->emissions[i][(int)a[0]]  );
         }
-        *ret_score = cur[IHMM_START_STATE];
+        *ret_score = cur[START_STATE];
         return OK;
 ERROR:
         return FAIL;
@@ -242,8 +242,8 @@ int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,doub
         }
 
         for(j = 0; j < fhmm->K ;j++){
-                Fmatrix[len][j] = Fmatrix[len][j]  + Fmatrix[len+1][IHMM_END_STATE] ;
-                Bmatrix[len][j] = IHMM_END_STATE;
+                Fmatrix[len][j] = Fmatrix[len][j]  + Fmatrix[len+1][END_STATE] ;
+                Bmatrix[len][j] = END_STATE;
         }
         best = -1;
         /* Fill B with best transition pointers... */
@@ -262,7 +262,7 @@ int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,doub
                         Bmatrix[i][j] = best;
                 }
         }
-        state = IHMM_START_STATE;
+        state = START_STATE;
 
 
         /* traceback */

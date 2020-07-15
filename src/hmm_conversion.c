@@ -2,7 +2,7 @@
 
 #include "hmm_conversion.h"
 
-
+#include "finite_hmm_plot.h"
 #include "randomkit_tl_add.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
 
@@ -371,16 +371,19 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         ASSERT(model != NULL, "No model");
 
-        MMALLOC(used, sizeof(int)* model->num_states);
+        MMALLOC(used, sizeof(int)* (model->num_states+5)); /* 5 because I need to add N C B E and J states  */
 
         for(i = 0; i < model->num_states;i++){
                 used[i] = -1;
         }
         local_num_states = 0;
-        used[0] = local_num_states;
+        used[START_STATE] = local_num_states;
         local_num_states++;
-        used[1] = local_num_states;
+        used[END_STATE] = local_num_states;
         local_num_states++;
+
+
+
 
         for(j = 2; j < model->num_states-1;j++){
                 sum = 0.0;
@@ -389,17 +392,18 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 }
                 //fprintf(stdout,"%f ",sum);
                 if(sum){
-                        used[j] = local_num_states;
+                        used[j] = local_num_states+5;
                         local_num_states++;
                 }
         }
+
+        local_num_states+= 5;
         //fprintf(stdout,"\n");
 
-        /* for(i = 0; i < model->num_states;i++){ */
-        /*         fprintf(stdout,"%d ",used[i]); */
-        /* } */
-        /* fprintf(stdout,"\n"); */
-
+        for(i = 0; i < model->num_states+5;i++){
+                fprintf(stdout,"%d ",used[i]);
+        }
+        fprintf(stdout,"; m: %d\n",model->num_states);
         RUNP(fhmm = alloc_fhmm());
 
         fhmm->alloc_K = model->alloc_num_states;
@@ -498,7 +502,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                         //fprintf(stdout,"transition:%d\n",i);
                         for(j = 0;j < local_num_states;j++){
                                 s1_t[i][j] /= sum;
-                                //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
+                                fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                         }
                 }
         }
@@ -508,10 +512,47 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         /* alloc dyn matrices (now that I know how many states there are) */
         RUN(alloc_dyn_matrices(fhmm));
 
+        /* mess around with stop / start  */
+        /* Let's assume we have a target len of 100  and a multi-match model */
+        /* 1) start to anywhere should be zero  */
+        for(i = 0;i < fhmm->K;i++){
+                fhmm->t[START_STATE][i] = 0.0;
+        }
+
+        fhmm->t[START_STATE][N_STATE] = 1.0;
+
+        LOG_MSG("Start -> stop: %f", fhmm->t[START_STATE][END_STATE]);
+        fhmm->t[N_STATE][N_STATE] = 100.0 / (100.0 +3.0);
+        fhmm->t[N_STATE][B_STATE] = 1.0 - fhmm->t[N_STATE][N_STATE];
+
+        double x;
+        x = fhmm->K - 7;
+        for(i = 7;i < fhmm->K;i++){
+
+                fhmm->t[B_STATE][i] = 2.0 / ( x * (x + 1.0));
+        }
+
+        for(i = 7;i < fhmm->K;i++){
+
+                fhmm->t[i][E_STATE] = 1.0;
+                fhmm->t[i][END_STATE] = 0.0;
+
+        }
+
+        fhmm->t[E_STATE][C_STATE] = 0.5;
+        fhmm->t[E_STATE][J_STATE] = 0.5;
+
+        fhmm->t[J_STATE][J_STATE] = 100.0 / (100.0 +3.0);
+        fhmm->t[J_STATE][B_STATE] = 1.0 - fhmm->t[J_STATE][J_STATE];
+
+
+        fhmm->t[C_STATE][C_STATE] = 100.0 / (100.0 +3.0);
+        fhmm->t[C_STATE][END_STATE] = 1.0 - fhmm->t[C_STATE][C_STATE];
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
-
+        LOG_MSG("Start -> stop: %f", fhmm->t[START_STATE][END_STATE]);
+        RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot"));
         MFREE(used);
         gfree(s2_e);
         gfree(s2_t);

@@ -101,7 +101,10 @@ finite_hmm_struct.h \
 finite_hmm_alloc.h \
 finite_hmm_alloc.c \
 finite_hmm_io.h \
-finite_hmm_io.c
+finite_hmm_io.c \
+finite_hmm_plot.h \
+finite_hmm_plot.c
+
 
 
 DIJSTRA_SOURCES = dijkstra.c dijkstra.h

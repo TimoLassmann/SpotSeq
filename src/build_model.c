@@ -282,7 +282,8 @@ int run_build_ihmm(struct parameters* param)
 
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
 
-                //RUN(convert_ihmm_to_fhmm_models(model_bag));
+                RUN(convert_ihmm_to_fhmm_models(model_bag));
+                exit(0);
         }else{                  /* New run - start from the beginning */
                 /* create pst search model  */
                 RUN(create_pst_model(param->rng, param->input,param->seq_db, param->in_model,0.000001, 0.01, 20.0));

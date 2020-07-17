@@ -548,6 +548,17 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         fhmm->t[C_STATE][C_STATE] = 100.0 / (100.0 +3.0);
         fhmm->t[C_STATE][END_STATE] = 1.0 - fhmm->t[C_STATE][C_STATE];
+
+        /* setemission  */
+
+        for(i = 0; i < fhmm->L;i++){
+                fhmm->e[B_STATE][i] = 0.0f;
+                fhmm->e[E_STATE][i] = 0.0f;
+                fhmm->e[N_STATE][i] = fhmm->background[i];
+                fhmm->e[C_STATE][i] = fhmm->background[i];
+                fhmm->e[J_STATE][i] = fhmm->background[i];
+        }
+
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));

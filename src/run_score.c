@@ -147,7 +147,7 @@ void* do_score_sequences(void* threadarg)
                         seq = data->sb->sequences[i];
                         LOG_MSG("Searching %s len: %d", seq->name,seq->seq_len);
                         RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
-                        RUN(random_model_score(fhmm->background, &r_score, seq->seq, seq->seq_len,seq->seq_len));
+                        RUN(random_model_score(seq->seq_len, &r_score));//, seq->seq, seq->seq_len,seq->seq_len));
                         fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, LOGISTIC_FLT(f_score - r_score));
 
                         seq->score = (f_score - r_score) / logf(2.0);

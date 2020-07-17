@@ -611,7 +611,7 @@ int random_score_sequences(struct seq_buffer* sb,double* background )
 
         for(i =0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
-                RUN(random_model_score(back, &s->r_score , s->seq, s->seq_len,expected_len));
+                RUN(random_model_score(s->seq_len, &s->r_score));// , s->seq, s->seq_len,expected_len));
         }
         MFREE(back);
         //exit(0);

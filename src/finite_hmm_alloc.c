@@ -16,6 +16,8 @@ struct fhmm* alloc_fhmm(void)
         MMALLOC(fhmm, sizeof(struct fhmm));
         fhmm->F_matrix = NULL;
         fhmm->B_matrix = NULL;
+        fhmm->F_NBECJ = NULL;
+        fhmm->B_NBECJ = NULL;
         fhmm->e = NULL;
         fhmm->t = NULL;
         fhmm->tindex = NULL;

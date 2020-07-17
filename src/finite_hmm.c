@@ -49,48 +49,37 @@ ERROR:
 
 
 
-int random_model_score(double* b, double* ret_score,  uint8_t* a, int len, int expected_len)
+int random_model_score(int len,float* ret_score)
 {
-        int i;
-        double score;
-        double r;                /* self transition */
-        double e;                /* 1- r (exit) */
 
-        ASSERT(b != NULL, "No background probabilities");
-        ASSERT(a != NULL, "No sequence");
+        float  r;                /* self transition */
+        float  e;                /* 1- r (exit) */
+
         ASSERT(len > 0, "Seq is of length 0");
 
         /* initialise transitions  */
-        r = (double)expected_len / ((double) expected_len + 1.0);
+        r = (float )len / ((float ) len + 1.0);
         e = 1.0 -r;
         r = prob2scaledprob(r);
         e = prob2scaledprob(e);
 
-        /* initialise scores */
-        score = prob2scaledprob(1.0);
-
-        for(i = 0; i < len; i++){
-                score += b[a[i]];
-                score += r;
-        }
-        score += e;
-
-        *ret_score = score;
+        *ret_score = (float) len * r + e;
 
         return OK;
 ERROR:
         return FAIL;
 }
 
-int forward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len)
+int forward(struct fhmm* fhmm ,float** matrix, float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
 
-        double* last= 0;
-        double* cur = 0;
-        const double* trans = 0;
+        float** NBECJ = 0;
 
-        double tmp = 0;
+
+        const float* trans = 0;
+
+        float tmp = 0;
 
         ASSERT(fhmm != NULL, "No model");
         ASSERT(matrix != NULL, "No dyn programming  matrix");
@@ -98,109 +87,141 @@ int forward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, in
 
         ASSERT(len > 0, "Seq is of length 0");
 
-        cur = matrix[0];
+        NBECJ = fhmm->F_NBECJ;
 
         for(j = 0; j < fhmm->K;j++){
-                cur[j]  = -INFINITY;
+                matrix[0][j] = -INFINITY;
         }
-        cur[START_STATE] = 0.0;
+
+
+        NBECJ[0][N_STATE] = prob2scaledprob(1.0f); /* start -> N state has 1.0 prob */
+        NBECJ[0][B_STATE] = fhmm->tNB;
+        NBECJ[0][E_STATE] = -INFINITY;
+        NBECJ[0][C_STATE] = -INFINITY;
+        NBECJ[0][J_STATE] = -INFINITY;
+
+        /* fprintf(stdout,"\n"); */
+        /* fprintf(stdout,"%0.2f\t%0.2f: \t", NBECJ[0][N_STATE],  NBECJ[0][B_STATE]); */
+        /* for(j = 0; j < fhmm->K;j++){ */
+        /*         fprintf(stdout,"%0.4f ",matrix[0][j]); */
+        /* } */
+        /* fprintf(stdout,": %0.2f\t%0.2f\t%0.2f\n", NBECJ[0][E_STATE],  NBECJ[0][J_STATE], NBECJ[0][C_STATE]); */
+
 
         for(i = 1; i < len+1;i++){
-                last = cur;
-                cur = matrix[i];
                 for(j = 0; j < fhmm->K;j++){
-                        //LOG_MSG("writing to state: %d",j);
-                        cur[j] = -INFINITY;
+                        matrix[i][j] = -INFINITY;
                 }
+                for(j = 0; j < 5;j++){
+                        NBECJ[i][j] = -INFINITY;
+                }
+
                 for(j = 0; j < fhmm->K;j++){
-                        tmp = last[j];
-                        trans = fhmm->t[j];
                         for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
-                                cur[f] = logsum(cur[f], tmp + trans[f] );//+ hmm->emissions[c][(int)a[i-1]]);
+                                matrix[i][f] = logsum(matrix[i][f], matrix[i-1][j] + fhmm->t[j][f]);
                         }
                 }
-                for(c = 2;c < fhmm->K;c++){
-                        cur[c] += fhmm->e[c][a[i-1]];
+                for(j = 0;j < fhmm->K;j++){
+                        /* add transition from B state */
+                        matrix[i][j] = logsum(matrix[i][j], NBECJ[i-1][B_STATE] + fhmm->tBX);
+                        matrix[i][j] += fhmm->e[j][a[i-1]];
+                        //cur[c] += fhmm->e[c][a[i-1]];
+                        NBECJ[i][E_STATE] = logsum(NBECJ[i][E_STATE], matrix[i][j] + fhmm->tXE);
                 }
-        }
-        //All goes to 1.
-        last = cur;//matrix[len];
-        cur = matrix[len+1];
+                /* J */
+                NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + fhmm->tJJ, NBECJ[i][E_STATE] + fhmm->tEJ);
+                /* C */
+                NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + fhmm->tCC, NBECJ[i][E_STATE] + fhmm->tEC);
+                /* N */
+                NBECJ[i][N_STATE] = NBECJ[i-1][N_STATE] + fhmm->tNN;
+                /* B */
+                NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + fhmm->tNB, NBECJ[i][J_STATE]+ fhmm->tJB);
 
-        for(j = 0; j < fhmm->K;j++){
-                cur[j] = -INFINITY;// prob2scaledprob(0.0);
-        }
 
-        for(j = 2; j < fhmm->K;j++){
-                cur[END_STATE] = logsum(cur[END_STATE],last[j] + fhmm->t[j][END_STATE]);
+                /* fprintf(stdout,"%0.2f\t%0.2f: \t", NBECJ[i][N_STATE],  NBECJ[i][B_STATE]); */
+                /* for(j = 0; j < fhmm->K;j++){ */
+                /*         fprintf(stdout,"%0.4f\t",matrix[i][j]); */
+                /* } */
+                /* fprintf(stdout,": %0.2f\t%0.2f\t%0.2f\n", NBECJ[i][E_STATE],  NBECJ[i][J_STATE], NBECJ[i][C_STATE]); */
         }
-        *ret_score = cur[END_STATE];
-        //fhmm->f_score = cur[END_STATE];// matrix[ENDSTATE][i];
+        /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
+        *ret_score = (NBECJ[len][C_STATE] + fhmm->tCT);
         return OK;
 ERROR:
         return FAIL;
 }
 
-int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len)
+int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
-
-        double* next= 0;
-        double* cur = 0;
-        const double* trans = 0;
-
+        float** NBECJ = 0;
         ASSERT(fhmm != NULL, "No model");
         ASSERT(matrix != NULL, "No dyn programming  matrix");
         ASSERT(a != NULL, "No sequence");
 
         ASSERT(len > 0, "Seq is of length 0");
 
-        cur = matrix[len+1];
+        NBECJ = fhmm->B_NBECJ;
+
+        NBECJ[len][J_STATE] = -INFINITY;
+        NBECJ[len][B_STATE] = -INFINITY;
+        NBECJ[len][N_STATE] = -INFINITY;
+
+        NBECJ[len][C_STATE] = fhmm->tCT;
+        NBECJ[len][E_STATE] = NBECJ[len][C_STATE] +   fhmm->tEC;
 
         for(j = 0; j < fhmm->K;j++){
-                cur[j] = -INFINITY;
+                matrix[len][j] = NBECJ[len][E_STATE] + fhmm->tXE + fhmm->e[j][a[len-1]];
         }
 
-        cur[END_STATE] = 0.0f;
-
-        next = cur;
-
-        cur = matrix[len];
-        for(j = 0; j < fhmm->K;j++){
-                cur[j] = fhmm->t[j][END_STATE] + next[END_STATE];
-        }
-        for(c = 2;c < fhmm->K;c++){
-                cur[c] += fhmm->e[c][a[len-1]];
-        }
-
-        // backward recursion...
-        for(i = len-1; i > 0; i-- ){
-                next = cur;
-                cur = matrix[i];
+        //fprintf(stdout,"\n");
+        for(i = len-1; i >= 1; i-- ){
+                //LOG_MSG("Looking at: %d %d", i, a[i-1]);
+                NBECJ[i][B_STATE] = -INFINITY;
                 for(j = 0; j < fhmm->K;j++){
-                        trans = fhmm->t[j];
-                        cur[j] = -INFINITY;
+                        NBECJ[i][B_STATE] = logsum(NBECJ[i][B_STATE], matrix[i+1][j] + fhmm->tBX);
+                }
+                /* not sure about this ...  */
+                NBECJ[i][J_STATE] = logsum(NBECJ[i+1][J_STATE] + fhmm->tJJ, NBECJ[i][B_STATE] + fhmm->tJB);
+                /* C state */
+                NBECJ[i][C_STATE] = NBECJ[i+1][C_STATE] + fhmm->tCC;
+                /* E state */
+                NBECJ[i][E_STATE] = logsum(NBECJ[i][J_STATE] + fhmm->tEJ, NBECJ[i][C_STATE] + fhmm->tEC);
+                /* N state  */
+                NBECJ[i][N_STATE] = logsum(NBECJ[i+1][N_STATE] + fhmm->tNN, NBECJ[i][B_STATE] + fhmm->tNB);
+
+                for(j = 0; j < fhmm->K;j++){
+                        matrix[i][j] = NBECJ[i][E_STATE] + fhmm->tXE;
+                }
+                for(j = 0; j < fhmm->K;j++){
+
                         for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
-                                cur[j] = logsum(cur[j],trans[f] + next[f]);// hmm->emissions[c][(int)a[i]]);// + next[c]);
+                                matrix[i][j] = logsum(matrix[i][j],fhmm->t[j][f] + matrix[i+1][f]);
                         }
                 }
-                for(j = 2; j < fhmm->K;j++){
-                        cur[j] += fhmm->e[j][(int)a[i-1]];
+                for(j = 0; j < fhmm->K;j++){
+                        //matrix[i][j] = logsum(matrix[i][j], NBECJ[i][E_STATE] + fhmm->tXE);
+                        matrix[i][j] += fhmm->e[j][(int)a[i-1]];
+                        //LOG_MSG("EMIT: %d (%d)  %f", a[i-1],i,matrix[i][j]);
                 }
         }
-
-        cur = matrix[0];
-        next = matrix[1];
-
+        NBECJ[0][B_STATE] = -INFINITY;
         for(j = 0; j < fhmm->K;j++){
-                cur[j] = -INFINITY;// prob2scaledprob(0.0f);
+                NBECJ[0][B_STATE] = logsum(NBECJ[0][B_STATE], matrix[1][j] + fhmm->tBX);
+                //LOG_MSG("B_STATE: %f %f %f", NBECJ[0][B_STATE], fhmm->tBX, fhmm->tNB);
         }
-        for(i = 0; i < fhmm->K;i++){
-                cur[START_STATE] = logsum(cur[START_STATE], fhmm->t[START_STATE][i] + next[i]);//  + hmm->emissions[i][(int)a[0]]  );
+        NBECJ[0][J_STATE] = -INFINITY;
+        NBECJ[0][C_STATE] = -INFINITY;
+        NBECJ[0][E_STATE] = -INFINITY;
+
+        NBECJ[0][N_STATE] = logsum(NBECJ[1][N_STATE] + fhmm->tNN, NBECJ[0][B_STATE] + fhmm->tNB);
+        for(j = 0; j < fhmm->K;j++){
+                matrix[0][j] = -INFINITY;
         }
-        *ret_score = cur[START_STATE];
+
+        *ret_score = NBECJ[0][N_STATE];
         return OK;
 ERROR:
         return FAIL;
@@ -335,7 +356,8 @@ int setup_model(struct fhmm* fhmm)
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
-                        fhmm->e[i][j] = prob2scaledprob(fhmm->e[i][j]);
+                        LOG_MSG("%d: %f %f   %f",j, fhmm->e[i][j], fhmm->background[j],prob2scaledprob(fhmm->e[i][j] / fhmm->background[j]));
+                        fhmm->e[i][j] = prob2scaledprob(fhmm->e[i][j] / fhmm->background[j]);
                 }
         }
 
@@ -349,13 +371,14 @@ int setup_model(struct fhmm* fhmm)
                 c = 0;
                 for(j = 0; j < fhmm->K;j++){
                         if(fhmm->t[i][j]  != -INFINITY){
+                                //fprintf(stdout,"%d-> %d\n",i, j);
                                 fhmm->tindex[i][c+1] = j;
                                 c++;
                         }
                 }
                 fhmm->tindex[i][0] = c+1;
         }
-
+        //exit(0);
         /* background */
         for(i = 0; i < fhmm->L;i++){
                 fhmm->background[i] = prob2scaledprob(fhmm->background[i]);
@@ -547,6 +570,15 @@ int alloc_dyn_matrices(struct fhmm* fhmm)
                         fhmm->B_matrix[i][j] = 0.0;
                 }
         }
+        RUN(galloc(&fhmm->F_NBECJ, fhmm->alloc_matrix_len, 5));
+        RUN(galloc(&fhmm->B_NBECJ, fhmm->alloc_matrix_len, 5));
+        for(i = 0; i < fhmm->alloc_matrix_len;i++){
+                for(j = 0;j < 5;j++){
+                        fhmm->F_NBECJ[i][j] = 0.0;
+                        fhmm->B_NBECJ[i][j] = 0.0;
+                }
+        }
+
         return OK;
 ERROR:
         return FAIL;
@@ -572,6 +604,14 @@ int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
                         for(j = 0;j < fhmm->K;j++){
                                 fhmm->F_matrix[i][j] = 0.0;
                                 fhmm->B_matrix[i][j] = 0.0;
+                        }
+                }
+                RUN(galloc(&fhmm->F_NBECJ, fhmm->alloc_matrix_len, 5));
+                RUN(galloc(&fhmm->B_NBECJ, fhmm->alloc_matrix_len, 5));
+                for(i = 0; i < fhmm->alloc_matrix_len;i++){
+                        for(j = 0;j < 5;j++){
+                                fhmm->F_NBECJ[i][j] = 0.0;
+                                fhmm->B_NBECJ[i][j] = 0.0;
                         }
                 }
 

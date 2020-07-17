@@ -41,4 +41,14 @@ struct fhmm{
         float tJB;
 };
 
+struct fhmm_dyn_mat{
+        float** F_matrix;
+        float** B_matrix;
+
+        float** F_NBECJ;
+        float** B_NBECJ;
+        int alloc_matrix_len;
+        int alloc_K;
+};
+
 #endif

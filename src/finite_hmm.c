@@ -70,24 +70,31 @@ ERROR:
         return FAIL;
 }
 
-int forward(struct fhmm* fhmm ,float** matrix, float* ret_score, uint8_t* a, int len)
+int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
 
-        float** NBECJ = 0;
-
+        float** NBECJ = NULL;
+        float** matrix = NULL;
 
         const float* trans = 0;
 
         float tmp = 0;
 
-        ASSERT(fhmm != NULL, "No model");
-        ASSERT(matrix != NULL, "No dyn programming  matrix");
-        ASSERT(a != NULL, "No sequence");
 
+
+
+        ASSERT(fhmm != NULL, "No model");
+        ASSERT(m != NULL, "No dyn programming  matrix");
+        ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
-        NBECJ = fhmm->F_NBECJ;
+
+        matrix = m->F_matrix;
+        NBECJ = m->F_NBECJ;
+
+
+
 
         for(j = 0; j < fhmm->K;j++){
                 matrix[0][j] = -INFINITY;
@@ -152,17 +159,19 @@ ERROR:
         return FAIL;
 }
 
-int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len)
+int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_t* a, int len)
 {
         int i,j,c,f;
-        float** NBECJ = 0;
+        float** matrix = NULL;
+        float** NBECJ = NULL;
         ASSERT(fhmm != NULL, "No model");
-        ASSERT(matrix != NULL, "No dyn programming  matrix");
+        ASSERT(m != NULL, "No dyn programming  matrix");
         ASSERT(a != NULL, "No sequence");
 
         ASSERT(len > 0, "Seq is of length 0");
 
-        NBECJ = fhmm->B_NBECJ;
+        matrix = m->B_matrix;
+        NBECJ = m->B_NBECJ;
 
         NBECJ[len][J_STATE] = -INFINITY;
         NBECJ[len][B_STATE] = -INFINITY;
@@ -325,7 +334,7 @@ struct fhmm* init_fhmm(char* filename)
         //RUN(read_fhmm_parameters(fhmm,filename, model_name));
 
         /* alloc dyn matrices (now that I know how many states there are) */
-        RUN(alloc_dyn_matrices(fhmm));
+        //RUN(alloc_dyn_matrices(fhmm));
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
@@ -553,70 +562,3 @@ ERROR:
 }
 
 
-int alloc_dyn_matrices(struct fhmm* fhmm)
-{
-        ASSERT(fhmm!= NULL, "No model");
-        int i,j;
-        fhmm->alloc_matrix_len = 1024;
-
-        /* RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
-        /* RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
-
-        RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
-        RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
-        for(i = 0; i < fhmm->alloc_matrix_len;i++){
-                for(j = 0;j < fhmm->K;j++){
-                        fhmm->F_matrix[i][j] = 0.0;
-                        fhmm->B_matrix[i][j] = 0.0;
-                }
-        }
-        RUN(galloc(&fhmm->F_NBECJ, fhmm->alloc_matrix_len, 5));
-        RUN(galloc(&fhmm->B_NBECJ, fhmm->alloc_matrix_len, 5));
-        for(i = 0; i < fhmm->alloc_matrix_len;i++){
-                for(j = 0;j < 5;j++){
-                        fhmm->F_NBECJ[i][j] = 0.0;
-                        fhmm->B_NBECJ[i][j] = 0.0;
-                }
-        }
-
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int realloc_dyn_matrices(struct fhmm* fhmm,int new_len)
-{
-        int i,j;
-        ASSERT(fhmm != NULL, "No model");
-        ASSERT(new_len > 0, "newlen has to be > 0");
-        ASSERT(fhmm->alloc_matrix_len > 0, "No matrix allocated yet...");
-
-        if(fhmm->alloc_matrix_len < new_len){
-                while(fhmm->alloc_matrix_len < new_len){
-                        fhmm->alloc_matrix_len = fhmm->alloc_matrix_len << 1;
-                }
-                /* RUNP(fhmm->F_matrix = galloc(fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
-                /* RUNP(fhmm->B_matrix = galloc(fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K, 0.0)); */
-
-                RUN(galloc(&fhmm->F_matrix, fhmm->alloc_matrix_len, fhmm->K));
-                RUN(galloc(&fhmm->B_matrix, fhmm->alloc_matrix_len, fhmm->K));
-                for(i = 0; i < fhmm->alloc_matrix_len;i++){
-                        for(j = 0;j < fhmm->K;j++){
-                                fhmm->F_matrix[i][j] = 0.0;
-                                fhmm->B_matrix[i][j] = 0.0;
-                        }
-                }
-                RUN(galloc(&fhmm->F_NBECJ, fhmm->alloc_matrix_len, 5));
-                RUN(galloc(&fhmm->B_NBECJ, fhmm->alloc_matrix_len, 5));
-                for(i = 0; i < fhmm->alloc_matrix_len;i++){
-                        for(j = 0;j < 5;j++){
-                                fhmm->F_NBECJ[i][j] = 0.0;
-                                fhmm->B_NBECJ[i][j] = 0.0;
-                        }
-                }
-
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}

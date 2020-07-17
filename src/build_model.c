@@ -687,7 +687,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
         for(c = 0; c < model_bag->num_models;c++){
                 fhmm = model_bag->finite_models[c];
-                RUN(alloc_dyn_matrices(fhmm));
+                //RUN(alloc_dyn_matrices(fhmm));
                 RUN(run_score_sequences(fhmm,sb,td));
 
                 max_likelihood = prob2scaledprob(1.0);

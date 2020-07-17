@@ -185,7 +185,7 @@ int main (int argc, char *argv[])
         free_tl_seq_buffer(hits);
 
         RUNP(fhmm = read_best_fmodel(param->in_model, &best));
-        RUN(alloc_dyn_matrices(fhmm));
+        //RUN(alloc_dyn_matrices(fhmm));
         RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL,THREAD_DATA_FULL));
 
         RUN(run_score_sequences(fhmm,sb, td));

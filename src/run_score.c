@@ -18,7 +18,7 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_th
 
 
         /* allocate dyn programming matrices.  */
-        RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
+        //RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
         //LOG_MSG("new len: %d states:%d", sb->max_len,fhmm->K);
         num_threads = td[0]->num_threads;
 

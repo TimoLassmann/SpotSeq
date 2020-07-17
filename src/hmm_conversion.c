@@ -510,7 +510,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         fhmm->e = s1_e;
         fhmm->t = s1_t;
         /* alloc dyn matrices (now that I know how many states there are) */
-        RUN(alloc_dyn_matrices(fhmm));
+        //RUN(alloc_dyn_matrices(fhmm));
 
         /* mess around with stop / start  */
         /* Let's assume we have a target len of 100  and a multi-match model */

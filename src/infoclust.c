@@ -210,8 +210,8 @@ int run_infoclust(struct parameters* param)
         /* get HMM parameters  */
         //RUN(read_fhmm_parameters(fhmm,param->input, NULL));
 
-        RUN(alloc_dyn_matrices(fhmm));
-        RUN(realloc_dyn_matrices(fhmm, param->maxlen));
+        //        RUN(alloc_dyn_matrices(fhmm));
+        //RUN(realloc_dyn_matrices(fhmm, param->maxlen));
 
         //RUN(setup_model(fhmm_log));
 

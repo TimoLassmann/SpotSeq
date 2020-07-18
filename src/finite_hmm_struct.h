@@ -20,6 +20,9 @@ struct fhmm{
         float f_score;
         float b_score;
         float r_score;
+        double H;
+        double lambda;
+        double tau;
         int alloc_matrix_len;
         int alloc_K;
         int K;

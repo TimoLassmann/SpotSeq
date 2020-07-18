@@ -11,6 +11,8 @@
 
 #include "finite_hmm_struct.h"
 
+extern int configure_target_len(struct fhmm* fhmm,int len,  int multihit);
+
 extern int remove_state_for_ploting(struct fhmm*fhmm, int state);
 
 

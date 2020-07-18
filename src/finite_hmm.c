@@ -3,6 +3,7 @@
 
 #include "tllogsum.h"
 
+static float rel_entropy(float* vec, float* back,int N);
 
 /* Calculate the bayesian information criteria score for a finite HMM */
 /* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
@@ -354,6 +355,16 @@ int setup_model(struct fhmm* fhmm)
         /* I need to allocate tindex & convert probs to log space */
         init_logsum();
 
+        /* calculate relative entropy  */
+        fhmm->H = 0.0;
+        for(i = 0; i < fhmm->K;i++){
+                fhmm->H += rel_entropy(fhmm->e[i], fhmm->background, fhmm->L);
+        }
+        fhmm->H /= (double) fhmm->K;
+        fhmm->lambda =  0.69314718055994529 + 1.44 / ((double) fhmm->K * fhmm->H);
+        //LOG_MSG("EN: %f  %f", fhmm->H, fhmm->lambda);
+        //exit(0);
+
         //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
         RUN(galloc(&fhmm->tindex, fhmm->alloc_K , fhmm->alloc_K));
 
@@ -397,14 +408,36 @@ ERROR:
         return FAIL;
 }
 
+float rel_entropy(float* vec, float* back,int N)
+{
+        float kl = 0.0f;
+        int i;
+
+
+        for(i = 0; i < N; i++)
+                if (vec[i] > 0.0f) {
+                        if (back[i] == 0.0f){
+                                kl = INFINITY;
+
+                                return kl;
+                        }else{
+
+                                kl += vec[i] * log(vec[i]/back[i]);
+                        }
+                }
+        //return(1.44269504 * kl); /* converts to bits */
+
+        return (kl * 1.44269504f);   /* log2(e)  */
+}
+
 int remove_state_for_ploting(struct fhmm*fhmm, int state)
 {
         int i,j;
         int a,b;
         ASSERT(fhmm != NULL, "No model");
 
-        double** tmp_trans = NULL;
-        double** tmp_emit = NULL;
+        float** tmp_trans = NULL;
+        float** tmp_emit = NULL;
 
         //RUNP(tmp_trans = galloc(tmp_trans,fhmm->K-1, fhmm->K-1, 0.0));
         //RUNP(tmp_emit = galloc(tmp_emit,fhmm->K-1, fhmm->L, 0.0));
@@ -562,3 +595,38 @@ ERROR:
 }
 
 
+int configure_target_len(struct fhmm* fhmm,int len,  int multihit)
+{
+        ASSERT(fhmm != NULL, "No model");
+
+
+        float p,q;
+
+        if(multihit){
+                q = 0.5f;
+                p = (float) len / ((float)len + 3.0f);
+        }else{
+                q = 0.0f;
+                p = (float) len / ((float)len + 2.0f);
+
+        }
+
+        fhmm->tSN = prob2scaledprob(1.0f);
+        fhmm->tNN = prob2scaledprob(p);
+        fhmm->tNB = prob2scaledprob(1.0f - p);
+
+        fhmm->tBX = prob2scaledprob(2.0f / (float) (fhmm->K * ( fhmm->K + 1.0f)));
+        fhmm->tXE = prob2scaledprob(1.0f);
+        //LOG_MSG("%f", scaledprob2prob(fhmm->tBX));
+        fhmm->tEC = prob2scaledprob(1.0f - q);
+        fhmm->tCC = prob2scaledprob(p);
+        fhmm->tCT = prob2scaledprob(1.0f - p);
+
+        fhmm->tEJ = prob2scaledprob(q);
+        fhmm->tJJ = prob2scaledprob(p);
+        fhmm->tJB = prob2scaledprob(1.0f - p);
+
+        return OK;
+ERROR:
+        return FAIL;
+}

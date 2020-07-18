@@ -117,7 +117,9 @@ struct fhmm* alloc_fhmm(void)
         fhmm->f_score = 0.0;
         fhmm->b_score = 0.0;
         fhmm->r_score = 0.0;
-
+        fhmm->H = 0.0;
+        fhmm->lambda = 0.0;
+        fhmm->tau = 0.0;
         fhmm->alloc_matrix_len = 0;
 
         fhmm->alloc_K = 0;

@@ -102,6 +102,8 @@ finite_hmm_alloc.h \
 finite_hmm_alloc.c \
 finite_hmm_io.h \
 finite_hmm_io.c \
+finite_hmm_stats.h \
+finite_hmm_stats.c \
 finite_hmm_plot.h \
 finite_hmm_plot.c
 
@@ -113,7 +115,7 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit cal tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
+bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
 #seqer_lcs
 if ENABLE_CAIRO
@@ -143,8 +145,8 @@ seqer_seqmotif_SOURCES = draw_sequence_logo.c $(LOGO_SOURCES) $(SCORESOURCE) $(M
 
 cairo_test_SOURCES = cairo_test.c
 
-cal_SOURCES = $(CALIBRATESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
-cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
+# cal_SOURCES = $(CALIBRATESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(EMITSOURCE) $(SCORESOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
+# cal_LDADD = ${MYLIBDIRS} $(HDF5_LDFLAGS)  $(HDF5_LIBS)
 
 
 seqer_plot_SOURCES = \

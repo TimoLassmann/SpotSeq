@@ -121,7 +121,7 @@ struct fhmm* alloc_fhmm(void)
         fhmm->lambda = 0.0;
         fhmm->tau = 0.0;
         fhmm->alloc_matrix_len = 0;
-
+        fhmm->config_len = 0;
         fhmm->alloc_K = 0;
         return fhmm;
 ERROR:

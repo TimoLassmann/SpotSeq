@@ -3,6 +3,7 @@
 #include "ihmm_seq.h"
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
+#include "finite_hmm_alloc.h"
 #include "label_suffix_array.h"
 #include "run_score.h"
 //#include "model.h"

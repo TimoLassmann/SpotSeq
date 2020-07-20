@@ -27,6 +27,8 @@
 #include "tlmisc.h"
 #include "tllogsum.h"
 
+#include "finite_hmm_alloc.h"
+
 
 #define BUFFER_LEN 128
 /*char* protein_colors[ALPHABET_PROTEIN] = {

@@ -32,7 +32,7 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         double tailp = 0.04;
         int sim_len = 100;
-        int sim_N = 200;
+        int sim_N = 2000;
         double score;
         double   gmu, glam;
         double P;
@@ -52,9 +52,9 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
                 resize_fhmm_dyn_mat(dm, malloc_len+2);
         }
 
-        
         for(i = 0;i < sim_N;i++){
-                sim_len = tl_random_gaussian(rng, 300, 50);
+                //sim_len = ;
+                sim_len = tl_random_gaussian(rng, 300,150);
                 sim_len = MACRO_MAX(50, sim_len);
                 sim_len = MACRO_MIN(5000, sim_len);
 
@@ -70,6 +70,10 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         }
         RUN(esl_gumbel_FitComplete(f_scores, sim_N, &gmu, &glam));
+
+        fprintf(stdout,"lambda:%f  tau: %f\n", gmu,glam);
+
+
         /* Explanation of the eqn below: first find the x at which the Gumbel tail
          * mass is predicted to be equal to tailp. Then back up from that x
          * by log(tailp)/lambda to set the origin of the exponential tail to 1.0
@@ -80,8 +84,9 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         fprintf(stdout,"lambda:%f  tau: %f\n", fhmm->lambda,fhmm->tau);
         RUNP(f_ptr = fopen("scores.csv", "w"));
-        for(i = 0;i < 100000;i++){
-                sim_len = 300;
+        sim_N = 10000;
+        for(i = 0;i < sim_N;i++){
+                sim_len = 100;
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
@@ -91,8 +96,8 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
                 score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
                 P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
 
-                fprintf(f_ptr,"%f,%f,",score,P);
-                sim_len = 3000;
+                fprintf(f_ptr,"%f,%f,%f,",score,P, P* (double) sim_N);
+                sim_len = 400;
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
@@ -101,8 +106,18 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
                 random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
                 score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
                 P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
-
-                fprintf(f_ptr,"%f,%f\n",score,P);
+                fprintf(f_ptr,"%f,%f,%f,",score,P, P* (double) sim_N);
+                sim_len = 1600;
+                for(j = 0; j < sim_len;j++){
+                        seq[j] = tl_random_int(rng,fhmm->L);
+                }
+                configure_target_len(fhmm,sim_len , 1);
+                forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
+                random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
+                score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
+                P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
+                fprintf(f_ptr,"%f,%f,%f\n",score,P, P* (double) sim_N);
+//fprintf(f_ptr,"%f,%f\n",score,P);
 
                 //if(P <= 0.05){
                         //LOG_MSG("%f %f -> %f p:%f", fhmm->f_score,fhmm->r_score, score,P);

@@ -2,6 +2,7 @@
 //#include "model.h"
 #include "finite_hmm_io.h"
 #include "finite_hmm.h"
+#include "finite_hmm_alloc.h"
 #include <getopt.h>
 #include <libgen.h>
 

@@ -14,6 +14,15 @@
 #include "tldevel.h"
 
 #include "global.h"
+#define WIDTH 48
+#define HEIGHT 142
+
+
+#define STRIDE (WIDTH * 4)
+
+#define BASE_FONT_SIZE 60
+
+unsigned char image[STRIDE*HEIGHT];
 
 
 int nuc_colors[4] =  {

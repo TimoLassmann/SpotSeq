@@ -15,6 +15,7 @@
 #include "ihmm_seq.h"
 
 #include "finite_hmm.h"
+#include "finite_hmm_alloc.h"
 
 #include "run_score.h"
 

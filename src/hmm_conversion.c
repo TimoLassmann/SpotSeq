@@ -1,5 +1,6 @@
 #include <omp.h>
 
+#include "finite_hmm_alloc.h"
 #include "hmm_conversion.h"
 
 #include "finite_hmm_plot.h"

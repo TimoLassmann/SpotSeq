@@ -26,12 +26,8 @@ extern int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score,
 extern int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path);
 
 
-extern struct fhmm* alloc_fhmm(void);
+
 extern int setup_model(struct fhmm* fhmm);
 extern int convert_fhmm_scaled_to_prob(struct fhmm* fhmm);
 extern int convert_fhmm_log_to_prob_for_sampling(struct fhmm* fhmm);
-extern struct fhmm* init_fhmm(char* filename);
-extern int alloc_dyn_matrices(struct fhmm* fhmm);
-extern int realloc_dyn_matrices(struct fhmm* fhmm,int new_len);
-extern void free_fhmm(struct fhmm* fhmm);
 #endif

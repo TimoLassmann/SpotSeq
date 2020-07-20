@@ -2,6 +2,7 @@
 
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
+#include "finite_hmm_alloc.h"
 #include "run_score.h"
 
 #include <getopt.h>

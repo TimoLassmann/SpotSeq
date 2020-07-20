@@ -1,18 +1,6 @@
 #ifndef MOTIF_LOGO_H
 #define MOTIF_LOGO_H
 
-#define WIDTH 48
-#define HEIGHT 142
-
-
-#define STRIDE (WIDTH * 4)
-
-#define BASE_FONT_SIZE 60
-
-unsigned char image[STRIDE*HEIGHT];
-
-
-
 
 
 struct logo_letter{

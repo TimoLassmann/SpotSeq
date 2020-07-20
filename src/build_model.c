@@ -41,6 +41,8 @@
 
 #include "thread_data_io.h"
 
+#include "finite_hmm_alloc.h"
+
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 #define OPT_COMPETITIVE 3

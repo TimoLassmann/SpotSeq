@@ -26,8 +26,6 @@ int main(void)
 
         init_logsum();
 
-
-
         RUN(generate_simple_fhmm(&fhmm));
         RUN(alloc_fhmm_dyn_mat(&dm, 1024, fhmm->K));
 
@@ -203,7 +201,7 @@ int generate_simple_fhmm(struct fhmm** f)
         RUNP(fhmm = alloc_fhmm());
 
         fhmm->alloc_K = 1 + 5;
-        fhmm->K = 4;//model->num_states;
+        fhmm->K = 20;//model->num_states;
         fhmm->L = 4;
 
 
@@ -219,46 +217,41 @@ int generate_simple_fhmm(struct fhmm** f)
         gfree(back);
         //RUN(alloc_dyn_matrices(fhmm));
 
-        RUN(galloc(&fhmm->e, fhmm->alloc_K, fhmm->L));
-        RUN(galloc(&fhmm->t, fhmm->alloc_K, fhmm->alloc_K));
+        RUN(galloc(&fhmm->e, fhmm->K, fhmm->L));
+        RUN(galloc(&fhmm->t, fhmm->K, fhmm->K));
         //RUN(galloc(&s2_t, fhmm->alloc_K, fhmm->alloc_K));
-        for(i = 0; i < fhmm->alloc_K;i++){
+        for(i = 0; i < fhmm->K;i++){
                 for(j = 0;j < fhmm->L;j++){
                         fhmm->e[i][j] = 0.0;
                 }
-                for(j = 0;j < fhmm->alloc_K;j++){
+                for(j = 0;j < fhmm->K;j++){
                         fhmm->t[i][j] = 0.0;
                 }
         }
 
         /* set transition and emission in main model */
 
-        fhmm->t[0][1] = 1.0;
-        fhmm->t[1][2] = 1.0;
-        fhmm->t[2][3] = 1.0;
-        
-        for(i = 0; i < 4;i++){
+        for(i = 1;i < fhmm->K;i++){
+                fhmm->t[i-1][i] = 1.0;
+        }
+
+        for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < 4;j++){
                         fhmm->e[i][j] = (1.0 - 0.999) / 3.0;
-                        if(i == j){
+                        if(i%4 == j){
                                 fhmm->e[i][j] = 0.999;
                         }
                 }
         }
-        i = 0;
-        fhmm->e[i][0] = (1.0 - 0.999) / 3.0;
-        fhmm->e[i][1] = (1.0 - 0.999) / 3.0;
-        fhmm->e[i][2] = (1.0 - 0.999) / 3.0;
-        fhmm->e[i][3] = 0.999;
-
-        fhmm->t[0][1] = 1.0;
-        for(i = 0; i < 1;i++){
+        for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < 4;j++){
                         //fhmm->e[i][j] = fhmm->background[j];
                         fprintf(stdout,"%f ",fhmm->e[i][j]);
                 }
                 fprintf(stdout,"\n");
         }
+
+        //exit(0);
 
 
         /*fhmm->e[o+0][0] = 1.0;

@@ -30,6 +30,13 @@ ERROR:
 
 int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
 {
+
+
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"H",fhmm->H));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"lambda",fhmm->lambda));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"tau",fhmm->tau));
+
+
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"K",fhmm->K));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data ,group,"L",fhmm->L));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"emission",fhmm->e));
@@ -48,6 +55,11 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
         ASSERT(hdf5_data != NULL, "No filename");
 
         RUNP(fhmm = alloc_fhmm());
+
+
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data ,group,"H",&fhmm->H));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data ,group,"lambda",&fhmm->lambda));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data ,group,"tau",&fhmm->tau));
 
         HDFWRAP_READ_ATTRIBUTE(hdf5_data, group, "K", &fhmm->K);
 

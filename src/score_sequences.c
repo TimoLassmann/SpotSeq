@@ -31,6 +31,7 @@
 
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
+#include "finite_hmm_alloc.h"
 
 #include "run_score.h"
 
@@ -202,7 +203,7 @@ exit(0);
         //RUN(read_pst_hdf5(&p, param->in_model));
 
         RUNP(fhmm = read_best_fmodel(param->in_model, &best));
-        RUN(alloc_dyn_matrices(fhmm));
+        //RUN(alloc_dyn_matrices(fhmm));
         /* load sequences.  */
         LOG_MSG("Loading sequences.");
 

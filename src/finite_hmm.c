@@ -1,5 +1,6 @@
 
 #include "finite_hmm.h"
+#include "finite_hmm_alloc.h"
 
 #include "tllogsum.h"
 
@@ -90,6 +91,7 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
         ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
+        ASSERT(len == fhmm->config_len, "Model configured for len %d but seqlen is %d. ", fhmm->config_len,len);
 
         matrix = m->F_matrix;
         NBECJ = m->F_NBECJ;
@@ -170,7 +172,7 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
         ASSERT(a != NULL, "No sequence");
 
         ASSERT(len > 0, "Seq is of length 0");
-
+        ASSERT(len == fhmm->config_len, "Model configured for len %d but seqlen is %d. ", fhmm->config_len,len);
         matrix = m->B_matrix;
         NBECJ = m->B_NBECJ;
 
@@ -362,11 +364,9 @@ int setup_model(struct fhmm* fhmm)
         }
         fhmm->H /= (double) fhmm->K;
         fhmm->lambda =  0.69314718055994529 + 1.44 / ((double) fhmm->K * fhmm->H);
-        //LOG_MSG("EN: %f  %f", fhmm->H, fhmm->lambda);
-        //exit(0);
 
         //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
-        RUN(galloc(&fhmm->tindex, fhmm->alloc_K , fhmm->alloc_K));
+        RUN(galloc(&fhmm->tindex, fhmm->K , fhmm->K));
 
         for(i = 0; i < fhmm->alloc_K;i++){
                 for(j = 0; j < fhmm->alloc_K;j++){
@@ -376,7 +376,7 @@ int setup_model(struct fhmm* fhmm)
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0 ; j < fhmm->L;j++){
-                        LOG_MSG("%d: %f %f   %f",j, fhmm->e[i][j], fhmm->background[j],prob2scaledprob(fhmm->e[i][j] / fhmm->background[j]));
+                        //LOG_MSG("%d: %f %f   %f",j, fhmm->e[i][j], fhmm->background[j],prob2scaledprob(fhmm->e[i][j] / fhmm->background[j]));
                         fhmm->e[i][j] = prob2scaledprob(fhmm->e[i][j] / fhmm->background[j]);
                 }
         }
@@ -626,6 +626,7 @@ int configure_target_len(struct fhmm* fhmm,int len,  int multihit)
         fhmm->tJJ = prob2scaledprob(p);
         fhmm->tJB = prob2scaledprob(1.0f - p);
 
+        fhmm->config_len = len;
         return OK;
 ERROR:
         return FAIL;

@@ -27,6 +27,7 @@ struct fhmm{
         int alloc_K;
         int K;
         int L;
+        int config_len;
 
         float tSN;
         float tNN;

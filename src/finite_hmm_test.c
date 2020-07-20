@@ -32,7 +32,7 @@ int main(void)
         configure_target_len(fhmm, 10, 0);
         fhmm_calibrate(fhmm, dm, 42);
         exit(0);
-        RUN(plot_finite_hmm_dot(fhmm, "fhmm_test_model.dot"));
+        RUN(plot_finite_hmm_dot(fhmm, "fhmm_test_model.dot",0.01f));
 
         test_seq[0] = 3;
         test_seq[1] = 1;

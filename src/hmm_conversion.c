@@ -353,11 +353,11 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         struct fhmm* fhmm = NULL;
         struct fast_hmm_param* ft = NULL;
 
-        double** s1_e = NULL;
-        double** s2_e = NULL;
+        float** s1_e = NULL;
+        float** s2_e = NULL;
 
-        double** s1_t = NULL;
-        double** s2_t = NULL;
+        float** s1_t = NULL;
+        float** s2_t = NULL;
 
         int initial_states = 10;
         double sum;
@@ -377,14 +377,12 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         for(i = 0; i < model->num_states;i++){
                 used[i] = -1;
         }
+        /* skip over START and STOP states; will use S B E C and J in finite model */
         local_num_states = 0;
-        used[START_STATE] = local_num_states;
-        local_num_states++;
-        used[END_STATE] = local_num_states;
-        local_num_states++;
-
-
-
+        //used[START_STATE] = local_num_states
+        //local_num_states++;
+        //used[END_STATE] = local_num_states;
+        //local_num_states++;
 
         for(j = 2; j < model->num_states-1;j++){
                 sum = 0.0;
@@ -393,12 +391,12 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 }
                 //fprintf(stdout,"%f ",sum);
                 if(sum){
-                        used[j] = local_num_states+5;
+                        used[j] = local_num_states;
                         local_num_states++;
                 }
         }
 
-        local_num_states+= 5;
+
         //fprintf(stdout,"\n");
 
         for(i = 0; i < model->num_states+5;i++){
@@ -407,7 +405,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         fprintf(stdout,"; m: %d\n",model->num_states);
         RUNP(fhmm = alloc_fhmm());
 
-        fhmm->alloc_K = model->alloc_num_states;
+        fhmm->alloc_K =  local_num_states;//  model->alloc_num_states;
         fhmm->K = local_num_states;//model->num_states;
         fhmm->L = model->L;
 
@@ -420,7 +418,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         //MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
         RUN(galloc(&fhmm->background, fhmm->L));
         for (i = 0; i < fhmm->L; i++){
-                fhmm->background[i] = (double) model->background[i];//  ft->background_emission[i];
+                fhmm->background[i] =  model->background[i];//  ft->background_emission[i];
         }
 
         /* Note: there is a possibility that un-visited states exist
@@ -436,16 +434,16 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         RUNP(s2_t = galloc(s2_t, local_num_states, local_num_states, 0.0));
         */
         //LOG_MSG("States alloc (max) : %d", model->alloc_num_states);
-        RUN(galloc(&s1_e, fhmm->alloc_K, model->L));
-        RUN(galloc(&s2_e, fhmm->alloc_K, model->L));
-        RUN(galloc(&s1_t, fhmm->alloc_K, fhmm->alloc_K));
-        RUN(galloc(&s2_t, fhmm->alloc_K, fhmm->alloc_K));
-        for(i = 0; i < fhmm->alloc_K;i++){
+        RUN(galloc(&s1_e, fhmm->K, model->L));
+        RUN(galloc(&s2_e, fhmm->K, model->L));
+        RUN(galloc(&s1_t, fhmm->K, fhmm->K));
+        RUN(galloc(&s2_t, fhmm->K, fhmm->K));
+        for(i = 0; i < fhmm->K;i++){
                 for(j = 0;j < model->L;j++){
                         s1_e[i][j] = 0.0;
                         s2_e[i][j] = 0.0;
                 }
-                for(j = 0;j < fhmm->alloc_K;j++){
+                for(j = 0;j < fhmm->K;j++){
                         s1_t[i][j] = 0.0;
                         s2_t[i][j] = 0.0;
                 }
@@ -510,61 +508,32 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         fhmm->e = s1_e;
         fhmm->t = s1_t;
-        /* alloc dyn matrices (now that I know how many states there are) */
-        //RUN(alloc_dyn_matrices(fhmm));
-
-        /* mess around with stop / start  */
-        /* Let's assume we have a target len of 100  and a multi-match model */
-        /* 1) start to anywhere should be zero  */
-        for(i = 0;i < fhmm->K;i++){
-                fhmm->t[START_STATE][i] = 0.0;
-        }
-
-        fhmm->t[START_STATE][N_STATE] = 1.0;
-
-        LOG_MSG("Start -> stop: %f", fhmm->t[START_STATE][END_STATE]);
-        fhmm->t[N_STATE][N_STATE] = 100.0 / (100.0 +3.0);
-        fhmm->t[N_STATE][B_STATE] = 1.0 - fhmm->t[N_STATE][N_STATE];
-
-        double x;
-        x = fhmm->K - 7;
-        for(i = 7;i < fhmm->K;i++){
-
-                fhmm->t[B_STATE][i] = 2.0 / ( x * (x + 1.0));
-        }
-
-        for(i = 7;i < fhmm->K;i++){
-
-                fhmm->t[i][E_STATE] = 1.0;
-                fhmm->t[i][END_STATE] = 0.0;
-
-        }
-
-        fhmm->t[E_STATE][C_STATE] = 0.5;
-        fhmm->t[E_STATE][J_STATE] = 0.5;
-
-        fhmm->t[J_STATE][J_STATE] = 100.0 / (100.0 +3.0);
-        fhmm->t[J_STATE][B_STATE] = 1.0 - fhmm->t[J_STATE][J_STATE];
 
 
-        fhmm->t[C_STATE][C_STATE] = 100.0 / (100.0 +3.0);
-        fhmm->t[C_STATE][END_STATE] = 1.0 - fhmm->t[C_STATE][C_STATE];
+        fhmm->config_len = 0;
 
-        /* setemission  */
+        fhmm->tSN = 0.0f;
+        fhmm->tNN = 0.0f;
+        fhmm->tNB = 0.0f;
 
-        for(i = 0; i < fhmm->L;i++){
-                fhmm->e[B_STATE][i] = 0.0f;
-                fhmm->e[E_STATE][i] = 0.0f;
-                fhmm->e[N_STATE][i] = fhmm->background[i];
-                fhmm->e[C_STATE][i] = fhmm->background[i];
-                fhmm->e[J_STATE][i] = fhmm->background[i];
-        }
+        fhmm->tBX = 0.0f;
+        fhmm->tXE = 0.0f;
+
+        fhmm->tEC = 0.0f;
+        fhmm->tCC = 0.0f;
+        fhmm->tCT = 0.0f;
+
+        fhmm->tEJ = 0.0f;
+        fhmm->tJJ = 0.0f;
+        fhmm->tJB = 0.0f;
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
-        LOG_MSG("Start -> stop: %f", fhmm->t[START_STATE][END_STATE]);
-        RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot"));
+        configure_target_len(fhmm, 10, 1);
+
+        RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot",0.01f));
+        exit(0);
         MFREE(used);
         gfree(s2_e);
         gfree(s2_t);

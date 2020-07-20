@@ -11,9 +11,7 @@
 #define EXTERN extern
 #endif
 
-
-EXTERN int plot_finite_hmm_dot(struct fhmm* fhmm,char* filename);
-
+EXTERN int plot_finite_hmm_dot(struct fhmm* fhmm,char* filename,float thres);
 
 #undef FINITE_HMM_PLOT_IMPORT
 #undef EXTERN

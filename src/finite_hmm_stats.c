@@ -11,7 +11,7 @@
 
 
 #define eslCONST_PI    3.14159265358979323846264338328
-#define eslCONST_LOG2  0.69314718055994529
+
 
 static int esl_gumbel_FitComplete(double *x, int n, double *ret_mu, double *ret_lambda);
 
@@ -26,13 +26,13 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         uint8_t* seq = NULL;
         int malloc_len = 10000;
 
-        int len;
-        int i,j,c;
-        double avg;
+
+        int i,j;//c;
+        //double avg;
 
         double tailp = 0.04;
-        int sim_len = 100;
-        int sim_N = 2000;
+        int sim_len = 200;
+        int sim_N = 200;
         double score;
         double   gmu, glam;
         double P;
@@ -47,31 +47,34 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         MMALLOC(seq, sizeof(uint8_t) * malloc_len);
 
         MMALLOC(f_scores, sizeof(double) * sim_N);
-
-        if(malloc_len+2 >= dm->alloc_matrix_len){
-                resize_fhmm_dyn_mat(dm, malloc_len+2);
+        malloc_len = sim_len;
+        /* rubbish! ... */
+        if(malloc_len >= dm->alloc_matrix_len){
+                resize_fhmm_dyn_mat(dm, malloc_len, fhmm->K);
         }
 
         for(i = 0;i < sim_N;i++){
                 //sim_len = ;
-                sim_len = tl_random_gaussian(rng, 300,150);
-                sim_len = MACRO_MAX(50, sim_len);
-                sim_len = MACRO_MIN(5000, sim_len);
+                //sim_len = tl_random_gaussian(rng, 300,150);
+                //sim_len = MACRO_MAX(50, sim_len);
+                //sim_len = MACRO_MIN(5000, sim_len);
 
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
-                configure_target_len(fhmm, sim_len, 1);
-                forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
-                random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
-                f_scores[i] = (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
+                score_seq_fwd(fhmm, dm, seq, sim_len, 1, &score, &P);
+                //LOG_MSG("%f %f", score,P);
+                //configure_target_len(fhmm, sim_len, 1);
+                //forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
+                //random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
+                f_scores[i] = score;
                 //LOG_MSG("%f %f -> %f ", fhmm->f_score,fhmm->r_score, f_scores[i]);
 
 
         }
         RUN(esl_gumbel_FitComplete(f_scores, sim_N, &gmu, &glam));
 
-        fprintf(stdout,"lambda:%f  tau: %f\n", gmu,glam);
+        //fprintf(stdout,"lambda:%f  tau: %f\n", gmu,glam);
 
 
         /* Explanation of the eqn below: first find the x at which the Gumbel tail
@@ -82,48 +85,38 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         fhmm->tau = esl_gumbel_invcdf(1.0-tailp, gmu, glam) + (log(tailp) / fhmm->lambda);
 
-        fprintf(stdout,"lambda:%f  tau: %f\n", fhmm->lambda,fhmm->tau);
-        RUNP(f_ptr = fopen("scores.csv", "w"));
+        //fprintf(stdout,"lambda:%f  tau: %f\n", fhmm->lambda,fhmm->tau);
+        /*RUNP(f_ptr = fopen("scores.csv", "w"));
         sim_N = 10000;
         for(i = 0;i < sim_N;i++){
                 sim_len = 100;
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
-                configure_target_len(fhmm,sim_len , 1);
-                forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
-                random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
-                score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
-                P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
-
-                fprintf(f_ptr,"%f,%f,%f,",score,P, P* (double) sim_N);
+                score_seq_fwd(fhmm, dm, seq, sim_len, 1, &score, &P);
+                P = exp(P);
+                fprintf(f_ptr,"%f,%f,%f,",score ,P, P* (double) sim_N);
                 sim_len = 400;
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
-                configure_target_len(fhmm,sim_len , 1);
-                forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
-                random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
-                score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
-                P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
-                fprintf(f_ptr,"%f,%f,%f,",score,P, P* (double) sim_N);
+                score_seq_fwd(fhmm, dm, seq, sim_len, 1, &score, &P);
+                P = exp(P);
+                fprintf(f_ptr,"%f,%f,%f,",score ,P, P* (double) sim_N);
                 sim_len = 1600;
                 for(j = 0; j < sim_len;j++){
                         seq[j] = tl_random_int(rng,fhmm->L);
                 }
-                configure_target_len(fhmm,sim_len , 1);
-                forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
-                random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
-                score =  (fhmm->f_score - fhmm->r_score) / eslCONST_LOG2;
-                P = esl_exp_surv(score, fhmm->tau,fhmm->lambda);
-                fprintf(f_ptr,"%f,%f,%f\n",score,P, P* (double) sim_N);
+                score_seq_fwd(fhmm, dm, seq, sim_len, 1, &score, &P);
+                P = exp(P);
+                fprintf(f_ptr,"%f,%f,%f\n",score ,P, P* (double) sim_N);
 //fprintf(f_ptr,"%f,%f\n",score,P);
 
                 //if(P <= 0.05){
                         //LOG_MSG("%f %f -> %f p:%f", fhmm->f_score,fhmm->r_score, score,P);
                 //}
         }
-        fclose(f_ptr);
+        fclose(f_ptr);*/
         MFREE(f_scores);
         MFREE(seq);
 
@@ -315,15 +308,3 @@ esl_gumbel_invcdf(double p, double mu, double lambda)
     return mu - ( log(-1. * log(p)) / lambda);
 }
 
-/* Function:  esl_exp_surv()
- *
- * Purpose:   Calculates the survivor function, $P(X>x)$ (that is, 1-CDF,
- *            the right tail probability mass) for an exponential distribution,
- *            given value <x>, offset <mu>, and decay parameter <lambda>.
- */
-double
-esl_exp_surv(double x, double mu, double lambda)
-{
-  if (x < mu) return 1.0;
-  return exp(-lambda * (x-mu));
-}

@@ -1,9 +1,12 @@
 
+#include "tllogsum.h"
 #include "run_score.h"
 
 #include "sequence_struct.h"
 
-#include "tllogsum.h"
+#include "finite_hmm_alloc.h"
+
+#include "thread_data.h"
 
 int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td)
 {
@@ -126,33 +129,41 @@ void* do_score_sequences(void* threadarg)
         int i;
         int num_threads;
         int thread_id;
-        int expected_len;
+        int model_id;
         double f_score;
-        double r_score;
+        double logP;
+
+        struct fhmm_dyn_mat* m;
         data = (struct seqer_thread_data *) threadarg;
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
+        model_id = data->model_ID;
+        m = data->fmat;
         fhmm = data->fhmm;
 
-        expected_len = 0;
-        for(i = 0; i < data->sb->num_seq;i++){
-                expected_len += data->sb->sequences[i]->seq_len;
+        /* make sure we have enough memory  */
+
+        if(m->alloc_matrix_len < data->sb->max_len || m->alloc_K < fhmm->K){
+                LOG_MSG("have: %d %d", m->alloc_matrix_len, m->alloc_K);
+                LOG_MSG("want: %d %d", data->sb->max_len,  fhmm->K);
+                resize_fhmm_dyn_mat(m,
+                                    MACRO_MAX(m->alloc_matrix_len, data->sb->max_len),
+                                    MACRO_MAX(m->alloc_K,fhmm->K)
+                        );
         }
-        expected_len = expected_len / data->sb->num_seq;
         //LOG_MSG("Average sequence length: %d",expected_len);
 
         for(i =0; i < data->sb->num_seq;i++){
-                if( i% num_threads == thread_id){
-                        seq = data->sb->sequences[i];
-                        LOG_MSG("Searching %s len: %d", seq->name,seq->seq_len);
-                        RUN(forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len ));
-                        RUN(random_model_score(seq->seq_len, &r_score));//, seq->seq, seq->seq_len,seq->seq_len));
-                        fprintf(stdout,"seq:%d %f %f log-odds: %f  p:%f\n",i, f_score,r_score,f_score - r_score, LOGISTIC_FLT(f_score - r_score));
+                //if( i% num_threads == thread_id){
 
-                        seq->score = (f_score - r_score) / logf(2.0);
-                        //seq->score = f_score;
-                }
+                        seq = data->sb->sequences[i];
+                        score_seq_fwd(fhmm,m,seq->seq, seq->seq_len,1, &f_score, &logP);
+                        //LOG_MSG("Thread: %d;model:%d Seq: %s %f %f",thread_id,model_id, data->sb->sequences[i]->name, f_score, logP);
+                        //RUN(forward(fhmm, m, &f_score, seq->seq, seq->seq_len ));
+                        //seq->score_arr[thread_id] = logP;
+                        seq->score_arr[model_id] = f_score;
+                        //}
         }
         return NULL;
 ERROR:
@@ -162,31 +173,38 @@ ERROR:
 void* do_score_sequences_per_model(void* threadarg)
 {
         struct seqer_thread_data *data;
+
         struct fhmm* fhmm = NULL;
+        struct fhmm_dyn_mat* m = NULL;
         struct ihmm_sequence* seq = NULL;
         int i;
         //int num_threads;
         int thread_id;          /* this is actually the model number */
 
         double f_score;
+        double logP;
         //double r_score;
         data = (struct seqer_thread_data *) threadarg;
 
         //num_threads = data->num_threads;
         thread_id = data->thread_ID;
         fhmm = data->fhmm;
+        m = data->fmat;
 
         //LOG_MSG("Average sequence length: %d",expected_len);
 
         for(i =0; i < data->sb->num_seq;i++){
-                        seq = data->sb->sequences[i];
-                        RUN(forward(fhmm, data->dyn, &f_score, seq->seq, seq->seq_len ));
-                        seq->score_arr[thread_id] = f_score;
+                seq = data->sb->sequences[i];
+                score_seq_fwd(fhmm,m,seq->seq, seq->seq_len,1, &f_score, &logP);
+                LOG_MSG("Seq: %s %f %f", data->sb->sequences[i]->name, f_score, logP);
+                //RUN(forward(fhmm, m, &f_score, seq->seq, seq->seq_len ));
+                seq->score_arr[thread_id] = logP;
         }
         return NULL;
 ERROR:
         return NULL;
 }
+
 void* do_label_sequences(void* threadarg)
 {
         struct seqer_thread_data *data;
@@ -195,8 +213,9 @@ void* do_label_sequences(void* threadarg)
         int i;
         int num_threads;
         int thread_id;
-        double f_score;
-        double b_score;
+        struct fhmm_dyn_mat* m;
+        float f_score;
+        float b_score;
         data = (struct seqer_thread_data *) threadarg;
 
         num_threads = data->num_threads;
@@ -207,9 +226,9 @@ void* do_label_sequences(void* threadarg)
         for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
                         seq = data->sb->sequences[i];
-                        RUN( forward(fhmm, data->F_matrix, &f_score, seq->seq, seq->seq_len));
-                        RUN(backward(fhmm, data->B_matrix, &b_score, seq->seq, seq->seq_len));
-                        RUN(posterior_decoding(fhmm,data->F_matrix,data->B_matrix,f_score,seq->seq, seq->seq_len, seq->label));
+                        RUN( forward(fhmm, m, &f_score, seq->seq, seq->seq_len,1));
+                        RUN(backward(fhmm, m, &b_score, seq->seq, seq->seq_len,1));
+                        //RUN(posterior_decoding(fhmm,data->F_matrix,data->B_matrix,f_score,seq->seq, seq->seq_len, seq->label));
                 }
         }
         return NULL;

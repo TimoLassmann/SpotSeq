@@ -42,6 +42,7 @@
 #include "thread_data_io.h"
 
 #include "finite_hmm_alloc.h"
+#include "finite_hmm_stats.h"
 
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
@@ -71,6 +72,10 @@ struct parameters{
 };
 
 static int run_build_ihmm(struct parameters* param);
+
+static int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td);
+static void* do_calibrate_per_model(void* threadarg);
+
 static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td);
 static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
 static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
@@ -104,7 +109,7 @@ int main (int argc, char *argv[])
         param->local = 0;
         param->rev = 0;
         param->active_file = 0;
-        param->num_iter = 2000;
+        param->num_iter = 2000000;
         param->inner_iter = 100;
         param->alpha = IHMM_PARAM_PLACEHOLDER;
         param->gamma = IHMM_PARAM_PLACEHOLDER;
@@ -288,7 +293,7 @@ int run_build_ihmm(struct parameters* param)
                 exit(0);
         }else{                  /* New run - start from the beginning */
                 /* create pst search model  */
-                RUN(create_pst_model(param->rng, param->input,param->seq_db, param->in_model,0.000001, 0.01, 20.0));
+                //RUN(create_pst_model(param->rng, param->input,param->seq_db, param->in_model,0.000001, 0.01, 20.0));
 /* Step one read in sequences */
                 LOG_MSG("Loading sequences.");
                 //RUNP(rng = init_rng(0));
@@ -314,7 +319,7 @@ int run_build_ihmm(struct parameters* param)
                  * set the u arrays properly based on the initial
                  * model guess */
                 //model_bag->max_num_states = 0;
-                LOG_MSG("%d ",sb->num_seq);
+                //LOG_MSG("%d ",sb->num_seq);
                 for(i = 0; i < model_bag->num_models;i++){
 
                         RUN(fill_counts(model_bag->models[i], sb,i));
@@ -349,11 +354,11 @@ int run_build_ihmm(struct parameters* param)
                 }*/
         //LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
         /* Do a random score */
-        RUN(random_score_sequences(sb, model_bag->models[0]->background  ));
+        //RUN(random_score_sequences(sb, model_bag->models[0]->background  ));
 
         /* Main function */
         int outer_iter = param->num_iter / param->inner_iter;
-
+        LOG_MSG("outer: %d  %d %d ",outer_iter, param->num_iter, param->inner_iter);
         DECLARE_TIMER(n);
         //RUN(convert_ihmm_to_fhmm_models(model_bag));
         for(i = 0; i < outer_iter;i++){
@@ -365,14 +370,21 @@ int run_build_ihmm(struct parameters* param)
                 STOP_TIMER(n);
                 GET_TIMING(n);
 
-                LOG_MSG("Start scoring");
+                //LOG_MSG("Start scoring");
                 START_TIMER(n);
+                LOG_MSG("Convert");
                 /* convert to fhmm */
                 RUN(convert_ihmm_to_fhmm_models(model_bag));
+                LOG_MSG("Calibrate");
+                /* calibrate */
+                RUN(calibrate_all(model_bag, td));
+                LOG_MSG("Scoring");
                 /* score */
                 RUN(score_all_vs_all(model_bag,sb,td));
+                LOG_MSG("Analyze");
                 /* analyzescores */
                 RUN(analyzescores(sb, model_bag));
+                //exit(0);
                 /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
                         set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));
@@ -440,7 +452,7 @@ ERROR:
 int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread)
 {
 
-        RUN(convert_ihmm_to_fhmm_models(mb));
+        //RUN(convert_ihmm_to_fhmm_models(mb));
         //RUN(score_all_vs_all(model_bag,sb,td));
         RUN(write_model_bag_hdf5(mb,filename));
         //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
@@ -539,7 +551,7 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
                         s2 += sb->sequences[i]->score_arr[j] * sb->sequences[i]->score_arr[j];
 
                 }
-
+                //LOG_MSG(" %f sum logP",s1);
                 s2 = sqrt((s0 * s2 - s1 * s1)/ (s0 * (s0 -1.0)));
                 s1 = s1 / s0 ;
                 fprintf(stdout,"Model %d:\t%f\t%f\t(%d states)  alpha = %f, gamma = %f\n",j, s1,s2  ,model_bag->models[j]->num_states, model_bag->models[j]->alpha ,model_bag->models[j]->gamma);
@@ -548,24 +560,24 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
 ERROR:
         return FAIL;
 }
-
-/* Score all sequences using all models */
-int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
+/* calibrate all models  */
+int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td)
 {
         int i,j,c;
         int num_threads = td[0]->num_threads;
         int run;
 
-        ASSERT(sb != NULL, "No sequences");
+
         ASSERT(mb != NULL, "No models");
         c = 0;
 
         for(run = 0; run < mb->num_models;run+= num_threads){
                 j = 0;
                 for(i = 0; i < num_threads;i++){
-                        td[i]->thread_ID = c;
+                        //td[i]->thread_ID = c;
                         td[i]->fhmm = mb->finite_models[c];
-                        td[i]->sb = sb;
+                        //td[i]->sb = sb;
+                        LOG_MSG("Cal %d",c);
                         j++;
                         c++;
                         if(c == mb->num_models){
@@ -579,7 +591,62 @@ int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_t
 #pragma omp for schedule(dynamic) nowait
 #endif
                         for(i = 0; i < j;i++){
-                                do_score_sequences_per_model(td[i]);
+                                do_calibrate_per_model(td[i]);
+                        }
+#ifdef HAVE_OPENMP
+                }
+#endif
+        }
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+void* do_calibrate_per_model(void* threadarg)
+{
+        struct seqer_thread_data *data;
+        data = (struct seqer_thread_data *) threadarg;
+        int r;
+        r = rk_random(&data->rndstate);
+
+        fhmm_calibrate(data->fhmm, data->fmat, r);
+        return NULL;
+ERROR:
+        return NULL;
+}
+
+/* Score all sequences using all models */
+int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
+{
+        int i,j,c;
+        int num_threads = td[0]->num_threads;
+        int run;
+
+        ASSERT(sb != NULL, "No sequences");
+        ASSERT(mb != NULL, "No models");
+        c = 0;
+        for(run = 0; run < mb->num_models;run+= num_threads){
+                j = 0;
+                for(i = 0; i < num_threads;i++){
+                        td[i]->thread_ID = j;
+                        td[i]->model_ID = c;
+                        td[i]->fhmm = mb->finite_models[c];
+                        td[i]->sb = sb;
+                        //LOG_MSG("Cal %d",c);
+                        j++;
+                        c++;
+                        if(c == mb->num_models){
+                                break;
+                        }
+                }
+#ifdef HAVE_OPENMP
+                omp_set_num_threads( MACRO_MIN(num_threads,j));
+#pragma omp parallel shared(td) private(i)
+                {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                        for(i = 0; i < j;i++){
+                                do_score_sequences(td[i]);
                         }
 #ifdef HAVE_OPENMP
                 }

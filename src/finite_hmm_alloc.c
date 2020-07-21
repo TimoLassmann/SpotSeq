@@ -21,17 +21,17 @@ int alloc_fhmm_dyn_mat(struct fhmm_dyn_mat** mat,int L,int K)
         dm->alloc_K = K;
         dm->alloc_matrix_len = L;
 
-        RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len, dm->alloc_K));
-        RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len, dm->alloc_K));
-        for(i = 0; i < dm->alloc_matrix_len;i++){
+        RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
+        RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
+        for(i = 0; i < dm->alloc_matrix_len+2;i++){
                 for(j = 0;j < dm->alloc_K;j++){
                         dm->F_matrix[i][j] = 0.0;
                         dm->B_matrix[i][j] = 0.0;
                 }
         }
-        RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len, 5));
-        RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len, 5));
-        for(i = 0; i < dm->alloc_matrix_len;i++){
+        RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 5));
+        RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 5));
+        for(i = 0; i < dm->alloc_matrix_len+2;i++){
                 for(j = 0;j < 5;j++){
                         dm->F_NBECJ[i][j] = 0.0;
                         dm->B_NBECJ[i][j] = 0.0;
@@ -44,28 +44,35 @@ ERROR:
         return FAIL;
 }
 
-int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int new_len)
+int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int L, int K)
 {
         int i,j;
+        int new_k;
+        int new_l;
+
+
         ASSERT(dm != NULL, "No model");
-        ASSERT(new_len > 0, "newlen has to be > 0");
+        ASSERT(L > 0, "newlen has to be > 0");
+        ASSERT(K > 0, "K has to be > 0");
         ASSERT(dm->alloc_matrix_len > 0, "No matrix allocated yet...");
 
-        if(dm->alloc_matrix_len < new_len){
-                while(dm->alloc_matrix_len < new_len){
-                        dm->alloc_matrix_len = dm->alloc_matrix_len +  dm->alloc_matrix_len / 2;
-                }
-                RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len, dm->alloc_K));
-                RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len, dm->alloc_K));
-                for(i = 0; i < dm->alloc_matrix_len;i++){
+        new_k = MACRO_MAX(K, dm->alloc_K);
+        new_l = MACRO_MAX(L, dm->alloc_matrix_len);
+        if(new_k > dm->alloc_K || new_l > dm->alloc_matrix_len){
+                dm->alloc_K = new_k;
+                dm->alloc_matrix_len = new_l;
+
+                RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
+                RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
+                for(i = 0; i < dm->alloc_matrix_len+2;i++){
                         for(j = 0;j < dm->alloc_K;j++){
                                 dm->F_matrix[i][j] = 0.0;
                                 dm->B_matrix[i][j] = 0.0;
                         }
                 }
-                RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len, 5));
-                RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len, 5));
-                for(i = 0; i < dm->alloc_matrix_len;i++){
+                RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 5));
+                RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 5));
+                for(i = 0; i < dm->alloc_matrix_len+2;i++){
                         for(j = 0;j < 5;j++){
                                 dm->F_NBECJ[i][j] = 0.0;
                                 dm->B_NBECJ[i][j] = 0.0;
@@ -121,8 +128,8 @@ struct fhmm* alloc_fhmm(void)
         fhmm->lambda = 0.0;
         fhmm->tau = 0.0;
         fhmm->alloc_matrix_len = 0;
-        fhmm->config_len = 0;
-        fhmm->alloc_K = 0;
+        //fhmm->config_len = 0;
+        //fhmm->alloc_K = 0;
         return fhmm;
 ERROR:
         free_fhmm(fhmm);

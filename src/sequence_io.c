@@ -69,7 +69,7 @@ int convert_tl_seq_buf_into_ihmm_seq_buf(struct tl_seq_buffer* tlsb, struct seq_
                         sb->max_len = sb->sequences[i]->seq_len;
                 }
         }
-
+        //LOG_MSG("MAXLEN: %d ", sb->max_len);
         sb->num_seq = tlsb->num_seq;
         sb->L = tlsb->L;
 

@@ -18,7 +18,7 @@ EXTERN void free_fhmm(struct fhmm* fhmm);
 
 
 EXTERN int alloc_fhmm_dyn_mat(struct fhmm_dyn_mat** mat,int L,int K);
-EXTERN int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int new_len);
+EXTERN int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int L, int K);
 EXTERN int free_fhmm_dyn_mat(struct fhmm_dyn_mat* dm);
 
 

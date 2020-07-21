@@ -1,6 +1,7 @@
 #include <omp.h>
 
 #include "finite_hmm_alloc.h"
+#include "finite_hmm_stats.h"
 #include "hmm_conversion.h"
 
 #include "finite_hmm_plot.h"
@@ -372,7 +373,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         ASSERT(model != NULL, "No model");
 
-        MMALLOC(used, sizeof(int)* (model->num_states+5)); /* 5 because I need to add N C B E and J states  */
+        MMALLOC(used, sizeof(int)* (model->num_states)); /* 5 because I need to add N C B E and J states  */
 
         for(i = 0; i < model->num_states;i++){
                 used[i] = -1;
@@ -399,14 +400,15 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         //fprintf(stdout,"\n");
 
-        for(i = 0; i < model->num_states+5;i++){
+        /*for(i = 0; i < model->num_states+5;i++){
                 fprintf(stdout,"%d ",used[i]);
         }
-        fprintf(stdout,"; m: %d\n",model->num_states);
+        fprintf(stdout,"; m: %d\n",model->num_states);*/
         RUNP(fhmm = alloc_fhmm());
 
-        fhmm->alloc_K =  local_num_states;//  model->alloc_num_states;
-        fhmm->K = local_num_states;//model->num_states;
+        //fhmm->alloc_K =  local_num_states;//  model->alloc_num_states;
+        fhmm->K =  model->alloc_num_states;// local_num_states;//model->num_states;
+
         fhmm->L = model->L;
 
         RUNP(ft = alloc_fast_hmm_param(initial_states,model->L));
@@ -501,7 +503,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                         //fprintf(stdout,"transition:%d\n",i);
                         for(j = 0;j < local_num_states;j++){
                                 s1_t[i][j] /= sum;
-                                fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
+                                //fprintf(stdout,"%d %d : %f stdev:%f\n",i,j,s1_t[i][j], s2_t[i][j]);
                         }
                 }
         }
@@ -510,7 +512,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         fhmm->t = s1_t;
 
 
-        fhmm->config_len = 0;
+        /*fhmm->config_len = 0;
 
         fhmm->tSN = 0.0f;
         fhmm->tNN = 0.0f;
@@ -525,15 +527,16 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         fhmm->tEJ = 0.0f;
         fhmm->tJJ = 0.0f;
-        fhmm->tJB = 0.0f;
+        fhmm->tJB = 0.0f;*/
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */
         RUN(setup_model(fhmm));
-        configure_target_len(fhmm, 10, 1);
 
-        RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot",0.01f));
-        exit(0);
+        //configure_target_len(fhmm, 10, 1);
+
+        //RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot",0.01f));
+        //exit(0);
         MFREE(used);
         gfree(s2_e);
         gfree(s2_t);

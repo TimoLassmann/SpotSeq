@@ -161,6 +161,8 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
 
         ASSERT(ihmm != NULL, "no model");
         ASSERT(sb != NULL, "no seq struct");
+
+        //LOG_MSG("STATES: %d", ihmm->num_states);
         MMALLOC(relabel, sizeof(int) * ihmm->num_states);
         MMALLOC(used, sizeof(int) * ihmm->num_states);
         for(i = 0; i < ihmm->num_states;i++){
@@ -193,7 +195,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
         j = 0;
         sum = 0.0;
         for(i = 0; i < ihmm->num_states;i++){
-                if(used[i] > sb->num_seq /2){  //} != 0){
+                if(used[i] != 0){
                         ihmm->beta[j] = ihmm->beta[i];
                         relabel[i] = j;
                         j++;
@@ -211,7 +213,7 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
                 fprintf(stdout,"%3d ",relabel[i]);
         }
         fprintf(stdout,"\n");
-        */
+        exit(0);*/
         ihmm->beta[j] = sum;
         //for(i = j+1; i < ihmm->num_states;i++){
         //       ihmm->beta[i] = 0;

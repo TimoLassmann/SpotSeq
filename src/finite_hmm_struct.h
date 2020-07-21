@@ -24,25 +24,25 @@ struct fhmm{
         double lambda;
         double tau;
         int alloc_matrix_len;
-        int alloc_K;
+        //int alloc_K;
         int K;
         int L;
-        int config_len;
+        /* int config_len; */
 
-        float tSN;
-        float tNN;
-        float tNB;
+        /* float tSN; */
+        /* float tNN; */
+        /* float tNB; */
 
-        float tBX;
-        float tXE;
+        /* float tBX; */
+        /* float tXE; */
 
-        float tEC;
-        float tCC;
-        float tCT;
+        /* float tEC; */
+        /* float tCC; */
+        /* float tCT; */
 
-        float tEJ;
-        float tJJ;
-        float tJB;
+        /* float tEJ; */
+        /* float tJJ; */
+        /* float tJB; */
 };
 
 struct fhmm_dyn_mat{

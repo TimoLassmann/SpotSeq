@@ -1,12 +1,14 @@
 #ifndef THREAD_DATA_H
 #define THREAD_DATA_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
+#include "randomkit.h"
+
+#ifdef THREAD_DATA_IMPORT
+#define EXTERN
+#else
+#define EXTERN extern
 #endif
 
-#include "tldevel.h"
-#include "randomkit.h"
 
 
 #define THREAD_DATA_FULL 1
@@ -18,22 +20,28 @@ struct seqer_thread_data{
         struct fast_hmm_param* ft;
         struct seq_buffer* sb;
         struct fhmm* fhmm;
+        struct fhmm_dyn_mat* fmat;
         double** dyn;
-        double** F_matrix;
-        double** B_matrix;
-        double** t;             /* for forward backward - to collect estimated */
-        double** e;             /* for forward backward - to collect estimated */
+
+        //double** F_matrix;
+        //double** B_matrix;
+        //double** t;             /* for forward backward - to collect estimated */
+        //double** e;             /* for forward backward - to collect estimated */
         //int num_seq;
         int thread_ID;
+        int model_ID;
         int num_threads;
         unsigned int seed;
         rk_state rndstate;
 };
 
-extern struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random, int mode);
-extern int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K);
-extern int compare_seqer_thread_data(struct seqer_thread_data** a , struct seqer_thread_data** b, int num);
+EXTERN struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random, int mode);
+EXTERN int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K);
+EXTERN int compare_seqer_thread_data(struct seqer_thread_data** a , struct seqer_thread_data** b, int num);
 
-extern void free_seqer_thread_data(struct seqer_thread_data** td);
+EXTERN void free_seqer_thread_data(struct seqer_thread_data** td);
+
+#undef THREAD_DATA_IMPORT
+#undef EXTERN
 
 #endif

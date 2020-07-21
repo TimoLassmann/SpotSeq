@@ -29,9 +29,9 @@ int main(void)
         RUN(generate_simple_fhmm(&fhmm));
         RUN(alloc_fhmm_dyn_mat(&dm, 1024, fhmm->K));
 
-        configure_target_len(fhmm, 10, 0);
+        //configure_target_len(fhmm, 10, 0);
         fhmm_calibrate(fhmm, dm, 42);
-        exit(0);
+        //exit(0);
         RUN(plot_finite_hmm_dot(fhmm, "fhmm_test_model.dot",0.01f));
 
         test_seq[0] = 3;
@@ -42,7 +42,7 @@ int main(void)
         RUN(run_forward_diff_len(fhmm,dm,  test_seq, 4));
 
 
-        exit(0);
+        //exit(0);
         //exit(0);
         test_seq[0] = 0;
         test_seq[1] = 3;
@@ -104,7 +104,7 @@ int main(void)
         RUN(run_forward_diff_len(fhmm,dm,  test_seq, 12));
 
 
-        random_seq_test(fhmm,dm);
+        //random_seq_test(fhmm,dm);
         free_fhmm_dyn_mat(dm);
         free_fhmm(fhmm);
         return EXIT_SUCCESS;
@@ -135,7 +135,7 @@ int random_seq_test(struct fhmm* fhmm,struct fhmm_dyn_mat* dm)
                 len = i;
                 avg = 0.0;
                 if(len+2 >= dm->alloc_matrix_len){
-                        resize_fhmm_dyn_mat(dm, len+2);
+                        resize_fhmm_dyn_mat(dm, len, fhmm->K);
                 }
                 for(c = 0; c < 1000000;c++){
                         for(j = 0; j < len;j++){
@@ -144,8 +144,8 @@ int random_seq_test(struct fhmm* fhmm,struct fhmm_dyn_mat* dm)
                                 //fprintf(stdout,"%d",seq[j]);
                         }
 
-                        configure_target_len(fhmm, len, 1);
-                        forward(fhmm, dm, &fhmm->f_score, seq, len);
+                        //configure_target_len(fhmm, len, 1);
+                        forward(fhmm, dm, &fhmm->f_score, seq, len,1);
                         random_model_score(len,&fhmm->r_score);// ,seq, len,len );
                         fprintf(f_ptr,"%f\n", (fhmm->f_score - fhmm->r_score) / logf(2.0));
                         avg += LOGISTIC_FLT(fhmm->f_score - fhmm->r_score);//mm->f_score - fhmm->r_score;//(fhmm->f_score- fhmm->r_score) / log(2.0);
@@ -170,21 +170,23 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
         for(i = MACRO_MAX(1, len -10); i < len+10   ;i++){
                 fprintf(stdout,"LEN: %d\t",i);
                 //configure_target_len(fhmm, MACRO_MAX(1, i-2), 0);
-                configure_target_len(fhmm, i, 0);
-                forward(fhmm, dm, &fhmm->f_score, seq, len);
-                backward(fhmm, dm, &fhmm->b_score, seq, len);
+                //configure_target_len(fhmm, i, 0);
+                forward(fhmm, dm, &fhmm->f_score, seq, len,0);
+                backward(fhmm, dm, &fhmm->b_score, seq, len,0);
                 random_model_score(len,&fhmm->r_score);// ,seq, len,len );
                 //random_model_score(fhmm->background , &fhmm->r_score ,seq, len,len);
                 fprintf(stdout,"SCORE (uni) %f %f %f  %f  bit:%f\t", fhmm->f_score,fhmm->b_score, fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score),(fhmm->f_score - fhmm->r_score) / logf(2.0f));
                 //exit(0);
                 //break;
 
-                configure_target_len(fhmm, i, 1);
+                //configure_target_len(fhmm, i, 1);
                 //configure_target_len(fhmm, MACRO_MAX(1, i-2), 1);
-                forward(fhmm, dm, &fhmm->f_score, seq, len);
-                backward(fhmm, dm, &fhmm->b_score, seq, len);
+                forward(fhmm, dm, &fhmm->f_score, seq, len,1);
+                backward(fhmm, dm, &fhmm->b_score, seq, len,1);
                 random_model_score(len,&fhmm->r_score);// ,seq, len,len );
                 fprintf(stdout,"SCORE (multi) %f %f %f  %f\n", fhmm->f_score,fhmm->b_score, fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score));
+                //LOG_MSG("%f", scaledprob2prob(fhmm->f_score - fhmm->b_score));
+                //exit(0);
         }
 
         return OK;
@@ -200,8 +202,8 @@ int generate_simple_fhmm(struct fhmm** f)
         int i,j,o;
         RUNP(fhmm = alloc_fhmm());
 
-        fhmm->alloc_K = 1 + 5;
-        fhmm->K = 20;//model->num_states;
+        //fhmm->alloc_K = 1 + 5;
+        fhmm->K = 10;//model->num_states;
         fhmm->L = 4;
 
 
@@ -237,9 +239,9 @@ int generate_simple_fhmm(struct fhmm** f)
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < 4;j++){
-                        fhmm->e[i][j] = (1.0 - 0.999) / 3.0;
+                        fhmm->e[i][j] = (1.0 - 0.99) / 3.0;
                         if(i%4 == j){
-                                fhmm->e[i][j] = 0.999;
+                                fhmm->e[i][j] = 0.99;
                         }
                 }
         }
@@ -259,7 +261,7 @@ int generate_simple_fhmm(struct fhmm** f)
         fhmm->e[o+2][2] = 1.0;
         fhmm->e[o+3][3] = 1.0;*/
 
-        fhmm->tSN = 0.0f;
+        /*fhmm->tSN = 0.0f;
         fhmm->tNN = 0.0f;
         fhmm->tNB = 0.0f;
 
@@ -273,7 +275,7 @@ int generate_simple_fhmm(struct fhmm** f)
         fhmm->tEJ = 0.0f;
         fhmm->tJJ = 0.0f;
         fhmm->tJB = 0.0f;
-
+        */
 
         /* convert probs into log space/ set tindex to allow for fast-ish dyn
          * programming in case there is a sparse transition matrix */

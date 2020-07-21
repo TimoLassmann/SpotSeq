@@ -38,7 +38,7 @@ int prep_sequences(struct seq_buffer* sb, struct rng_state* rng, int num_models,
 
         /* add u and label */
         RUN(add_multi_model_label_and_u(sb, num_models));
-
+        LOG_MSG("Start: %d", num_states);
         /* randomly label sequences  */
         /* I know the number of models ; unknown are number of states  */
         RUN(init_labelling(sb, rng, num_models, num_states, sigma));

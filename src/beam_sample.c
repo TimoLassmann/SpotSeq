@@ -221,7 +221,7 @@ int reset_valid_path(struct seq_buffer* sb,int num_models)
         return OK;
 }
 
-void* do_forward_backward(void *threadarg)
+/*void* do_forward_backward(void *threadarg)
 {
         struct seqer_thread_data *data;
         int i,j;
@@ -235,7 +235,7 @@ void* do_forward_backward(void *threadarg)
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
 
-        /* clear e and t count tables.  */
+
         for(i = 0; i < data->ft->last_state;i++){
                 for(j =0; j < data->ft->last_state;j++){
                         data->t[i][j] = -INFINITY;
@@ -265,7 +265,7 @@ void* do_forward_backward(void *threadarg)
         return NULL;
 ERROR:
         return NULL;
-}
+}*/
 
 
 /*void* do_sample_path_and_posterior(void* threadarg)
@@ -754,7 +754,7 @@ ERROR:
         return FAIL;
 }
 
-int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_threads,int K)
+/*int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_threads,int K)
 {
         int i,j,c;
         int local_num_treads;
@@ -772,7 +772,7 @@ int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_thre
                 }
         }
         return OK;
-}
+        }*/
 
 int approximatelyEqual(double a, double b, double epsilon)
 {
@@ -804,12 +804,12 @@ int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double*
         return OK;
 }
 
-int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
+/*int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
 {
         double** e = data->e;
         double** t = data->t;
-        double** F = data->F_matrix;
-        double** B = data->B_matrix;
+        //double** F = data->F_matrix;
+        //double** B = data->B_matrix;
         double* emission = NULL;
 
         struct fast_hmm_param* ft = data->ft;
@@ -856,7 +856,7 @@ int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq
         }
 
 
-        /* First let's check if there is a path! i.e. end is reachable.  */
+         First let's check if there is a path! i.e. end is reachable.
         boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
         for(j = 0; j < boundary;j++){
                 a = list[j]->from;
@@ -866,7 +866,7 @@ int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq
                 }
         }
         return OK;
-}
+        }*/
 
 int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score)
 {

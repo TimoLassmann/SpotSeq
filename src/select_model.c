@@ -158,7 +158,7 @@ int run_model_selection(struct parameters* param)
 
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL,THREAD_DATA_FULL));
+        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
 
         LOG_MSG("Done.");

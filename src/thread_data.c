@@ -11,21 +11,19 @@
 
 
 
-struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random,int mode)
+int create_seqer_thread_data(struct seqer_thread_data*** t, int num_threads, int max_len, int K,rk_state* random)
 {
         struct seqer_thread_data** td = NULL;
         int i,j,c;
-        int local_num_treads;
 
-        ASSERT(*num_threads> 0, "no threads");
-        local_num_treads = *num_threads;
-
-        MMALLOC(td, sizeof(struct seqer_thread_data*) * local_num_treads);
-        for(i = 0; i < local_num_treads;i++){
+        MMALLOC(td, sizeof(struct seqer_thread_data*) * num_threads);
+        for(i = 0; i < num_threads;i++){
                 td[i] = NULL;
                 MMALLOC(td[i], sizeof(struct seqer_thread_data));
                 td[i]->dyn = NULL;
                 td[i]->fhmm = NULL;
+                td[i]->num_models = 0;
+                td[i]->num_threads = num_threads;
                 RUN(alloc_fhmm_dyn_mat(&td[i]->fmat, max_len, K));
                 //td[i]->F_matrix = NULL;
                 //td[i]->B_matrix = NULL;
@@ -74,7 +72,7 @@ struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_le
                 td[i]->ft = NULL;
                 td[i]->sb = NULL;
                 td[i]->thread_ID = i;
-                td[i]->num_threads = local_num_treads;
+
                 if(random){
                         td[i]->seed =  rk_ulong(random);
                         rk_seed(td[i]->seed, &td[i]->rndstate);
@@ -86,35 +84,22 @@ struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_le
                 }
                 //fprintf(stdout,"thread:%d seed: %d\n",i, td[i]->seed);
         }
-
-        *num_threads = local_num_treads;
-        return td;
+        *t = td;
+        //*num_threads = local_num_treads;
+        return OK;
 ERROR:
         free_seqer_thread_data(td);
-        return NULL;
+        return FAIL;
 }
 
 
-int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K)
+int resize_seqer_thread_data(struct seqer_thread_data** td, int max_len, int K)
 {
         int i,j,c;
-        int local_num_treads;
-        int cur_threads;
 
-        ASSERT(*num_threads> 0, "no threads");
-        local_num_treads = *num_threads;
-        cur_threads =  *num_threads;
-
-
-
-        for(i = local_num_treads; i < cur_threads;i++){
-                gfree(td[i]->dyn);
-                //free_2d((void**) td[i]->dyn);
-                MFREE(td[i]);
-        }
-
+        int num_threads = td[0]->num_threads;
         //LOG_MSG("mallocing auxiliary datastructures to %d %d", max_len,K);
-        for(i = 0; i < local_num_treads;i++){
+        for(i = 0; i < num_threads;i++){
                 RUN(galloc(&td[i]->dyn, max_len, K));
                 LOG_MSG("Alloc: %d %d", max_len,K);
                 RUN(resize_fhmm_dyn_mat(td[i]->fmat , max_len, K));
@@ -139,9 +124,9 @@ int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int
                                 td[i]->e[j][c] = -INFINITY;
                         }
                 }*/
-                td[i]->num_threads = local_num_treads;
+                //td[i]->num_threads = local_num_treads;
         }
-        *num_threads = local_num_treads;
+        //*num_threads = local_num_treads;
         return OK;
 ERROR:
         return FAIL;

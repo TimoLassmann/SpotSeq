@@ -24,7 +24,7 @@ struct fhmm{
         double lambda;
         double tau;
         int alloc_matrix_len;
-        //int alloc_K;
+        int alloc_K;
         int K;
         int L;
         /* int config_len; */

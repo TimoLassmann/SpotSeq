@@ -127,7 +127,7 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
         float** NBECJ = NULL;
         float** matrix = NULL;
 
-        const float* trans = 0;
+        //const float* trans = 0;
         float tSN;
         float tNN;
         float tNB;
@@ -494,7 +494,7 @@ int setup_model(struct fhmm* fhmm)
         fhmm->lambda =  0.69314718055994529 + 1.44 / ((double) fhmm->K * fhmm->H);
 
         //RUNP(fhmm->tindex = galloc(fhmm->tindex, fhmm->K , fhmm->K+1, 0));
-        RUN(galloc(&fhmm->tindex, fhmm->K , fhmm->K+1));
+        RUN(galloc(&fhmm->tindex, fhmm->alloc_K , fhmm->alloc_K+1));
 
         for(i = 0; i < fhmm->K;i++){
                 for(j = 0; j < fhmm->K+1;j++){

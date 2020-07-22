@@ -50,7 +50,7 @@ struct seqer_thread_data** read_thread_data_to_hdf5(char* filename)
 
 
 
-        RUNP(td = create_seqer_thread_data(&num_threads,  max_len, max_K, NULL, THREAD_DATA_BEAM));
+        RUN(create_seqer_thread_data(&td,num_threads,  max_len, max_K, NULL));
 
 
         RUN(HDFWRAP_READ_DATA(hdf5_data, "/thread_data","seeds", &seeds));

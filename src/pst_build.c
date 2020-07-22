@@ -19,7 +19,7 @@ static int recursive_rename(char* name,  int i);
 
 static int read_training_sequences(struct tl_seq_buffer** seq_buf,struct rng_state* rng,char* infile);
 
-int create_pst_model(struct rng_state* rng, char* train_seq,char* seq_db,char* out_model, double p_min, double gamma, double z_thres)
+int create_pst_model(struct rng_state* rng,struct tl_seq_buffer* in_sb, char* train_seq,char* seq_db,char* out_model, double p_min, double gamma, double z_thres)
 {
 
         struct tl_seq_buffer* sb = NULL;
@@ -28,9 +28,10 @@ int create_pst_model(struct rng_state* rng, char* train_seq,char* seq_db,char* o
         /* sanity checks */
 
         /* 1: files  */
-
-        if(!my_file_exists(train_seq)){
-                ERROR_MSG("File %s not found.", train_seq);
+        if(train_seq){
+                if(!my_file_exists(train_seq)){
+                        ERROR_MSG("File %s not found.", train_seq);
+                }
         }
         if(!my_file_exists(seq_db)){
                 ERROR_MSG("File %s not found.", seq_db);
@@ -49,15 +50,20 @@ int create_pst_model(struct rng_state* rng, char* train_seq,char* seq_db,char* o
                 z_thres = 10.0;
         }
         LOG_MSG("Running with: %f %f %f", p_min, gamma, z_thres);
-
-        RUN(read_training_sequences(&sb, rng, train_seq));
+        if(in_sb){
+                sb = in_sb;
+        }else{
+                RUN(read_training_sequences(&sb, rng, train_seq));
+        }
         DECLARE_TIMER(timer);
         START_TIMER(timer);
         RUN(fill_exact_hash(&h, sb));
         STOP_TIMER(timer);
         GET_TIMING(timer);
 
-        free_tl_seq_buffer(sb);
+        if(in_sb == NULL){
+                free_tl_seq_buffer(sb);
+        }
 
         RUN(run_build_pst(&p,(float) p_min,(float)gamma,h));
         free_exact_hash(h);

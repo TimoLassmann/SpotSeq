@@ -187,7 +187,7 @@ int main (int argc, char *argv[])
 
         RUNP(fhmm = read_best_fmodel(param->in_model, &best));
         //RUN(alloc_dyn_matrices(fhmm));
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL,THREAD_DATA_FULL));
+        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */
@@ -249,7 +249,7 @@ exit(0);
         //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL,THREAD_DATA_FULL));
+        RUNP(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */

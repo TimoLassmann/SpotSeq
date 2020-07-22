@@ -19,7 +19,7 @@ struct seqer_thread_data{
         struct fast_param_bag* ft_bag;
         struct fast_hmm_param* ft;
         struct seq_buffer* sb;
-        struct fhmm* fhmm;
+        struct fhmm** fhmm;
         struct fhmm_dyn_mat* fmat;
         double** dyn;
 
@@ -30,13 +30,14 @@ struct seqer_thread_data{
         //int num_seq;
         int thread_ID;
         int model_ID;
+        int num_models;
         int num_threads;
         unsigned int seed;
         rk_state rndstate;
 };
-
-EXTERN struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random, int mode);
-EXTERN int resize_seqer_thread_data(struct seqer_thread_data** td,int* num_threads, int max_len, int K);
+EXTERN int create_seqer_thread_data(struct seqer_thread_data*** t, int num_threads, int max_len, int K,rk_state* random);
+//EXTERN struct seqer_thread_data** create_seqer_thread_data(int* num_threads, int max_len, int K,rk_state* random, int mode);
+EXTERN int resize_seqer_thread_data(struct seqer_thread_data** td, int max_len, int K);
 EXTERN int compare_seqer_thread_data(struct seqer_thread_data** a , struct seqer_thread_data** b, int num);
 
 EXTERN void free_seqer_thread_data(struct seqer_thread_data** td);

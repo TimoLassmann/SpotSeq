@@ -115,7 +115,7 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = sim_seq seqer_model seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
+bin_PROGRAMS = seqer_model seqer_build_search sim_seq  seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
 #seqer_lcs
 if ENABLE_CAIRO
@@ -126,13 +126,38 @@ seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
 endif
 
+seqer_model_SOURCES = \
+build_model.c $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)
+
+seqer_build_search_SOURCES = \
+build_search_model.c \
+$(RANDOMKIT_FILES) \
+sequence_alloc.h \
+sequence_alloc.c \
+sequence_io.h \
+sequence_io.c \
+pst_build.c \
+pst_hash.c \
+pst_io.c \
+pst_calibrate.c \
+pst.c \
+null_model_emission.c \
+model_io.c \
+model_alloc.c \
+finite_hmm_stats.c \
+finite_hmm_alloc.c \
+thread_data.c \
+hmm_conversion.c \
+finite_hmm.c \
+finite_hmm_io.c \
+fast_hmm_param.c \
+run_score.c 
+
 makedb_SOURCES = $(SEQUENCE_DB)
 makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST
 
 fhmm_test_SOURCES =  finite_hmm_test.c $(FINITEHMM) $(NULLMODEL)
 
-seqer_model_SOURCES = \
-build_model.c $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)
 
 seqer_score_SOURCES = \
 score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)
@@ -238,9 +263,9 @@ make_dot_file.c
 #libihmm_a_LIBADD  =  ${MYLIBDIRS}
 
 
-TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST
+TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST ari_ITEST
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST 
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST ari_ITEST 
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST

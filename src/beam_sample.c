@@ -74,7 +74,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         int i;
         int iter;
         int no_path;
-        struct fast_hmm_param* ft = NULL;
+        //struct fast_hmm_param* ft = NULL;
         ASSERT(model_bag != NULL, "no model.");
         ASSERT(sb,"no sequence buffer");
         ASSERT(sb->num_seq > 0, "No sequences");
@@ -148,7 +148,7 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                         //dyn prog + labelling
                         for(i = 0; i < num_threads;i++){
                                 td[i]->ft_bag = ft_bag;
-                                td[i]->ft = ft;
+                                //td[i]->ft = ft;
                                 td[i]->sb = sb;
                                 td[i]->thread_ID = i;
                         }
@@ -323,7 +323,12 @@ void* do_dynamic_programming(void *threadarg)
 
         num_threads = data->num_threads;
         thread_id = data->thread_ID;
+        //thread_id = omp_get_thread_num();
+        //num_threads = omp_get_num_threads();
 
+
+
+//LOG_MSG("Thread %d (g)", f,g);
         for(i =0; i < data->sb->num_seq;i++){
 
                 if( i% num_threads == thread_id){

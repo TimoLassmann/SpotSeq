@@ -11,6 +11,10 @@
 
 #include "finite_hmm_struct.h"
 
+extern double esl_exp_surv(double x, double mu, double lambda);
+extern double esl_exp_logsurv(double x, double mu, double lambda);
+
+
 extern int score_seq_fwd(struct fhmm* fhmm , struct fhmm_dyn_mat* m, uint8_t* a, int len,int mode, double* ret_score,double*P);
 
 

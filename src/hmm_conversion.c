@@ -406,8 +406,8 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         fprintf(stdout,"; m: %d\n",model->num_states);*/
         RUNP(fhmm = alloc_fhmm());
 
-        //fhmm->alloc_K =  local_num_states;//  model->alloc_num_states;
-        fhmm->K =  model->alloc_num_states;// local_num_states;//model->num_states;
+        fhmm->alloc_K =  model->alloc_num_states; ;//  model->alloc_num_states;
+        fhmm->K =  local_num_states;// local_num_states;//model->num_states;
 
         fhmm->L = model->L;
 
@@ -436,16 +436,16 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         RUNP(s2_t = galloc(s2_t, local_num_states, local_num_states, 0.0));
         */
         //LOG_MSG("States alloc (max) : %d", model->alloc_num_states);
-        RUN(galloc(&s1_e, fhmm->K, model->L));
-        RUN(galloc(&s2_e, fhmm->K, model->L));
-        RUN(galloc(&s1_t, fhmm->K, fhmm->K));
-        RUN(galloc(&s2_t, fhmm->K, fhmm->K));
-        for(i = 0; i < fhmm->K;i++){
+        RUN(galloc(&s1_e, fhmm->alloc_K, model->L));
+        RUN(galloc(&s2_e, fhmm->alloc_K, model->L));
+        RUN(galloc(&s1_t, fhmm->alloc_K, fhmm->alloc_K));
+        RUN(galloc(&s2_t, fhmm->alloc_K, fhmm->alloc_K));
+        for(i = 0; i < fhmm->alloc_K;i++){
                 for(j = 0;j < model->L;j++){
                         s1_e[i][j] = 0.0;
                         s2_e[i][j] = 0.0;
                 }
-                for(j = 0;j < fhmm->K;j++){
+                for(j = 0;j < fhmm->alloc_K;j++){
                         s1_t[i][j] = 0.0;
                         s2_t[i][j] = 0.0;
                 }

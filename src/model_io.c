@@ -103,9 +103,9 @@ struct model_bag* read_model_bag_hdf5(char* filename)
                 //}
                 //LOG_MSG("MAX: %d %d\n", bag->max_num_states,bag->models[i]->num_states);
                 bag->finite_models[i] = NULL;
-                snprintf(buffer, BUFFER_LEN, "/models/m%d/fhmm",i+1);
+                //snprintf(buffer, BUFFER_LEN, "/models/m%d/fhmm",i+1);
                 /* get HMM parameters  */
-                RUNP(bag->finite_models[i] = read_fhmm_parameters(hdf5_data, buffer));
+                //RUNP(bag->finite_models[i] = read_fhmm_parameters(hdf5_data, buffer));
         }
         RUN(close_hdf5_file(&hdf5_data));
         return bag;
@@ -203,8 +203,8 @@ int write_model_bag_hdf5(struct model_bag* bag, char* filename)
                 //LOG_MSG("Writing model %d.",model_i);
                 RUN(write_model_hdf5(hdf5_data, bag->models[model_i], buffer));
 
-                snprintf(buffer, BUFFER_LEN, "/models/m%d/fhmm", model_i+1);
-                RUN(add_fhmm(hdf5_data, bag->finite_models[model_i] , buffer));
+                //snprintf(buffer, BUFFER_LEN, "/models/m%d/fhmm", model_i+1);
+                //RUN(add_fhmm(hdf5_data, bag->finite_models[model_i] , buffer));
                 //LOG_MSG("Done");
         }
         close_hdf5_file(&hdf5_data);

@@ -28,7 +28,6 @@
 
 #include "pst_build.h"
 
-
 #include "model_core.h"
 
 #include "model_struct.h"
@@ -289,8 +288,8 @@ int run_build_ihmm(struct parameters* param)
 
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
 
-                RUN(convert_ihmm_to_fhmm_models(model_bag));
-                exit(0);
+                //RUN(convert_ihmm_to_fhmm_models(model_bag));
+                //exit(0);
         }else{                  /* New run - start from the beginning */
                 /* create pst search model  */
                 //RUN(create_pst_model(param->rng, param->input,param->seq_db, param->in_model,0.000001, 0.01, 20.0));
@@ -299,7 +298,6 @@ int run_build_ihmm(struct parameters* param)
                 //RUNP(rng = init_rng(0));
 
                 RUN(read_sequences_file(&sb, param->input));
-
 
                 RUN(prep_sequences(sb,param->rng, param->num_models,param->num_start_states,0.0));
 
@@ -336,7 +334,7 @@ int run_build_ihmm(struct parameters* param)
 
 
                 /* Allocating thread structure. */
-                RUNP(td = create_seqer_thread_data(&param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate, THREAD_DATA_BEAM));
+                RUN(create_seqer_thread_data(&td,param->num_threads, (sb->max_len+2)  ,model_bag->max_num_states, &model_bag->rndstate));
         }
 
         LOG_MSG("Will use %d threads.", param->num_threads);
@@ -362,6 +360,7 @@ int run_build_ihmm(struct parameters* param)
         DECLARE_TIMER(n);
         //RUN(convert_ihmm_to_fhmm_models(model_bag));
         for(i = 0; i < outer_iter;i++){
+
                 //LOG_MSG("Outer: %d %d", i, param->inner_iter);
 /* run inner iter beam sampling iterations */
                 LOG_MSG("Start beam");
@@ -375,9 +374,9 @@ int run_build_ihmm(struct parameters* param)
                 LOG_MSG("Convert");
                 /* convert to fhmm */
                 RUN(convert_ihmm_to_fhmm_models(model_bag));
-                LOG_MSG("Calibrate");
+                //LOG_MSG("Calibrate");
                 /* calibrate */
-                RUN(calibrate_all(model_bag, td));
+                //RUN(calibrate_all(model_bag, td));
                 LOG_MSG("Scoring");
                 /* score */
                 RUN(score_all_vs_all(model_bag,sb,td));
@@ -560,60 +559,6 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
 ERROR:
         return FAIL;
 }
-/* calibrate all models  */
-int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td)
-{
-        int i,j,c;
-        int num_threads = td[0]->num_threads;
-        int run;
-
-
-        ASSERT(mb != NULL, "No models");
-        c = 0;
-
-        for(run = 0; run < mb->num_models;run+= num_threads){
-                j = 0;
-                for(i = 0; i < num_threads;i++){
-                        //td[i]->thread_ID = c;
-                        td[i]->fhmm = mb->finite_models[c];
-                        //td[i]->sb = sb;
-                        LOG_MSG("Cal %d",c);
-                        j++;
-                        c++;
-                        if(c == mb->num_models){
-                                break;
-                        }
-                }
-#ifdef HAVE_OPENMP
-                omp_set_num_threads( MACRO_MIN(num_threads,j));
-#pragma omp parallel shared(td) private(i)
-                {
-#pragma omp for schedule(dynamic) nowait
-#endif
-                        for(i = 0; i < j;i++){
-                                do_calibrate_per_model(td[i]);
-                        }
-#ifdef HAVE_OPENMP
-                }
-#endif
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-void* do_calibrate_per_model(void* threadarg)
-{
-        struct seqer_thread_data *data;
-        data = (struct seqer_thread_data *) threadarg;
-        int r;
-        r = rk_random(&data->rndstate);
-
-        fhmm_calibrate(data->fhmm, data->fmat, r);
-        return NULL;
-ERROR:
-        return NULL;
-}
 
 /* Score all sequences using all models */
 int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
@@ -625,33 +570,28 @@ int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_t
         ASSERT(sb != NULL, "No sequences");
         ASSERT(mb != NULL, "No models");
         c = 0;
-        for(run = 0; run < mb->num_models;run+= num_threads){
-                j = 0;
-                for(i = 0; i < num_threads;i++){
-                        td[i]->thread_ID = j;
-                        td[i]->model_ID = c;
-                        td[i]->fhmm = mb->finite_models[c];
-                        td[i]->sb = sb;
-                        //LOG_MSG("Cal %d",c);
-                        j++;
-                        c++;
-                        if(c == mb->num_models){
-                                break;
-                        }
-                }
+
+        for(i = 0; i < num_threads;i++){
+                td[i]->thread_ID = i;
+                td[i]->fhmm = mb->finite_models;
+                td[i]->sb = sb;
+                td[i]->num_models = mb->num_models;
+        }
+
+
 #ifdef HAVE_OPENMP
-                omp_set_num_threads( MACRO_MIN(num_threads,j));
+        omp_set_num_threads( num_threads);
 #pragma omp parallel shared(td) private(i)
-                {
+        {
 #pragma omp for schedule(dynamic) nowait
 #endif
-                        for(i = 0; i < j;i++){
-                                do_score_sequences(td[i]);
-                        }
-#ifdef HAVE_OPENMP
+                for(i = 0; i < num_threads;i++){
+                        do_score_sequences(td[i]);
                 }
-#endif
+#ifdef HAVE_OPENMP
         }
+#endif
+
         return OK;
 ERROR:
         return FAIL;
@@ -690,7 +630,6 @@ ERROR:
         MFREE(back);
         return FAIL;
 }
-
 
 /* After training a model it would be nice to know the logodds scores
  * of a number of sequences to see if something was found */
@@ -737,7 +676,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         /* allocate data for threads; */
-        RUNP(td = create_seqer_thread_data(&param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL, THREAD_DATA_FULL));
+        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
 
         LOG_MSG("Done.");

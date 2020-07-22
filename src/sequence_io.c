@@ -77,8 +77,49 @@ int convert_tl_seq_buf_into_ihmm_seq_buf(struct tl_seq_buffer* tlsb, struct seq_
         return OK;
 ERROR:
         return FAIL;
-
 }
+
+int convert_ihmm_seq_buf_into_tl_seq_buf(struct seq_buffer* in,struct tl_seq_buffer** ret)
+{
+
+        struct tl_seq_buffer* sb = NULL;
+        int i,j;
+        int printed;
+
+        RUN(alloc_tl_seq_buffer(&sb, in->num_seq));
+        //RUN(alloc_sequence_buffer(&sb, tlsb->num_seq));
+
+
+        sb->max_len;
+        for(i = 0; i < in->num_seq ;i++){
+                while(sb->sequences[i]->malloc_len <  in->sequences[i]->seq_len){
+                        RUN(resize_tl_seq(sb->sequences[i]));
+                        //RUN(realloc_ihmm_seq(sb->sequences[i], tlsb->sequences[i]->len));
+                }
+                printed = snprintf(sb->sequences[i]->name , TL_SEQ_MAX_NAME_LEN, "%s", in->sequences[i]->name );
+                ASSERT(printed < TL_SEQ_MAX_NAME_LEN,"characters printed entirely fills buffer");
+
+                sb->sequences[i]->len = in->sequences[i]->seq_len;
+                for(j = 0; j < in->sequences[i]->seq_len ;j++){
+                        sb->sequences[i]->seq[j] = in->sequences[i]->seq[j];
+                }
+
+                if(sb->sequences[i]->len > sb->max_len){
+                        sb->max_len = sb->sequences[i]->len;
+                }
+        }
+        //LOG_MSG("MAXLEN: %d ", sb->max_len);
+        sb->num_seq = in->num_seq;
+        sb->L = in->L;
+        *ret = sb;
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
+
+
 
 int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_models)
 {
@@ -191,7 +232,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Numseq", sb->num_seq));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxLen", sb->max_len));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxNameLen",max_name_len));
-        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphaber", sb->L));
+        RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphabet", sb->L));
         RUN(HDFWRAP_WRITE_ATTRIBUTE(hdf5_data, "/SequenceInformation", "NumModels", num_models));
 
         RUN(HDFWRAP_WRITE_DATA(hdf5_data, "/SequenceInformation", "Names", name));
@@ -247,7 +288,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Numseq", &num_seq));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxLen", &max_len));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "MaxNameLen",&max_name_len));
-        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphaber",&local_L));
+        RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "Alphabet",&local_L));
         RUN(HDFWRAP_READ_ATTRIBUTE(hdf5_data, "/SequenceInformation", "NumModels", &num_models));
 
         ASSERT(num_seq != -1, "No numseq");

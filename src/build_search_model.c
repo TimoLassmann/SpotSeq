@@ -365,6 +365,7 @@ int print_help(char **argv)
         RUN(tlfilename(argv[0], &tmp));
         fprintf(stdout,"\nUsage: %s [-options] %s\n\n",tmp,usage);
         fprintf(stdout,"Options:\n\n");
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seqdb","Reference database." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--seed","Seed" ,"[NA]"  );
         MFREE(tmp);

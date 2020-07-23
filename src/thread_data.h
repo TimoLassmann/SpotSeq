@@ -20,6 +20,7 @@ struct seqer_thread_data{
         struct fast_hmm_param* ft;
         struct seq_buffer* sb;
         struct fhmm** fhmm;
+
         struct fhmm_dyn_mat* fmat;
         double** dyn;
 

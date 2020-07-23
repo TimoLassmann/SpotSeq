@@ -51,7 +51,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         RUN(open_fasta_fastq_file(&f, filename, TLSEQIO_READ));
         chunk =1;
         while(1){
-                RUN(read_fasta_fastq_file(f, &sb, 1000000));
+                RUN(read_fasta_fastq_file(f, &sb, 100000));
                 int alloc = 0;
 
                 for(i = 0; i < sb->num_seq;i++){
@@ -103,13 +103,14 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
 //#endif
                 //free_tl_seq_buffer(sb);
                 //sb = NULL;
+                        //break;
                 chunk++;
         }
         RUN(close_seq_file(&f));
         free_rng(rng);
         free_tl_seq_buffer(sb);
         free_alphabet(alphabet);
-        LOG_MSG("Found %d hits", n_hits);
+        //LOG_MSG("Found %d hits", n_hits);
         *hits = h;
 #ifdef HAVE_OPENMP
         omp_destroy_lock(&writelock);

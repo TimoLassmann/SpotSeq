@@ -10,7 +10,7 @@
 
 int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td)
 {
-
+        struct fhmm** container = NULL;
         int i;
         int num_threads;
         ASSERT(fhmm != NULL,"no model");
@@ -36,9 +36,13 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_th
         }
         thr_pool_wait(pool);
         */
+
+        MMALLOC(container, sizeof(struct fhmm*) * 1);
+        container[0] = fhmm;
         for(i = 0; i < num_threads;i++){
                 td[i]->sb = sb;
-                td[i]->fhmm = fhmm;
+                td[i]->fhmm = container;
+                td[i]->num_models = 1;
         }
 
 
@@ -161,7 +165,21 @@ void* do_score_sequences(void* threadarg)
                         );
         }
         //LOG_MSG("Average sequence length: %d",expected_len);
+        if(num_models == 1){
+                for(i =0; i < data->sb->num_seq;i++){
+                if( i% num_threads == thread_id){
 
+                        seq = data->sb->sequences[i];
+                        for(j = 0; j < num_models;j++){
+                                score_seq_fwd(data->fhmm[j],m,seq->seq, seq->seq_len,1, &f_score, &logP);
+                                //LOG_MSG("Thread: %d;model:%d Seq: %s %f %f",thread_id,model_id, data->sb->sequences[i]->name, f_score, logP);
+                                //RUN(forward(fhmm, m, &f_score, seq->seq, seq->seq_len ));
+                                //seq->score_arr[thread_id] = logP
+                                seq->score = f_score;
+                        }
+                }
+        }
+        }else{
         for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
 
@@ -175,8 +193,10 @@ void* do_score_sequences(void* threadarg)
                         }
                 }
         }
+        }
         return NULL;
 }
+
 
 void* do_score_sequences_per_model(void* threadarg)
 {

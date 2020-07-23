@@ -60,7 +60,7 @@ int main (int argc, char *argv[])
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
-        struct seq_buffer* sb_back = NULL;
+
 
         struct seqer_thread_data** td = NULL;
 
@@ -175,8 +175,6 @@ int main (int argc, char *argv[])
         LOG_MSG("Loading model.");
 
 
-
-        int best = -1;
         init_logsum();
 
         struct tl_seq_buffer* hits = NULL;
@@ -185,111 +183,20 @@ int main (int argc, char *argv[])
         RUN(convert_tl_seq_buf_into_ihmm_seq_buf(hits, &sb));
         free_tl_seq_buffer(hits);
 
-        RUNP(fhmm = read_best_fmodel(param->in_model, &best));
+        LOG_MSG("Read search fhmm");
+        //sb->sequences[0]->score_arr
+        RUN(read_searchfhmm(param->in_model, &fhmm));
         //RUN(alloc_dyn_matrices(fhmm));
         RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
-
+        LOG_MSG("Run scoring");
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */
-        RUNP(fptr = fopen(param->output, "w"));
-        fprintf(fptr, "Name,Score_%s\n",  param->in_model);
+        //RUNP(fptr = fopen(param->output, "w"));
+        //fprintf(fptr, "Name,Score_%s\n",  param->in_model);
         for(i = 0; i < sb->num_seq;i++){
-                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
+                fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,esl_exp_logsurv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda)  ,   sb->sequences[i]->name);
         }
-        fclose(fptr);
-
-exit(0);
-        //LOG_MSG("Load PST model")
-        //RUN(read_pst_hdf5(&p, param->in_model));
-
-        RUNP(fhmm = read_best_fmodel(param->in_model, &best));
-        //RUN(alloc_dyn_matrices(fhmm));
-        /* load sequences.  */
-        LOG_MSG("Loading sequences.");
-
-
-        RUN(read_sequences_file(&sb, param->in_sequences));
-        RUN(prep_sequences(sb,param->rng, 1,0,0.0));
-        //RUNP(sb = load_sequences(param->in_sequences, &param->rndstate));
-        LOG_MSG("Read %d sequences.",sb->num_seq);
-        /* we need to use the background residue distribution in the sequences to test for our random model! Somehow I did not do this before... */
-
-        for(i =0; i < sb->L;i++){
-                fhmm->background[i] = 0.0;
-        }
-
-        RUN(get_res_counts(sb, fhmm->background));
-        if(param->background_sequences){
-                LOG_MSG("Loading background sequences.");
-                RUN(read_sequences_file(&sb_back, param->background_sequences));
-                RUN(prep_sequences(sb_back,param->rng, 1,0,0.0));
-
-                //RUNP(sb_back = load_sequences(param->background_sequences, &param->rndstate));
-                LOG_MSG("Read %d sequences.",sb->num_seq);
-                RUN(get_res_counts(sb_back, fhmm->background));
-        }
-
-        double sum = 0;
-        for(i =0; i < sb->L;i++){
-                sum += fhmm->background[i];
-                //fprintf(stdout,"%d: %f\n", i,scaledprob2prob( fhmm->background[i]));
-        }
-
-        //for(i =0; i < sb->L;i++){
-        //        fhmm->background[i]/=sum;
-        //        fprintf(stdout,"%d: %f\n", i,fhmm->background[i]);
-        //}
-
-
-        for(i =0; i < sb->L;i++){
-                fhmm->background[i] = prob2scaledprob(fhmm->background[i] / sum);
-        }
-
-       /* start threadpool  */
-        //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
-
-        /* allocate data for threads; */
-        RUNP(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
-
-        RUN(run_score_sequences(fhmm,sb, td));
-         /* Print scores.. */
-        RUNP(fptr = fopen(param->output, "w"));
-        fprintf(fptr, "Name,Score_%s\n",  param->in_model);
-        for(i = 0; i < sb->num_seq;i++){
-                fprintf(fptr, "%s,%f\n",sb->sequences[i]->name, sb->sequences[i]->score);// /  (1.0 + ex
-        }
-        fclose(fptr);
-
-        if(param->summary_file){
-                double s1,s2;
-                s1 = 0.0;
-                s2 = 0.0;
-
-                for(i = 0; i < sb->num_seq;i++){
-                        s1 += sb->sequences[i]->score;
-                        s2 += sb->sequences[i]->score * sb->sequences[i]->score;
-                }
-
-                s2 = sqrt(((double) sb->num_seq * s2 - s1 * s1)/ ((double) sb->num_seq * ((double)sb->num_seq -1.0)));
-                s1 = s1 / (double) sb->num_seq;
-
-                fptr = NULL;
-                if(!my_file_exists(param->summary_file)){
-                        RUNP(fptr = fopen(param->summary_file, "w"));
-                        fprintf(fptr,"Model,SequenceFile,Mean,Stdev\n");
-                }else{
-                        RUNP(fptr = fopen(param->summary_file, "a"));
-                }
-                fprintf(fptr,"%s,%s,%f,%f\n",basename(param->in_model), basename(param->in_sequences),s1,s2);
-
-                fclose(fptr);
-                fprintf(stdout," %f stdev: %f \n",s1,s2);
-                /*if(!my_file_exists(param->in_sequences)){
-                        RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->in_sequences);
-                        }*/
-        }
-
+        //fclose(fptr);
 
         free_seqer_thread_data(td);
         //thr_pool_destroy(pool);
@@ -344,9 +251,9 @@ int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hits)
         LOG_MSG("Load PST model");
         RUN(read_pst_hdf5(&p, param->in_model));
         RUN(search_db(p, param->in_sequences, param->threshold,&h));
-        for(i = 0; i < h->num_seq;i++){
+        /*for(i = 0; i < h->num_seq;i++){
                 fprintf(stdout,"%d: %s\n", i, h->sequences[i]->name);
-        }
+                }*/
         free_pst(p);
 
         //free_tl_seq_buffer(hits);

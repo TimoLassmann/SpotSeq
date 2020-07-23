@@ -46,12 +46,11 @@
 #define OPT_SEED 1
 #define OPT_NUM_MODELS 2
 #define OPT_COMPETITIVE 3
-#define OPT_SEQDB 4
+
 
 struct parameters{
         char* input;
         char* in_model;
-        char* seq_db;
         char* cmd_line;
         double alpha;
         double gamma;
@@ -99,7 +98,7 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->input = NULL;
         param->in_model = NULL;
-        param->seq_db = NULL;
+
         param->cmd_line = NULL;
         //param->tmp_file_A = NULL;
         //param->tmp_file_B = NULL;
@@ -120,7 +119,6 @@ int main (int argc, char *argv[])
         while (1){
                 static struct option long_options[] ={
                         {"in",required_argument,0,'i'},
-                        {"seqdb",required_argument,0,OPT_SEQDB},
                         {"out",required_argument,0,'o'},
                         {"states",required_argument,0,'s'},
                         {"local",no_argument,0,'l'},
@@ -143,9 +141,6 @@ int main (int argc, char *argv[])
                         break;
                 }
                 switch(c) {
-                case OPT_SEQDB:
-                        param->seq_db = optarg;
-                        break;
                 case OPT_COMPETITIVE:
                         param->competitive =1;
                         break;
@@ -221,17 +216,6 @@ int main (int argc, char *argv[])
                         }
                 }else{
                         LOG_MSG("Will construct new model(s).");
-                }
-        }
-
-        if(!param->seq_db){
-                RUN(print_help(argv));
-                ERROR_MSG("No seqDB use --seqdb <blah.fa>");
-
-        }else{
-                if(!my_file_exists(param->seq_db)){
-                        RUN(print_help(argv));
-                        ERROR_MSG("The file <%s> does not exist.",param->seq_db);
                 }
         }
 

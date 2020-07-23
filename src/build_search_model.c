@@ -198,6 +198,7 @@ int run_bsm(struct parameters* param)
         RUN(calibrate_all(model_bag, td));
 
         RUN(add_multi_model_label_and_u(s, model_bag->num_models));
+
         /* score all training sequences */
         RUN(score_all_vs_all(model_bag, s, td));
         /* assign best */

@@ -12,7 +12,7 @@
 
 #include "tldevel.h"
 
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 #include "tlmisc.h"
 
 #include "model_struct.h"
@@ -20,7 +20,8 @@
 #include "model_alloc.h"
 #include "adjusted_rand_index.h"
 
-
+#include "sequence_struct.h"
+#include "sequence_io.h"
 
 struct parameters{
         char* in_model;

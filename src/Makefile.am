@@ -39,6 +39,7 @@ fast_hmm_param_test_functions.c
 KALIGNSOURCE = kalign.h kalign.c
 
 SEQUENCESOURCES= \
+sequence_struct.h \
 sequence_alloc.h \
 sequence_alloc.c \
 sequence_io.h \
@@ -117,14 +118,14 @@ SEQUENCE_DB = search_db.h search_db.c
 
 bin_PROGRAMS = seqer_model seqer_build_search sim_seq  seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
-#seqer_lcs
-if ENABLE_CAIRO
-bin_PROGRAMS +=  cairo_test seqer_pplot seqer_seqmotif
-AM_CFLAGS += $(CAIRO_CFLAGS)
-cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
-endif
+# #seqer_lcs
+# if ENABLE_CAIRO
+# bin_PROGRAMS +=  cairo_test seqer_pplot seqer_seqmotif
+# AM_CFLAGS += $(CAIRO_CFLAGS)
+# cairo_test_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+# seqer_pplot_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+# seqer_seqmotif_LDADD = $(CAIRO_LIBS) $(MYLIBDIRS)
+# endif
 
 seqer_model_SOURCES = \
 build_model.c $(BEAMSOURCE) $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)

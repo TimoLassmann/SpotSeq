@@ -183,11 +183,13 @@ int main (int argc, char *argv[])
         RUN(convert_tl_seq_buf_into_ihmm_seq_buf(hits, &sb));
         free_tl_seq_buffer(hits);
 
+        LOG_MSG("Found %d putative hits", sb->num_seq);
         LOG_MSG("Read search fhmm");
         //sb->sequences[0]->score_arr
         RUN(read_searchfhmm(param->in_model, &fhmm));
         //RUN(alloc_dyn_matrices(fhmm));
         RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
+
         LOG_MSG("Run scoring");
         RUN(run_score_sequences(fhmm,sb, td));
          /* Print scores.. */
@@ -251,7 +253,8 @@ int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hits)
         LOG_MSG("Load PST model");
         RUN(read_pst_hdf5(&p, param->in_model));
         RUN(search_db(p, param->in_sequences, param->threshold,&h));
-        /*for(i = 0; i < h->num_seq;i++){
+        /*for(i =
+0; i < h->num_seq;i++){
                 fprintf(stdout,"%d: %s\n", i, h->sequences[i]->name);
                 }*/
         free_pst(p);

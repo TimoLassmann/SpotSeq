@@ -35,6 +35,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         struct tl_seq_buffer* h = NULL;
         int chunk,i;
         int n_hits = 0;
+        int total_nseq =0;
 
         if(*hits){
                 h = *hits;
@@ -50,8 +51,9 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         RUNP(rng = init_rng(42));
         RUN(open_fasta_fastq_file(&f, filename, TLSEQIO_READ));
         chunk =1;
+        total_nseq = 0;
         while(1){
-                RUN(read_fasta_fastq_file(f, &sb, 100000));
+                RUN(read_fasta_fastq_file(f, &sb, 1000000));
                 int alloc = 0;
 
                 for(i = 0; i < sb->num_seq;i++){
@@ -65,6 +67,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
                                 RUN(create_alphabet(&alphabet, rng, TLALPHABET_NOAMBIGIOUS_PROTEIN ));
                         }
                 }
+                total_nseq+= sb->num_seq;
                 if(sb->num_seq == 0){
                         break;
                 }
@@ -110,6 +113,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         free_rng(rng);
         free_tl_seq_buffer(sb);
         free_alphabet(alphabet);
+        LOG_MSG("Scanned %0.2f M sequences.", (double)total_nseq / 1000000.0);
         //LOG_MSG("Found %d hits", n_hits);
         *hits = h;
 #ifdef HAVE_OPENMP

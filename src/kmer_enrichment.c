@@ -1,3 +1,4 @@
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -11,7 +12,7 @@
 
 #include "tldevel.h"
 #include "hash_table.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 
 #include "finite_hmm.h"
 #include "emit_random.h"

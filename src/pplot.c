@@ -12,7 +12,7 @@
 #include <libgen.h>
 #include "tldevel.h"
 
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 
 //#include "beam_sample.h"
 //#include "model.h"

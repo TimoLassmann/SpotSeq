@@ -121,12 +121,12 @@ AC_SUBST(OPENMP_CXXFLAGS)
 
 
 
-PKG_PROG_PKG_CONFIG([0.25]) # check and set $PKG_CONFIG
+dnl PKG_PROG_PKG_CONFIG([0.25]) # check and set $PKG_CONFIG
 
-PKG_CHECK_MODULES([CAIRO],    [cairo],    [enable_cairo=yes],    [AS_IF([test "$enable_cairo" = "yes"],
-      [AC_MSG_ERROR([cairo required for plotting, but not found.])],
-      [enable_cairo=no])])
-AM_CONDITIONAL([ENABLE_CAIRO], [test "$enable_cairo" = "yes"])
+dnl PKG_CHECK_MODULES([CAIRO],    [cairo],    [enable_cairo=yes],    [AS_IF([test "$enable_cairo" = "yes"],
+dnl       [AC_MSG_ERROR([cairo required for plotting, but not found.])],
+dnl       [enable_cairo=no])])
+dnl AM_CONDITIONAL([ENABLE_CAIRO], [test "$enable_cairo" = "yes"])
 
 
 

@@ -74,7 +74,17 @@ int create_pst_model(struct rng_state* rng,struct tl_seq_buffer* in_sb, char* tr
         GET_TIMING(timer);
         DESTROY_TIMER(timer);
 
-
+        /*int i;
+        for(i = 0; i < sb->num_seq;i++){
+                int len = sb->sequences[i]->len;
+                float P_M,P_R;
+                //convert_to_internal(a, (uint8_t*)sb->sequences[i]->seq,len);
+                score_pst(p, sb->sequences[i]->seq, len, &P_M,&P_R);
+                P_M = (P_M - P_R)  / 0.69314718055994529;
+                fprintf(stdout,"%f\n",P_M);
+                //P_M = MACRO_MAX(P_M, -50.0f);
+        }
+        exit(0);*/
         RUN(write_pst_hdf5(p,   out_model));
 
         free_pst(p);

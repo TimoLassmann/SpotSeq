@@ -90,8 +90,15 @@ int calibrate_pst(struct pst* p, char* filename,double threshold)
 
         RUN(sort_sl(sls));
 
+        /*FILE* f_ptr = NULL;
 
-        RUN(make_intervals( sls->sl,sls->n, 5.0,500.0,&ws_arr,&num_items));
+        RUNP(f_ptr = fopen("pstscores.csv", "w"));
+        for(i = 0; i < sls->n;i++){
+                fprintf(f_ptr ,"%f\n", sls->sl[i]->s);
+        }
+        fclose(f_ptr);*/
+        //exit(0);
+        RUN(make_intervals( sls->sl,sls->n, 2.0,500.0,&ws_arr,&num_items));
         /*double s0 = 0.0;
         for(i = 0; i < num_items;i++){
 
@@ -278,11 +285,12 @@ int score_all(struct pst* p, char* filename , struct slen_store** sls)
                 if(sb->num_seq == 0){
                         break;
                 }
+                //LOG_MSG("ALPA: %d %d", sb->L, p->L);
                 while(sl_store->n_alloc < sl_store->offset + sb->num_seq){
                         RUN(resize_sl(sl_store));
-                        LOG_MSG("New: %d", sl_store->n_alloc);
+                        //LOG_MSG("New: %d", sl_store->n_alloc);
                 }
-                LOG_MSG("Working on chunk: %d",chunk);
+                //LOG_MSG("Working on chunk: %d",chunk);
 #ifdef HAVE_OPENMP
                 omp_set_num_threads(8);
 #pragma omp parallel shared(sb,a) private(i)
@@ -292,16 +300,23 @@ int score_all(struct pst* p, char* filename , struct slen_store** sls)
 
                         for(i = 0; i < sb->num_seq;i++){
                                 int len = sb->sequences[i]->len;
-                                float P_M,P_R;
+                                float score;
                                 convert_to_internal(a, (uint8_t*)sb->sequences[i]->seq,len);
-                                score_pst(p, sb->sequences[i]->seq, len, &P_M,&P_R);
-                                P_M = P_M - P_R;
+                                score_pst(p, sb->sequences[i]->seq, len, &score);
+                                //LOG_MSG("score: %f", P_M-P_R);
+                                //P_M = (P_M - P_R)  / 0.69314718055994529;
+                                //P_M = MACRO_MAX(P_M, -50.0f);
+                                /*if(P_M < -500){
+                                        score_pst(p, sb->sequences[i]->seq, len, &P_M,&P_R);
+                                        LOG_MSG("weird: %d %f %f", len, P_M,P_R);
+                                        }*/
                                 sl_store->sl[i + sl_store->offset]->l = (double) len;
-                                sl_store->sl[i + sl_store->offset]->s = P_M;
+                                sl_store->sl[i + sl_store->offset]->s = score;
                                 //sl_store->n++;
                                 //if(sl_store->n == sl_store->n_alloc){
                                 //RUN(resize_sl(sl_store));
                                 //}
+
                         }
 #ifdef HAVE_OPENMP
                 }
@@ -584,8 +599,8 @@ int parcel_out_linear_regression(double*** fit, struct window_score** arr, int n
                         }
                 }
                 //LOG_MSG("%d %f", sanity_score_count, arr[i]->s0);
-                LOG_MSG("%d %d", start_sl , j);
-                LOG_MSG("LEN: %f %f", arr[i]->min_len, arr[i]->max_len);
+                //LOG_MSG("%d %d", start_sl , j);
+                //LOG_MSG("LEN: %f %f", arr[i]->min_len, arr[i]->max_len);
                 stop_sl = j;
                 outliers = 1;
 
@@ -700,7 +715,7 @@ int linear_regression_bins(struct window_score** arr, int num, double* a_var,dou
         a = (sumY - b*sumX)/n;
         *a_var = a;
         *b_var = b;
-        LOG_MSG("my_fit <- function(x) { y <- %f + %f * x;return (y)}",a,b);
+        //LOG_MSG("my_fit <- function(x) { y <- %f + %f * x;return (y)}",a,b);
         return OK;
 }
 
@@ -829,7 +844,7 @@ int linear_regression(struct scorelen** arr, int s, int e, double* a_var,double*
         //printf("\nEquation of best fit is: y = %0.2f + %0.2fx\n",a,b);
 
 
-        LOG_MSG("my_fit <- function(x) { y <- %f + %f * x;return (y)}",a,b);
+        //LOG_MSG("my_fit <- function(x) { y <- %f + %f * x;return (y)}",a,b);
 
         return OK;
 ERROR:

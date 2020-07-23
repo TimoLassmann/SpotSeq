@@ -5,6 +5,7 @@
 
 #include "null_model_emission.h"
 
+#include "pst_hash.h"
 #include "pst.h"
 
 
@@ -24,7 +25,8 @@ static int init_pst(struct pst** pst,float min_error, float expected_error, int 
 struct pst_node* build_pst(struct pst* pst,struct fpst*f,int curf, struct pst_node* n, struct count_hash* h);
 static void print_pst(struct pst* pst,struct pst_node* n);
 
-static int prob2scaledprob_fpst(struct fpst* f,int L);
+static int prob2scaledprob_fpst(struct fpst* f,float* background,int L);
+//static int prob2scaledprob_fpst(struct fpst* f,int L);
 
 static int alloc_node(struct pst_node** node,uint8_t* string,int len, int L);
 static int alloc_fpst(struct fpst** fast_pst, int size, int L);
@@ -32,18 +34,18 @@ static int resize_fpst(struct fpst* f, int L);
 static void free_pst_node(struct pst_node* n, int L);
 static void free_fpst(struct fpst* f);
 
-int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* P_M, float* P_R)
+int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* score)//, float* P_R)
 {
         int** s = pst->fpst_root->links;
         float** s_prob = pst->fpst_root->prob;
-        const float* base_p = pst->lbg;//  fpst_root->prob[0];
-        register float a, b;
+        //const float* base_p = pst->lbg;//  fpst_root->prob[0];
+        register float a;
         register int i,c,l,pos,n;
         a = prob2scaledprob(1.0);
-        b = a;
+        //b = a;
         for(i = 0; i < len; i++){
                 l = seq[i];
-                b = b + base_p[l];
+                //b = b + base_p[l];
                 pos = i;
                 n = 0;
                 while(pos){
@@ -58,23 +60,23 @@ int score_pst(const struct pst* pst, const uint8_t* seq,const int len, float* P_
                 a += s_prob[n][l];
                 //LOG_MSG("%d:%d %f %f %f ", i,l,a,b, s_prob[n][l]);
         }
-        *P_M = a;
-        *P_R = b;
+        *score = a;
+        //*P_R = b;
         return OK;
 }
 
-int z_score_pst(const struct pst* p, int len, float P_M, float P_R,double*z_score)
+int z_score_pst(const struct pst* p, int len, float score,double*z_score)
 {
 
         double a,b,v;
         int index = MACRO_MIN(p->max_observed_len, len);
-        P_M = P_M - P_R;
+        //P_M = P_M - P_R;
 
         index = p->fit_index[index];
         a = p->fit[index][PST_FIT_A];
         b = p->fit[index][PST_FIT_B];
         v = p->fit[index][PST_FIT_V];
-        *z_score = (P_M - (a + b * (double)len )) / v;
+        *z_score = (score - (a + b * (double)len )) / v;
         return OK;
 }
 
@@ -117,7 +119,7 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
                 p->fpst_root->prob[x][i] /=sum;
                 //fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
                 p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
-                //p->fpst_root->prob[x][i] = p->background[i];
+                p->fpst_root->prob[x][i] = p->background[i];
                 //fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
                 helper->probability[i] = p->fpst_root->prob[x][i];
                 p->fpst_root->links[x][i] = 0;
@@ -131,7 +133,7 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
         free_pst_node(helper,p->L);
         helper = NULL;
 
-        RUN(prob2scaledprob_fpst(p->fpst_root,p->L));
+        RUN(prob2scaledprob_fpst(p->fpst_root,p->background,p->L));
         *pst = p;
         return OK;
 ERROR:
@@ -265,6 +267,7 @@ ERROR:
 int init_pst(struct pst** pst,float min_error, float expected_error, int len, int L)
 {
         struct pst* p = NULL;
+        double* tmp = NULL;
         int i;
         MMALLOC(p, sizeof(struct pst));
         p->a = 0.0;
@@ -296,7 +299,14 @@ int init_pst(struct pst** pst,float min_error, float expected_error, int len, in
 
         RUN(alloc_fpst(&p->fpst_root, 64,p->L));
 
-        RUN(get_null_model_emissions(&p->background, p->L));
+        RUN(get_null_model_emissions(&tmp, p->L));
+
+        RUN(galloc(&p->background,p->L));
+        for(i = 0; i < p->L;i++){
+                p->background[i] = (float) tmp[i];
+        }
+
+        gfree(tmp);
 
         RUN(galloc(&p->lbg,p->L));
 
@@ -455,7 +465,7 @@ ERROR:
         return FAIL;
 }
 
-int prob2scaledprob_fpst(struct fpst* f,int L)
+int prob2scaledprob_fpst(struct fpst* f,float* background,int L)
 {
         int i,j;
 
@@ -482,7 +492,7 @@ int prob2scaledprob_fpst(struct fpst* f,int L)
                                 exit(0);
 
                         }*/
-                        f->prob[i][j] = prob2scaledprob(f->prob[i][j]);
+                        f->prob[i][j] = prob2scaledprob(f->prob[i][j]/ background[j]);
 
                 }
         }

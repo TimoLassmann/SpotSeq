@@ -1,6 +1,7 @@
 #ifndef PST_SEARCH_H
 #define PST_SEARCH_H
 
+#include "tlseqbuffer.h"
 
 #ifdef PST_SEARCH_IMPORT
 #define EXTERN

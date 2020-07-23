@@ -184,7 +184,7 @@ int run_bsm(struct parameters* param)
 
                 }*/
         /* train PST */
-        //RUN(create_pst_model(param->rng,sb, NULL, param->seq_db, param->out_model,0.000001, 0.01, 20.0));
+        RUN(create_pst_model(param->rng,sb, NULL, param->seq_db, param->out_model,0.00001, 0.01, 20.0));
         free_tl_seq_buffer(sb);
 
         /* read all models */

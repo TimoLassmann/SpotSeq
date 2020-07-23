@@ -15,7 +15,7 @@ struct fpst{
 struct pst {
         struct fpst* fpst_root;
         double** fit;
-        double* background;
+        float* background;
         float* lbg;
         int* fit_index;
         int max_observed_len;

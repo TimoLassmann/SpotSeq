@@ -1,4 +1,6 @@
 #include <omp.h>
+#include <string.h>
+
 #include "tldevel.h"
 #include "tlrng.h"
 #include "tlseqio.h"
@@ -7,6 +9,7 @@
 
 #include "pst.h"
 #include "pst_structs.h"
+#include "pst_hash.h"
 
 #include "search_db.h"
 
@@ -78,11 +81,12 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
 #endif
                         for(i = 0; i < sb->num_seq;i++){
                                 double z_score;
-                                float P_M, P_R;
+                                float score;
 
                                 //len = MACRO_MIN(len, 100);
-                                score_pst(p, sb->sequences[i]->seq, sb->sequences[i]->len, &P_M,&P_R);
-                                z_score_pst(p, sb->sequences[i]->len, P_M, P_R, &z_score);
+                                score_pst(p, sb->sequences[i]->seq, sb->sequences[i]->len, &score);
+
+                                z_score_pst(p, sb->sequences[i]->len, score, &z_score);
                                 if(z_score >= thres){
                                         omp_set_lock(&writelock);
                                         //int thread_id  = omp_get_thread_num();
@@ -181,9 +185,9 @@ int search_db_hdf5(struct pst* p, char* filename, double thres)
                                 int len = h->len[i+1] - h->len[i];
 
                                 double z_score;
-                                float P_M, P_R;
-                                score_pst(p, seq, len, &P_M,&P_R);
-                                z_score_pst(p, len, P_M, P_R, &z_score);
+                                float score;
+                                score_pst(p, seq, len, &score);
+                                z_score_pst(p, len, score, &z_score);
                                 if(z_score >= thres){
                                         omp_set_lock(&writelock);
                                         hits++;

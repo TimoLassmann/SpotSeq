@@ -13,6 +13,7 @@
 #include "sim_seq_lib.h"
 
 #include "pst_io.h"
+#include "pst_hash.h"
 
 #include "pst_calibrate.h"
 
@@ -89,8 +90,8 @@ int test_match_insert(char* infile,char* dbname)
         double s[5];
         char* test_seq = NULL;
 
-        float P_M;
-        float P_R;
+        float score;
+
         int test_len = 0;
         //int i_point;
         int i,j;
@@ -136,11 +137,11 @@ int test_match_insert(char* infile,char* dbname)
                 s[j] = 0.0;
         }
         for (j = 0; j < sb->num_seq;j++){
-                RUN(score_pst(p,(uint8_t*) sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
-                P_M = P_M - P_R;
+                RUN(score_pst(p,(uint8_t*) sb->sequences[j]->seq, sb->sequences[j]->len, &score));
+                //P_M = P_M - P_R;
                 s[0]++;
-                s[1] += P_M;
-                s[2] += P_M* P_M;
+                s[1] += score;
+                s[2] += score * score;
         }
         s[3] = s[1] / s[0];
 
@@ -172,18 +173,18 @@ int test_match_insert(char* infile,char* dbname)
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
                 RUN(convert_to_internal(a, (uint8_t*)test_seq, test_len));
-                RUN(score_pst(p,(uint8_t*) test_seq, test_len, &P_M,&P_R));
-                P_M = P_M - P_R;
+                RUN(score_pst(p,(uint8_t*) test_seq, test_len, &score));
+                //P_M = P_M - P_R;
                 s[0]++;
-                s[1] += P_M;
-                s[2] += P_M* P_M;
+                s[1] += score;
+                s[2] += score* score;
         }
         s[3] = s[1] / s[0];
 
         s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
         START_TIMER(timer);
         for (j = 0; j <  sb->num_seq;j++){
-                score_pst(p, (uint8_t*)test_seq, test_len, &P_M,&P_R);
+                score_pst(p, (uint8_t*)test_seq, test_len, &score);
 
         }
         STOP_TIMER(timer);
@@ -201,11 +202,11 @@ int test_match_insert(char* infile,char* dbname)
                 s[j] = 0.0;
         }
         for (j = 0; j < sb->num_seq;j++){
-                RUN(score_pst(p, (uint8_t*)sb->sequences[j]->seq, sb->sequences[j]->len, &P_M,&P_R));
-                P_M = P_M - P_R;
+                RUN(score_pst(p, (uint8_t*)sb->sequences[j]->seq, sb->sequences[j]->len, &score));
+                //P_M = P_M - P_R;
                 s[0]++;
-                s[1] += P_M;
-                s[2] += P_M* P_M;
+                s[1] += score;
+                s[2] += score* score;
         }
         s[3] = s[1] / s[0];
 
@@ -237,11 +238,11 @@ int test_match_insert(char* infile,char* dbname)
         for (j = 0; j < sb->num_seq;j++){
                 RUN(generate_random_seq(&test_seq, &test_len, rng));
                 RUN(convert_to_internal(a, (uint8_t*)test_seq, test_len));
-                RUN(score_pst(p, (uint8_t*)test_seq, test_len, &P_M,&P_R));
-                P_M = P_M - P_R;
+                RUN(score_pst(p, (uint8_t*)test_seq, test_len, &score));
+                //P_M = P_M - P_R;
                 s[0]++;
-                s[1] += P_M;
-                s[2] += P_M* P_M;
+                s[1] += score;
+                s[2] += score* score;
 
         }
         s[3] = s[1] / s[0];
@@ -249,7 +250,7 @@ int test_match_insert(char* infile,char* dbname)
         s[4] = sqrt ( (s[0] * s[2] -  pow(s[1], 2.0)) /  (s[0] * ( s[0] - 1.0)));
         START_TIMER(timer);
         for (j = 0; j <  sb->num_seq;j++){
-                score_pst(p, (uint8_t*)test_seq, test_len, &P_M,&P_R);
+                score_pst(p, (uint8_t*)test_seq, test_len, &score);
 
         }
         STOP_TIMER(timer);

@@ -17,7 +17,7 @@
 
 #include "finite_hmm.h"
 
-#include "distributions.h"
+//#include "distributions.h"
 
 #include "run_score.h"
 
@@ -81,8 +81,8 @@ static int set_sequence_weights(struct seq_buffer* sb, int num_models, double te
 static int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread);
 
 
-static int random_score_sequences(struct seq_buffer* sb,double* background );
-static int score_sequences_for_command_line_reporting(struct parameters* param);
+//static int random_score_sequences(struct seq_buffer* sb,double* background );
+//static int score_sequences_for_command_line_reporting(struct parameters* param);
 
 static int init_num_state_array(int* num_state_array, int maxK, int len, struct parameters* param, double mean);
 static int print_help(char **argv);
@@ -236,7 +236,7 @@ int main (int argc, char *argv[])
 
         RUN(run_build_ihmm(param));
 
-        RUN(score_sequences_for_command_line_reporting(param));
+        //RUN(score_sequences_for_command_line_reporting(param));
 
         RUN(free_parameters(param));
         return EXIT_SUCCESS;
@@ -581,7 +581,7 @@ ERROR:
         return FAIL;
 }
 
-int random_score_sequences(struct seq_buffer* sb,double* background )
+/*int random_score_sequences(struct seq_buffer* sb,double* background )
 {
         struct ihmm_sequence* s;
         double* back = NULL;
@@ -614,10 +614,10 @@ ERROR:
         MFREE(back);
         return FAIL;
 }
-
+*/
 /* After training a model it would be nice to know the logodds scores
  * of a number of sequences to see if something was found */
-
+/*
 int score_sequences_for_command_line_reporting(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
@@ -655,11 +655,11 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         LOG_MSG("Read %d sequences.",sb->num_seq);
 
         LOG_MSG("Starting thread pool.");
-       /* start threadpool  */
+
         //if((pool = thr_pool_create(param->num_threads , param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
 
-        /* allocate data for threads; */
+
         RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , model_bag->max_num_states , NULL));
 
 
@@ -698,7 +698,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
         LOG_MSG("Best Model: %d",model_bag->best_model);
         RUN(write_best_model(param->in_model, model_bag->best_model));
 
-        /*for(i = 0; i < limit;i++){
+        for(i = 0; i < limit;i++){
                 s1 = 0.0;
                 s2 = 0.0;
 
@@ -718,7 +718,7 @@ int score_sequences_for_command_line_reporting(struct parameters* param)
 
 
         //LOG_MSG("Mean KL divergence: %f stdev: %f (based on first %d seqs)",s1,s2,limit);
-        gfree(all_scores);*/
+        gfree(all_scores);
         //LOG_MSG("Got past writing");
         free_seqer_thread_data(td);
         //LOG_MSG("Got past free thread data ");
@@ -736,7 +736,7 @@ ERROR:
         free_fhmm(fhmm);
         return FAIL;
 }
-
+*/
 
 int free_parameters(struct parameters* param)
 {

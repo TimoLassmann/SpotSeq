@@ -1,6 +1,8 @@
 #ifndef SEARCH_DB_H
 #define SEARCH_DB_H
 
+#include <inttypes.h>
+
 #ifdef SEARCH_DB_IMPORT
 #define EXTERN
 #else

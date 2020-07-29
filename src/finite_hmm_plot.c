@@ -6,16 +6,12 @@
 #define FINITE_HMM_PLOT_IMPORT
 #include "finite_hmm_plot.h"
 
-
 /* this is intended for debugging */
 int plot_finite_hmm_dot(struct fhmm* fhmm,char* filename,float thres)
 {
-
         int i,j,c;
-
         FILE* f_ptr = NULL;
-
-                float tSN;
+        float tSN;
         float tNN;
         float tNB;
 

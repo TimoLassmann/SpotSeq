@@ -14,11 +14,15 @@
 #define SEQUENCE_IO_IMPORT
 #include "sequence_io.h"
 
+static int detect_aligned(struct tl_seq_buffer* sb,int* aligned);
+static int unalign(struct tl_seq_buffer* sb);
+
 int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
 {
         struct seq_buffer* sb = NULL; /* structure used in seqer */
         struct file_handler* f_hand = NULL;
         struct tl_seq_buffer* tlsb = NULL; /* structure used for genetic fasta/ fastq reader  */
+        int aligned;
         //int i,j;
         //int printed;
         RUN(open_fasta_fastq_file(&f_hand, filename, TLSEQIO_READ));
@@ -32,6 +36,13 @@ int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
         }
 
         RUN(detect_format(tlsb));
+        RUN(detect_aligned(tlsb,&aligned));
+
+        if(aligned){
+                unalign(tlsb);
+                RUN(detect_aligned(tlsb,&aligned));
+                ASSERT(aligned == 0, "Sequences are still aligned...");
+        }
 
         RUN(convert_tl_seq_buf_into_ihmm_seq_buf(tlsb, &sb));
 
@@ -40,6 +51,91 @@ int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
         *seq_buf = sb;
 
         return OK;
+ERROR:
+        return FAIL;
+}
+
+int detect_aligned(struct tl_seq_buffer* sb,int* aligned)
+{
+        int i,j;
+        int min_len;
+        int max_len;
+        int gaps;
+
+        char* s;
+        int l;
+
+        ASSERT(sb != NULL,"No Sequences");
+        min_len = INT32_MAX;
+        max_len = INT32_MIN;
+        gaps = 0;
+        for(i = 0; i < sb->num_seq;i++){
+                l = sb->sequences[i]->len;
+                s = sb->sequences[i]->seq;
+                min_len = MACRO_MIN(min_len, l);
+                max_len = MACRO_MAX(max_len, l);
+                for(j = 0; j < l;j++){
+                        switch (s[j]) {
+                        case '-':
+                        case '.':
+                        case '_':
+                        case '~':
+                                gaps++;
+                                break;
+                        default:
+                                break;
+                        }
+                }
+
+        }
+
+        if(!gaps && min_len == max_len){
+                *aligned = 0;
+        }else if(!gaps && min_len != max_len){
+                *aligned = 0;
+        }else{
+                *aligned = 1;
+        }
+        return OK;
+ERROR:
+        return FAIL;
+
+}
+
+int unalign(struct tl_seq_buffer* sb)
+{
+        char* s;
+        int l;
+        int i,j,c;
+        int max_len;
+        ASSERT(sb != NULL,"No Sequences");
+        max_len = 0;
+        for(i = 0; i < sb->num_seq;i++){
+                l = sb->sequences[i]->len;
+                s = sb->sequences[i]->seq;
+                c = 0;
+                //fprintf(stdout,"%s\n",s);
+                for(j = 0; j < l;j++){
+                        switch (s[j]) {
+                        case '-':
+                        case '.':
+                        case '_':
+                        case '~':
+                                break;
+                        default:
+                                s[c] = s[j];
+                                c++;
+                                break;
+                        }
+                }
+                s[c] = 0;
+                fprintf(stdout,"%s\n",s);
+                sb->sequences[i]->len = c;
+                max_len = MACRO_MAX(max_len, sb->sequences[i]->len);
+        }
+        LOG_MSG("%d %d", sb->max_len, max_len);
+        return OK;
+
 ERROR:
         return FAIL;
 }

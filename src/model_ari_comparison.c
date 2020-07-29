@@ -177,11 +177,11 @@ int calculate_pair_wise_ari(struct parameters* param)
 
         MFREE(number_of_states);
 
-        free_ihmm_sequences(sb);
+//        free_ihmm_sequences(sb);
 
         return OK;
 ERROR:
-        free_ihmm_sequences(sb);
+        //free_ihmm_sequences(sb);
         return FAIL;
 }
 

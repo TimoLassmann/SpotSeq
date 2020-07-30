@@ -8,6 +8,45 @@
 
 #include "thread_data.h"
 
+#include "model_struct.h"
+
+int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
+{
+        int i;
+        int num_threads = td[0]->num_threads;
+        //int run;
+
+        ASSERT(sb != NULL, "No sequences");
+        ASSERT(mb != NULL, "No models");
+
+
+        for(i = 0; i < num_threads;i++){
+                td[i]->thread_ID = i;
+                td[i]->fhmm = mb->finite_models;
+                td[i]->sb = sb;
+                td[i]->num_models = mb->num_models;
+        }
+
+
+#ifdef HAVE_OPENMP
+        omp_set_num_threads( num_threads);
+#pragma omp parallel shared(td) private(i)
+        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                for(i = 0; i < num_threads;i++){
+                        do_score_sequences(td[i]);
+                }
+#ifdef HAVE_OPENMP
+        }
+#endif
+
+        return OK;
+ERROR:
+        return FAIL;
+}
+
+
 int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td)
 {
         struct fhmm** container = NULL;
@@ -58,10 +97,10 @@ int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_th
 #ifdef HAVE_OPENMP
         }
 #endif
-
+        MFREE(container);
         return OK;
 ERROR:
-
+        MFREE(container);
         return FAIL;
 }
 

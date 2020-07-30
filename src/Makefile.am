@@ -116,7 +116,7 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = seqer_model seqer_build_search sim_seq  seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
+bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
 # #seqer_lcs
 # if ENABLE_CAIRO
@@ -153,6 +153,25 @@ finite_hmm.c \
 finite_hmm_io.c \
 fast_hmm_param.c \
 run_score.c 
+
+seqer_eval_SOURCES = \
+model_eval.c \
+$(RANDOMKIT_FILES) \
+sequence_alloc.h \
+sequence_alloc.c \
+sequence_sim.h \
+sequence_sim.c \
+null_model_emission.c \
+model_io.c \
+model_alloc.c \
+finite_hmm_stats.c \
+finite_hmm_alloc.c \
+thread_data.c \
+hmm_conversion.c \
+finite_hmm.c \
+finite_hmm_io.c \
+fast_hmm_param.c \
+run_score.c
 
 makedb_SOURCES = $(SEQUENCE_DB)
 makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST

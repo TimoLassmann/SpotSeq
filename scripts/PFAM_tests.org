@@ -6,9 +6,157 @@
 #+OPTIONS:  toc:nil
 #+OPTIONS: H:4
 #+LATEX_CMD: pdflatex
+#+PROPERTY: header-args:R :eval never-export
+#+PROPERTY: header-args:sh :eval never-export
+#+PROPERTY: header-args:bash :eval never-export
+
 * Introduction 
 
-  The purpose here is to demonstrate how wims (or whatever I'll it in future) can model protein sequences belonging to PFAM families. There are two main questions: a) can wims replicate PFAM models /from unaligned/ sequences in the seed alignments and b) can wims /discover/ motifs from the full length sequences of the seed sequences. 
+  The purpose here is to demonstrate how seqer (or whatever I'll it in future) can model protein sequences belonging to PFAM families. There are two main questions: a) can seqer replicate PFAM models /from unaligned/ sequences in the seed alignments and b) can wims /discover/ motifs from the full length sequences of the seed sequences. 
+
+
+* Plan [1/3]
+
+** testing 
+
+
+** DONE Download main Pfam files 
+   CLOSED: [2020-07-28 Tue 20:21]
+   Files are on our server:
+
+   #+BEGIN_SRC bash  :dir "/ssh:tkivm:" :results raw 
+
+     cd /data/raw/Timo/pfam/ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam33.1 
+     ls 
+   #+end_src
+
+   #+RESULTS:
+   active_site.dat.gz	       Pfam-A.rp35.gz
+   database_files		       Pfam-A.rp55.gz
+   diff.gz			       Pfam-A.rp75.gz
+   md5_checksums		       Pfam-A.seed.gz
+   md5_checksums.old	       Pfam-B_33.1
+   metaseq.gz		       Pfam-B.tgz
+   ncbi.gz			       Pfam-C.gz
+   pdbmap.gz		       pfamseq.gz
+   PF07690.ncbi.gz		       Pfam.version.gz
+   Pfam-A.clans.tsv.gz	       proteomes
+   Pfam-A.dead.gz		       relnotes.txt
+   Pfam-A.fasta.gz		       relnotes.txt.old
+   Pfam-A.full.gz		       swisspfam.gz
+   Pfam-A.full.metagenomics.gz    trees.tgz
+   Pfam-A.full.ncbi.gz	       uniprot.gz
+   Pfam-A.full.uniprot.gz	       uniprot_reference_proteomes.dat.gz
+   Pfam-A.hmm.dat.gz	       uniprot_sprot.dat.gz
+   Pfam-A.hmm.gz		       uniprot_trembl.dat.gz
+   Pfam-A.regions.tsv.gz	       userman.txt
+   Pfam-A.regions.uniprot.tsv.gz  userman.txt.old
+   Pfam-A.rp15.gz
+
+
+** TODO script to extract alignments  from pfam data dump 
+
+*** install easel  + very. very useful tools 
+
+    Let's setup directories for the run.
+    #+BEGIN_SRC bash :dir "/ssh:tkivm:" 
+      cd /data/scratch/Timo
+      mkdir -p SEQER_PFAM
+      cd SEQER_PFAM
+      mkdir -p programs
+      mkdir -p bin   
+    #+END_SRC
+
+    #+RESULTS:
+    
+
+    Install easel:
+
+    #+BEGIN_SRC bash :dir "/ssh:tkivm:/data/scratch/Timo/SEQER_PFAM/programs" :results none :exports code 
+      git clone https://github.com/EddyRivasLab/easel
+      cd easel
+      autoconf
+      ./configure
+      make
+      make check
+    #+END_SRC
+
+*** script using easel minitools 
+   This has to be tangled : c-c c-v c-t ....
+
+    #+BEGIN_SRC sh :tangle /ssh:tkivm:/data/scratch/Timo/SEQER_PFAM/bin/make_seqer_input.sh :shebang #!/usr/bin/env bash 
+      export PATH=/data/scratch/Timo/SEQER_PFAM/programs/easel/miniapps:$PATH
+
+      INFILE=
+      OUTFILE=
+
+
+      function usage()
+      {
+          printf "usage: %s -i <path to pfamA seed file> -o <outfile - script to generate dirs etc..>\n" $0;
+          exit 1;
+      }
+
+      while getopts i:o: opt
+      do
+          case ${opt} in
+              i) INFILE=${OPTARG};;
+              o) OUTFILE=${OPTARG};;
+              ,*) usage;;
+          esac
+      done
+
+      if [ "${INFILE}" = "" ]; then usage; fi
+      if [ "${OUTFILE}" = "" ]; then usage; fi
+
+
+      esl-alistat $INFILE | grep  "Alignment name" | awk '
+                    BEGIN{i=0;j = 1;}{  
+                    i++;
+                    if(i == 100){
+            printf "mkdir -p DATA%d\n", j;
+            j++;
+                  i = 0;
+                  }
+                    }END{printf "mkdir -p DATA%d\n", j;}' > $OUTFILE
+
+      esl-alistat $INFILE | grep  "Alignment name" | awk -v var=$INFILE '
+                    BEGIN{i=0;j = 1;}{  
+                     printf "esl-afetch --outformat=afa %s %s > DATA%d/%s.fa\n", var, $3,j, $3;
+
+                          i++;
+                    if(i == 100){
+
+            j++;    
+                  i = 0;
+                  }
+                    }' >> $OUTFILE
+    #+END_SRC
+
+    #+RESULTS:
+   
+*** run script to generate input alignments 
+
+    #+BEGIN_SRC sh :dir /ssh:tkivm:/data/scratch/Timo/SEQER_PFAM/ 
+      export PATH=/data/scratch/Timo/SEQER_PFAM/programs/easel/miniapps:$PATH
+
+
+      mkdir -p run
+      cd run 
+      zcat  /data/raw/Timo/pfam/ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam33.1/Pfam-A.seed.gz > Pfam-A.seed
+      ../bin/make_seqer_input.sh -i Pfam-A.seed  -o gen.sh 
+      chmod 755 gen.sh 
+      ./gen.sh
+
+    #+END_SRC
+
+    #+RESULTS:
+
+
+
+
+** TODO make run dirs and run X alignments & makesearch in parallel 
+
 
 
 
@@ -47,7 +195,7 @@
      cat $INPUT | grep '>' | sed s/'[>\/]'/' '/g | awk '{printf "%s\n", $1}' > tmp_id.txt 
 
      perl get_fl_IDs.pl  tmp_id.txt > $OUTPUT
-   
+
 
    #+END_SRC
 

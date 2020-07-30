@@ -20,7 +20,9 @@
 
 #include "thread_data.h"
 
+#include "model_struct.h"
 
+extern int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td);
 extern int run_score_sequences(struct fhmm* fhmm, struct seq_buffer* sb,struct seqer_thread_data** td);
 extern void* do_score_sequences(void* threadarg);
 extern void* do_score_sequences_per_model(void* threadarg);

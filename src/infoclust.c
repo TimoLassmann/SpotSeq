@@ -1,6 +1,6 @@
 
 #include "infoclust.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
 #include "finite_hmm_alloc.h"
@@ -13,6 +13,8 @@
 
 #include "tllogsum.h"
 #include "tlhdf5wrap.h"
+
+#include "sequence_io.h"
 
 #define BUFFER_LEN 128
 
@@ -329,8 +331,8 @@ int run_infoclust(struct parameters* param)
         free_fhmm(fhmm_log);
         free_motif_list(m);
 
-        free_ihmm_sequences(sb_temp);
-        free_ihmm_sequences(sb);
+        //free_ihmm_sequences(sb_temp);
+        //free_ihmm_sequences(sb);
         free_sa(sa);
         MFREE(rel_entropy);
 
@@ -491,8 +493,8 @@ int run_infoclust(struct parameters* param)
 
         //run_paraclu_clustering(sb, "GAGA");
         /* clean up */
-        free_ihmm_sequences(sb_temp);
-        free_ihmm_sequences(sb);
+        //free_ihmm_sequences(sb_temp);
+        //free_ihmm_sequences(sb);
         free_sa(sa);
         MFREE(rel_entropy);
         return OK;
@@ -501,10 +503,10 @@ ERROR:
                 free_fhmm(fhmm);
         }
         if(sb){
-                free_ihmm_sequences(sb);
+                //free_ihmm_sequences(sb);
         }
         if(sb_temp){
-                free_ihmm_sequences(sb_temp);
+                //free_ihmm_sequences(sb_temp);
         }
 
         MFREE(rel_entropy);

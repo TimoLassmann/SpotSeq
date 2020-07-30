@@ -6,9 +6,12 @@
 #include "finite_hmm_alloc.h"
 #include "finite_hmm.h"
 
+
+
 #define FINITE_HMM_STATS_IMPORT
 #include "finite_hmm_stats.h"
 
+#include "null_model_emission.h"
 
 #define eslCONST_PI    3.14159265358979323846264338328
 
@@ -25,14 +28,14 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         struct rng_state* rng = NULL;
         uint8_t* seq = NULL;
         int malloc_len = 10000;
-
+        double* back;
 
         int i,j;//c;
         //double avg;
 
         double tailp = 0.04;
-        int sim_len = 200;
-        int sim_N = 200;
+        int sim_len = 300;
+        int sim_N = 1000;
         double score;
         double   gmu, glam;
         double P;

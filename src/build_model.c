@@ -74,7 +74,7 @@ static int run_build_ihmm(struct parameters* param);
 static int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td);
 static void* do_calibrate_per_model(void* threadarg);
 
-static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td);
+
 static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
 static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
 static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
@@ -545,41 +545,6 @@ ERROR:
 }
 
 /* Score all sequences using all models */
-int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
-{
-        int i,j,c;
-        int num_threads = td[0]->num_threads;
-        int run;
-
-        ASSERT(sb != NULL, "No sequences");
-        ASSERT(mb != NULL, "No models");
-        c = 0;
-
-        for(i = 0; i < num_threads;i++){
-                td[i]->thread_ID = i;
-                td[i]->fhmm = mb->finite_models;
-                td[i]->sb = sb;
-                td[i]->num_models = mb->num_models;
-        }
-
-
-#ifdef HAVE_OPENMP
-        omp_set_num_threads( num_threads);
-#pragma omp parallel shared(td) private(i)
-        {
-#pragma omp for schedule(dynamic) nowait
-#endif
-                for(i = 0; i < num_threads;i++){
-                        do_score_sequences(td[i]);
-                }
-#ifdef HAVE_OPENMP
-        }
-#endif
-
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 /*int random_score_sequences(struct seq_buffer* sb,double* background )
 {

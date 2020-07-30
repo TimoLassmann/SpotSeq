@@ -45,7 +45,7 @@ struct parameters{
 static int run_bsm(struct parameters* param);
 
 static int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td);
-static int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td);
+
 static void* do_calibrate_per_model(void* threadarg);
 static int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best);
 
@@ -260,41 +260,6 @@ int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best)
         }
         gfree(total_e);
         *best = j;
-        return OK;
-ERROR:
-        return FAIL;
-}
-int score_all_vs_all(struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td)
-{
-        int i;
-        int num_threads = td[0]->num_threads;
-        //int run;
-
-        ASSERT(sb != NULL, "No sequences");
-        ASSERT(mb != NULL, "No models");
-
-
-        for(i = 0; i < num_threads;i++){
-                td[i]->thread_ID = i;
-                td[i]->fhmm = mb->finite_models;
-                td[i]->sb = sb;
-                td[i]->num_models = mb->num_models;
-        }
-
-
-#ifdef HAVE_OPENMP
-        omp_set_num_threads( num_threads);
-#pragma omp parallel shared(td) private(i)
-        {
-#pragma omp for schedule(dynamic) nowait
-#endif
-                for(i = 0; i < num_threads;i++){
-                        do_score_sequences(td[i]);
-                }
-#ifdef HAVE_OPENMP
-        }
-#endif
-
         return OK;
 ERROR:
         return FAIL;

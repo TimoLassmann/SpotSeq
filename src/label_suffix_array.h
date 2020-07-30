@@ -7,7 +7,8 @@
 
 #include "tldevel.h"
 
-#include "ihmm_seq.h"
+#include "sequence_struct.h"
+//#include "ihmm_seq.h"
 
 struct lcs{
         int* str;

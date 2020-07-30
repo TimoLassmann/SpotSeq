@@ -1,5 +1,8 @@
 #include "label_suffix_array.h"
 
+
+
+
 static int qsort_lcs_cmp(const void *a, const void *b);
 static int lcp_int_array(int* a, int*b);
 static int cmp_int_array(int* a, int*b, int len);

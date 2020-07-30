@@ -40,14 +40,15 @@ struct parameters{
 };
 
 
-
+static int double_cmp(const void *a, const void *b);
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
 int main (int argc, char *argv[])
 {
         FILE* fptr = NULL;
-
+        double** out_table = NULL;
+        double* score_arr = NULL;
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
         struct seq_buffer* sb = NULL;
@@ -56,8 +57,10 @@ int main (int argc, char *argv[])
         struct seqer_thread_data** td = NULL;
 
         double p;
-        int i,c;
+        int i,j,c;
         int num_test_seq = 10000;
+
+        int test_lengths[3] = {100,400,1600};
         //print_program_header(argv, "Scores sequences.");
 
         MMALLOC(param, sizeof(struct parameters));
@@ -147,51 +150,93 @@ int main (int argc, char *argv[])
         //sb->sequences[0]->score_arr
         RUN(read_searchfhmm(param->in_model, &fhmm));
 
-        RUN(sim_sequences(num_test_seq, fhmm->L, 100,&sb, param->rng));
-        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
-        RUN(run_score_sequences(fhmm,sb, td));
-        int g = 0;
-        for(i = 0; i < sb->num_seq;i++){
-                p = esl_exp_surv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda);
-                if(p < 0.02){
-                        fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,p ,   sb->sequences[i]->name);
-                        g++;
+        RUN(galloc(&score_arr, num_test_seq));
+        RUN(galloc(&out_table, num_test_seq,9));
+
+        for(i = 0; i < 3;i++){
+                LOG_MSG("Testing sequences of length: %d", test_lengths[i]);
+                RUN(sim_sequences(num_test_seq, fhmm->L,test_lengths[i] ,&sb, param->rng));
+                if(td){
+                        RUN(resize_seqer_thread_data(td  ,(sb->max_len+2)  , fhmm->K+1));
+                }else{
+                        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
                 }
-
-
-        }
-        LOG_MSG("%d %f ", g , (double)g / (double)sb->num_seq);
-        RUN(sim_sequences(num_test_seq, fhmm->L, 400,&sb, param->rng));
-        RUN(resize_seqer_thread_data(td  ,(sb->max_len+2)  , fhmm->K+1));
-        RUN(run_score_sequences(fhmm,sb, td));
-        g = 0;
-        for(i = 0; i < sb->num_seq;i++){
-                p = esl_exp_surv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda);
-                if(p < 0.02){
-                        fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,p ,   sb->sequences[i]->name);
-                        g++;
+                RUN(run_score_sequences(fhmm,sb, td));
+                for(j = 0; j < num_test_seq;j++){
+                        score_arr[j] = sb->sequences[j]->score;
                 }
-
-
-
-        }
-        LOG_MSG("%d %f ", g , (double)g / (double)sb->num_seq);
-
-        RUN(sim_sequences(num_test_seq , fhmm->L, 1600,&sb, param->rng));
-        RUN(resize_seqer_thread_data(td  ,(sb->max_len+2)  , fhmm->K+1));
-        RUN(run_score_sequences(fhmm,sb, td));
-        g = 0;
-        for(i = 0; i < sb->num_seq;i++){
-                p = esl_exp_surv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda);
-                if(p < 0.02){
-                        fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,p ,   sb->sequences[i]->name);
-                        g++;
+                qsort(score_arr, num_test_seq, sizeof(double),double_cmp);
+                for(j = 0; j < num_test_seq;j++){
+                        p = esl_exp_surv(score_arr[j] , fhmm->tau, fhmm->lambda);
+                        //fprintf(stdout,"%f %f %f\n", score_arr[j],p,p* (double) num_test_seq);
+                        out_table[j][i*3+0] = score_arr[j];
+                        out_table[j][i*3+1] = p;
+                        out_table[j][i*3+2] = p* (double) num_test_seq;
                 }
-
-
         }
-        LOG_MSG("%d %f ", g , (double)g / (double)sb->num_seq);
 
+        RUNP(fptr = fopen(param->output,"w"));
+
+        for(i = 0; i < 3;i++){
+                if(i){
+                        fprintf(fptr,",");
+                }
+                fprintf(fptr,"Score_L%d,",test_lengths[i]);
+                fprintf(fptr,"Pvalue_L%d,",test_lengths[i]);
+                fprintf(fptr,"Evalue_L%d",test_lengths[i]);
+        }
+        fprintf(fptr,"\n");
+
+        for(j = 0; j < num_test_seq;j++){
+                for(i = 0; i < 9;i++){
+                        if(i){
+                                fprintf(fptr,",");
+                        }
+                        fprintf(fptr,"%f",out_table[j][i]);
+                }
+                fprintf(fptr,"\n");
+        }
+        fclose(fptr);
+
+        /*
+
+mat = read.table("kkk",sep = ",",header = T)
+f = mat[,c(1,2)]
+f$group = "L100"
+colnames(f) = c("Score","Pvalue","Group")
+x = f
+f = mat[,c(4,5)]
+f$group = "L400"
+colnames(f) = c("Score","Pvalue","Group")
+x = rbind(x,f)
+f = mat[,c(7,8)]
+f$group = "L1600"
+colnames(f) = c("Score","Pvalue","Group")
+x = rbind(x,f)
+ggplot(x,aes(x=Score, y=Pvalue, group=Group)) + geom_line(aes(color=Group))+ geom_point(aes(color=Group)) + coord_trans(y = "log10") + scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9")) +  theme_bw()
+
+max= min(dim(mat)[1], 1000)
+f = as.data.frame(mat[1:max,3])
+colnames(f) = "Evalue"
+f$Group = "L100"
+f$Rank = 1:max;
+x = f
+
+f = as.data.frame(mat[1:max,6])
+colnames(f) = "Evalue"
+f$Group = "L400"
+f$Rank = 1:max;
+x = rbind(x,f)
+
+f = as.data.frame(mat[1:max,9]);
+colnames(f) = "Evalue"
+f$Group = "L1600"
+f$Rank = 1:max;
+x = rbind(x,f)
+ggplot(x,aes(x=Rank, y=Evalue, group=Group)) + geom_point(aes(color=Group)) + coord_trans(y = "log10",x="log10") + scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9")) +  theme_bw()
+
+
+ */
         free_ihmm_sequences(sb);
         free_seqer_thread_data(td);
         RUN(free_parameters(param));
@@ -232,4 +277,15 @@ int print_help(char **argv)
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
 
         return OK;
+}
+
+int double_cmp(const void *a, const void *b)
+{
+        const double *ia = (const double *)a;
+        const double *ib = (const double *)b;
+        if(*ia < *ib ){
+                return 1;
+        }else{
+                return -1;
+        }
 }

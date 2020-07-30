@@ -45,7 +45,9 @@ sequence_alloc.c \
 sequence_io.h \
 sequence_io.c \
 sequence_prep.h \
-sequence_prep.c
+sequence_prep.c \
+sequences_sim.h \
+sequences_sim.c
 
 
 MODELSOURCE = \
@@ -137,6 +139,8 @@ sequence_alloc.h \
 sequence_alloc.c \
 sequence_io.h \
 sequence_io.c \
+sequences_sim.h \
+sequences_sim.c \
 pst_build.c \
 pst_hash.c \
 pst_io.c \
@@ -159,8 +163,8 @@ model_eval.c \
 $(RANDOMKIT_FILES) \
 sequence_alloc.h \
 sequence_alloc.c \
-sequence_sim.h \
-sequence_sim.c \
+sequences_sim.h \
+sequences_sim.c \
 null_model_emission.c \
 model_io.c \
 model_alloc.c \
@@ -176,7 +180,11 @@ run_score.c
 makedb_SOURCES = $(SEQUENCE_DB)
 makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST
 
-fhmm_test_SOURCES =  finite_hmm_test.c $(FINITEHMM) $(NULLMODEL)
+fhmm_test_SOURCES =  finite_hmm_test.c $(FINITEHMM) $(NULLMODEL) sequence_alloc.h \
+sequence_alloc.c \
+sequences_sim.h \
+sequences_sim.c 
+
 
 
 seqer_score_SOURCES = \

@@ -528,9 +528,10 @@ int setup_model(struct fhmm* fhmm)
         }
         //exit(0);
         /* background */
-        for(i = 0; i < fhmm->L;i++){
-                fhmm->background[i] = prob2scaledprob(fhmm->background[i]);
-        }
+        //for(i = 0; i < fhmm->L;i++){
+        //fprintf(stdout,"%d %f\n",i, fhmm->background[i]);
+                //fhmm->background[i] = prob2scaledprob(fhmm->background[i]);
+        //}
         return OK;
 ERROR:
         return FAIL;

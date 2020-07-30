@@ -420,7 +420,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         //MMALLOC(fhmm->background, sizeof(double) * fhmm->L);
         RUN(galloc(&fhmm->background, fhmm->L));
         for (i = 0; i < fhmm->L; i++){
-                fhmm->background[i] =  model->background[i];//  ft->background_emission[i];
+                fhmm->background[i] =  (float) model->background[i];//  ft->background_emission[i];
         }
 
         /* Note: there is a possibility that un-visited states exist

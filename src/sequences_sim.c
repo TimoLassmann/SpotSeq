@@ -44,6 +44,7 @@ int sim_sequences(int N, int L,int len,struct seq_buffer** seq_buf,struct rng_st
                                         break;
                                 }
                         }
+                        //iseq->seq[j] = tl_random_int(rng, L);
                         //fprintf(stdout,"%d,", iseq->seq[j]);
                 }
                 snprintf(iseq->name, MAX_SEQUENCE_NAME_LEN,"Seq%d",i+1);

@@ -6,7 +6,9 @@
 #include "finite_hmm_alloc.h"
 #include "finite_hmm.h"
 
-
+#include "sequences_sim.h"
+#include "sequence_struct.h"
+#include "sequence_alloc.h"
 
 #define FINITE_HMM_STATS_IMPORT
 #include "finite_hmm_stats.h"
@@ -24,61 +26,47 @@ static double esl_gumbel_invcdf(double p, double mu, double lambda);
 
 int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 {
+
         double* f_scores = NULL;
         struct rng_state* rng = NULL;
-        uint8_t* seq = NULL;
-        int malloc_len = 10000;
-        double* back;
+        //uint8_t* seq = NULL;
+        //int malloc_len = 10000;
+        //double* back;
 
         int i,j;//c;
         //double avg;
 
         double tailp = 0.04;
-        int sim_len = 300;
+        int sim_len = 100;
         int sim_N = 1000;
         double score;
         double   gmu, glam;
         double P;
         FILE* f_ptr = NULL;
 
-
+        struct seq_buffer* sb = NULL;
 
 
 
         RUNP(rng = init_rng(seed));
-
-        MMALLOC(seq, sizeof(uint8_t) * malloc_len);
+        RUN(sim_sequences(sim_N, fhmm->L, sim_len, &sb, rng));
+        //MMALLOC(seq, sizeof(uint8_t) * malloc_len);
 
         MMALLOC(f_scores, sizeof(double) * sim_N);
-        malloc_len = sim_len;
+        //malloc_len = sim_len;
         /* rubbish! ... */
-        if(malloc_len >= dm->alloc_matrix_len){
-                resize_fhmm_dyn_mat(dm, malloc_len, fhmm->K);
+        if(sim_len >= dm->alloc_matrix_len){
+                resize_fhmm_dyn_mat(dm, sim_len, fhmm->K);
         }
-
-        for(i = 0;i < sim_N;i++){
-                //sim_len = ;
-                //sim_len = tl_random_gaussian(rng, 300,150);
-                //sim_len = MACRO_MAX(50, sim_len);
-                //sim_len = MACRO_MIN(5000, sim_len);
-
-                for(j = 0; j < sim_len;j++){
-                        seq[j] = tl_random_int(rng,fhmm->L);
-                }
-                score_seq_fwd(fhmm, dm, seq, sim_len, 1, &score, &P);
-                //LOG_MSG("%f %f", score,P);
-                //configure_target_len(fhmm, sim_len, 1);
-                //forward(fhmm, dm, &fhmm->f_score, seq, sim_len);
-                //random_model_score(sim_len,&fhmm->r_score);// ,seq, len,len );
+        /* int iter; */
+        /* for( iter = 100; iter < 1600;iter += 100){ */
+        /*         sim_len =  iter; */
+        RUN(sim_sequences(sim_N, fhmm->L, sim_len, &sb, rng));
+        for(i = 0; i < sb->num_seq;i++){
+                score_seq_fwd(fhmm, dm, sb->sequences[i]->seq, sb->sequences[i]->seq_len, 1, &score, &P);
                 f_scores[i] = score;
-                //LOG_MSG("%f %f -> %f ", fhmm->f_score,fhmm->r_score, f_scores[i]);
-
-
         }
         RUN(esl_gumbel_FitComplete(f_scores, sim_N, &gmu, &glam));
-
-        //fprintf(stdout,"lambda:%f  tau: %f\n", gmu,glam);
-
 
         /* Explanation of the eqn below: first find the x at which the Gumbel tail
          * mass is predicted to be equal to tailp. Then back up from that x
@@ -88,7 +76,12 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         fhmm->tau = esl_gumbel_invcdf(1.0-tailp, gmu, glam) + (log(tailp) / fhmm->lambda);
 
-        //fprintf(stdout,"lambda:%f  tau: %f\n", fhmm->lambda,fhmm->tau);
+        //fprintf(stdout,"LEN: %d %f %f lambda:%f  tau: %f\n", sim_len,gmu,glam,fhmm->lambda,fhmm->tau);
+        //}
+
+
+        free_ihmm_sequences(sb);
+
         /*RUNP(f_ptr = fopen("scores.csv", "w"));
         sim_N = 10000;
         for(i = 0;i < sim_N;i++){
@@ -121,12 +114,16 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         }
         fclose(f_ptr);*/
         MFREE(f_scores);
-        MFREE(seq);
+        //MFREE(seq);
 
         return OK;
 ERROR:
-        if(seq){
-                MFREE(seq);
+
+        if(sb){
+                free_ihmm_sequences(sb);
+        }
+        if(f_scores){
+                MFREE(f_scores);
         }
         return FAIL;
 }

@@ -170,6 +170,8 @@ model_io.c \
 model_alloc.c \
 finite_hmm_stats.c \
 finite_hmm_alloc.c \
+finite_hmm_plot.h \
+finite_hmm_plot.c \
 thread_data.c \
 hmm_conversion.c \
 finite_hmm.c \

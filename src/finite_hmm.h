@@ -1,9 +1,6 @@
 #ifndef HMM_SCORE_H
 #define HMM_SCORE_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 #include "tldevel.h"
 #include "tlhdf5wrap.h"
 #include "global.h"

@@ -208,7 +208,7 @@ int calibrate_pst(struct pst* p, char* filename,double threshold)
                 last = p->fit[i][PST_FIT_MAX]+1;
         }
 
-        FILE* f_ptr = NULL;
+        /*FILE* f_ptr = NULL;
         f_ptr = fopen("GAGA.txt","w");
         for(i = 0; i < sls->n;i++){
                 if(sls->sl[i]->l < 0.0){
@@ -227,7 +227,7 @@ int calibrate_pst(struct pst* p, char* filename,double threshold)
                 fprintf(f_ptr,"%f,%f,%f,%f\n",sls->sl[i]->l,sls->sl[i]->s, sls->sl[i]->s - (a + b * sls->sl[i]->l),z_score);
         }
         fclose(f_ptr);
-
+        */
 
         for(i = 0; i < num_items;i++){
                 MFREE(ws_arr[i]);

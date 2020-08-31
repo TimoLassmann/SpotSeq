@@ -7,7 +7,7 @@ AM_INIT_AUTOMAKE
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
-AC_PROG_RANLIB
+dnl AC_PROG_RANLIB
 AM_SILENT_RULES([no])
 
 # Checks for programs.
@@ -29,13 +29,15 @@ m4_include([m4/ax_set_compile_flags.m4])
 m4_include([m4/ax_lib_hdf5.m4])
 m4_include([m4/ax_openmp.m4])
 
+dnl AC_CONFIG_HEADERS([src/config_seqer.h])
+
 AX_ENABLE_DEBUG
 
 AX_LIB_HDF5([serial])
 if test "$with_hdf5" = "yes"; then
 
 dnl CC="$HDF5_CC"
-nCFLAGS="${CFLAGS} ${HDF5_CFLAGS}"
+CFLAGS="${CFLAGS} ${HDF5_CFLAGS}"
 CPPFLAGS="${CPPFLAGS} ${HDF5_CPPFLAGS}"
 LDFLAGS="${LDFLAGS} ${HDF5_LDFLAGS}"
 LIBS="${LIBS} ${HDF5_LIBS}"

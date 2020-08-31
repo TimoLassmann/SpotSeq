@@ -24,8 +24,6 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
 #ifdef HAVE_OPENMP
         omp_lock_t writelock;
         omp_set_num_threads(8);
-
-
         omp_init_lock(&writelock);
 #endif
         struct file_handler* f = NULL;

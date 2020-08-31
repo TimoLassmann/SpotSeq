@@ -2,10 +2,6 @@
 #define FAST_HMM_PARAM_H
 
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "tldevel.h"
 #include "distributions.h"
 #include <math.h>

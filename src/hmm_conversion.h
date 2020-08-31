@@ -1,9 +1,6 @@
 #ifndef HMM_CONVERSION_H
 #define HMM_CONVERSION_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "tldevel.h"
 

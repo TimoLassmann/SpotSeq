@@ -23,6 +23,8 @@
 #include "pst_build.h"
 #include "pst_search.h"
 
+static int print_help(char **argv);
+
 static int test_match_insert(char* infile,char* dbname);
 
 int main(int argc, char *argv[])
@@ -65,7 +67,7 @@ int main(int argc, char *argv[])
 
                 free_pst(p);
         }else{
-
+                print_help(argv);
         }
 
         free_rng(rng);
@@ -75,6 +77,20 @@ ERROR:
         return EXIT_FAILURE;
 }
 
+int print_help(char **argv)
+{
+        const char usage[] = " <train sequences> <sequence db for calibration> <outfile>";
+        const char usage2[] = "<pst model (h5)> <seqdb to search>";
+        char* tmp = NULL;
+
+        RUN(tlfilename(argv[0], &tmp));
+        fprintf(stdout,"\nUsage:\n%s %s \n\nor:\n\n%s %s\n\n",tmp,usage,tmp,usage2);
+        MFREE(tmp);
+        return OK;
+ERROR:
+        MFREE(tmp);
+        return FAIL;
+}
 
 int test_match_insert(char* infile,char* dbname)
 {

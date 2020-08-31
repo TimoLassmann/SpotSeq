@@ -67,6 +67,8 @@ int create_pst_model(struct rng_state* rng,struct tl_seq_buffer* in_sb, char* tr
 
         RUN(run_build_pst(&p,(float) p_min,(float)gamma,h));
         free_exact_hash(h);
+
+        //sleep(100);
         LOG_MSG("Lets calibrate");
         START_TIMER(timer);
         RUN(calibrate_pst(p, seq_db,z_thres));

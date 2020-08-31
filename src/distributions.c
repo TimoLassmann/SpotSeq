@@ -164,7 +164,7 @@ double rk_standard_gamma(rk_state *state, double shape)
         {
             do
             {
-                X = rk_gauss(state);
+                    X = rk_gauss(state);
                 V = 1.0 + c*X;
             } while (V <= 0.0);
 

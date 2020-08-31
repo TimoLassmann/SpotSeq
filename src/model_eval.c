@@ -30,15 +30,20 @@
 #include "finite_hmm_io.h"
 #include "finite_hmm_alloc.h"
 
+#include "finite_hmm_plot.h"
+
 #include "run_score.h"
 
 struct parameters{
         char* in_model;
         char* output;
+        char* plot_output;
         int num_threads;
+        float plot_thres;
         struct rng_state* rng;
 };
 
+#define OPT_PLOT_THRES 1
 
 static int double_cmp(const void *a, const void *b);
 static int print_help(char **argv);
@@ -66,24 +71,35 @@ int main (int argc, char *argv[])
         MMALLOC(param, sizeof(struct parameters));
         param->in_model = NULL;
         param->output = NULL;
+        param->plot_output = NULL;
         param->num_threads = 8;
         param->rng = NULL;
+        param->plot_thres = 0.01;
 
         while (1){
                 static struct option long_options[] ={
                         {"model",required_argument,0,'m'},
                         {"out",required_argument,0,'o'},
+                        {"plot",required_argument,0,'p'},
+                        {"ethres",required_argument,0,OPT_PLOT_THRES},
                         {"nthreads",required_argument,0,'t'},
                         {"help",0,0,'h'},
                         {0, 0, 0, 0}
                 };
                 int option_index = 0;
-                c = getopt_long_only (argc, argv,"o:t:m:",long_options, &option_index);
+                c = getopt_long_only (argc, argv,"o:t:m:p:",long_options, &option_index);
 
                 if (c == -1){
                         break;
                 }
                 switch(c) {
+                case OPT_PLOT_THRES:
+                        param->plot_thres = atof(optarg);
+                        break;
+                case 'p':
+                        param->plot_output = optarg;
+                        break;
+
                 case 'o':
                         param->output = optarg;
                         break;
@@ -150,6 +166,11 @@ int main (int argc, char *argv[])
         //sb->sequences[0]->score_arr
         RUN(read_searchfhmm(param->in_model, &fhmm));
 
+        if(param->plot_output){
+                plot_finite_hmm_dot(fhmm, param->plot_output, param->plot_thres);
+        }
+
+
         RUN(galloc(&score_arr, num_test_seq));
         RUN(galloc(&out_table, num_test_seq,9));
 
@@ -199,7 +220,6 @@ int main (int argc, char *argv[])
         fclose(fptr);
 
         /*
-
 mat = read.table("kkk",sep = ",",header = T)
 f = mat[,c(1,2)]
 f$group = "L100"
@@ -234,7 +254,6 @@ f$Group = "L1600"
 f$Rank = 1:max;
 x = rbind(x,f)
 ggplot(x,aes(x=Rank, y=Evalue, group=Group)) + geom_point(aes(color=Group)) + coord_trans(y = "log10",x="log10") + scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9")) +  theme_bw()
-
 
  */
         free_ihmm_sequences(sb);
@@ -275,7 +294,8 @@ int print_help(char **argv)
         fprintf(stdout,"Options:\n\n");
 
         fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"--nthreads","Number of threads." ,"[8]"  );
-
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"-p <>","Create <>dot file of hmm ." ,"[NA]"  );
+        fprintf(stdout,"%*s%-*s: %s %s\n",3,"",MESSAGE_MARGIN-3,"-ethres","Threshold to include edges in plotting." ,"[0.01]"  );
         return OK;
 }
 

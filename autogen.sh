@@ -50,10 +50,20 @@ case `uname` in Darwin*) glibtoolize --force --copy ;;
                  *) libtoolize --force  --copy ;;
 esac
 
+echo
+echo "Generate build-system by:"
+echo "   aclocal:    $(aclocal --version | head -1)"
+echo "   autoconf:   $(autoconf --version | head -1)"
+echo "   automake:   $(automake --version | head -1)"
+echo "   libtoolize: $(libtoolize --version | head -1)"
+echo
+
+
 aclocal -I m4 $AL_OPTS
-autoheader $AH_OPTS
+# autoheader $AH_OPTS
 automake --add-missing --copy --gnu $AM_OPTS
-autoconf $AC_OPTS
+autoconf -Wno-syntax
+
 
 
 echo

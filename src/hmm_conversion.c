@@ -468,7 +468,6 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                                         if(used[c] != -1){
                                                 s1_t[used[i]][used[c]] += ft->transition[i][c];
                                                 s2_t[used[i]][used[c]] += (ft->transition[i][c] * ft->transition[i][c]);
-
                                         }
                                 }
                         }

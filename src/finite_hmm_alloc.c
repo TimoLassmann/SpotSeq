@@ -119,6 +119,7 @@ struct fhmm* alloc_fhmm(void)
         fhmm->t = NULL;
         fhmm->tindex = NULL;
         fhmm->background = NULL;
+        fhmm->m_comp_back = NULL;
         fhmm->K = 0;
         fhmm->L = 0;
         fhmm->f_score = 0.0;
@@ -149,6 +150,9 @@ void free_fhmm(struct fhmm* fhmm)
                 }
                 if(fhmm->background){
                         gfree(fhmm->background);
+                }
+                if(fhmm->m_comp_back){
+                        gfree(fhmm->m_comp_back);
                 }
                 if(fhmm->tindex){
                         gfree(fhmm->tindex);

@@ -193,7 +193,6 @@ int run_bsm(struct parameters* param)
         /* convert to fhmmm  */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
 
-
         /* calibrate */
         RUN(calibrate_all(model_bag, td));
 
@@ -208,6 +207,7 @@ int run_bsm(struct parameters* param)
         //write
         RUN(write_searchfhmm(param->out_model, model_bag->finite_models[best]));
 
+        
 
 
         free_model_bag(model_bag);
@@ -315,7 +315,7 @@ void* do_calibrate_per_model(void* threadarg)
         data = (struct seqer_thread_data *) threadarg;
         int r;
         r = rk_random(&data->rndstate);
-
+        
         fhmm_calibrate(data->fhmm[data->model_ID], data->fmat, r);
         //LOG_MSG("Model %d: %f %f",   data->model_ID, data->fhmm[data->model_ID]->lambda,data->fhmm[data->model_ID]->tau);
 

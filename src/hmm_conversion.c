@@ -7,6 +7,8 @@
 #include "finite_hmm_plot.h"
 #include "randomkit_tl_add.h"
 int convert_ihmm_to_fhmm(struct ihmm_model* model,struct fhmm* fhmm, int allow_zero_counts );
+int add_composistion_background(struct fhmm* fhmm, float* occ);
+
 
 int fill_fast_transitions_only_matrices(struct ihmm_model* model,struct fast_hmm_param* ft)
 {
@@ -354,6 +356,8 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         struct fhmm* fhmm = NULL;
         struct fast_hmm_param* ft = NULL;
 
+
+        float* occ = NULL;
         float** s1_e = NULL;
         float** s2_e = NULL;
 
@@ -370,13 +374,14 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         //model->alloc_num_states;
 
-
         ASSERT(model != NULL, "No model");
 
         MMALLOC(used, sizeof(int)* (model->num_states)); /* 5 because I need to add N C B E and J states  */
 
+        MMALLOC(occ, sizeof(float) * (model->num_states)); /* 5 because I need to add N C B E and J states  */
         for(i = 0; i < model->num_states;i++){
                 used[i] = -1;
+                occ[i] = 0.0f;
         }
         /* skip over START and STOP states; will use S B E C and J in finite model */
         local_num_states = 0;
@@ -393,6 +398,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 //fprintf(stdout,"%f ",sum);
                 if(sum){
                         used[j] = local_num_states;
+                        occ[local_num_states] = sum;
                         local_num_states++;
                 }
         }
@@ -400,10 +406,6 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
 
         //fprintf(stdout,"\n");
 
-        /*for(i = 0; i < model->num_states+5;i++){
-                fprintf(stdout,"%d ",used[i]);
-        }
-        fprintf(stdout,"; m: %d\n",model->num_states);*/
         RUNP(fhmm = alloc_fhmm());
 
         fhmm->alloc_K =  model->alloc_num_states; ;//  model->alloc_num_states;
@@ -423,6 +425,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
                 fhmm->background[i] =  (float) model->background[i];//  ft->background_emission[i];
         }
 
+        
         /* Note: there is a possibility that un-visited states exist
          * in the ihmm. These will have to be removed from the
          * fhmm. */
@@ -510,7 +513,11 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         fhmm->e = s1_e;
         fhmm->t = s1_t;
 
+        RUN(add_composistion_background(fhmm,occ));
+        
+        MFREE(occ);
 
+        exit(0);
         /*fhmm->config_len = 0;
 
         fhmm->tSN = 0.0f;
@@ -535,7 +542,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         //configure_target_len(fhmm, 10, 1);
 
         //RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot",0.01f));
-        //exit(0);
+        exit(0);
         MFREE(used);
         gfree(s2_e);
         gfree(s2_t);
@@ -551,6 +558,58 @@ ERROR:
         free_fast_hmm_param(ft);
 
         return NULL;
+}
+
+int add_composistion_background(struct fhmm* fhmm, float* occ)
+{
+        float sum;
+        int i;
+        int j;
+        int K;
+        int L;
+
+        K = fhmm->K;
+        L = fhmm->L;
+
+
+        RUN(galloc(&fhmm->m_comp_back, L));
+
+        for(j = 0; j < L;j++){
+                fhmm->m_comp_back[j] = 0.0F;
+        }
+        /* loop over all states  */
+        for(i =0 ; i < K;i++){
+                LOG_MSG("Working on state %d: occ:%f", i, occ[i]);
+                for(j = 0; j < L;j++){
+                        fhmm->m_comp_back[j] += occ[i] * fhmm->e[i][j];
+                }
+        }
+        sum = 0.0F;
+        for(j = 0; j < L;j++){
+                sum += fhmm->m_comp_back[j];
+        }
+        if(sum){
+                for(j = 0; j < L;j++){
+                        fhmm->m_comp_back[j] /= sum;
+                        //fprintf(stdout,"%d %f  %f\n",j, fhmm->m_comp_back[j], fhmm->background[j]);
+                }
+        }else{
+                WARNING_MSG("model composition background is zero. This should not happen.");
+                for(j = 0; j < L;j++){
+                        fhmm->m_comp_back[j] = 1.0F / (float)L;
+                }
+        }
+
+        /*sum = 0.0F;
+        for(j = 0; j < L;j++){
+                sum += fhmm->m_comp_back[j];
+                fprintf(stdout,"%d %f  %f\n",j, fhmm->m_comp_back[j], fhmm->background[j]);
+        }
+        LOG_MSG("Sum: %f", sum);*/
+
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 int convert_ihmm_to_fhmm_models(struct model_bag* model_bag)

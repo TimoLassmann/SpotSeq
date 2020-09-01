@@ -44,6 +44,7 @@ int add_fhmm(struct hdf5_data* hdf5_data, struct fhmm* fhmm, char* group)
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"transition",fhmm->t));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"transition_index",fhmm->tindex));
         RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"background",fhmm->background));
+        RUN(HDFWRAP_WRITE_DATA(hdf5_data ,group,"ModelCompoBack",fhmm->m_comp_back ));
         return OK;
 ERROR:
         return FAIL;
@@ -74,6 +75,8 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
         RUN(HDFWRAP_READ_DATA(hdf5_data, group, "transition_index", &fhmm->tindex));
 
         RUN(HDFWRAP_READ_DATA(hdf5_data, group, "background", &fhmm->background));
+
+        RUN(HDFWRAP_READ_DATA(hdf5_data ,group,"ModelCompoBack",&fhmm->m_comp_back ));
 
 
         return fhmm;

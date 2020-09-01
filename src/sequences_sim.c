@@ -4,6 +4,8 @@
 #include "sequence_alloc.h"
 #include "sequence_struct.h"
 
+#include "null_model_emission.h"
+
 #define SEQUENCES_SIM_IMPORT
 #include "sequences_sim.h"
 

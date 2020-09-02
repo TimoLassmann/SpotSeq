@@ -82,7 +82,6 @@ struct fhmm*  read_fhmm_parameters(struct hdf5_data* hdf5_data, char* group)
         return fhmm;
 ERROR:
         return NULL;
-
 }
 
 int write_searchfhmm(char* filename, struct fhmm* fhmm)

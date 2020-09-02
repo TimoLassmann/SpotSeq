@@ -140,6 +140,7 @@ ERROR:
 void free_fhmm(struct fhmm* fhmm)
 {
         if(fhmm){
+                LOG_MSG("Greeing HMM");
                 if(fhmm->e){
                         gfree(fhmm->e);
                         //free_2d((void**) fhmm->e);

@@ -196,8 +196,8 @@ void* do_score_sequences(void* threadarg)
         /* make sure we have enough memory  */
 
         if(m->alloc_matrix_len < data->sb->max_len || m->alloc_K < j){
-                LOG_MSG("have: %d %d", m->alloc_matrix_len, m->alloc_K);
-                LOG_MSG("want: %d %d", data->sb->max_len,  j);
+                //LOG_MSG("have: %d %d", m->alloc_matrix_len, m->alloc_K);
+                //LOG_MSG("want: %d %d", data->sb->max_len,  j);
                 resize_fhmm_dyn_mat(m,
                                     MACRO_MAX(m->alloc_matrix_len, data->sb->max_len),
                                     MACRO_MAX(m->alloc_K,j)

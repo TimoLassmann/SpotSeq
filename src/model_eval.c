@@ -220,7 +220,7 @@ int main (int argc, char *argv[])
         fclose(fptr);
 
         /*
-mat = read.table("kkk",sep = ",",header = T)
+mat = read.table("testmodelteststats",sep = ",",header = T)
 f = mat[,c(1,2)]
 f$group = "L100"
 colnames(f) = c("Score","Pvalue","Group")

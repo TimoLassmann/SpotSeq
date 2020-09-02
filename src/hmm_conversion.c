@@ -517,7 +517,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         
         MFREE(occ);
 
-        exit(0);
+
         /*fhmm->config_len = 0;
 
         fhmm->tSN = 0.0f;
@@ -542,7 +542,7 @@ struct fhmm* build_finite_hmm_from_infinite_hmm(struct ihmm_model* model)
         //configure_target_len(fhmm, 10, 1);
 
         //RUN(plot_finite_hmm_dot(fhmm,"fhmm_debug.dot",0.01f));
-        exit(0);
+        //exit(0);
         MFREE(used);
         gfree(s2_e);
         gfree(s2_t);
@@ -579,7 +579,7 @@ int add_composistion_background(struct fhmm* fhmm, float* occ)
         }
         /* loop over all states  */
         for(i =0 ; i < K;i++){
-                LOG_MSG("Working on state %d: occ:%f", i, occ[i]);
+                //LOG_MSG("Working on state %d: occ:%f", i, occ[i]);
                 for(j = 0; j < L;j++){
                         fhmm->m_comp_back[j] += occ[i] * fhmm->e[i][j];
                 }

@@ -19,11 +19,14 @@
 #include "model_io.h"
 #include "model_alloc.h"
 
+#include "bias_model.h"
+
 #include "thread_data.h"
 
 #include "hmm_conversion.h"
 
 #include "finite_hmm_stats.h"
+#include "finite_hmm_alloc.h"
 #include "finite_hmm_io.h"
 
 #include "run_score.h"
@@ -169,7 +172,7 @@ int run_bsm(struct parameters* param)
         struct tl_seq_buffer* sb = NULL;
         struct seqer_thread_data** td = NULL;
 
-
+        struct fhmm* bias = NULL;
 
         int best;
         /* read sequences from in model */
@@ -205,25 +208,33 @@ int run_bsm(struct parameters* param)
 
         LOG_MSG("Best model: %d",best);
         //write
+        RUN(build_bias_model(model_bag->finite_models[best], &bias));
+        RUN(write_biashmm(param->out_model, bias));
         RUN(write_searchfhmm(param->out_model, model_bag->finite_models[best]));
 
-        
-
+        free_fhmm(bias);
 
         free_model_bag(model_bag);
+
         struct fhmm* test = NULL;
         int i;
-        double sc,p;
+        double sc,p,bias_sc;
         double min;
 
+
         min = 0.0;
+        bias_sc = 0.0;
         RUN(read_searchfhmm(param->out_model, &test));
+        RUN(read_biasfhmm(param->out_model, &bias));
         for(i = 0; i < s->num_seq;i++){
                 score_seq_fwd(test,td[0]->fmat, s->sequences[i]->seq,s->sequences[i]->seq_len,1,&sc,&p);
                 min += esl_exp_logsurv(sc, test->tau, test->lambda);
+                score_bias_forward(bias, td[0]->fmat, &bias_sc,s->sequences[i]->seq,s->sequences[i]->seq_len);
+                LOG_MSG("%d %f %f %f %f", i+1, sc, bias_sc,esl_exp_logsurv(sc, test->tau, test->lambda),esl_exp_logsurv(bias_sc, test->tau, test->lambda));
         }
         LOG_MSG("Total: %f",min);
-                free_ihmm_sequences(s);
+        free_fhmm(bias);
+        free_ihmm_sequences(s);
         free_seqer_thread_data(td);
 
         return OK;

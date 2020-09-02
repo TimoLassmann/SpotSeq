@@ -151,6 +151,8 @@ model_io.c \
 model_alloc.c \
 finite_hmm_stats.c \
 finite_hmm_alloc.c \
+bias_model.h \
+bias_model.c \
 thread_data.c \
 hmm_conversion.c \
 finite_hmm.c \

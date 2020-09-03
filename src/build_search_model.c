@@ -2,6 +2,7 @@
 #include <omp.h>
 #include <getopt.h>
 
+
 #include "tldevel.h"
 #include "tlmisc.h"
 #include "tlrng.h"
@@ -28,6 +29,8 @@
 #include "finite_hmm_stats.h"
 #include "finite_hmm_alloc.h"
 #include "finite_hmm_io.h"
+#include "finite_hmm_score.h"
+
 
 #include "run_score.h"
 
@@ -228,9 +231,9 @@ int run_bsm(struct parameters* param)
         RUN(read_biasfhmm(param->out_model, &bias));
         for(i = 0; i < s->num_seq;i++){
                 score_seq_fwd(test,td[0]->fmat, s->sequences[i]->seq,s->sequences[i]->seq_len,1,&sc,&p);
-                min += esl_exp_logsurv(sc, test->tau, test->lambda);
-                score_bias_forward(bias, td[0]->fmat, &bias_sc,s->sequences[i]->seq,s->sequences[i]->seq_len);
-                LOG_MSG("%d %f %f %f %f", i+1, sc, bias_sc,esl_exp_logsurv(sc, test->tau, test->lambda),esl_exp_logsurv(bias_sc, test->tau, test->lambda));
+                //min += esl_exp_logsurv(sc, test->tau, test->lambda);
+                //score_bias_forward(bias, td[0]->fmat, &bias_sc,s->sequences[i]->seq,s->sequences[i]->seq_len);
+                //LOG_MSG("%d %f %f %f %f", i+1, sc, bias_sc,esl_exp_logsurv(sc, test->tau, test->lambda),esl_exp_logsurv(bias_sc, test->tau, test->lambda));
         }
         LOG_MSG("Total: %f",min);
         free_fhmm(bias);

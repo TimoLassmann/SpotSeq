@@ -5,6 +5,7 @@
 #include "sequence_struct.h"
 
 #include "finite_hmm_alloc.h"
+#include "finite_hmm_score.h"
 
 #include "thread_data.h"
 
@@ -207,7 +208,6 @@ void* do_score_sequences(void* threadarg)
         if(num_models == 1){
                 for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
-
                         seq = data->sb->sequences[i];
                         for(j = 0; j < num_models;j++){
                                 score_seq_fwd(data->fhmm[j],m,seq->seq, seq->seq_len,1, &f_score, &logP);

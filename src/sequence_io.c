@@ -419,7 +419,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         sb->max_len = max_len;
         sb->L = local_L;
         sb->alphabet = NULL;
-        sb->num_state_arr = NULL;
+        
 
         //sb->background = background;
 

@@ -63,7 +63,7 @@ void free_fast_t_item_struct(void* ptr)
 
 
 
-struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L)
+struct fast_param_bag* alloc_fast_param_bag(int num_models,  int L)
 {
         struct fast_param_bag* b = NULL;
         int i;
@@ -79,7 +79,7 @@ struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L)
 
         for(i = 0; i < b->num_models;i++){
                 b->fast_params[i] = NULL;
-                RUNP(b->fast_params[i] = alloc_fast_hmm_param(K[i],L));
+                RUNP(b->fast_params[i] = alloc_fast_hmm_param(128,L));
         }
 
         return b;

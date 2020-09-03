@@ -43,8 +43,9 @@ struct fast_param_bag{
 
 
 /* Housekeeping function */
+extern struct fast_param_bag* alloc_fast_param_bag(int num_models,  int L);
 
-extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
+//extern struct fast_param_bag* alloc_fast_param_bag(int num_models, int* K, int L);
 extern void free_fast_param_bag(struct fast_param_bag* b);
 
 extern int expand_num_trans(struct fast_hmm_param* ft);

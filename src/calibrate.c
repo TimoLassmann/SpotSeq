@@ -6,7 +6,6 @@
 
 #include "calibrate.h"
 
-#include "ihmm_seq.h"
 #include "emit_random.h"
 #include "run_score.h"
 #include "finite_hmm.h"

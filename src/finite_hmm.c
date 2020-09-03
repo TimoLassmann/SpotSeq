@@ -5,27 +5,13 @@
 #include "tllogsum.h"
 
 
-#define eslCONST_LOG2  0.69314718055994529
-
-double esl_exp_surv(double x, double mu, double lambda);
-double esl_exp_logsurv(double x, double mu, double lambda);
 
 
 static float rel_entropy(float* vec, float* back,int N);
 
-int score_seq_fwd(struct fhmm* fhmm , struct fhmm_dyn_mat* m, uint8_t* a, int len,int mode, double* ret_score,double*P)
-{
-        float f,r;
-        double s;
-        //configure_target_len(fhmm,len, mode);
-        forward(fhmm, m, &f, a, len,mode);
-        random_model_score(len,&r);// ,seq, len,len );
-        s =  (f - r) / eslCONST_LOG2;
-        *P = esl_exp_logsurv(s, fhmm->tau,fhmm->lambda);
-        *ret_score = s;
-        //fprintf(f_ptr,"%f,%f,%f\n",score,P, P* (double) sim_N);
-        return OK;
-}
+static int score_bias_forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len);
+
+
 
 
 /* Calculate the bayesian information criteria score for a finite HMM */
@@ -71,50 +57,29 @@ ERROR:
 
 }
 
-/* Function:  esl_exp_surv()
- *
- * Purpose:   Calculates the survivor function, $P(X>x)$ (that is, 1-CDF,
- *            the right tail probability mass) for an exponential distribution,
- *            given value <x>, offset <mu>, and decay parameter <lambda>.
- */
-double
-esl_exp_surv(double x, double mu, double lambda)
+
+int score_bias_forward(struct fhmm* fhmm, struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len)
 {
-  if (x < mu) return 1.0;
-  return exp(-lambda * (x-mu));
-}
-
-/* Function:  esl_exp_logsurv()
- *
- * Purpose:   Calculates the log survivor function, $\log P(X>x)$ (that is,
- *            log(1-CDF), the log of the right tail probability mass) for an
- *            exponential distribution, given value <x>, offset <mu>, and
- *            decay parameter <lambda>.
- */
-double
-esl_exp_logsurv(double x, double mu, double lambda)
-{
-  if (x < mu) return 0.0;
-  return -lambda * (x-mu);
-}
+        int i;
+        float** matrix = NULL;
 
 
-int random_model_score(int len,float* ret_score)
-{
-
-        float  r;                /* self transition */
-        float  e;                /* 1- r (exit) */
-
+        ASSERT(fhmm != NULL, "No model");
+        ASSERT(m != NULL, "No dyn programming  matrix");
+        ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
-        /* initialise transitions  */
-        r = (float )len / ((float ) len + 1.0);
-        e = 1.0 -r;
-        r = prob2scaledprob(r);
-        e = prob2scaledprob(e);
+        matrix = m->F_matrix;
 
-        *ret_score = (float) len * r + e;
+        matrix[0][0] = prob2scaledprob(0.999F);
+        matrix[0][1] = prob2scaledprob(0.001F);
 
+        for(i = 1; i < len+1;i++){
+                matrix[i][0] = logsum(matrix[i-1][0]+fhmm->t[0][0] , matrix[i-1][1] + fhmm->t[1][0]) + fhmm->e[0][a[i-1]];
+                matrix[i][1] = logsum(matrix[i-1][1]+fhmm->t[1][1] , matrix[i-1][0] + fhmm->t[0][1]) + fhmm->e[1][a[i-1]];
+        }
+        /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
+        *ret_score = logsum(matrix[len][0], matrix[len][1]);
         return OK;
 ERROR:
         return FAIL;

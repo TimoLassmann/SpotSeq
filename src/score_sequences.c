@@ -33,6 +33,8 @@
 #include "finite_hmm_io.h"
 #include "finite_hmm_alloc.h"
 
+#include "finite_hmm_score.h"
+
 #include "run_score.h"
 
 struct parameters{

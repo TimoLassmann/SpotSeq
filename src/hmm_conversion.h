@@ -11,9 +11,6 @@
 
 #include "fast_hmm_param.h"
 
-//#include "ihmm_seq.h"
-
-
 extern int convert_ihmm_to_fhmm_models(struct model_bag* model_bag);
 
 /* Move data from model into fast transition data structure */

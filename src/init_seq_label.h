@@ -3,7 +3,7 @@
 
 #include "run_score.h"
 #include "model.h"
-#include "ihmm_seq.h"
+
 #include "finite_hmm.h"
 
 

@@ -24,12 +24,12 @@
 #include "thread_data.h"
 
 #include "null_model_emission.h"
-//#include "ihmm_seq.h"
+
 
 #include "finite_hmm.h"
 #include "finite_hmm_io.h"
 #include "finite_hmm_alloc.h"
-
+#include "finite_hmm_score.h"
 #include "finite_hmm_plot.h"
 
 #include "run_score.h"

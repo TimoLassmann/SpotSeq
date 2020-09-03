@@ -12,7 +12,7 @@
 #include "tlmisc.h"
 #include "tlrng.h"
 
-//#include "ihmm_seq.h"
+
 #include "beam_sample.h"
 
 #include "finite_hmm.h"
@@ -265,10 +265,10 @@ int run_build_ihmm(struct parameters* param)
                 RUNP(model_bag = read_model_bag_hdf5(param->in_model));
                 RUNP(sb = get_sequences_from_hdf5_model(param->in_model,IHMM_SEQ_READ_ALL));
 
-                MMALLOC(sb->num_state_arr, sizeof(int) * model_bag->num_models);
+                /*MMALLOC(sb->num_state_arr, sizeof(int) * model_bag->num_models);
                 for(i = 0; i < model_bag->num_models;i++){
                         sb->num_state_arr[i] = model_bag->models[i]->num_states;
-                }
+                        }*/
 
                 RUNP(td = read_thread_data_to_hdf5(param->in_model));
 
@@ -293,7 +293,7 @@ int run_build_ihmm(struct parameters* param)
                 /* This function sets the number of starting states to max seq len /2 +- 25  */
 
                 //LOG_MSG("MAXK: %d", param->num_max_states);
-                RUNP(model_bag = alloc_model_bag(sb->num_state_arr, sb->L, param->num_models,MAX_NUM_STATES , param->seed));
+                RUNP(model_bag = alloc_model_bag(sb->L, param->num_models,MAX_NUM_STATES , param->seed));
 
                 //label_ihmm_sequences_based_on_guess_hmm(struct seq_buffer *sb, int k, float alpha)
                 /* New label sequences  */
@@ -324,7 +324,7 @@ int run_build_ihmm(struct parameters* param)
         LOG_MSG("Will use %d threads.", param->num_threads);
         //if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
-        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, sb->num_state_arr, sb->L));
+        RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, sb->L));
         //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
         /* fill background of first fast hmm param struct  */
         //RUN(fill_background_emission(ft_bag->fast_params[0], sb));

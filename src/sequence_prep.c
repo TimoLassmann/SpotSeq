@@ -53,12 +53,13 @@ int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,
         double average_sequence_len = 0.0;
 
         int i;
+        int n;
 
         if(sigma == 0){
                 sigma = 1.0;
         }
 
-        MMALLOC(sb->num_state_arr, sizeof(int) * num_models);
+        //MMALLOC(sb->num_state_arr, sizeof(int) * num_models);
 
         if(!num_states){
                 average_sequence_len = 0.0;
@@ -70,14 +71,17 @@ int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,
                 num_states = round(average_sequence_len);
         }
 
-        for(i = 0; i < num_models;i++){
+        /*for(i = 0; i < num_models;i++){
                 sb->num_state_arr[i] = tl_random_gaussian(rng, num_states,sigma);
                 sb->num_state_arr[i] = MACRO_MIN(sb->num_state_arr[i], MAX_NUM_STATES-2);
                 sb->num_state_arr[i] = MACRO_MAX(sb->num_state_arr[i], 10);
-        }
+                }*/
 
         for(i = 0; i < num_models;i++){
-                RUN(random_label_sequences(sb, sb->num_state_arr[i], i, rng));
+                n =  tl_random_gaussian(rng, num_states,sigma);
+                n = MACRO_MIN(n, MAX_NUM_STATES -2);
+                n = MACRO_MAX(n, 10);
+                RUN(random_label_sequences(sb, n, i, rng));
         }
 
         return OK;

@@ -270,7 +270,7 @@ struct ihmm_model* read_model_hdf5(struct hdf5_data* hdf5_data,char* group)
         ASSERT(b!=0, "No letters???");
         ASSERT(c!=0, "No max num states???");
         int maxK = c;
-        RUNP(model = alloc_ihmm_model(a,maxK, b,0));
+        RUNP(model = alloc_ihmm_model(maxK, b,0));
         gfree(model->emission_counts);
         gfree(model->transition_counts);
         gfree(model->beta);

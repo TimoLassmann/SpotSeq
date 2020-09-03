@@ -5,6 +5,8 @@
 #include "finite_hmm_struct.h"
 #include "finite_hmm_alloc.h"
 #include "finite_hmm.h"
+#include "finite_hmm_score.h"
+
 
 #include "sequences_sim.h"
 #include "sequence_struct.h"

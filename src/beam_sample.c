@@ -11,7 +11,7 @@
 //#include "thr_pool.h"
 //#include "rbtree.h"
 //#include "fast_hmm_param.h"
-//#include "ihmm_seq.h"
+
 #include "model_core.h"
 
 #include "model_alloc.h"

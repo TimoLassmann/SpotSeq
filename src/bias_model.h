@@ -13,7 +13,6 @@
 
 EXTERN int build_bias_model(struct fhmm* model, struct fhmm** bias_model);
 
-EXTERN int score_bias_forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len);
 
 EXTERN int write_biashmm(char* filename, struct fhmm* fhmm);
 EXTERN int read_biasfhmm(char* filename,struct fhmm** ret);

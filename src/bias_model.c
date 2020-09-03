@@ -76,33 +76,6 @@ ERROR:
 }
 
 
-int score_bias_forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len)
-{
-        int i;
-        float** matrix = NULL;
-
-
-        ASSERT(fhmm != NULL, "No model");
-        ASSERT(m != NULL, "No dyn programming  matrix");
-        ASSERT(a != NULL, "No sequence");
-        ASSERT(len > 0, "Seq is of length 0");
-
-        matrix = m->F_matrix;
-
-        matrix[0][0] = prob2scaledprob(0.999F);
-        matrix[0][1] = prob2scaledprob(0.001F);
-
-        for(i = 1; i < len+1;i++){
-                matrix[i][0] = logsum(matrix[i-1][0]+fhmm->t[0][0] , matrix[i-1][1] + fhmm->t[1][0]) + fhmm->e[0][a[i-1]];
-                matrix[i][1] = logsum(matrix[i-1][1]+fhmm->t[1][1] , matrix[i-1][0] + fhmm->t[0][1]) + fhmm->e[1][a[i-1]];
-        }
-        /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
-        *ret_score = logsum(matrix[len][0], matrix[len][1]);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
 
 
 int write_biashmm(char* filename, struct fhmm* fhmm)

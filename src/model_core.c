@@ -10,7 +10,7 @@
 
 #include "sequence_struct.h"
 #include "model_alloc.h"
-//#include "ihmm_seq.h"
+
 #include "finite_hmm.h"
 
 
@@ -283,7 +283,7 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         //exit(0);
         //RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
-
+        
         /* clear transition counts */
         /* clear emission counts */
         RUN(clear_counts(ihmm));

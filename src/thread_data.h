@@ -18,12 +18,12 @@
 struct seqer_thread_data{
         struct fast_param_bag* ft_bag;
         struct fast_hmm_param* ft;
-        struct seq_buffer* sb;
+        struct tl_seq_buffer* sb;
         struct fhmm** fhmm;
 
         struct fhmm_dyn_mat* fmat;
         double** dyn;
-
+        int info;
         //double** F_matrix;
         //double** B_matrix;
         //double** t;             /* for forward backward - to collect estimated */

@@ -53,8 +53,8 @@ static int run_bsm(struct parameters* param);
 static int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td);
 
 static void* do_calibrate_per_model(void* threadarg);
-static int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best);
-
+//static int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best);
+static int find_best_model(struct model_bag*mb, struct tl_seq_buffer* sb, int* best);
 static int print_help(char **argv);
 static void free_param(struct parameters* param);
 
@@ -171,18 +171,19 @@ ERROR:
 int run_bsm(struct parameters* param)
 {
         struct model_bag* model_bag = NULL;
-        struct seq_buffer* s = NULL;
+
         struct tl_seq_buffer* sb = NULL;
         struct seqer_thread_data** td = NULL;
 
         struct fhmm* bias = NULL;
-
+        double* s = NULL;
+        int i;
         int best;
         /* read sequences from in model */
 
-        RUNP(s = get_sequences_from_hdf5_model(param->in_model, IHMM_SEQ_READ_ONLY_SEQ));
+        RUNP(sb = get_sequences_from_hdf5_model(param->in_model, IHMM_SEQ_READ_ONLY_SEQ));
 
-        RUN(convert_ihmm_seq_buf_into_tl_seq_buf(s, &sb));
+        //RUN(convert_ihmm_seq_buf_into_tl_seq_buf(s, &sb));
 
         /*LOG_MSG("%d",sb->L);
         for(i = 0; i < sb->num_seq;i++){
@@ -191,8 +192,8 @@ int run_bsm(struct parameters* param)
                 }*/
         /* train PST */
         RUN(create_pst_model(param->rng,sb, NULL, param->seq_db, param->out_model,0.00001, 0.01, 20.0));
-        free_tl_seq_buffer(sb);
 
+        //sb = NULL;
         /* read all models */
         RUNP(model_bag = read_model_bag_hdf5(param->in_model ));
         RUN(create_seqer_thread_data(&td,param->num_threads, 1024 , 128, &param->rndstate));
@@ -202,52 +203,40 @@ int run_bsm(struct parameters* param)
         /* calibrate */
         RUN(calibrate_all(model_bag, td));
 
-        RUN(add_multi_model_label_and_u(s, model_bag->num_models));
-
+        /* WARNING NEED TO ADD STORAGE FOR SCORES !!!! */
+        //RUN(add_multi_model_label_and_u(s, model_bag->num_models));
+        for(i = 0; i < sb->num_seq;i++){
+                s = NULL;
+                MMALLOC(s, sizeof(double) * model_bag->num_models);
+                sb->sequences[i]->data = s;
+        }
         /* score all training sequences */
-        RUN(score_all_vs_all(model_bag, s, td));
+        RUN(run_score_sequences( model_bag->finite_models,sb, td, model_bag->num_models, FHMM_SCORE_P_LODD));
         /* assign best */
-        RUN(find_best_model(model_bag, s, &best));
-
+        RUN(find_best_model(model_bag, sb, &best));
         LOG_MSG("Best model: %d",best);
         //write
         RUN(build_bias_model(model_bag->finite_models[best], &bias));
         RUN(write_biashmm(param->out_model, bias));
         RUN(write_searchfhmm(param->out_model, model_bag->finite_models[best]));
 
-        free_fhmm(bias);
-
-        free_model_bag(model_bag);
-
-        struct fhmm* test = NULL;
-        int i;
-        double sc,p,bias_sc;
-        double min;
-
-
-        min = 0.0;
-        bias_sc = 0.0;
-        RUN(read_searchfhmm(param->out_model, &test));
-        RUN(read_biasfhmm(param->out_model, &bias));
-        for(i = 0; i < s->num_seq;i++){
-                score_seq_fwd(test,td[0]->fmat, s->sequences[i]->seq,s->sequences[i]->seq_len,1,&sc,&p);
-                //min += esl_exp_logsurv(sc, test->tau, test->lambda);
-                //score_bias_forward(bias, td[0]->fmat, &bias_sc,s->sequences[i]->seq,s->sequences[i]->seq_len);
-                //LOG_MSG("%d %f %f %f %f", i+1, sc, bias_sc,esl_exp_logsurv(sc, test->tau, test->lambda),esl_exp_logsurv(bias_sc, test->tau, test->lambda));
+        for(i = 0; i < sb->num_seq;i++){
+                MFREE(sb->sequences[i]->data);
+                sb->sequences[i]->data = NULL;
         }
-        LOG_MSG("Total: %f",min);
-        free_fhmm(bias);
-        free_ihmm_sequences(s);
+        free_tl_seq_buffer(sb);
+        free_model_bag(model_bag);
         free_seqer_thread_data(td);
-
+        free_fhmm(bias);
         return OK;
 ERROR:
         return FAIL;
 }
 
-int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best)
+int find_best_model(struct model_bag*mb, struct tl_seq_buffer* sb, int* best)
 {
         double* total_e = NULL;
+        double* s;
         int i,j;
         double min;
 
@@ -257,8 +246,9 @@ int find_best_model(struct model_bag*mb, struct seq_buffer* sb, int* best)
                 total_e[j] = 0.0;
         }
         for(i= 0 ;i < sb->num_seq;i++){
+                s = sb->sequences[i]->data;
                 for(j = 0; j < mb->num_models;j++){
-                        total_e[j] += esl_exp_logsurv(sb->sequences[i]->score_arr[j], mb->finite_models[j]->tau,mb->finite_models[j]->lambda);
+                        total_e[j] += s[j];
                         //fprintf(stdout,"%f %f ", s->sequences[i]->score_arr[j], esl_exp_logsurv(s->sequences[i]->score_arr[j], mb->finite_models[j]->tau,mb->finite_models[j]->lambda));
                 }
                 //fprintf(stdout,"\n");
@@ -329,7 +319,6 @@ void* do_calibrate_per_model(void* threadarg)
         data = (struct seqer_thread_data *) threadarg;
         int r;
         r = rk_random(&data->rndstate);
-        
         fhmm_calibrate(data->fhmm[data->model_ID], data->fmat, r);
         //LOG_MSG("Model %d: %f %f",   data->model_ID, data->fhmm[data->model_ID]->lambda,data->fhmm[data->model_ID]->tau);
 

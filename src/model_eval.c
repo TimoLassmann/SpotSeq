@@ -15,10 +15,12 @@
 #include "tlalphabet.h"
 
 //#include "model.h"
-#include "sequence_struct.h"
-#include "sequence_alloc.h"
-#include "sequence_io.h"
-#include "sequence_prep.h"
+//#include "sequence_struct.h"
+//#include "sequence_alloc.h"
+#include "tlseqbuffer.h"
+
+//#include "sequence_io.h"
+//#include "sequence_prep.h"
 #include "sequences_sim.h"
 
 #include "thread_data.h"
@@ -56,11 +58,11 @@ int main (int argc, char *argv[])
         double* score_arr = NULL;
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
 
 
         struct seqer_thread_data** td = NULL;
-
+        double* s = NULL;
         double p;
         int i,j,c;
         int num_test_seq = 10000;
@@ -74,7 +76,7 @@ int main (int argc, char *argv[])
         param->plot_output = NULL;
         param->num_threads = 8;
         param->rng = NULL;
-        param->plot_thres = 0.01;
+        param->plot_thres = 0.01F;
 
         while (1){
                 static struct option long_options[] ={
@@ -99,7 +101,6 @@ int main (int argc, char *argv[])
                 case 'p':
                         param->plot_output = optarg;
                         break;
-
                 case 'o':
                         param->output = optarg;
                         break;
@@ -177,14 +178,23 @@ int main (int argc, char *argv[])
         for(i = 0; i < 3;i++){
                 LOG_MSG("Testing sequences of length: %d", test_lengths[i]);
                 RUN(sim_sequences(num_test_seq, fhmm->L,test_lengths[i] ,&sb, param->rng));
+                if(!sb->sequences[0]->data){
+                        for(j = 0; j < sb->num_seq;j++){
+                                s = NULL;
+                                MMALLOC(s, sizeof(double) *2); /* slot 0 is score slot 1 the p-value */
+                                sb->sequences[j]->data = s;
+                        }
+                }
+                
                 if(td){
                         RUN(resize_seqer_thread_data(td  ,(sb->max_len+2)  , fhmm->K+1));
                 }else{
                         RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
                 }
-                RUN(run_score_sequences(fhmm,sb, td));
+                RUN(run_score_sequences(&fhmm,sb, td,1 , FHMM_SCORE_LODD));
+                /* WARNING THIS DOESNY WORK AS TL_SEQ doesn't know about sequence scores yet */
                 for(j = 0; j < num_test_seq;j++){
-                        score_arr[j] = sb->sequences[j]->score;
+                        //score_arr[j] = sb->sequences[j]->score;
                 }
                 qsort(score_arr, num_test_seq, sizeof(double),double_cmp);
                 for(j = 0; j < num_test_seq;j++){
@@ -256,7 +266,8 @@ x = rbind(x,f)
 ggplot(x,aes(x=Rank, y=Evalue, group=Group)) + geom_point(aes(color=Group)) + coord_trans(y = "log10",x="log10") + scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9")) +  theme_bw()
 
  */
-        free_ihmm_sequences(sb);
+        free_tl_seq_buffer(sb);
+        //free_ihmm_sequences(sb);
         free_seqer_thread_data(td);
         RUN(free_parameters(param));
         return EXIT_SUCCESS;

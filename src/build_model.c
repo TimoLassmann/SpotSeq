@@ -11,12 +11,12 @@
 #include "tllogsum.h"
 #include "tlmisc.h"
 #include "tlrng.h"
-
+#include "tlseqbuffer.h"
 
 #include "beam_sample.h"
 
 #include "finite_hmm.h"
-
+#include "finite_hmm_score.h"
 //#include "distributions.h"
 
 #include "run_score.h"
@@ -75,11 +75,12 @@ static int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td);
 static void* do_calibrate_per_model(void* threadarg);
 
 
-static int analyzescores(struct seq_buffer* sb,  struct model_bag* model_bag );
-static int reset_sequence_weights(struct seq_buffer* sb, int num_models);
-static int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature);
-static int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread);
 
+static int analyzescores(struct tl_seq_buffer* sb, struct model_bag* model_bag);
+static int reset_sequence_weights(struct tl_seq_buffer* sb, int num_models);
+
+static int set_sequence_weights(struct tl_seq_buffer* sb, int num_models, double temperature);
+static int write_program_state(char* filename, struct model_bag* mb, struct tl_seq_buffer* sb, struct seqer_thread_data** td, int n_thread);
 
 //static int random_score_sequences(struct seq_buffer* sb,double* background );
 //static int score_sequences_for_command_line_reporting(struct parameters* param);
@@ -250,10 +251,13 @@ int run_build_ihmm(struct parameters* param)
 {
         struct fast_param_bag* ft_bag = NULL;
         struct model_bag* model_bag = NULL;
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
         struct seqer_thread_data** td = NULL;
 
+        struct seq_ihmm_data** ihmm_data_slots = NULL;
+
         int i;
+        int j;
 
         ASSERT(param!= NULL, "No parameters found.");
         init_logsum();
@@ -325,18 +329,16 @@ int run_build_ihmm(struct parameters* param)
         //if((pool = thr_pool_create(param->num_threads,param->num_threads, 0, 0)) == NULL) ERROR_MSG("Creating pool thread failed.");
 
         RUNP(ft_bag = alloc_fast_param_bag(model_bag->num_models, sb->L));
-        //RUNP(ft = alloc_fast_hmm_param(initial_states,sb->L));
-        /* fill background of first fast hmm param struct  */
-        //RUN(fill_background_emission(ft_bag->fast_params[0], sb));
-        /* Now copy remaining 1:N first fast hmm param structs */
-        /*for(i = 1; i < ft_bag->num_models;i++){
-                for(j = 0; j < sb->L;j++){
-                        ft_bag->fast_params[i]->background_emission[j] = ft_bag->fast_params[0]->background_emission[j];
-                }
-                }*/
-        //LOG_MSG("lasty max state: %d",ft_bag->max_last_state);
-        /* Do a random score */
-        //RUN(random_score_sequences(sb, model_bag->models[0]->background  ));
+
+        /* The data slot is the sequence buffer holds all the data structures
+           to perform the beam sampling steps. However, since we occasionally
+           break out of the main loop to see how we are doing we need to switch
+           these slots for doubles to hold the scores returned by the forward
+           algorithm. Is this elegant? Probably not but this means I can use
+           and re-use the seq_buffer from tldevel.
+        */
+
+        MMALLOC(ihmm_data_slots, sizeof(struct seq_ihmm_data*) * sb->num_seq);
 
         /* Main function */
         int outer_iter = param->num_iter / param->inner_iter;
@@ -358,13 +360,26 @@ int run_build_ihmm(struct parameters* param)
                 LOG_MSG("Convert");
                 /* convert to fhmm */
                 RUN(convert_ihmm_to_fhmm_models(model_bag));
-                //LOG_MSG("Calibrate");
+//LOG_MSG("Calibrate");
+
                 /* calibrate */
                 //RUN(calibrate_all(model_bag, td));
+
+                /* swap out slots.. */
+
+                for(j = 0; j < sb->num_seq;j++){
+                        ihmm_data_slots[j] = sb->sequences[j]->data;
+                        sb->sequences[j]->data = ihmm_data_slots[j]->score_arr;
+                }
                 LOG_MSG("Scoring");
                 /* score */
-                RUN(score_all_vs_all(model_bag,sb,td));
-                LOG_MSG("Analyze");
+                RUN(run_score_sequences(model_bag->finite_models, sb, td, model_bag->num_models, FHMM_SCORE_LODD));
+                for(j = 0; j < sb->num_seq;j++){
+                        sb->sequences[j]->data = ihmm_data_slots[j];
+                }
+
+                //RUN(score_all_vs_all(model_bag,sb,td));
+                LOG_MSG("Analyse");
                 /* analyzescores */
                 RUN(analyzescores(sb, model_bag));
                 //exit(0);
@@ -414,8 +429,13 @@ int run_build_ihmm(struct parameters* param)
         //RUN(print_states_per_sequence(sb));
         //RUN(write_ihmm_sequences(sb,"test.lfs","testing"));
         //sb, num thread, guess for aplha and gamma.. iterations.
-
-        free_ihmm_sequences(sb);
+        struct seq_ihmm_data* d = NULL;
+        for(i = 0; i < sb->num_seq;i++){
+                d = sb->sequences[i]->data;
+                RUN(free_ihmm_seq_data(&d));
+        }
+        free_tl_seq_buffer(sb);
+        //free_ihmm_sequences(sb);
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_seqer_thread_data(td);
@@ -423,7 +443,12 @@ int run_build_ihmm(struct parameters* param)
         //MFREE(num_state_array);
         return OK;
 ERROR:
-        free_ihmm_sequences(sb);
+        for(i = 0; i < sb->num_seq;i++){
+                d = sb->sequences[i]->data;
+                RUN(free_ihmm_seq_data(&d));
+        }
+        free_tl_seq_buffer(sb);
+        ;
         free_model_bag(model_bag);
         free_fast_param_bag(ft_bag);
         free_seqer_thread_data(td);
@@ -432,7 +457,7 @@ ERROR:
         return FAIL;
 }
 
-int write_program_state(char* filename, struct model_bag* mb, struct seq_buffer* sb, struct seqer_thread_data** td, int n_thread)
+int write_program_state(char* filename, struct model_bag* mb, struct tl_seq_buffer* sb, struct seqer_thread_data** td, int n_thread)
 {
 
         //RUN(convert_ihmm_to_fhmm_models(mb));
@@ -447,8 +472,9 @@ ERROR:
 
 }
 
-int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperature)
+int set_sequence_weights(struct tl_seq_buffer* sb, int num_models, double temperature)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         double sum;
         double prior;
@@ -456,31 +482,32 @@ int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperatu
 /* re-set!!!  */
         prior = prob2scaledprob(1.0 / (double) num_models);
         for(i = 0; i < sb->num_seq;i++){
+                d = sb->sequences[i]->data;
                 //fprintf(stdout,"Seq%d\t",i);
                 sum = prob2scaledprob(0.0);
                 for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] + prior;
-                        sum = logsum(sum, sb->sequences[i]->score_arr[j]);
+                        d->score_arr[j] = d->score_arr[j] + prior;
+                        sum = logsum(sum, d->score_arr[j]);
 
 
                 }
                 //fprintf(stdout,"Seq%d\t",i);
                 for(j = 0; j < num_models;j++){
-                       sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] - sum;
-                       //fprintf(stdout,"%f ", scaledprob2prob(sb->sequences[i]->score_arr[j]));
+                       d->score_arr[j] = d->score_arr[j] - sum;
+                       //fprintf(stdout,"%f ", scaledprob2prob(d->score_arr[j]));
                 }
                 //fprintf(stdout,"\n");
                 sum = prob2scaledprob(0.0);
                 for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] * (1.0 / temperature);
-                        sum = logsum(sum, sb->sequences[i]->score_arr[j]);
+                        d->score_arr[j] = d->score_arr[j] * (1.0 / temperature);
+                        sum = logsum(sum, d->score_arr[j]);
 
                 }
                 //fprintf(stdout,"Seq%d\t",i);
                 for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->score_arr[j] = sb->sequences[i]->score_arr[j] - sum;
-                        //fprintf(stdout,"%f ", scaledprob2prob(sb->sequences[i]->score_arr[j]));
-                        sb->sequences[i]->score_arr[j] = 1.0 +  (double) num_models *  scaledprob2prob(sb->sequences[i]->score_arr[j]);
+                        d->score_arr[j] = d->score_arr[j] - sum;
+                        //fprintf(stdout,"%f ", scaledprob2prob(d->score_arr[j]));
+                        d->score_arr[j] = 1.0 +  (double) num_models *  scaledprob2prob(d->score_arr[j]);
                 }
                 //fprintf(stdout,"\n");
 
@@ -491,14 +518,16 @@ int set_sequence_weights(struct seq_buffer* sb, int num_models, double temperatu
 }
 
 
-int reset_sequence_weights(struct seq_buffer* sb, int num_models)
+int reset_sequence_weights(struct tl_seq_buffer* sb, int num_models)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         /* re-set!!!  */
         for(i = 0; i < sb->num_seq;i++){
                 //fprintf(stdout,"Seq%d\t",i);
                 for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->score_arr[j] = 1.0;
+                        d = sb->sequences[i]->data;
+                        d->score_arr[j] = 1.0;
 
                 }
         }
@@ -506,10 +535,11 @@ int reset_sequence_weights(struct seq_buffer* sb, int num_models)
         return OK;
 }
 
-int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
+int analyzescores(struct tl_seq_buffer* sb, struct model_bag* model_bag)
 {
         double s0,s1,s2;
         int i,j;
+        struct seq_ihmm_data* d = NULL;
         //int max_print;
         int num_models = model_bag->num_models;
         ASSERT(sb!= NULL, "No sequences");
@@ -529,9 +559,10 @@ int analyzescores(struct seq_buffer* sb, struct model_bag* model_bag)
                 s1 = 0.0;
                 s2 = 0.0;
                 for(i = 0; i < sb->num_seq;i++){
+                        d = sb->sequences[i]->data;
                         s0 += 1.0;
-                        s1 += sb->sequences[i]->score_arr[j];
-                        s2 += sb->sequences[i]->score_arr[j] * sb->sequences[i]->score_arr[j];
+                        s1 += d->score_arr[j];
+                        s2 += d->score_arr[j] * d->score_arr[j];
 
                 }
                 //LOG_MSG(" %f sum logP",s1);

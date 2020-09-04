@@ -13,7 +13,7 @@ int fill_exact_hash(struct count_hash** hash, struct tl_seq_buffer* sb)
         struct count_hash* h_struct  = NULL;
         khash_t(exact) *h = NULL;
         khiter_t k;
-        char* seq;
+        uint8_t* seq;
         int len;
         uint64_t* mask = NULL;
         uint64_t key;

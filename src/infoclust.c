@@ -33,7 +33,7 @@ rk_state rndstate;
 static int run_infoclust(struct parameters* param);
 int set_overlap(int len_a, int len_b);
 
-int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq_buffer* sb);
+int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct tl_seq_buffer* sb);
 
 int calculate_information_content(double** freq_matrix,double* background,int len,int L,double* ic);
 int calc_per_state_rel_entrophy(struct fhmm* fhmm, double* rel_entropy);
@@ -172,9 +172,9 @@ ERROR:
 int run_infoclust(struct parameters* param)
 {
         char buffer[BUFFER_LEN];
-        struct seq_buffer* sb = NULL;
-        struct seq_buffer* sb_temp = NULL;
-        struct ihmm_sequence* s = NULL;
+        struct tl_seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb_temp = NULL;
+        struct tl_seq* s = NULL;
         struct fhmm* fhmm = NULL;
         struct fhmm* fhmm_log = NULL;
         struct paraclu_cluster* p =  NULL;
@@ -230,7 +230,7 @@ int run_infoclust(struct parameters* param)
         /* Step two: label sequences with rel entropy perstate */
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i];
-                for(j = 0; j < s->seq_len;j++){
+                for(j = 0; j < s->len;j++){
                         s->u[j] = rel_entropy[s->label[j]];
                         //fprintf(stdout,"%d %d %f\n",j, s->seq[j],s->u[j]);
                 }
@@ -515,7 +515,7 @@ ERROR:
 
 
 
-int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct seq_buffer* sb)
+int clean_sequence_labelling(struct fhmm* fhmm_log,struct fhmm* fhmm, struct tl_seq_buffer* sb)
 {
         struct ihmm_sequence* s = NULL;
         int* array_rename = NULL;

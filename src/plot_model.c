@@ -12,7 +12,7 @@
 
 #include "tldevel.h"
 #include "tlmisc.h"
-
+#include "tlseqbuffer.h"
 #include "sequence_struct.h"
 #include "sequence_alloc.h"
 #include "sequence_io.h"
@@ -225,7 +225,8 @@ ERROR:
 
 int run_plot_positional_state_distribution(struct parameters* param)
 {
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
+        struct seq_ihmm_data* d = NULL;
         struct ihmm_model* model = NULL;
         float** matrix = NULL;
         float* state_sums = NULL;
@@ -247,9 +248,10 @@ int run_plot_positional_state_distribution(struct parameters* param)
         }
 
         for(i = 0; i < sb->num_seq;i++){
-                l = (float) sb->sequences[i]->seq_len;
-                for(j = 0; j < sb->sequences[i]->seq_len;j++){
-                        c = (float) sb->sequences[i]->label_arr[best][j];
+                l = (float) sb->sequences[i]->len;
+                d = sb->sequences[i]->data;
+                for(j = 0; j < sb->sequences[i]->len;j++){
+                        c = (float) d->label_arr[best][j];
                         index = roundf(1000.0f * ((float) j / l));
                         matrix[c][index] += 1.0f;
                         state_sums[c] += 1.0f;
@@ -278,14 +280,16 @@ int run_plot_positional_state_distribution(struct parameters* param)
         MFREE(state_sums);
         gfree(matrix);
         free_ihmm_model(model);
-        free_ihmm_sequences(sb);
+        free_tl_seq_buffer(sb);
+        //free_ihmm_sequences(sb);
         return OK;
 ERROR:
         if(state_sums){
                 MFREE(state_sums);
         }
         if(sb){
-                free_ihmm_sequences(sb);
+                free_tl_seq_buffer(sb);
+                //free_ihmm_sequences(sb);
         }
         gfree(matrix);
         free_ihmm_model(model);
@@ -360,7 +364,7 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
         double* tmp_sum = NULL;
         int* total_counts = NULL;
 
-        double* background;
+        float* background;
         char color_buffer[BUFFER_LEN];
         double IC;
         double max_IC;
@@ -375,6 +379,8 @@ int make_dot_file(struct fhmm* fhmm, struct ihmm_model* model, struct parameters
 
         MMALLOC(tmp_sum, sizeof(double) * fhmm->L);
         MMALLOC(total_counts, sizeof(int) * model->num_states);
+
+        
         background = fhmm->background;
 
 

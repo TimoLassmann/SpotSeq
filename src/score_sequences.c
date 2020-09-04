@@ -13,12 +13,14 @@
 #include "tlrng.h"
 #include "tlseqio.h"
 #include "tlalphabet.h"
-
+#include "tlseqbuffer.h"
 //#include "model.h"
 #include "sequence_struct.h"
 
-#include "sequence_io.h"
-#include "sequence_prep.h"
+
+
+//#include "sequence_io.h"
+//#include "sequence_prep.h"
 
 #include "pst.h"
 #include "pst_io.h"
@@ -61,7 +63,7 @@ int main (int argc, char *argv[])
 
         struct parameters* param = NULL;
         struct fhmm* fhmm = NULL;
-        struct seq_buffer* sb = NULL;
+        //struct tl_seq_buffer* sb = NULL;
 
 
         struct seqer_thread_data** td = NULL;
@@ -179,11 +181,11 @@ int main (int argc, char *argv[])
 
         init_logsum();
 
-        struct tl_seq_buffer* hits = NULL;
-        RUN(scan_sequences_pst(param, &hits));
+        struct tl_seq_buffer* sb = NULL;
+        RUN(scan_sequences_pst(param, &sb));
 
-        RUN(convert_tl_seq_buf_into_ihmm_seq_buf(hits, &sb));
-        free_tl_seq_buffer(hits);
+        //RUN(convert_tl_seq_buf_into_ihmm_seq_buf(hits, &sb));
+        //free_tl_seq_buffer(hits);
 
         LOG_MSG("Found %d putative hits", sb->num_seq);
         LOG_MSG("Read search fhmm");
@@ -193,12 +195,13 @@ int main (int argc, char *argv[])
         RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm->K+1, NULL));
 
         LOG_MSG("Run scoring");
-        RUN(run_score_sequences(fhmm,sb, td));
+        RUN(run_score_sequences(&fhmm,sb, td, 1, FHMM_SCORE_P_LODD));
          /* Print scores.. */
         //RUNP(fptr = fopen(param->output, "w"));
         //fprintf(fptr, "Name,Score_%s\n",  param->in_model);
+        /* DOESN't WORK because tlsebuffer has no scores yet */
         for(i = 0; i < sb->num_seq;i++){
-                fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,esl_exp_logsurv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda)  ,   sb->sequences[i]->name);
+                //fprintf(stdout, "%f %f %s\n",sb->sequences[i]->score ,esl_exp_logsurv(sb->sequences[i]->score, fhmm->tau, fhmm->lambda)  ,   sb->sequences[i]->name);
         }
         //fclose(fptr);
 
@@ -250,7 +253,7 @@ int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hits)
 {
         struct tl_seq_buffer* h = NULL;
         struct pst* p = NULL;
-        int i;
+        
         init_logsum();
         LOG_MSG("Load PST model");
         RUN(read_pst_hdf5(&p, param->in_model));

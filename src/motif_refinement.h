@@ -4,7 +4,8 @@
 
 
 #include "tldevel.h"
+#include "tlseqbuffer.h"
 #include "sequence_struct.h"
 
-int em_algorithm(double** counts,int W, int L, struct seq_buffer* sb);
+int em_algorithm(double** counts,int W, int L, struct tl_seq_buffer* sb);
 #endif

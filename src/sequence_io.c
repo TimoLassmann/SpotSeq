@@ -17,36 +17,37 @@
 static int detect_aligned(struct tl_seq_buffer* sb,int* aligned);
 static int unalign(struct tl_seq_buffer* sb);
 
-int read_sequences_file(struct seq_buffer** seq_buf,char* filename )
+int read_sequences_file(struct tl_seq_buffer** seq_buf,char* filename )
 {
-        struct seq_buffer* sb = NULL; /* structure used in seqer */
         struct file_handler* f_hand = NULL;
-        struct tl_seq_buffer* tlsb = NULL; /* structure used for genetic fasta/ fastq reader  */
+        struct tl_seq_buffer* sb = NULL; /* structure used for genetic fasta/ fastq reader  */
         int aligned;
         //int i,j;
         //int printed;
         RUN(open_fasta_fastq_file(&f_hand, filename, TLSEQIO_READ));
 
-        RUN(read_fasta_fastq_file(f_hand, &tlsb,MAX_SEQ_READ));
-        if(tlsb->num_seq == MAX_SEQ_READ){
+        RUN(read_fasta_fastq_file(f_hand, &sb,MAX_SEQ_READ));
+        if(sb->num_seq == MAX_SEQ_READ){
                 WARNING_MSG("Currently seqer only works with the first %d sequences in an input file.",MAX_SEQ_READ);
         }
-        if(tlsb->num_seq == 0){
+        if(sb->num_seq == 0){
                 ERROR_MSG("No sequences found in file: %s.",filename);
         }
 
-        RUN(detect_format(tlsb));
-        RUN(detect_aligned(tlsb,&aligned));
+        RUN(detect_format(sb));
+        RUN(detect_aligned(sb,&aligned));
 
         if(aligned){
-                unalign(tlsb);
-                RUN(detect_aligned(tlsb,&aligned));
+                unalign(sb);
+                RUN(detect_aligned(sb,&aligned));
                 ASSERT(aligned == 0, "Sequences are still aligned...");
         }
 
-        RUN(convert_tl_seq_buf_into_ihmm_seq_buf(tlsb, &sb));
+        /* All good.  */
 
-        free_tl_seq_buffer(tlsb);
+        //RUN(convert_tl_seq_buf_into_ihmm_seq_buf(tlsb, &sb));
+
+        //free_tl_seq_buffer(tlsb);
         RUN(close_seq_file(&f_hand));
         *seq_buf = sb;
 
@@ -62,7 +63,7 @@ int detect_aligned(struct tl_seq_buffer* sb,int* aligned)
         int max_len;
         int gaps;
 
-        char* s;
+        uint8_t* s;
         int l;
 
         ASSERT(sb != NULL,"No Sequences");
@@ -104,7 +105,7 @@ ERROR:
 
 int unalign(struct tl_seq_buffer* sb)
 {
-        char* s;
+        uint8_t* s;
         int l;
         int i,j,c;
         int max_len;
@@ -140,86 +141,87 @@ ERROR:
         return FAIL;
 }
 
-int convert_tl_seq_buf_into_ihmm_seq_buf(struct tl_seq_buffer* tlsb, struct seq_buffer** ret)
-{
-        struct seq_buffer* sb = NULL;
-        int i,j;
-        int printed;
-        RUN(alloc_sequence_buffer(&sb, tlsb->num_seq));
+/* int convert_tl_seq_buf_into_ihmm_seq_buf(struct tl_seq_buffer* tlsb, struct seq_buffer** ret) */
+/* { */
+/*         struct seq_buffer* sb = NULL; */
+/*         int i,j; */
+/*         int printed; */
+/*         RUN(alloc_sequence_buffer(&sb, tlsb->num_seq)); */
 
 
-        sb->max_len = 0;
-        for(i = 0; i < tlsb->num_seq ;i++){
-                if(sb->sequences[i]->malloc_len < tlsb->sequences[i]->len){
-                        RUN(realloc_ihmm_seq(sb->sequences[i], tlsb->sequences[i]->len));
-                }
-                printed = snprintf(sb->sequences[i]->name, MAX_SEQUENCE_NAME_LEN, "%s", tlsb->sequences[i]->name);
-                ASSERT(printed < MAX_SEQUENCE_NAME_LEN,"characters printed entirely fills buffer");
+/*         sb->max_len = 0; */
+/*         for(i = 0; i < tlsb->num_seq ;i++){ */
+/*                 if(sb->sequences[i]->malloc_len < tlsb->sequences[i]->len){ */
+/*                         RUN(realloc_ihmm_seq(sb->sequences[i], tlsb->sequences[i]->len)); */
+/*                 } */
+/*                 printed = snprintf(sb->sequences[i]->name, MAX_SEQUENCE_NAME_LEN, "%s", tlsb->sequences[i]->name); */
+/*                 ASSERT(printed < MAX_SEQUENCE_NAME_LEN,"characters printed entirely fills buffer"); */
 
-                sb->sequences[i]->seq_len = tlsb->sequences[i]->len;
-                for(j = 0; j < tlsb->sequences[i]->len;j++){
-                        sb->sequences[i]->seq[j] = tlsb->sequences[i]->seq[j];
-                }
+/*                 sb->sequences[i]->seq_len = tlsb->sequences[i]->len; */
+/*                 for(j = 0; j < tlsb->sequences[i]->len;j++){ */
+/*                         sb->sequences[i]->seq[j] = tlsb->sequences[i]->seq[j]; */
+/*                 } */
 
-                if(sb->sequences[i]->seq_len > sb->max_len){
-                        sb->max_len = sb->sequences[i]->seq_len;
-                }
-        }
-        //LOG_MSG("MAXLEN: %d ", sb->max_len);
-        sb->num_seq = tlsb->num_seq;
-        sb->L = tlsb->L;
+/*                 if(sb->sequences[i]->seq_len > sb->max_len){ */
+/*                         sb->max_len = sb->sequences[i]->seq_len; */
+/*                 } */
+/*         } */
+/*         //LOG_MSG("MAXLEN: %d ", sb->max_len); */
+/*         sb->num_seq = tlsb->num_seq; */
+/*         sb->L = tlsb->L; */
 
-        *ret = sb;
-        return OK;
-ERROR:
-        return FAIL;
-}
+/*         *ret = sb; */
+/*         return OK; */
+/* ERROR: */
+/*         return FAIL; */
+/* } */
 
-int convert_ihmm_seq_buf_into_tl_seq_buf(struct seq_buffer* in,struct tl_seq_buffer** ret)
-{
+/* int convert_ihmm_seq_buf_into_tl_seq_buf(struct seq_buffer* in,struct tl_seq_buffer** ret) */
+/* { */
 
-        struct tl_seq_buffer* sb = NULL;
-        int i,j;
-        int printed;
+/*         struct tl_seq_buffer* sb = NULL; */
+/*         int i,j; */
+/*         int printed; */
 
-        RUN(alloc_tl_seq_buffer(&sb, in->num_seq));
-        //RUN(alloc_sequence_buffer(&sb, tlsb->num_seq));
-
-
-        sb->max_len;
-        for(i = 0; i < in->num_seq ;i++){
-                while(sb->sequences[i]->malloc_len <  in->sequences[i]->seq_len){
-                        RUN(resize_tl_seq(sb->sequences[i]));
-                        //RUN(realloc_ihmm_seq(sb->sequences[i], tlsb->sequences[i]->len));
-                }
-                printed = snprintf(sb->sequences[i]->name , TL_SEQ_MAX_NAME_LEN, "%s", in->sequences[i]->name );
-                ASSERT(printed < TL_SEQ_MAX_NAME_LEN,"characters printed entirely fills buffer");
-
-                sb->sequences[i]->len = in->sequences[i]->seq_len;
-                for(j = 0; j < in->sequences[i]->seq_len ;j++){
-                        sb->sequences[i]->seq[j] = in->sequences[i]->seq[j];
-                }
-
-                if(sb->sequences[i]->len > sb->max_len){
-                        sb->max_len = sb->sequences[i]->len;
-                }
-        }
-        //LOG_MSG("MAXLEN: %d ", sb->max_len);
-        sb->num_seq = in->num_seq;
-        sb->L = in->L;
-        *ret = sb;
-        return OK;
-ERROR:
-        return FAIL;
-}
+/*         RUN(alloc_tl_seq_buffer(&sb, in->num_seq)); */
+/*         //RUN(alloc_sequence_buffer(&sb, tlsb->num_seq)); */
 
 
+/*         sb->max_len; */
+/*         for(i = 0; i < in->num_seq ;i++){ */
+/*                 while(sb->sequences[i]->malloc_len <  in->sequences[i]->seq_len){ */
+/*                         RUN(resize_tl_seq(sb->sequences[i])); */
+/*                         //RUN(realloc_ihmm_seq(sb->sequences[i], tlsb->sequences[i]->len)); */
+/*                 } */
+/*                 printed = snprintf(sb->sequences[i]->name , TL_SEQ_MAX_NAME_LEN, "%s", in->sequences[i]->name ); */
+/*                 ASSERT(printed < TL_SEQ_MAX_NAME_LEN,"characters printed entirely fills buffer"); */
+
+/*                 sb->sequences[i]->len = in->sequences[i]->seq_len; */
+/*                 for(j = 0; j < in->sequences[i]->seq_len ;j++){ */
+/*                         sb->sequences[i]->seq[j] = in->sequences[i]->seq[j]; */
+/*                 } */
+
+/*                 if(sb->sequences[i]->len > sb->max_len){ */
+/*                         sb->max_len = sb->sequences[i]->len; */
+/*                 } */
+/*         } */
+/*         //LOG_MSG("MAXLEN: %d ", sb->max_len); */
+/*         sb->num_seq = in->num_seq; */
+/*         sb->L = in->L; */
+/*         *ret = sb; */
+/*         return OK; */
+/* ERROR: */
+/*         return FAIL; */
+/* } */
 
 
 
-int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_models)
+
+
+int add_sequences_to_hdf5_model(char* filename,struct tl_seq_buffer* sb, int num_models)
 {
         struct hdf5_data* hdf5_data = NULL;
+        struct seq_ihmm_data* d = NULL;
         int i,j,c,len;
         int pos;
 
@@ -258,7 +260,7 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         //RUNP(seq = galloc(seq, sb->num_seq, sb->max_len, -1));
         RUN(galloc(&seq, sb->num_seq, sb->max_len));
         for(i = 0; i < sb->num_seq;i++){
-                len = sb->sequences[i]->seq_len;
+                len = sb->sequences[i]->len;
                 for (j = 0; j < len;j++){
                         seq[i][j] = sb->sequences[i]->seq[j];
                 }
@@ -275,11 +277,12 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         RUN(galloc(&label, sb->num_seq, (sb->max_len+1)* num_models));
 
         for(i = 0; i < sb->num_seq;i++){
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                len = sb->sequences[i]->len;
                 pos = 0;
                 for(c = 0; c < num_models;c++){
                         for (j = 0; j < sb->max_len+1;j++){
-                                label[i][pos] = sb->sequences[i]->label_arr[c][j];
+                                label[i][pos] = d->label_arr[c][j];
                                 pos++;
                         }
                 }
@@ -294,10 +297,11 @@ int add_sequences_to_hdf5_model(char* filename,struct seq_buffer* sb, int num_mo
         RUN(galloc(&scores, sb->num_seq, num_models));
 
         for(i = 0; i < sb->num_seq;i++){
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                len = sb->sequences[i]->len;
                 pos = 0;
                 for(j = 0; j < num_models;j++){
-                        scores[i][j] = sb->sequences[i]->score_arr[j];
+                        scores[i][j] = d->score_arr[j];
 
                 }
         }
@@ -358,10 +362,11 @@ ERROR:
         return FAIL;
 }
 
-struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
+struct tl_seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
 {
         struct hdf5_data* hdf5_data = NULL;
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
+        struct seq_ihmm_data* d = NULL;
         char** name = NULL;
         char** seq = NULL;
         int** label = NULL;
@@ -390,7 +395,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         ASSERT(num_seq != -1, "No numseq");
         ASSERT(max_len != -1, "No maxlen");
         ASSERT(max_name_len != -1, "No maxnamelen");
-        ASSERT(local_L != -1,"No Alphabet");
+        ASSERT(local_L != -1,"No Alphabnet");
         ASSERT(num_models > 0, "No models");
 
 
@@ -410,38 +415,50 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
         //hdf5_close_file(hdf5_data);
         //hdf5_free(hdf5_data);
 
-        MMALLOC(sb,sizeof(struct seq_buffer));
-
-        sb->malloc_num = num_seq;
+        alloc_tl_seq_buffer(&sb, num_seq);
         sb->num_seq = num_seq;
-        sb->org_num_seq = -1;
-        sb->sequences = NULL;
         sb->max_len = max_len;
         sb->L = local_L;
-        sb->alphabet = NULL;
+        for(i = 0; i < sb->num_seq;i++){
+                while(sb->sequences[i]->malloc_len <= sb->max_len){
+                        resize_tl_seq(sb->sequences[i]);
+                }
+
+        }
+        /* MMALLOC(sb,sizeof(struct seq_buffer)); */
+
+        /* sb->malloc_num = num_seq; */
+        /* sb->num_seq = num_seq; */
+        /* sb->org_num_seq = -1; */
+        /* sb->sequences = NULL; */
+        /* sb->max_len = max_len; */
+        /* sb->L = local_L; */
+        /* sb->alphabet = NULL; */
         
 
         //sb->background = background;
 
-        MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num );
-        for(i = 0; i < sb->num_seq;i++){
-                sb->sequences[i] = NULL;
-                RUN(alloc_ihmm_seq(&sb->sequences[i]));
-                while(sb->sequences[i]->malloc_len <= sb->max_len){
-                        RUN(realloc_ihmm_seq(sb->sequences[i],sb->max_len));
-                }
-        }
+        /* MMALLOC(sb->sequences, sizeof(struct ihmm_sequence*) *sb->malloc_num ); */
+        /* for(i = 0; i < sb->num_seq;i++){ */
+        /*         sb->sequences[i] = NULL; */
+        /*         RUN(alloc_ihmm_seq(&sb->sequences[i])); */
+        /*         while(sb->sequences[i]->malloc_len <= sb->max_len){ */
+        /*                 RUN(realloc_ihmm_seq(sb->sequences[i],sb->max_len)); */
+        /*         } */
+        /* } */
         if(mode == IHMM_SEQ_READ_ALL){
-                RUN(add_multi_model_label_and_u(sb, num_models));
+                //RUN(add_multi_model_label_and_u(sb, num_models));
                 /* copy stuff over */
                 for(i = 0; i < sb->num_seq;i++){
+                        RUN(alloc_ihmm_seq_data(sb->sequences[i], num_models, max_len));
+                        d = sb->sequences[i]->data;
                         pos = 0;
                         for(c = 0; c < num_models;c++){
                                 for (j = 0; j < sb->max_len+1;j++){
-                                        sb->sequences[i]->label_arr[c][j] = label[i][pos];
+                                        d->label_arr[c][j] = label[i][pos];
                                         pos++;
                                 }
-                                sb->sequences[i]->score_arr[c] = scores[i][c];
+                                d->score_arr[c] = scores[i][c];
                         }
                 }
         }
@@ -465,7 +482,7 @@ struct seq_buffer* get_sequences_from_hdf5_model(char* filename, int mode)
                         }
                         sb->sequences[i]->seq[j] = seq[i][j];
                 }
-                sb->sequences[i]->seq_len = j;
+                sb->sequences[i]->len = j;
         }
 
 

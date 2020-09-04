@@ -2,6 +2,7 @@
 
 #include "tldevel.h"
 #include "tlrng.h"
+#include "tlseqbuffer.h"
 #include "finite_hmm_struct.h"
 #include "finite_hmm_alloc.h"
 #include "finite_hmm.h"
@@ -9,8 +10,8 @@
 
 
 #include "sequences_sim.h"
-#include "sequence_struct.h"
-#include "sequence_alloc.h"
+//#include "sequence_struct.h"
+//#include "sequence_alloc.h"
 
 #define FINITE_HMM_STATS_IMPORT
 #include "finite_hmm_stats.h"
@@ -31,24 +32,22 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         double* f_scores = NULL;
         struct rng_state* rng = NULL;
-        //uint8_t* seq = NULL;
-        //int malloc_len = 10000;
-        //double* back;
 
-        int i,j;//c;
+        int i;
         //double avg;
 
         double tailp = 0.04;
         int sim_len = 100;
         int sim_N = 1000;
-        double score;
+        double* score = NULL;
         double   gmu, glam;
-        double P;
-        FILE* f_ptr = NULL;
+        //double P;
+        //FILE* f_ptr = NULL;
 
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
 
 
+        MMALLOC(score, sizeof(double));
 
         RUNP(rng = init_rng(seed));
         RUN(sim_sequences(sim_N, fhmm->L, sim_len, &sb, rng));
@@ -65,8 +64,8 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         /*         sim_len =  iter; */
         RUN(sim_sequences(sim_N, fhmm->L, sim_len, &sb, rng));
         for(i = 0; i < sb->num_seq;i++){
-                score_seq_fwd(fhmm, dm, sb->sequences[i]->seq, sb->sequences[i]->seq_len, 1, &score, &P);
-                f_scores[i] = score;
+                fhmm_score_lodd(fhmm, dm, sb->sequences[i]->seq, sb->sequences[i]->len, 1, &score);
+                f_scores[i] = score[0];
         }
         RUN(esl_gumbel_FitComplete(f_scores, sim_N, &gmu, &glam));
 
@@ -80,9 +79,8 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 
         //fprintf(stdout,"LEN: %d %f %f lambda:%f  tau: %f\n", sim_len,gmu,glam,fhmm->lambda,fhmm->tau);
         //}
-
-
-        free_ihmm_sequences(sb);
+        MFREE(score);
+        free_tl_seq_buffer(sb);
 
         /*RUNP(f_ptr = fopen("scores.csv", "w"));
         sim_N = 10000;
@@ -122,7 +120,7 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
 ERROR:
 
         if(sb){
-                free_ihmm_sequences(sb);
+                free_tl_seq_buffer(sb);
         }
         if(f_scores){
                 MFREE(f_scores);

@@ -1,5 +1,5 @@
 #include "lcs.h"
-#include "ihmm_seq.h"
+//#include "ihmm_seq.h"
 #include "finite_hmm.h"
 #include <getopt.h>
 

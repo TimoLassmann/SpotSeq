@@ -30,7 +30,7 @@ MOTIFREFINE = motif_refinement.h motif_refinement.c
 
 NULLMODEL = null_model_emission.h null_model_emission.c
 
-# ISEQSOURCE = ihmm_seq.h ihmm_seq.c
+
 
 FASTHMMSOURCE = fast_hmm_param.c fast_hmm_param.h  \
 fast_hmm_param_test_functions.h \
@@ -105,6 +105,8 @@ finite_hmm_alloc.h \
 finite_hmm_alloc.c \
 finite_hmm_io.h \
 finite_hmm_io.c \
+finite_hmm_score.h \
+finite_hmm_score.c \
 finite_hmm_stats.h \
 finite_hmm_stats.c \
 finite_hmm_plot.h \
@@ -118,7 +120,9 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score  seqer_iclu seqer_emit tfbs_bench composition_bench seqer_select seqer_ari pst_test seqer_emit_motif makedb fhmm_test
+bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score
+
+# seqer_iclu seqer_emit tfbs_bench composition_bench  seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
 # #seqer_lcs
 # if ENABLE_CAIRO
@@ -151,12 +155,15 @@ model_io.c \
 model_alloc.c \
 finite_hmm_stats.c \
 finite_hmm_alloc.c \
+bias_model.h \
+bias_model.c \
 thread_data.c \
 hmm_conversion.c \
 finite_hmm.c \
 finite_hmm_io.c \
+finite_hmm_score.c \
 fast_hmm_param.c \
-run_score.c 
+run_score.c
 
 seqer_eval_SOURCES = \
 model_eval.c \
@@ -170,6 +177,7 @@ model_io.c \
 model_alloc.c \
 finite_hmm_stats.c \
 finite_hmm_alloc.c \
+finite_hmm_score.c \
 finite_hmm_plot.h \
 finite_hmm_plot.c \
 thread_data.c \
@@ -185,12 +193,12 @@ makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST
 fhmm_test_SOURCES =  finite_hmm_test.c $(FINITEHMM) $(NULLMODEL) sequence_alloc.h \
 sequence_alloc.c \
 sequences_sim.h \
-sequences_sim.c 
+sequences_sim.c
 
 
 
 seqer_score_SOURCES = \
-score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)
+score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE) bias_model.c bias_model.h
 
 seqer_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(SEQUENCESOURCES) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
@@ -210,8 +218,8 @@ plot_model.c  $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM)  $(MODELSOURCE) $(FA
 
 
 
-seqer_select_SOURCES = \
-select_model.c  $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
+# seqer_select_SOURCES = \
+# select_model.c  $(SCORESOURCE) $(CONVERSION) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE) $(RANDOMKIT_FILES) $(THREADSOURCE)
 
 #seqwise_kmer_SOURCES = \
 #kmer_enrichment.c $(KALIGNSOURCE) $(MOTIFREFINE) $(SCORESOURCE) $(EMITSOURCE) $(CONVERSION) $(ISEQSOURCE) $(FINITEHMM) $(MODELSOURCE) $(RANDOMKIT_FILES) $(HDF5GLUESOURCE) $(THREADSOURCE)

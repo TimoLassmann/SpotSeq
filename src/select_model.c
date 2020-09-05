@@ -12,8 +12,6 @@
 
 #include "tldevel.h"
 
-#include "ihmm_seq.h"
-
 #include "finite_hmm.h"
 #include "finite_hmm_alloc.h"
 

@@ -8,10 +8,10 @@
 #endif
 
 struct rng_state;
-struct seq_buffer;
+struct tl_seq_buffer;
 
-EXTERN int sim_sequences(int N, int L,int len,struct seq_buffer** seq_buf,struct rng_state* rng);
 
+EXTERN int sim_sequences(int N, int L,int len,struct tl_seq_buffer** seq_buf,struct rng_state* rng);
 #undef SEQUENCES_SIM_IMPORT
 #undef EXTERN
 

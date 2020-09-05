@@ -14,7 +14,7 @@
 
 
 
-struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, int max_states, int seed)
+struct model_bag* alloc_model_bag(int L, int num_models, int max_states, int seed)
 {
         struct model_bag* b = NULL;
 
@@ -47,7 +47,7 @@ struct model_bag* alloc_model_bag(int* num_state_array, int L, int num_models, i
                 local_seed = rk_ulong(&b->rndstate);
                 b->models[i] = NULL;
                 b->min_u[i] = 0.0;
-                RUNP(b->models[i] = alloc_ihmm_model(num_state_array[i],b->max_num_states, L,local_seed));
+                RUNP(b->models[i] = alloc_ihmm_model(b->max_num_states, L,local_seed));
         }
         return b;
 ERROR:
@@ -80,14 +80,12 @@ void free_model_bag(struct model_bag* b)
 }
 
 
-struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed)
+struct ihmm_model* alloc_ihmm_model(int maxK, int L, unsigned int seed)
 {
         struct ihmm_model* model = NULL;
         int i,j;
-        ASSERT(K>3, "No states requested");
-        ASSERT(L>1, "No letters");
 
-        ASSERT(K <= maxK,"Too many states");
+        ASSERT(L>1, "No letters");
 
         MMALLOC(model, sizeof(struct ihmm_model));
 
@@ -119,7 +117,7 @@ struct ihmm_model* alloc_ihmm_model(int K, int maxK, int L, unsigned int seed)
         //while(K > model->alloc_num_states){
         //model->alloc_num_states = model->alloc_num_states << 1;
         //}
-        model->num_states = K;
+        model->num_states = 0;
 
         /* RUNP(model->transition_counts = galloc(model->transition_counts, model->alloc_num_states, model->alloc_num_states, 0.0)); */
         /* RUNP(model->emission_counts = galloc(model->emission_counts , model->L, model->alloc_num_states, 0.0)); */

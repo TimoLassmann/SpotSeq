@@ -1,3 +1,6 @@
+#include "tldevel.h"
+#include "tllogsum.h"
+#include "tlseqbuffer.h"
 
 #include "distributions.h"
 #include <math.h>
@@ -11,7 +14,7 @@
 //#include "thr_pool.h"
 //#include "rbtree.h"
 //#include "fast_hmm_param.h"
-//#include "ihmm_seq.h"
+
 #include "model_core.h"
 
 #include "model_alloc.h"
@@ -24,12 +27,9 @@
 
 #include "fast_hmm_param_test_functions.h"
 
-#include "tldevel.h"
-#include "tllogsum.h"
 
 #define BEAM_SAMPLE_IMPORT
 #include "beam_sample.h"
-
 
 //void* do_sample_path_and_posterior(void* threadarg);
 void* do_dynamic_programming(void *threadarg);
@@ -43,17 +43,22 @@ int sum_counts_from_multiple_threads(struct seqer_thread_data** td,int* num_thre
 
 int transfer_counts(struct ihmm_model* ihmm, double** t, double** e);
 
-static int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq );
+//static int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq );
 
 //static int set_u(struct seq_buffer* sb, struct ihmm_model* model, double* min_u);
-static int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb);
-static int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u,int model_index);
+int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct tl_seq_buffer* sb);
+
+
+static int set_u(struct tl_seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u, int model_index);
+
 int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len, rk_state* rndstate);
-int unset_u(struct seq_buffer* sb);
 
 
-static int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path);
-static int reset_valid_path(struct seq_buffer* sb,int num_models);
+
+
+static int detect_valid_path(struct tl_seq_buffer* sb,int num_models, int* no_path);
+static int reset_valid_path(struct tl_seq_buffer* sb,int num_models);
+       
 
 static int expand_ihmms(struct model_bag* model_bag, struct fast_param_bag* ft_bag);
 static int sort_fast_parameters(struct fast_param_bag* ft_bag);
@@ -64,12 +69,13 @@ static int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max
 
 int dynamic_programming(struct seqer_thread_data* data, int target);
 static int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,uint16_t* label,double* u,int len,uint8_t* has_path ,rk_state* random);
-int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
-int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
-int collect_slice(struct seqer_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
+//int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+//int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score);
+//int collect_slice(struct seqer_thread_data* data,struct ihmm_sequence* ihmm_seq, double total);
 
-int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct seq_buffer* sb,struct seqer_thread_data** td, int iterations, int num_threads)
+int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag, struct tl_seq_buffer* sb,struct seqer_thread_data** td, int iterations, int num_threads)
 {
+        struct seq_ihmm_data* d;
         uint16_t** tmp = NULL;
         int i;
         int iter;
@@ -81,8 +87,6 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
         ASSERT(ft_bag != NULL, "No transition struct");
         ASSERT(iterations >= 1, "No iterations");
         ASSERT(num_threads > 0, "No threads");
-
-
 
         init_logsum();
         //RUN(check_labels(sb,model_bag->num_models ));
@@ -175,9 +179,10 @@ int run_beam_sampling(struct model_bag* model_bag, struct fast_param_bag* ft_bag
                 /* swap tmp label with label */
                 tmp = NULL;
                 for(i = 0; i < sb->num_seq;i++){
-                        tmp = sb->sequences[i]->label_arr;
-                        sb->sequences[i]->label_arr = sb->sequences[i]->tmp_label_arr;
-                        sb->sequences[i]->tmp_label_arr = tmp;
+                        d = sb->sequences[i]->data;
+                        tmp = d->label_arr;
+                        d->label_arr = d->tmp_label_arr;
+                        d->tmp_label_arr = tmp;
                 }
                 for(i = 0; i < model_bag->num_models;i++){
                         //LOG_MSG("Iteration %d Model %d (%d states)  alpha = %f, gamma = %f", iter,i, model_bag->models[i]->num_states, model_bag->models[i]->alpha ,model_bag->models[i]->gamma);
@@ -190,32 +195,34 @@ ERROR:
 }
 
 
-int detect_valid_path(struct seq_buffer* sb,int num_models, int* no_path)
+int detect_valid_path(struct tl_seq_buffer* sb,int num_models, int* no_path)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
 
         *no_path = 0;
         for(i = 0; i < sb->num_seq;i++){
                 for(j = 0; j < num_models;j++){
-                        if(sb->sequences[i]->has_path[j] == 0){
-
+                        d = sb->sequences[i]->data;
+                        if(d->has_path[j] == 0){
                                 //LOG_MSG("weird split must have happened in seq %d m%d",i,j);
                                 *no_path = 1;
                                 return OK;
                         }
                 }
         }
-
         return OK;
 
 }
 
-int reset_valid_path(struct seq_buffer* sb,int num_models)
+int reset_valid_path(struct tl_seq_buffer* sb,int num_models)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         for(i = 0; i < sb->num_seq;i++){
+                d = sb->sequences[i]->data;
                 for(j = 0; j < num_models;j++){
-                        sb->sequences[i]->has_path[j] = 0;
+                        d->has_path[j] = 0;
                 }
         }
         return OK;
@@ -313,7 +320,8 @@ ERROR:
 void* do_dynamic_programming(void *threadarg)
 {
         struct seqer_thread_data *data;
-        struct ihmm_sequence* s = NULL;
+        struct tl_seq* s = NULL;
+        struct seq_ihmm_data* d = NULL;
         int i;
         int j;
         int num_threads;
@@ -334,6 +342,7 @@ void* do_dynamic_programming(void *threadarg)
                 if( i% num_threads == thread_id){
 
                         s = data->sb->sequences[i];
+                        d = data->sb->sequences[i]->data;
                         for(j = 0; j < data->ft_bag->num_models; j++){
                                 //LOG_MSG("Run seq: %d M:%d (thread%d)",i,j, data->thread_ID);
                                 //s->has_path[j] = 0;
@@ -345,10 +354,10 @@ void* do_dynamic_programming(void *threadarg)
                                 RUN(dynamic_programming_clean(data->ft_bag->fast_params[j],
                                                               data->dyn,
                                                               s->seq,
-                                                              s->tmp_label_arr[j],
-                                                              s->u_arr[j],
-                                                              s->seq_len,
-                                                              &s->has_path[j],
+                                                              d->tmp_label_arr[j],
+                                                              d->u_arr[j],
+                                                              s->len,
+                                                              &d->has_path[j],
                                                               &data->rndstate));
 
                                 //}
@@ -784,30 +793,6 @@ int approximatelyEqual(double a, double b, double epsilon)
         return fabs(a - b) <= ( (fabs(a) < fabs(b) ? fabs(b) : fabs(a)) * epsilon);
 }
 
-int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double** E, struct ihmm_sequence* ihmm_seq )
-{
-        /* got through path assign emission probs, store in u... */
-        double* emission = NULL;
-        int* label = NULL;
-        double* u = NULL;
-        uint8_t* seq = NULL;
-        double total = 0.0;
-        int i,l,len;
-
-        u = ihmm_seq->u;
-        len = ihmm_seq->seq_len;
-        seq = ihmm_seq->seq;
-        label = ihmm_seq->label;
-        total = ihmm_seq->score;
-
-        for (i = 0; i < len; i++) {
-                l = label[i];
-                emission = E[seq[i]];
-                u[i] = F[i][l] + (B[i][l] - prob2scaledprob(emission[l])) - total;
-                //fprintf(stdout,"%d letter:%d label:%d F:%f B:%f total=%f  result:%f \n",i,seq[i],l,F[i][l],B[i][l],total,scaledprob2prob(u[i]));
-        }
-        return OK;
-}
 
 /*int collect_slice(struct seqer_thread_data * data,struct ihmm_sequence* ihmm_seq, double total)
 {
@@ -873,162 +858,7 @@ int assign_posterior_probabilities_to_sampled_path(double** F,double** B,double*
         return OK;
         }*/
 
-int forward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score)
-{
-        struct fast_t_item** list = NULL;
-        double* u = NULL;
-        uint8_t* seq = NULL;
-        double* emission = NULL;
-        double* cur = NULL;
-        double* last = NULL;
 
-        int i,j,len,boundary;
-        int l;
-        int a,b;
-
-        ASSERT(ft!= NULL, "no parameters");
-        ASSERT(matrix != NULL,"No dyn matrix");
-
-        u = ihmm_seq->u;
-        len = ihmm_seq->seq_len;
-        seq = ihmm_seq->seq;
-
-        list = ft->list;
-
-        cur = matrix[0];
-        l = ft->last_state;
-
-        for(i = 0; i < l;i++){
-                cur[i]  = -INFINITY;
-        }
-
-        boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
-        //fill first row.
-        for(j = 0; j < boundary;j++){
-                if(list[j]->from == START_STATE){
-                        cur[list[j]->to] = logsum(cur[list[j]->to], prob2scaledprob( list[j]->t));
-                }
-        }
-        emission = ft->emission[seq[0]];
-
-        for(i = 0; i < l;i++){
-                cur[i] += prob2scaledprob(emission[i]);
-        }
-
-        for(i = 1; i < len;i++){
-                last = cur;
-                cur = matrix[i];
-                for(j = 0; j < l;j++){
-                        cur[j] = -INFINITY;
-                }
-
-                boundary = fast_hmm_param_binarySearch_t(ft, u[i]);
-
-                for(j = 0; j < boundary;j++){
-                        a = list[j]->from;
-                        b = list[j]->to;
-                        //fprintf(stdout,"lastA: %f  prob:  %f from: %d to: %d\n",last[a] , prob2scaledprob(list[j]->t) ,a,b);
-                        cur[b] = logsum(cur[b],last[a] + prob2scaledprob(list[j]->t));
-
-                }
-                emission = ft->emission[seq[i]];
-                for(j = 0; j < l;j++){
-                        cur[j] += prob2scaledprob(emission[j]);
-                }
-        }
-
-        /* First let's check if there is a path! i.e. end is reachable.  */
-        *score = prob2scaledprob(0.0);
-
-        boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
-        for(j = 0; j < boundary;j++){
-                a = list[j]->from;
-                b = list[j]->to;
-                if(b == END_STATE){
-                        *score = logsum(*score, matrix[len-1][a] + prob2scaledprob(list[j]->t));
-                }
-        }
-        //fprintf(stdout,"SCORE: %f\t(%f)\n",*score,u[len]);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
-int backward_slice(double** matrix,struct fast_hmm_param* ft, struct ihmm_sequence* ihmm_seq, double* score)
-{
-        struct fast_t_item** list = NULL;
-        double* u = NULL;
-        uint8_t* seq = NULL;
-        double* emission = NULL;
-        double* cur = NULL;
-        double* next = NULL;
-
-        int i,j,len,boundary;
-        int l;
-        int a,b;
-
-
-        ASSERT(ft!= NULL, "no parameters");
-        ASSERT(matrix != NULL,"No dyn matrix");
-
-        u = ihmm_seq->u;
-        len = ihmm_seq->seq_len;
-        seq = ihmm_seq->seq;
-
-        list = ft->list;
-
-        cur = matrix[len-1];
-        l = ft->last_state;
-
-        for(i = 0; i < l;i++){
-                cur[i]  = -INFINITY;
-        }
-
-        boundary = fast_hmm_param_binarySearch_t(ft, u[len]);
-        //fill first row.
-        for(j = 0; j < boundary;j++){
-                if(list[j]->to  == END_STATE){
-                        cur[list[j]->from] = logsum(cur[list[j]->from], prob2scaledprob( list[j]->t));
-                }
-        }
-        emission = ft->emission[seq[len-1]];
-        for(i = 0; i < l;i++){
-                cur[i] += prob2scaledprob(emission[i]);
-        }
-        for(i = len -2; i >= 0;i--){
-                next = cur;
-                cur = matrix[i];
-                for(j = 0; j < l;j++){
-                        cur[j] = -INFINITY;
-                }
-
-                boundary = fast_hmm_param_binarySearch_t(ft, u[i+1]);
-
-                for(j = 0; j < boundary;j++){
-                        a = list[j]->from;
-                        b = list[j]->to;
-                        cur[a] = logsum(cur[a], next[b] + prob2scaledprob(list[j]->t));
-                }
-                emission = ft->emission[seq[i]];
-
-                for(j = 0; j < l;j++){
-                        cur[j] += prob2scaledprob(emission[j]);
-                }
-        }
-        /* First let's check if there is a path! i.e. end is reachable.  */
-        *score = prob2scaledprob(0.0);
-        boundary = fast_hmm_param_binarySearch_t(ft, u[0]);
-        for(j = 0; j < boundary;j++){
-                a = list[j]->from;
-                b = list[j]->to;
-                if(a == START_STATE){
-                        *score = logsum(*score, matrix[0][b]+ prob2scaledprob(list[j]->t));
-                }
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 int dynamic_programming_clean(struct fast_hmm_param* ft,  double** matrix,uint8_t* seq,uint16_t* label,double* u,int len,uint8_t* has_path,rk_state* random)
 {
@@ -1348,7 +1178,7 @@ ERROR:
         }*/
 
 
-int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct seq_buffer* sb)
+int set_u_multi(struct model_bag* model_bag, struct fast_param_bag*  ft_bag, struct tl_seq_buffer* sb)
 {
         int i;
 
@@ -1360,8 +1190,9 @@ ERROR:
         return FAIL;
 }
 
-int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u, int model_index)
+int set_u(struct tl_seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param* ft, double* min_u, int model_index)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         double* u = 0;
         uint16_t* label =0;
@@ -1376,9 +1207,10 @@ int set_u(struct seq_buffer* sb, struct ihmm_model* model, struct fast_hmm_param
         //last_state = ft->last_state;
 
         for(i = 0; i < sb->num_seq;i++){
-                label = sb->sequences[i]->label_arr[model_index];
-                u = sb->sequences[i]->u_arr[model_index];
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                label = d->label_arr[model_index];
+                u = d->u_arr[model_index];
+                len = sb->sequences[i]->len;
 
                 x = ft->transition[START_STATE][label[0]];
                 //c = IHMM_START_STATE * last_state + label[0];
@@ -1450,29 +1282,6 @@ int reset_u_if_no_path(struct fast_hmm_param* ft, double* u,int * label, int len
         return OK;
 }
 
-int unset_u(struct seq_buffer* sb)
-{
-        int i,j;
-        double* u = 0;
-        int len;
-
-        ASSERT(sb != NULL, "No sequences.");
-        //qsort(ft->list, ft->num_items, sizeof(struct fast_t_item*),fast_hmm_param_cmp_by_to_from_asc);
-        //last_state = ft->last_state;
-
-        for(i = 0; i < sb->num_seq;i++){
-                u = sb->sequences[i]->u;
-                len = sb->sequences[i]->seq_len;
-                for (j = 0; j < len;j++){
-
-                        u[j] = 0.0;
-                }
-
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}
 
 
 int get_max_to_last_state_transition(struct fast_hmm_param*ft,double* max)

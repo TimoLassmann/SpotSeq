@@ -22,7 +22,8 @@ int create_seqer_thread_data(struct seqer_thread_data*** t, int num_threads, int
                 MMALLOC(td[i], sizeof(struct seqer_thread_data));
                 td[i]->dyn = NULL;
                 td[i]->fhmm = NULL;
-
+                td[i]->bias = NULL;
+                td[i]->info = 0;
                 td[i]->num_models = 0;
                 td[i]->num_threads = num_threads;
                 RUN(alloc_fhmm_dyn_mat(&td[i]->fmat, max_len, K));

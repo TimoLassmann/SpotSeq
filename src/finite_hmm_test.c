@@ -8,6 +8,8 @@
 #include "finite_hmm_alloc.h"
 #include "finite_hmm_stats.h"
 #include "finite_hmm_plot.h"
+#include "finite_hmm_score.h"
+
 #include "global.h"
 
 #include "null_model_emission.h"

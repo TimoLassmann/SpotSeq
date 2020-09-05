@@ -16,6 +16,7 @@ struct fhmm{
         float** e;
         float** t;
         int** tindex;
+        float* m_comp_back; /* Equivalent (hopefully to compo in HMMER - see Biased composition filter.) */
         float* background;
         float f_score;
         float b_score;

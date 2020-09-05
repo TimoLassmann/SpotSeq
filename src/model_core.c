@@ -2,6 +2,8 @@
 
 #include "global.h"
 #include "tldevel.h"
+#include "tlseqbuffer.h"
+
 #include "distributions.h"
 
 #include "finite_hmm.h"
@@ -10,7 +12,7 @@
 
 #include "sequence_struct.h"
 #include "model_alloc.h"
-//#include "ihmm_seq.h"
+
 #include "finite_hmm.h"
 
 
@@ -19,10 +21,8 @@
 
 #define MODEL_CORE_IMPORT
 #include "model_core.h"
-
-
-static int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
-
+//static int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index );
+static int fill_counts_i(struct ihmm_model* ihmm, struct tl_seq* s, int model_index);
 //static int label_seq_based_on_random_fhmm(struct seq_buffer* sb, int k, double alpha);
 
 
@@ -67,7 +67,7 @@ int esl_stats_LogGamma(double x, double *ret_answer)
         return OK;
 }
 
-int log_likelihood_model(struct ihmm_model* model, struct seq_buffer* sb)
+int log_likelihood_model(struct ihmm_model* model, struct tl_seq_buffer* sb)
 {
 
         int i,j;
@@ -150,8 +150,9 @@ ERROR:
         return FAIL;
 }
 
-int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
+int remove_unused_states_labels(struct ihmm_model* ihmm, struct tl_seq_buffer* sb, int model_index)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         double sum;
         int len;
@@ -173,8 +174,9 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
         used[END_STATE] = 100;
         int max = -1;
         for(i = 0; i < sb->num_seq;i++){
-                lab = sb->sequences[i]->label_arr[model_index];
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                lab = d->label_arr[model_index];
+                len = sb->sequences[i]->len;
                 for(j = 0; j < len;j++){
                         //LOG_MSG("model:%d seq:%d pos:%d label:%d",model_index,i,j,lab[j]);
                         used[lab[j]]++;
@@ -233,8 +235,9 @@ int remove_unused_states_labels(struct ihmm_model* ihmm, struct seq_buffer* sb, 
 
         for(i = 0; i < sb->num_seq;i++){
                 //fprintf(stdout,"%3d",i);
-                lab = sb->sequences[i]->label_arr[model_index];
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                lab = d->label_arr[model_index];
+                len = sb->sequences[i]->len;
                 for(j= 0; j <  len;j++){
                         lab[j] = relabel[lab[j]];
                         //      fprintf(stdout," %d",lab[j]);
@@ -250,8 +253,11 @@ ERROR:
         return FAIL;
 }
 
-int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
+
+int fill_counts(struct ihmm_model* ihmm, struct tl_seq_buffer* sb, int model_index)
 {
+
+        struct seq_ihmm_data* d;
         int i,j;
         uint16_t* label = NULL;
         int max_state_ID;
@@ -264,8 +270,9 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         //LOG_MSG("SEQ: %d",sb->)
         //fprintf(stdout,"%d numseq\n",sb->num_seq );
         for(i = 0; i < sb->num_seq;i++){
-                label = sb->sequences[i]->label_arr[model_index];
-                len = sb->sequences[i]->seq_len;
+                d = sb->sequences[i]->data;
+                label = d->label_arr[model_index];
+                len = sb->sequences[i]->len;
                 for(j = 0; j < len;j++){
                         //fprintf(stdout,"%d ",label[j]);
                         if(label[j] > max_state_ID){
@@ -283,7 +290,6 @@ int fill_counts(struct ihmm_model* ihmm, struct seq_buffer* sb, int model_index)
         //exit(0);
         //RUN(resize_ihmm_model(ihmm, max_state_ID));
         ihmm->num_states = max_state_ID;
-
         /* clear transition counts */
         /* clear emission counts */
         RUN(clear_counts(ihmm));
@@ -327,8 +333,9 @@ ERROR:
 
 }
 
-int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_index)
+int fill_counts_i(struct ihmm_model* ihmm, struct tl_seq* s, int model_index)
 {
+        struct seq_ihmm_data* d = NULL;
         uint16_t* label = NULL;
         uint8_t* seq = NULL;
         double** e = NULL;
@@ -342,10 +349,11 @@ int fill_counts_i(struct ihmm_model* ihmm, struct ihmm_sequence* s, int model_in
 
         ASSERT(ihmm != NULL,"no model");
 
-        label = s->label_arr[model_index];
+        d = s->data;
+        label = d->label_arr[model_index];
         seq = s->seq;
-        len = s->seq_len;
-        score = s->score_arr[model_index];
+        len = s->len;
+        score = d->score_arr[model_index];
 
 
         // 1.0;// - scaledprob2prob(s->score);

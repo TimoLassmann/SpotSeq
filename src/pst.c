@@ -117,15 +117,15 @@ int run_build_pst(struct pst** pst,float min_error, float gamma, struct count_ha
         for(i = 0;i < p->L;i++){
                 x = p->fpst_root->l;
                 p->fpst_root->prob[x][i] /=sum;
-                fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
-                p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
+                //fprintf(stdout,"Prob: %f", p->fpst_root->prob[x][i]);
+                //p->fpst_root->prob[x][i] = p->fpst_root->prob[x][i] * ( 1.0 -  p->gamma_min) + p->background[i]* p->gamma_min;
                 p->fpst_root->prob[x][i] = p->background[i];
-                fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
+                //fprintf(stdout,"\tback: %f\tcorr prob: %f\n", p->background[i], p->fpst_root->prob[x][i]);
                 helper->probability[i] = p->fpst_root->prob[x][i];
                 p->fpst_root->links[x][i] = 0;
         }
         p->fpst_root->l = 0;
-        exit(0);
+        //exit(0);
 
         helper = build_pst(p,p->fpst_root,0, helper,h);
         //print_pst(p, helper);

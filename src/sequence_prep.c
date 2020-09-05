@@ -14,11 +14,11 @@
 #include "sequence_prep.h"
 
 
-static int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma);
-static int random_label_sequences(struct seq_buffer* sb, int K, int model_index, struct rng_state* rng);
+static int init_labelling(struct tl_seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma);
+static int random_label_sequences(struct tl_seq_buffer* sb, int K, int model_index, struct rng_state* rng);
 
-static int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng);
 
+static int set_alphabet_and_convert(struct tl_seq_buffer* sb, struct rng_state* rng);
 /* This function should prepare sequences to be used in beam sampleing
    This involves:
    - adding an alphabet (and sanity checks !!! )
@@ -27,9 +27,11 @@ static int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng
    - initial random labelling
 
  */
-int prep_sequences(struct seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma)
+int prep_sequences(struct tl_seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma)
 {
-
+        
+        int i;
+        
         ASSERT(sb != NULL, "No sequence buffer");
         ASSERT(num_models > 0, "No num_models");
 
@@ -37,7 +39,11 @@ int prep_sequences(struct seq_buffer* sb, struct rng_state* rng, int num_models,
         RUN(set_alphabet_and_convert(sb,rng));
 
         /* add u and label */
-        RUN(add_multi_model_label_and_u(sb, num_models));
+        for(i = 0; i < sb->num_seq;i++){
+                //d = sb->sequences[i]->data;
+                RUN(alloc_ihmm_seq_data(sb->sequences[i],num_models, sb->max_len));
+        }
+        //RUN(add_multi_model_label_and_u(sb, num_models));
         LOG_MSG("Start: %d", num_states);
         /* randomly label sequences  */
         /* I know the number of models ; unknown are number of states  */
@@ -48,36 +54,40 @@ ERROR:
         return FAIL;
 }
 
-int init_labelling(struct seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma)
+int init_labelling(struct tl_seq_buffer* sb, struct rng_state* rng, int num_models,int num_states, double sigma)
 {
         double average_sequence_len = 0.0;
 
         int i;
+        int n;
 
         if(sigma == 0){
                 sigma = 1.0;
         }
 
-        MMALLOC(sb->num_state_arr, sizeof(int) * num_models);
+        //MMALLOC(sb->num_state_arr, sizeof(int) * num_models);
 
         if(!num_states){
                 average_sequence_len = 0.0;
                 for(i = 0; i < sb->num_seq;i++){
-                        average_sequence_len += sb->sequences[i]->seq_len;
+                        average_sequence_len += sb->sequences[i]->len;
                 }
                 average_sequence_len /= (double) sb->num_seq;
                 average_sequence_len = sqrt(average_sequence_len);
                 num_states = round(average_sequence_len);
         }
 
-        for(i = 0; i < num_models;i++){
+        /*for(i = 0; i < num_models;i++){
                 sb->num_state_arr[i] = tl_random_gaussian(rng, num_states,sigma);
                 sb->num_state_arr[i] = MACRO_MIN(sb->num_state_arr[i], MAX_NUM_STATES-2);
                 sb->num_state_arr[i] = MACRO_MAX(sb->num_state_arr[i], 10);
-        }
+                }*/
 
         for(i = 0; i < num_models;i++){
-                RUN(random_label_sequences(sb, sb->num_state_arr[i], i, rng));
+                n =  tl_random_gaussian(rng, num_states,sigma);
+                n = MACRO_MIN(n, MAX_NUM_STATES -2);
+                n = MACRO_MAX(n, 10);
+                RUN(random_label_sequences(sb, n, i, rng));
         }
 
         return OK;
@@ -85,8 +95,9 @@ ERROR:
         return FAIL;
 }
 
-int random_label_sequences(struct seq_buffer* sb, int K, int model_index, struct rng_state* rng)
+int random_label_sequences(struct tl_seq_buffer* sb, int K, int model_index, struct rng_state* rng)
 {
+        struct seq_ihmm_data* d = NULL;
         int i,j;
         uint16_t* label;
         int len;
@@ -96,8 +107,10 @@ int random_label_sequences(struct seq_buffer* sb, int K, int model_index, struct
         min = 999999;
         max = -1;
         for(i = 0;i< sb->num_seq;i++){
-                label = sb->sequences[i]->label_arr[model_index];
-                len = sb->sequences[i]->seq_len;
+
+                d = sb->sequences[i]->data;
+                label = d->label_arr[model_index];
+                len = sb->sequences[i]->len;
                 for(j = 0;j < len;j++){
                         label[j] = tl_random_int(rng, K-2) +2;
                         if(label[j] < min){
@@ -117,7 +130,7 @@ ERROR:
 }
 
 
-int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng)
+int set_alphabet_and_convert(struct tl_seq_buffer* sb, struct rng_state* rng)
 {
         struct alphabet* a = NULL;
         int max = -1;
@@ -140,14 +153,14 @@ int set_alphabet_and_convert(struct seq_buffer* sb, struct rng_state* rng)
                 break;
         }
 
-
-        sb->alphabet = a;
+        
+        sb->data = a;
 
         /* convert sequences and keep track of "biggest" letter */
         for(i = 0; i < sb->num_seq;i++){
                 int len;
                 uint8_t* seq;
-                len = sb->sequences[i]->seq_len;
+                len = sb->sequences[i]->len;
                 seq = sb->sequences[i]->seq;
                 for(j = 0;j < len;j++){
                         seq[j] = toupper(seq[j]);
@@ -177,17 +190,3 @@ ERROR:
         return FAIL;
 }
 
-int get_res_counts(struct seq_buffer* sb, double* counts)
-{
-        int i,j;
-        ASSERT(sb!= NULL, "No sequence buffer");
-        ASSERT(counts!= NULL, "No sequence buffer");
-        for(i = 0; i < sb->num_seq;i++){
-                for(j = 0;j < sb->sequences[i]->seq_len;j++){
-                        counts[sb->sequences[i]->seq[j]]++;
-                }
-        }
-        return OK;
-ERROR:
-        return FAIL;
-}

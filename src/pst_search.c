@@ -18,7 +18,7 @@
 
 static int copy_sequences(struct tl_seq_buffer* sb, struct tl_seq* a);
 
-int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer** hits)
+int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer** hits, uint64_t* db_size)
 {
 
 #ifdef HAVE_OPENMP
@@ -33,7 +33,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         struct tl_seq_buffer* h = NULL;
         int chunk,i;
         int n_hits = 0;
-        int total_nseq =0;
+        uint64_t total_nseq =0;
 
         if(*hits){
                 h = *hits;
@@ -94,6 +94,9 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
                                         //LOG_MSG("Thread %d locking ", thread_id);
                                         copy_sequences(h, sb->sequences[i]);
                                         n_hits++;
+                                        if(sb->sequences[i]->len > h->max_len){
+                                                h->max_len = sb->sequences[i]->len;
+                                        }
                                         omp_unset_lock(&writelock);
 
                                         //fprintf(stdout,"Hit: %f\t%s\n",z_score,seq->name);
@@ -114,6 +117,7 @@ int search_db(struct pst* p, char* filename, double thres,struct tl_seq_buffer**
         LOG_MSG("Scanned %0.2f M sequences.", (double)total_nseq / 1000000.0);
         //LOG_MSG("Found %d hits", n_hits);
         *hits = h;
+        *db_size = total_nseq;
 #ifdef HAVE_OPENMP
         omp_destroy_lock(&writelock);
 #endif

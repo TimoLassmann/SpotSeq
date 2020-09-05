@@ -15,23 +15,21 @@
 
 int run_score_sequences(struct fhmm** fhmm, struct tl_seq_buffer* sb,struct seqer_thread_data** td, int n_model,int mode)
 {
-        struct fhmm** container = NULL;
+        //struct fhmm** container = NULL;
         int i;
         int num_threads;
         ASSERT(fhmm != NULL,"no model");
         ASSERT(sb != NULL, "no parameters");
-
         /* just to be 100% safe... */
         init_logsum();
         /* always a good idea */
-
         /* allocate dyn programming matrices.  */
         //RUN(realloc_dyn_matrices(fhmm, sb->max_len+1));
         //LOG_MSG("new len: %d states:%d", sb->max_len,fhmm->K);
         num_threads = td[0]->num_threads;
 
-        MMALLOC(container, sizeof(struct fhmm*) * 1);
-        container[0] = fhmm;
+        //MMALLOC(container, sizeof(struct fhmm*) * 1);
+        //container[0] = fhmm;
         for(i = 0; i < num_threads;i++){
                 td[i]->thread_ID = i;
                 td[i]->sb = sb;
@@ -57,9 +55,6 @@ ERROR:
         return FAIL;
 }
 
-
-
-
 void* do_score_sequences(void* threadarg)
 {
         struct seqer_thread_data *data;
@@ -73,13 +68,15 @@ void* do_score_sequences(void* threadarg)
         int num_threads;
         int thread_id;
         int num_models;
-
+        double fwd;
+        double bias;
+        double null;
         /* function pointer  */
         /* remember:
            return_type (*function_name)(arguments)
         */
 
-        int (*func_ptr)(struct fhmm*, struct fhmm_dyn_mat*, uint8_t* , int,int , double**);
+        int (*func_ptr)(struct fhmm*, struct fhmm_dyn_mat*, uint8_t* , int,int , double*);
 
         data = (struct seqer_thread_data *) threadarg;
 
@@ -92,6 +89,8 @@ void* do_score_sequences(void* threadarg)
                 func_ptr = fhmm_score_p_lodd;
         }else if(mode == FHMM_SCORE_LODD){
                 func_ptr = fhmm_score_lodd;
+        }else if(mode == FHMM_SCORE_FULL){
+                /* Run in full  more */
         }else{
                 ERROR_MSG("Unknown function type!");
         }
@@ -115,13 +114,31 @@ void* do_score_sequences(void* threadarg)
                                     MACRO_MAX(m->alloc_K,j)
                         );
         }
+        
+        if(mode == FHMM_SCORE_FULL){
+                /* run forward on model, bias model and random  */
+                for(i =0; i < data->sb->num_seq;i++){
+                        if( i% num_threads == thread_id){
+                                seq = data->sb->sequences[i];
+                                s = seq->data;
+                                fhmm_score_fwd(data->fhmm[0],m,seq->seq, seq->len,1, &fwd);
+                                fhmm_score_fwd(data->fhmm[1],m,seq->seq, seq->len,1, &bias);
+                                fhmm_score_null(data->fhmm[1],m,seq->seq, seq->len,1, &null);
+                                s[0] =(fwd - null) / 0.69314718055994529;
+                                s[1] =(fwd - bias) / 0.69314718055994529;
+                                s[2] = esl_exp_surv(s[0], data->fhmm[0]->tau,data->fhmm[0]->lambda);
+                                s[3] = esl_exp_surv(s[1], data->fhmm[0]->tau,data->fhmm[0]->lambda);
+                        }
+                }
+                return NULL;
+        }
         //LOG_MSG("Average sequence length: %d",expected_len);
         for(i =0; i < data->sb->num_seq;i++){
                 if( i% num_threads == thread_id){
                         seq = data->sb->sequences[i];
                         s = seq->data;
                         for(j = 0; j < num_models;j++){
-                                func_ptr(data->fhmm[j],m,seq->seq, seq->len,1, &s);
+                                func_ptr(data->fhmm[j],m,seq->seq, seq->len,1, &s[j]);
                                 //LOG_MSG("Thread: %d;model:%d Seq: %s %f %f",thread_id,model_id, data->sb->sequences[i]->name, f_score, logP);
                                 //RUN(forward(fhmm, m, &f_score, seq->seq, seq->seq_len ));
                                 //seq->score_arr[thread_id] = logP
@@ -134,6 +151,8 @@ ERROR:
         WARNING_MSG("Something really went wrong....");
         return NULL;
 }
+
+
 
 
 void* do_score_sequences_per_model(void* threadarg)

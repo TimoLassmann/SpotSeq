@@ -385,13 +385,12 @@ int run_build_ihmm(struct parameters* param)
                 //exit(0);
                 /* need to reset weights before writing models to disk!  */
                 if(param->competitive){ /* competitive training */
-                        set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0));
+                        set_sequence_weights(sb,  model_bag->num_models, 2.0 / log10f( (float) (i+1) + 1.0F));
                 }else{          /* reset sequence weights.  */
                         reset_sequence_weights(sb, model_bag->num_models);
                 }
                 STOP_TIMER(n);
                 GET_TIMING(n);
-
                 /* write temporary results */
                 LOG_MSG("Writing model");
                 START_TIMER(n);
@@ -402,13 +401,15 @@ int run_build_ihmm(struct parameters* param)
         }
 
         DESTROY_TIMER(n);
-
         /* Write results */
         RUN(convert_ihmm_to_fhmm_models(model_bag));
+
         //RUN(score_all_vs_all(model_bag,sb,td));
         RUN(write_model_bag_hdf5(model_bag,param->in_model));
+
         //RUN(add_annotation(param->in_model, "seqwise_model_cmd", param->cmd_line));
         RUN(add_sequences_to_hdf5_model(param->in_model, sb,  model_bag->num_models));
+
         RUN(write_thread_data_to_hdf5(param->in_model, td, param->num_threads, sb->max_len+2, model_bag->max_num_states));
         //RUN(write_thread_data_to_)
         //RUN(write_model(model, param->output));

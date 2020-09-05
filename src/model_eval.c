@@ -181,11 +181,10 @@ int main (int argc, char *argv[])
                 if(!sb->sequences[0]->data){
                         for(j = 0; j < sb->num_seq;j++){
                                 s = NULL;
-                                MMALLOC(s, sizeof(double) *2); /* slot 0 is score slot 1 the p-value */
+                                MMALLOC(s, sizeof(double));
                                 sb->sequences[j]->data = s;
                         }
                 }
-                
                 if(td){
                         RUN(resize_seqer_thread_data(td  ,(sb->max_len+2)  , fhmm->K+1));
                 }else{
@@ -194,7 +193,8 @@ int main (int argc, char *argv[])
                 RUN(run_score_sequences(&fhmm,sb, td,1 , FHMM_SCORE_LODD));
                 /* WARNING THIS DOESNY WORK AS TL_SEQ doesn't know about sequence scores yet */
                 for(j = 0; j < num_test_seq;j++){
-                        //score_arr[j] = sb->sequences[j]->score;
+                        s = sb->sequences[j]->data;
+                        score_arr[j] = s[0];
                 }
                 qsort(score_arr, num_test_seq, sizeof(double),double_cmp);
                 for(j = 0; j < num_test_seq;j++){

@@ -163,7 +163,7 @@ finite_hmm.c \
 finite_hmm_io.c \
 finite_hmm_score.c \
 fast_hmm_param.c \
-run_score.c 
+run_score.c
 
 seqer_eval_SOURCES = \
 model_eval.c \
@@ -193,12 +193,12 @@ makedb_CPPFLAGS = $(AM_CPPFLAGS) -DSEQDBTEST
 fhmm_test_SOURCES =  finite_hmm_test.c $(FINITEHMM) $(NULLMODEL) sequence_alloc.h \
 sequence_alloc.c \
 sequences_sim.h \
-sequences_sim.c 
+sequences_sim.c
 
 
 
 seqer_score_SOURCES = \
-score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE)
+score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE) bias_model.c bias_model.h
 
 seqer_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(SEQUENCESOURCES) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 

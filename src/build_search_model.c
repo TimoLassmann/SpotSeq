@@ -288,7 +288,7 @@ int calibrate_all(struct model_bag* mb,struct seqer_thread_data** td)
                         td[i]->model_ID = c;
                         td[i]->fhmm = mb->finite_models;
                         //td[i]->sb = sb;
-                        LOG_MSG("Cal %d",c);
+                        //LOG_MSG("Cal %d",c);
                         j++;
                         c++;
                         if(c == mb->num_models){

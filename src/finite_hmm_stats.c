@@ -64,8 +64,7 @@ int fhmm_calibrate(struct fhmm* fhmm,struct fhmm_dyn_mat* dm, int seed)
         /*         sim_len =  iter; */
         RUN(sim_sequences(sim_N, fhmm->L, sim_len, &sb, rng));
         for(i = 0; i < sb->num_seq;i++){
-                fhmm_score_lodd(fhmm, dm, sb->sequences[i]->seq, sb->sequences[i]->len, 1, &score);
-                f_scores[i] = score[0];
+                fhmm_score_lodd(fhmm, dm, sb->sequences[i]->seq, sb->sequences[i]->len, 1, &f_scores[i]);
         }
         RUN(esl_gumbel_FitComplete(f_scores, sim_N, &gmu, &glam));
 

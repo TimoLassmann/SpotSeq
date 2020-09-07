@@ -32,11 +32,11 @@ int main(void)
         RUN(alloc_fhmm_dyn_mat(&dm, 1024, fhmm->K));
 
         //configure_target_len(fhmm, 10, 0);
-        fhmm_calibrate(fhmm, dm, 42);
+        //fhmm_calibrate(fhmm, dm, 42);
         //exit(0);
         RUN(plot_finite_hmm_dot(fhmm, "fhmm_test_model.dot",0.01f));
 
-        test_seq[0] = 3;
+        test_seq[0] = 0;
         test_seq[1] = 1;
         test_seq[2] = 2;
         test_seq[3] = 3;
@@ -167,17 +167,26 @@ ERROR:
 
 int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq, int len)
 {
+        int* path = NULL;
         int i;
         LOG_MSG("SeqLen: %d", len);
         for(i = MACRO_MAX(1, len -10); i < len+10   ;i++){
-                fprintf(stdout,"LEN: %d\t",i);
+                
                 //configure_target_len(fhmm, MACRO_MAX(1, i-2), 0);
                 //configure_target_len(fhmm, i, 0);
                 forward(fhmm, dm, &fhmm->f_score, seq, len,0);
                 backward(fhmm, dm, &fhmm->b_score, seq, len,0);
                 random_model_score(len,&fhmm->r_score);// ,seq, len,len );
+
+    
                 //random_model_score(fhmm->background , &fhmm->r_score ,seq, len,len);
-                fprintf(stdout,"SCORE (uni) %f %f %f  %f  bit:%f\t", fhmm->f_score,fhmm->b_score, fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score),(fhmm->f_score - fhmm->r_score) / logf(2.0f));
+                fprintf(stdout,"LEN: %d\t",i);
+                fprintf(stdout,"SCORE (  uni) %f\n", fhmm->f_score);
+                fprintf(stdout,"LEN: %d\t",i);
+                fprintf(stdout,"SCORE (  uni) %f %f %f  %f  bit:%f\n", fhmm->b_score,scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),  fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score),(fhmm->f_score - fhmm->r_score) / logf(2.0f));
+
+                posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
+                exit(0);
                 //exit(0);
                 //break;
 
@@ -186,7 +195,10 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
                 forward(fhmm, dm, &fhmm->f_score, seq, len,1);
                 backward(fhmm, dm, &fhmm->b_score, seq, len,1);
                 random_model_score(len,&fhmm->r_score);// ,seq, len,len );
-                fprintf(stdout,"SCORE (multi) %f %f %f  %f\n", fhmm->f_score,fhmm->b_score, fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score));
+                fprintf(stdout,"LEN: %d\t",i);
+                fprintf(stdout,"SCORE (multi) %f \n", fhmm->f_score);
+                fprintf(stdout,"LEN: %d\t",i);
+                fprintf(stdout,"SCORE (multi) %f %f %f  %f\n", fhmm->b_score, scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score));
                 //LOG_MSG("%f", scaledprob2prob(fhmm->f_score - fhmm->b_score));
                 //exit(0);
         }
@@ -205,9 +217,9 @@ int generate_simple_fhmm(struct fhmm** f)
         RUNP(fhmm = alloc_fhmm());
 
         //fhmm->alloc_K = 1 + 5;
-        fhmm->K = 10;//model->num_states;
+        fhmm->K = 4;//model->num_states;
         fhmm->L = 4;
-        fhmm->alloc_K = 10;
+        fhmm->alloc_K = 4;
 
 
 
@@ -289,5 +301,6 @@ int generate_simple_fhmm(struct fhmm** f)
 ERROR:
         return FAIL;
 }
+
 
 

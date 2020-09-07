@@ -24,11 +24,10 @@ extern int calculate_BIC( struct fhmm* fhmm, double ML, double data,double* BIC)
 
 extern int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_t* a, int len,int mode);
 extern int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_t* a, int len,int mode);
+int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_score, uint8_t* a, int len,int* path);
 //extern int backward(struct fhmm* fhmm,float** matrix, float* ret_score, uint8_t* a, int len);
 //extern int backward(struct fhmm* fhmm,double** matrix, double* ret_score, uint8_t* a, int len);
-extern int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path);
-
-
+//extern int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,double score,uint8_t* a, int len,int* path);
 
 extern int setup_model(struct fhmm* fhmm);
 extern int convert_fhmm_scaled_to_prob(struct fhmm* fhmm);

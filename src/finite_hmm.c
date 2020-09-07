@@ -11,80 +11,6 @@ static float rel_entropy(float* vec, float* back,int N);
 
 static int score_bias_forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len);
 
-
-
-
-/* Calculate the bayesian information criteria score for a finite HMM */
-/* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
-/* data is the number of residues in the training dataset */
-int calculate_BIC( struct fhmm* fhmm, double ML, double data,double* BIC)
-{
-        int i,j,c;
-        double num_param;
-
-        ASSERT(fhmm != NULL, "No model");
-
-        ASSERT(data != 0, "No data");
-
-        num_param = 0.0;
-        for(i = 0; i < fhmm->K;i++){
-                c = 0;
-                for(j = 0; j < fhmm->K;j++){
-                        if(fhmm->t[i][j] != prob2scaledprob(0.0)){
-                                c++;
-                        }
-                }
-                c = c - 1;       /* we need to subtract one because the last transition is not a free parameter - the sumhas to be 1 */
-                num_param += c;
-        }
-        for(i = 0; i < fhmm->K;i++){
-                c = 0;
-                for(j = 0; j < fhmm->L;j++){
-                        if( fhmm->e[i][j] != prob2scaledprob(0.0)){
-                                c++;
-                        }
-                }
-                 c = c - 1;       /* we need to subtract one because the last emission is not a free parameter - the sumhas to be 1 */
-                 num_param += c;
-        }
-
-        *BIC = -2.0 * ML + num_param * log(data);
-
-        return OK;
-ERROR:
-        return FAIL;
-
-
-}
-
-
-int score_bias_forward(struct fhmm* fhmm, struct fhmm_dyn_mat* m, double* ret_score, uint8_t* a, int len)
-{
-        int i;
-        float** matrix = NULL;
-
-
-        ASSERT(fhmm != NULL, "No model");
-        ASSERT(m != NULL, "No dyn programming  matrix");
-        ASSERT(a != NULL, "No sequence");
-        ASSERT(len > 0, "Seq is of length 0");
-
-        matrix = m->F_matrix;
-
-        matrix[0][0] = prob2scaledprob(0.999F);
-        matrix[0][1] = prob2scaledprob(0.001F);
-
-        for(i = 1; i < len+1;i++){
-                matrix[i][0] = logsum(matrix[i-1][0]+fhmm->t[0][0] , matrix[i-1][1] + fhmm->t[1][0]) + fhmm->e[0][a[i-1]];
-                matrix[i][1] = logsum(matrix[i-1][1]+fhmm->t[1][1] , matrix[i-1][0] + fhmm->t[0][1]) + fhmm->e[1][a[i-1]];
-        }
-        /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
-        *ret_score = logsum(matrix[len][0], matrix[len][1]);
-        return OK;
-ERROR:
-        return FAIL;
-}
-
 int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_t* a, int len, int mode)
 {
         int i,j,c,f;
@@ -416,6 +342,55 @@ int posterior_decoding(struct fhmm* fhmm,double** Fmatrix, double** Bmatrix,doub
 ERROR:
         return FAIL;
 }
+
+
+
+
+/* Calculate the bayesian information criteria score for a finite HMM */
+/* ML is the maximum likelihood (i.e. product of p(x^k | M ))  */
+/* data is the number of residues in the training dataset */
+int calculate_BIC( struct fhmm* fhmm, double ML, double data,double* BIC)
+{
+        int i,j,c;
+        double num_param;
+
+        ASSERT(fhmm != NULL, "No model");
+
+        ASSERT(data != 0, "No data");
+
+        num_param = 0.0;
+        for(i = 0; i < fhmm->K;i++){
+                c = 0;
+                for(j = 0; j < fhmm->K;j++){
+                        if(fhmm->t[i][j] != prob2scaledprob(0.0)){
+                                c++;
+                        }
+                }
+                c = c - 1;       /* we need to subtract one because the last transition is not a free parameter - the sumhas to be 1 */
+                num_param += c;
+        }
+        for(i = 0; i < fhmm->K;i++){
+                c = 0;
+                for(j = 0; j < fhmm->L;j++){
+                        if( fhmm->e[i][j] != prob2scaledprob(0.0)){
+                                c++;
+                        }
+                }
+                 c = c - 1;       /* we need to subtract one because the last emission is not a free parameter - the sumhas to be 1 */
+                 num_param += c;
+        }
+
+        *BIC = -2.0 * ML + num_param * log(data);
+
+        return OK;
+ERROR:
+        return FAIL;
+
+
+}
+
+
+
 
 /* reads finite model from hdf5 file  */
 struct fhmm* init_fhmm(char* filename)

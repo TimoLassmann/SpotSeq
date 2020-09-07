@@ -120,7 +120,7 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score
+bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score fhmm_test
 
 # seqer_iclu seqer_emit tfbs_bench composition_bench  seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 

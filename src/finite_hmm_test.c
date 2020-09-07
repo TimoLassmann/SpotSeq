@@ -207,7 +207,7 @@ int generate_simple_fhmm(struct fhmm** f)
         //fhmm->alloc_K = 1 + 5;
         fhmm->K = 10;//model->num_states;
         fhmm->L = 4;
-
+        fhmm->alloc_K = 10;
 
 
 

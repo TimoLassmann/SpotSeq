@@ -1,5 +1,6 @@
 #include "tldevel.h"
 #include "tlrng.h"
+#include "tlseqbuffer.h"
 
 #include "sequence_alloc.h"
 #include "sequence_io.h"
@@ -10,7 +11,7 @@
 int main(int argc, char *argv[])
 {
         struct rng_state* rng = NULL;
-        struct seq_buffer* sb = NULL;
+        struct tl_seq_buffer* sb = NULL;
         int i;
         int l;
         const int p_limit = 100;
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
         RUN(prep_sequences(sb, rng, 1,0,0.0));
 
         free_rng(rng);
-        free_ihmm_sequences(sb);
+        free_tl_seq_buffer(sb);
 
 
         return EXIT_SUCCESS;

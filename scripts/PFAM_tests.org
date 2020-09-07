@@ -15,7 +15,7 @@
   The purpose here is to demonstrate how seqer (or whatever I'll it in future) can model protein sequences belonging to PFAM families. There are two main questions: a) can seqer replicate PFAM models /from unaligned/ sequences in the seed alignments and b) can wims /discover/ motifs from the full length sequences of the seed sequences. 
 
 
-* Plan [1/3]
+* Plan [2/3]
 
 ** testing 
 
@@ -54,7 +54,8 @@
    Pfam-A.rp15.gz
 
 
-** TODO script to extract alignments  from pfam data dump 
+** DONE script to extract alignments  from pfam data dump 
+   CLOSED: [2020-09-06 Sun 19:15]
 
 *** install easel  + very. very useful tools 
 
@@ -154,6 +155,1876 @@
 
 
 
+
+** Install hmmer
+
+   #+BEGIN_SRC bash  :dir "/ssh:tkivm:" :results raw 
+     cd /data/scratch/Timo/SEQER_PFAM/programs/
+     wget  http://eddylab.org/software/hmmer/hmmer.tar.gz
+     tar -zxvf hmmer.tar.gz 
+     cd  hmmer-3.3.1/
+     ./configure --prefix=/data/scratch/Timo/SEQER_PFAM/
+     make 
+     make check
+     make install 
+   #+END_SRC
+
+   #+RESULTS:
+   hmmer-3.3.1/
+   hmmer-3.3.1/documentation/
+   hmmer-3.3.1/install-sh
+   hmmer-3.3.1/configure.ac
+   hmmer-3.3.1/tutorial/
+   hmmer-3.3.1/INSTALL
+   hmmer-3.3.1/RELEASE-3.3.1.md
+   hmmer-3.3.1/libdivsufsort/
+   hmmer-3.3.1/LICENSE
+   hmmer-3.3.1/test-speed/
+   hmmer-3.3.1/configure
+   hmmer-3.3.1/testsuite/
+   hmmer-3.3.1/config.guess
+   hmmer-3.3.1/README.md
+   hmmer-3.3.1/Userguide.pdf
+   hmmer-3.3.1/config.sub
+   hmmer-3.3.1/.gitignore
+   hmmer-3.3.1/profmark/
+   hmmer-3.3.1/makeTAGS.sh
+   hmmer-3.3.1/easel/
+   hmmer-3.3.1/Makefile.in
+   hmmer-3.3.1/.travis.yml
+   hmmer-3.3.1/src/
+   hmmer-3.3.1/src/itest_brute.c
+   hmmer-3.3.1/src/p7_hmmd_search_stats.c
+   hmmer-3.3.1/src/p7_gmx.c
+   hmmer-3.3.1/src/hmmdutils.c
+   hmmer-3.3.1/src/hmmd_search_status.c
+   hmmer-3.3.1/src/hmmpgmd_client_example.pl
+   hmmer-3.3.1/src/hmmdwrkr_shard.c
+   hmmer-3.3.1/src/cachedb_shard.h
+   hmmer-3.3.1/src/p7_tophits.c
+   hmmer-3.3.1/src/generic_fwdback_banded.c
+   hmmer-3.3.1/src/hmmscan.c
+   hmmer-3.3.1/src/modelconfig.c
+   hmmer-3.3.1/src/p7_gmxchk.h
+   hmmer-3.3.1/src/generic_stotrace.c
+   hmmer-3.3.1/src/generic_null2.c
+   hmmer-3.3.1/src/p7_alidisplay.c
+   hmmer-3.3.1/src/impl_sse/
+   hmmer-3.3.1/src/evalues.c
+   hmmer-3.3.1/src/hmmemit.c
+   hmmer-3.3.1/src/p7_gbands.c
+   hmmer-3.3.1/src/p7_hmmcache.h
+   hmmer-3.3.1/src/emit.c
+   hmmer-3.3.1/src/p7_gmxb.c
+   hmmer-3.3.1/src/hmmpress.c
+   hmmer-3.3.1/src/hmmbuild.c
+   hmmer-3.3.1/src/cachedb.h
+   hmmer-3.3.1/src/alimask.c
+   hmmer-3.3.1/src/nhmmscan.c
+   hmmer-3.3.1/src/hmmpgmd.c
+   hmmer-3.3.1/src/p7_prior.c
+   hmmer-3.3.1/src/p7_scoredata.c
+   hmmer-3.3.1/src/generic_fwdback_chk.c
+   hmmer-3.3.1/src/impl_vmx/
+   hmmer-3.3.1/src/tracealign.c
+   hmmer-3.3.1/src/hmmpress.itest.pl
+   hmmer-3.3.1/src/p7_builder.c
+   hmmer-3.3.1/src/p7_bg.c
+   hmmer-3.3.1/src/hmmpgmd_shard.h
+   hmmer-3.3.1/src/hmmer.h
+   hmmer-3.3.1/src/p7_hit.c
+   hmmer-3.3.1/src/seqmodel.c
+   hmmer-3.3.1/src/generic_decoding.c
+   hmmer-3.3.1/src/hmmalign.c
+   hmmer-3.3.1/src/fm_alphabet.c
+   hmmer-3.3.1/src/generic_viterbi.c
+   hmmer-3.3.1/src/h2_io.c
+   hmmer-3.3.1/src/fm_sse.c
+   hmmer-3.3.1/src/p7_domaindef.c
+   hmmer-3.3.1/src/generic_fwdback_rescaled.c
+   hmmer-3.3.1/src/p7_spensemble.c
+   hmmer-3.3.1/src/cachedb_shard.c
+   hmmer-3.3.1/src/hmmdmstr.c
+   hmmer-3.3.1/src/p7_hmmwindow.c
+   hmmer-3.3.1/src/p7_hmm.c
+   hmmer-3.3.1/src/nhmmer.c
+   hmmer-3.3.1/src/fm_general.c
+   hmmer-3.3.1/src/hmmdwrkr.c
+   hmmer-3.3.1/src/generic_msv.c
+   hmmer-3.3.1/src/hmmsim.c
+   hmmer-3.3.1/src/fm_ssv.c
+   hmmer-3.3.1/src/hmmlogo.c
+   hmmer-3.3.1/src/build.c
+   hmmer-3.3.1/src/makehmmerdb.c
+   hmmer-3.3.1/src/jackhmmer.c
+   hmmer-3.3.1/src/p7_pipeline.c
+   hmmer-3.3.1/src/generic_optacc.c
+   hmmer-3.3.1/src/modelstats.c
+   hmmer-3.3.1/src/p7_config.h.in
+   hmmer-3.3.1/src/hmmc2.c
+   hmmer-3.3.1/src/heatmap.c
+   hmmer-3.3.1/src/logsum.c
+   hmmer-3.3.1/src/hmmstat.c
+   hmmer-3.3.1/src/generic_fwdback.c
+   hmmer-3.3.1/src/p7_gmxchk.c
+   hmmer-3.3.1/src/phmmer.c
+   hmmer-3.3.1/src/hmmsearch.c
+   hmmer-3.3.1/src/generic_vtrace.c
+   hmmer-3.3.1/src/mpisupport.c
+   hmmer-3.3.1/src/cachedb.c
+   hmmer-3.3.1/src/hmmpgmd.h
+   hmmer-3.3.1/src/p7_gmxb.h
+   hmmer-3.3.1/src/p7_null3.c
+   hmmer-3.3.1/src/p7_trace.c
+   hmmer-3.3.1/src/p7_hmmcache.c
+   hmmer-3.3.1/src/p7_gbands.h
+   hmmer-3.3.1/src/hmmerfm-exactmatch.c
+   hmmer-3.3.1/src/Makefile.in
+   hmmer-3.3.1/src/eweight.c
+   hmmer-3.3.1/src/hmmpgmd2msa.c
+   hmmer-3.3.1/src/hmmer.c
+   hmmer-3.3.1/src/hmmpgmd_shard.c
+   hmmer-3.3.1/src/p7_profile.c
+   hmmer-3.3.1/src/hmmdmstr_shard.c
+   hmmer-3.3.1/src/hmmconvert.c
+   hmmer-3.3.1/src/p7_domain.c
+   hmmer-3.3.1/src/errors.c
+   hmmer-3.3.1/src/hmmfetch.c
+   hmmer-3.3.1/src/p7_hmmfile.c
+   hmmer-3.3.1/src/impl_vmx/p7_oprofile.c
+   hmmer-3.3.1/src/impl_vmx/optacc.c
+   hmmer-3.3.1/src/impl_vmx/vitscore.c
+   hmmer-3.3.1/src/impl_vmx/io.c
+   hmmer-3.3.1/src/impl_vmx/decoding.c
+   hmmer-3.3.1/src/impl_vmx/msvfilter.c
+   hmmer-3.3.1/src/impl_vmx/impl_vmx.h
+   hmmer-3.3.1/src/impl_vmx/fwdback.c
+   hmmer-3.3.1/src/impl_vmx/p7_omx.c
+   hmmer-3.3.1/src/impl_vmx/null2.c
+   hmmer-3.3.1/src/impl_vmx/vitfilter.c
+   hmmer-3.3.1/src/impl_vmx/stotrace.c
+   hmmer-3.3.1/src/impl_vmx/00MANIFEST
+   hmmer-3.3.1/src/impl_vmx/Makefile.in
+   hmmer-3.3.1/src/impl_vmx/mpi.c
+   hmmer-3.3.1/src/impl_sse/p7_oprofile.c
+   hmmer-3.3.1/src/impl_sse/optacc.c
+   hmmer-3.3.1/src/impl_sse/vitscore.c
+   hmmer-3.3.1/src/impl_sse/io.c
+   hmmer-3.3.1/src/impl_sse/decoding.c
+   hmmer-3.3.1/src/impl_sse/msvfilter.c
+   hmmer-3.3.1/src/impl_sse/fbparsers.tex
+   hmmer-3.3.1/src/impl_sse/ssvfilter.c
+   hmmer-3.3.1/src/impl_sse/impl_sse.h
+   hmmer-3.3.1/src/impl_sse/fwdback.c
+   hmmer-3.3.1/src/impl_sse/p7_omx.c
+   hmmer-3.3.1/src/impl_sse/null2.c
+   hmmer-3.3.1/src/impl_sse/p7_omx.ai
+   hmmer-3.3.1/src/impl_sse/vitfilter.c
+   hmmer-3.3.1/src/impl_sse/stotrace.c
+   hmmer-3.3.1/src/impl_sse/00MANIFEST
+   hmmer-3.3.1/src/impl_sse/Makefile.in
+   hmmer-3.3.1/src/impl_sse/mpi.c
+   hmmer-3.3.1/easel/esl_sse.h
+   hmmer-3.3.1/easel/esl_regexp.tex
+   hmmer-3.3.1/easel/esl_exponential.c
+   hmmer-3.3.1/easel/esl_msashuffle.c
+   hmmer-3.3.1/easel/esl_alphabet.h
+   hmmer-3.3.1/easel/esl_random.h
+   hmmer-3.3.1/easel/esl_msafile_stockholm.c
+   hmmer-3.3.1/easel/esl_msafile_a2m.c
+   hmmer-3.3.1/easel/esl_recorder.h
+   hmmer-3.3.1/easel/esl_gev.tex
+   hmmer-3.3.1/easel/esl_vmx.h
+   hmmer-3.3.1/easel/esl_cluster.h
+   hmmer-3.3.1/easel/miniapps/
+   hmmer-3.3.1/easel/esl_ssi.c
+   hmmer-3.3.1/easel/esl_heap.h
+   hmmer-3.3.1/easel/esl_hyperexp.tex
+   hmmer-3.3.1/easel/esl_mpi.tex
+   hmmer-3.3.1/easel/esl_wuss.tex
+   hmmer-3.3.1/easel/esl_subcmd.c
+   hmmer-3.3.1/easel/esl_dmatrix.tex
+   hmmer-3.3.1/easel/esl_keyhash.h
+   hmmer-3.3.1/easel/esl_arr3.h
+   hmmer-3.3.1/easel/esl_sq.c
+   hmmer-3.3.1/easel/esl_mem.h
+   hmmer-3.3.1/easel/esl_stretchexp.h
+   hmmer-3.3.1/easel/esl_matrixops.c
+   hmmer-3.3.1/easel/documentation/
+   hmmer-3.3.1/easel/esl_getopts.c
+   hmmer-3.3.1/easel/esl_dsqdata.tex
+   hmmer-3.3.1/easel/install-sh
+   hmmer-3.3.1/easel/configure.ac
+   hmmer-3.3.1/easel/esl_regexp.h
+   hmmer-3.3.1/easel/esl_getopts.md
+   hmmer-3.3.1/easel/esl_dirichlet.h
+   hmmer-3.3.1/easel/esl_sqio.h
+   hmmer-3.3.1/easel/esl_randomseq.c
+   hmmer-3.3.1/easel/esl_randomseq.tex
+   hmmer-3.3.1/easel/esl_stopwatch.tex
+   hmmer-3.3.1/easel/esl_quicksort.h
+   hmmer-3.3.1/easel/esl_json.h
+   hmmer-3.3.1/easel/esl_fileparser.h
+   hmmer-3.3.1/easel/interface_gsl.h
+   hmmer-3.3.1/easel/formats/
+   hmmer-3.3.1/easel/esl_hmm.c
+   hmmer-3.3.1/easel/esl_swat.tex
+   hmmer-3.3.1/easel/esl_stopwatch.c
+   hmmer-3.3.1/easel/esl_neon.c
+   hmmer-3.3.1/easel/esl_rand64.h
+   hmmer-3.3.1/easel/esl_msa.tex
+   hmmer-3.3.1/easel/esl_mpi.c
+   hmmer-3.3.1/easel/LICENSE
+   hmmer-3.3.1/easel/esl_gencode.c
+   hmmer-3.3.1/easel/esl_stats.c
+   hmmer-3.3.1/easel/esl_red_black.h
+   hmmer-3.3.1/easel/demotic/
+   hmmer-3.3.1/easel/esl_scorematrix.h
+   hmmer-3.3.1/easel/esl_avx512.c
+   hmmer-3.3.1/easel/esl_alloc.c
+   hmmer-3.3.1/easel/easel.c
+   hmmer-3.3.1/easel/esl_graph.h
+   hmmer-3.3.1/easel/esl_distance.c
+   hmmer-3.3.1/easel/esl_histogram.c
+   hmmer-3.3.1/easel/esl_composition.h
+   hmmer-3.3.1/easel/esl_gev.c
+   hmmer-3.3.1/easel/esl_tree.tex
+   hmmer-3.3.1/easel/esl_weibull.h
+   hmmer-3.3.1/easel/esl_paml.c
+   hmmer-3.3.1/easel/esl_msafile_phylip.c
+   hmmer-3.3.1/easel/esl_workqueue.h
+   hmmer-3.3.1/easel/esl_msa.c
+   hmmer-3.3.1/easel/esl_msafile2.h
+   hmmer-3.3.1/easel/esl_tree.c
+   hmmer-3.3.1/easel/esl_buffer.tex
+   hmmer-3.3.1/easel/esl_sqio_ascii.h
+   hmmer-3.3.1/easel/esl_hyperexp.h
+   hmmer-3.3.1/easel/esl_arr2.c
+   hmmer-3.3.1/easel/esl_weibull.tex
+   hmmer-3.3.1/easel/esl_vectorops.c
+   hmmer-3.3.1/easel/testsuite/
+   hmmer-3.3.1/easel/esl_ratematrix.c
+   hmmer-3.3.1/easel/esl_msaweight.c
+   hmmer-3.3.1/easel/esl_rootfinder.h
+   hmmer-3.3.1/easel/esl_sqio_ncbi.c
+   hmmer-3.3.1/easel/esl_normal.tex
+   hmmer-3.3.1/easel/esl_mixgev.c
+   hmmer-3.3.1/easel/esl_alphabet.tex
+   hmmer-3.3.1/easel/esl_dsqdata.md
+   hmmer-3.3.1/easel/esl_msafile_psiblast.c
+   hmmer-3.3.1/easel/esl_bitfield.h
+   hmmer-3.3.1/easel/esl_msafile_selex.h
+   hmmer-3.3.1/easel/esl_msacluster.h
+   hmmer-3.3.1/easel/esl_threads.h
+   hmmer-3.3.1/easel/esl_minimizer.c
+   hmmer-3.3.1/easel/esl_dsqdata.c
+   hmmer-3.3.1/easel/esl_varint.c
+   hmmer-3.3.1/easel/esl_swat.c
+   hmmer-3.3.1/easel/esl_normal.h
+   hmmer-3.3.1/easel/esl_cpu.h
+   hmmer-3.3.1/easel/interface_lapack.h
+   hmmer-3.3.1/easel/esl_vectorops.md
+   hmmer-3.3.1/easel/esl_wuss.h
+   hmmer-3.3.1/easel/esl_gamma.c
+   hmmer-3.3.1/easel/esl_cluster.tex
+   hmmer-3.3.1/easel/config.guess
+   hmmer-3.3.1/easel/esl_gumbel.h
+   hmmer-3.3.1/easel/esl_msafile_clustal.c
+   hmmer-3.3.1/easel/esl_dmatrix.h
+   hmmer-3.3.1/easel/esl_mixdchlet.h
+   hmmer-3.3.1/easel/esl_sqio.tex
+   hmmer-3.3.1/easel/esl_huffman.c
+   hmmer-3.3.1/easel/esl_stack.c
+   hmmer-3.3.1/easel/esl_msafile.h
+   hmmer-3.3.1/easel/esl_msafile_afa.c
+   hmmer-3.3.1/easel/esl_histogram.tex
+   hmmer-3.3.1/easel/esl_config.h.in
+   hmmer-3.3.1/easel/release-notes/
+   hmmer-3.3.1/easel/esl_buffer.h
+   hmmer-3.3.1/easel/esl_scorematrix.tex
+   hmmer-3.3.1/easel/esl_random.tex
+   hmmer-3.3.1/easel/esl_varint.md
+   hmmer-3.3.1/easel/esl_avx.c
+   hmmer-3.3.1/easel/esl_sse.tex
+   hmmer-3.3.1/easel/esl_mem.md
+   hmmer-3.3.1/easel/README.md
+   hmmer-3.3.1/easel/esl_dirichlet.c
+   hmmer-3.3.1/easel/esl_regexp.c
+   hmmer-3.3.1/easel/esl_stretchexp.c
+   hmmer-3.3.1/easel/esl_sq.h
+   hmmer-3.3.1/easel/esl_mem.c
+   hmmer-3.3.1/easel/esl_keyhash.c
+   hmmer-3.3.1/easel/esl_arr3.c
+   hmmer-3.3.1/easel/esl_subcmd.h
+   hmmer-3.3.1/easel/esl_getopts.h
+   hmmer-3.3.1/easel/esl_matrixops.h
+   hmmer-3.3.1/easel/esl_ssi.tex
+   hmmer-3.3.1/easel/config.sub
+   hmmer-3.3.1/easel/esl_keyhash.tex
+   hmmer-3.3.1/easel/esl_vmx.c
+   hmmer-3.3.1/easel/esl_recorder.c
+   hmmer-3.3.1/easel/esl_msafile_stockholm.h
+   hmmer-3.3.1/easel/esl_msafile_a2m.h
+   hmmer-3.3.1/easel/esl_gamma.tex
+   hmmer-3.3.1/easel/esl_heap.c
+   hmmer-3.3.1/easel/esl_ssi.h
+   hmmer-3.3.1/easel/esl_cluster.c
+   hmmer-3.3.1/easel/esl_sse.c
+   hmmer-3.3.1/easel/.gitignore
+   hmmer-3.3.1/easel/esl_random.c
+   hmmer-3.3.1/easel/esl_alphabet.c
+   hmmer-3.3.1/easel/esl_msashuffle.h
+   hmmer-3.3.1/easel/esl_exponential.h
+   hmmer-3.3.1/easel/esl_graph.c
+   hmmer-3.3.1/easel/esl_distance.h
+   hmmer-3.3.1/easel/esl_paml.h
+   hmmer-3.3.1/easel/esl_weibull.c
+   hmmer-3.3.1/easel/esl_distance.tex
+   hmmer-3.3.1/easel/esl_gev.h
+   hmmer-3.3.1/easel/esl_gumbel.tex
+   hmmer-3.3.1/easel/esl_composition.c
+   hmmer-3.3.1/easel/esl_histogram.h
+   hmmer-3.3.1/easel/esl_red_black.c
+   hmmer-3.3.1/easel/esl_scorematrix.c
+   hmmer-3.3.1/easel/esl_avx512.h
+   hmmer-3.3.1/easel/esl_ratematrix.tex
+   hmmer-3.3.1/easel/esl_stats.h
+   hmmer-3.3.1/easel/esl_gencode.h
+   hmmer-3.3.1/easel/esl_alloc.md
+   hmmer-3.3.1/easel/easel.h
+   hmmer-3.3.1/easel/esl_alloc.h
+   hmmer-3.3.1/easel/interface_gsl.c
+   hmmer-3.3.1/easel/esl_msaweight.md
+   hmmer-3.3.1/easel/esl_mpi.h
+   hmmer-3.3.1/easel/esl_rand64.c
+   hmmer-3.3.1/easel/esl_stopwatch.h
+   hmmer-3.3.1/easel/esl_neon.h
+   hmmer-3.3.1/easel/esl_hmm.h
+   hmmer-3.3.1/easel/esl_quicksort.c
+   hmmer-3.3.1/easel/esl_rootfinder.tex
+   hmmer-3.3.1/easel/m4/
+   hmmer-3.3.1/easel/esl_sq.tex
+   hmmer-3.3.1/easel/esl_sqio.c
+   hmmer-3.3.1/easel/esl_randomseq.h
+   hmmer-3.3.1/easel/esl_fileparser.c
+   hmmer-3.3.1/easel/esl_json.c
+   hmmer-3.3.1/easel/makeTAGS.sh
+   hmmer-3.3.1/easel/esl_mixgev.h
+   hmmer-3.3.1/easel/esl_stretchexp.tex
+   hmmer-3.3.1/easel/esl_stack.tex
+   hmmer-3.3.1/easel/devkit/
+   hmmer-3.3.1/easel/esl_dirichlet.tex
+   hmmer-3.3.1/easel/esl_msaweight.tex
+   hmmer-3.3.1/easel/esl_sqio_ncbi.h
+   hmmer-3.3.1/easel/esl_rootfinder.c
+   hmmer-3.3.1/easel/esl_ratematrix.h
+   hmmer-3.3.1/easel/esl_msaweight.h
+   hmmer-3.3.1/easel/esl_msacluster.tex
+   hmmer-3.3.1/easel/esl_sqio_ascii.c
+   hmmer-3.3.1/easel/esl_vectorops.h
+   hmmer-3.3.1/easel/esl_arr2.h
+   hmmer-3.3.1/easel/esl_fileparser.tex
+   hmmer-3.3.1/easel/esl_hyperexp.c
+   hmmer-3.3.1/easel/esl_exponential.tex
+   hmmer-3.3.1/easel/esl_workqueue.c
+   hmmer-3.3.1/easel/esl_paml.tex
+   hmmer-3.3.1/easel/decoy_config.h.in
+   hmmer-3.3.1/easel/esl_msafile_phylip.h
+   hmmer-3.3.1/easel/esl_tree.h
+   hmmer-3.3.1/easel/esl_mixdchlet.tex
+   hmmer-3.3.1/easel/esl_msa.h
+   hmmer-3.3.1/easel/esl_msafile2.c
+   hmmer-3.3.1/easel/esl_stats.tex
+   hmmer-3.3.1/easel/esl_buffer.c
+   hmmer-3.3.1/easel/easel.tex
+   hmmer-3.3.1/easel/Makefile.in
+   hmmer-3.3.1/easel/.travis.yml
+   hmmer-3.3.1/easel/esl_avx.h
+   hmmer-3.3.1/easel/esl_mixdchlet.c
+   hmmer-3.3.1/easel/esl_dmatrix.c
+   hmmer-3.3.1/easel/esl_msafile_clustal.h
+   hmmer-3.3.1/easel/esl_gumbel.c
+   hmmer-3.3.1/easel/esl_msafile.c
+   hmmer-3.3.1/easel/esl_msafile_afa.h
+   hmmer-3.3.1/easel/esl_stack.h
+   hmmer-3.3.1/easel/esl_huffman.h
+   hmmer-3.3.1/easel/esl_cpu.c
+   hmmer-3.3.1/easel/interface_lapack.c
+   hmmer-3.3.1/easel/esl_normal.c
+   hmmer-3.3.1/easel/esl_varint.h
+   hmmer-3.3.1/easel/esl_minimizer.tex
+   hmmer-3.3.1/easel/esl_wuss.c
+   hmmer-3.3.1/easel/esl_gamma.h
+   hmmer-3.3.1/easel/esl_bitfield.c
+   hmmer-3.3.1/easel/esl_msafile_psiblast.h
+   hmmer-3.3.1/easel/esl_msafile.md
+   hmmer-3.3.1/easel/esl_dsqdata.h
+   hmmer-3.3.1/easel/esl_msa_testfiles/
+   hmmer-3.3.1/easel/esl_threads.c
+   hmmer-3.3.1/easel/esl_minimizer.h
+   hmmer-3.3.1/easel/esl_msacluster.c
+   hmmer-3.3.1/easel/esl_msafile_selex.c
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/
+   hmmer-3.3.1/easel/esl_msa_testfiles/a2m/
+   hmmer-3.3.1/easel/esl_msa_testfiles/psiblast/
+   hmmer-3.3.1/easel/esl_msa_testfiles/afa/
+   hmmer-3.3.1/easel/esl_msa_testfiles/clustal/
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylips/
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.6
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.8
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.7
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.5
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.4
+   hmmer-3.3.1/easel/esl_msa_testfiles/stockholm/stockholm.bad.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylips/phylips.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylips/phylips.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/clustal/clustal.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/clustal/clustal.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/afa/afa.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/afa/afa.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/afa/afa.good.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/psiblast/psiblast.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/psiblast/psiblast.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/a2m/a2m.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/a2m/a2m.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.12
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.13
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.14
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.9
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.7
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.6
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.good.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.8
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.11
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.10
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.good.4
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.4
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.good.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/selex.bad.5
+   hmmer-3.3.1/easel/esl_msa_testfiles/selex/00MANIFEST
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.11
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.10
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.good.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.4
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.3
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.good.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.2
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.5
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.ambig.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.9
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.7
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.6
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.1
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.bad.8
+   hmmer-3.3.1/easel/esl_msa_testfiles/phylip/phylip.good.1
+   hmmer-3.3.1/easel/devkit/techtree.py
+   hmmer-3.3.1/easel/devkit/ctags-fix
+   hmmer-3.3.1/easel/devkit/cexcerpt.man
+   hmmer-3.3.1/easel/devkit/autodoc
+   hmmer-3.3.1/easel/devkit/man2optlist
+   hmmer-3.3.1/easel/devkit/autodoc.md
+   hmmer-3.3.1/easel/devkit/sedition-pp
+   hmmer-3.3.1/easel/devkit/00README
+   hmmer-3.3.1/easel/devkit/rmanprocess.pl
+   hmmer-3.3.1/easel/devkit/rmanprocess.py
+   hmmer-3.3.1/easel/devkit/cexcerpt
+   hmmer-3.3.1/easel/devkit/c2optlist
+   hmmer-3.3.1/easel/devkit/sqc
+   hmmer-3.3.1/easel/devkit/autodoc.py
+   hmmer-3.3.1/easel/devkit/sedition
+   hmmer-3.3.1/easel/m4/esl_avx.m4
+   hmmer-3.3.1/easel/m4/esl_pic_flags.m4
+   hmmer-3.3.1/easel/m4/esl_vmx.m4
+   hmmer-3.3.1/easel/m4/ax_compiler_vendor.m4
+   hmmer-3.3.1/easel/m4/esl_sse.m4
+   hmmer-3.3.1/easel/m4/ax_check_compile_flag.m4
+   hmmer-3.3.1/easel/m4/esl_avx512.m4
+   hmmer-3.3.1/easel/m4/esl_sse4.m4
+   hmmer-3.3.1/easel/m4/esl_cuda.m4
+   hmmer-3.3.1/easel/m4/ax_check_gnu_make.m4
+   hmmer-3.3.1/easel/m4/ax_gcc_func_attribute.m4
+   hmmer-3.3.1/easel/m4/ax_pthread.m4
+   hmmer-3.3.1/easel/m4/esl_neon.m4
+   hmmer-3.3.1/easel/m4/ax_prog_cc_mpi.m4
+   hmmer-3.3.1/easel/release-notes/RELEASE-0.46.md
+   hmmer-3.3.1/easel/release-notes/RELEASE-0.47.md
+   hmmer-3.3.1/easel/testsuite/i2-ncbi-indices.pl
+   hmmer-3.3.1/easel/testsuite/trna-ssdraw.ps
+   hmmer-3.3.1/easel/testsuite/e2.sh
+   hmmer-3.3.1/easel/testsuite/parse_test_results.py
+   hmmer-3.3.1/easel/testsuite/i3-blank-gf.pl
+   hmmer-3.3.1/easel/testsuite/i1-degen-residues.pl
+   hmmer-3.3.1/easel/testsuite/valgrind_report.pl
+   hmmer-3.3.1/easel/testsuite/testsuite.sqc
+   hmmer-3.3.1/easel/testsuite/trna-5.stk
+   hmmer-3.3.1/easel/testsuite/Makefile.in
+   hmmer-3.3.1/easel/testsuite/coverage_report.pl
+   hmmer-3.3.1/easel/demotic/fasta2profmark
+   hmmer-3.3.1/easel/demotic/blast2tbl
+   hmmer-3.3.1/easel/demotic/demotic_infernal_tab.pm
+   hmmer-3.3.1/easel/demotic/regress/
+   hmmer-3.3.1/easel/demotic/demotic_blast.pm
+   hmmer-3.3.1/easel/demotic/00README
+   hmmer-3.3.1/easel/demotic/test.pl
+   hmmer-3.3.1/easel/demotic/demotic_fasta.pm
+   hmmer-3.3.1/easel/demotic/hmmer2profmark
+   hmmer-3.3.1/easel/demotic/infernal_tab2gff.pl
+   hmmer-3.3.1/easel/demotic/demotic_hmmer.pm
+   hmmer-3.3.1/easel/demotic/examples/
+   hmmer-3.3.1/easel/demotic/blast2profmark
+   hmmer-3.3.1/easel/demotic/h22tbl
+   hmmer-3.3.1/easel/demotic/fasta2tbl
+   hmmer-3.3.1/easel/demotic/h22profmark
+   hmmer-3.3.1/easel/demotic/demotic_h2.pm
+   hmmer-3.3.1/easel/demotic/hmmer2tbl
+   hmmer-3.3.1/easel/demotic/examples/example-single.fa.pin
+   hmmer-3.3.1/easel/demotic/examples/example-single-psiquery.fa
+   hmmer-3.3.1/easel/demotic/examples/example-single.pbl
+   hmmer-3.3.1/easel/demotic/examples/example.hmm
+   hmmer-3.3.1/easel/demotic/examples/example.hmmsearch.out
+   hmmer-3.3.1/easel/demotic/examples/example-single.fa.psq
+   hmmer-3.3.1/easel/demotic/examples/example.fa
+   hmmer-3.3.1/easel/demotic/examples/example.ssearch.out
+   hmmer-3.3.1/easel/demotic/examples/example-single.fa
+   hmmer-3.3.1/easel/demotic/examples/example.sto
+   hmmer-3.3.1/easel/demotic/examples/example.hmm2
+   hmmer-3.3.1/easel/demotic/examples/example-single.asnt
+   hmmer-3.3.1/easel/demotic/examples/example.psiblast.out
+   hmmer-3.3.1/easel/demotic/examples/example-single.sto
+   hmmer-3.3.1/easel/demotic/examples/example.wu-blastp.out
+   hmmer-3.3.1/easel/demotic/examples/example.fasta.out
+   hmmer-3.3.1/easel/demotic/examples/example.h2.out
+   hmmer-3.3.1/easel/demotic/examples/example.phmmer.out
+   hmmer-3.3.1/easel/demotic/examples/example-single.fa.phr
+   hmmer-3.3.1/easel/demotic/examples/example.ncbi-blastp.out
+   hmmer-3.3.1/easel/demotic/regress/ssearch-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/hmmsearch-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/psiblast-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/h2-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/ncbi-blastp-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/wu-blastp-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/ncbi-blastp-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/wu-blastp-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/fasta-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/h2-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/fasta-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/phmmer-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/phmmer-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/ssearch-tbl.out
+   hmmer-3.3.1/easel/demotic/regress/hmmsearch-profmark.out
+   hmmer-3.3.1/easel/demotic/regress/psiblast-tbl.out
+   hmmer-3.3.1/easel/formats/fasta.bad.1
+   hmmer-3.3.1/easel/formats/wag.dat
+   hmmer-3.3.1/easel/formats/BLOSUM62
+   hmmer-3.3.1/easel/formats/fasta
+   hmmer-3.3.1/easel/formats/fasta.2
+   hmmer-3.3.1/easel/formats/fasta.bad.2
+   hmmer-3.3.1/easel/formats/genbank.2
+   hmmer-3.3.1/easel/formats/fasta.bad.3
+   hmmer-3.3.1/easel/formats/embl
+   hmmer-3.3.1/easel/formats/uniprot
+   hmmer-3.3.1/easel/formats/genbank
+   hmmer-3.3.1/easel/formats/stockholm.1
+   hmmer-3.3.1/easel/formats/genbank.bad.1
+   hmmer-3.3.1/easel/formats/fasta.odd.1
+   hmmer-3.3.1/easel/documentation/copyright.tex
+   hmmer-3.3.1/easel/documentation/intro.tex
+   hmmer-3.3.1/easel/documentation/format_stockholm.tex
+   hmmer-3.3.1/easel/documentation/typography.tex
+   hmmer-3.3.1/easel/documentation/format_ncbi.tex
+   hmmer-3.3.1/easel/documentation/macros.tex
+   hmmer-3.3.1/easel/documentation/doctricks.tex
+   hmmer-3.3.1/easel/documentation/install.tex
+   hmmer-3.3.1/easel/documentation/main.tex
+   hmmer-3.3.1/easel/documentation/format_wuss.tex
+   hmmer-3.3.1/easel/documentation/format_a2m.tex
+   hmmer-3.3.1/easel/documentation/figures/
+   hmmer-3.3.1/easel/documentation/codestyle.tex
+   hmmer-3.3.1/easel/documentation/titlepage.tex
+   hmmer-3.3.1/easel/documentation/Makefile.in
+   hmmer-3.3.1/easel/documentation/installation.tex
+   hmmer-3.3.1/easel/documentation/codestyle.md
+   hmmer-3.3.1/easel/documentation/statistics.tex
+   hmmer-3.3.1/easel/documentation/figures/easel_techtree.png
+   hmmer-3.3.1/easel/documentation/figures/easel_techtree.pdf
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-bsu-alignment.pdf
+   hmmer-3.3.1/easel/documentation/figures/rna_elements.pdf
+   hmmer-3.3.1/easel/documentation/figures/evd_basic.pdf
+   hmmer-3.3.1/easel/documentation/figures/rna_elements.ai
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-bsu-alignment.ai
+   hmmer-3.3.1/easel/documentation/figures/evd_location.pdf
+   hmmer-3.3.1/easel/documentation/figures/gev_density.pdf
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-ecoli.pdf
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-ecoli.eps
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-ecoli.ai
+   hmmer-3.3.1/easel/documentation/figures/rnaseP-bsu-alignment.eps
+   hmmer-3.3.1/easel/documentation/figures/evd_scale.pdf
+   hmmer-3.3.1/easel/documentation/figures/easel_techtree.ai
+   hmmer-3.3.1/easel/documentation/figures/gev_logdensity.pdf
+   hmmer-3.3.1/easel/documentation/figures/rna_elements.eps
+   hmmer-3.3.1/easel/miniapps/esl-seqstat.c
+   hmmer-3.3.1/easel/miniapps/esl-mixdchlet.c
+   hmmer-3.3.1/easel/miniapps/esl-alimask.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-alimanip.c
+   hmmer-3.3.1/easel/miniapps/esl-alimanip.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-compalign.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-mask.man.in
+   hmmer-3.3.1/easel/miniapps/esl-shuffle.itest.py
+   hmmer-3.3.1/easel/miniapps/esl-alimap.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-alistat.c
+   hmmer-3.3.1/easel/miniapps/easel-downsample.man.in
+   hmmer-3.3.1/easel/miniapps/esl-translate.c
+   hmmer-3.3.1/easel/miniapps/esl-shuffle.man.in
+   hmmer-3.3.1/easel/miniapps/esl-alistat.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-mask.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-reformat.c
+   hmmer-3.3.1/easel/miniapps/esl-histplot.c
+   hmmer-3.3.1/easel/miniapps/esl-alirev.c
+   hmmer-3.3.1/easel/miniapps/esl-alimerge.itest.pl
+   hmmer-3.3.1/easel/miniapps/easel.c
+   hmmer-3.3.1/easel/miniapps/esl-reformat.man.in
+   hmmer-3.3.1/easel/miniapps/esl-seqrange.c
+   hmmer-3.3.1/easel/miniapps/esl-seqstat.man.in
+   hmmer-3.3.1/easel/miniapps/esl-shuffle.c
+   hmmer-3.3.1/easel/miniapps/esl-translate.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-seqrange.man.in
+   hmmer-3.3.1/easel/miniapps/esl-compstruct.c
+   hmmer-3.3.1/easel/miniapps/esl-alimap.c
+   hmmer-3.3.1/easel/miniapps/esl-alimap.man.in
+   hmmer-3.3.1/easel/miniapps/esl-translate.man.in
+   hmmer-3.3.1/easel/miniapps/esl-afetch.man.in
+   hmmer-3.3.1/easel/miniapps/esl-alimerge.c
+   hmmer-3.3.1/easel/miniapps/esl-compalign.c
+   hmmer-3.3.1/easel/miniapps/esl-construct.c
+   hmmer-3.3.1/easel/miniapps/esl-ssdraw.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-alimask.c
+   hmmer-3.3.1/easel/miniapps/esl-alimanip.man.in
+   hmmer-3.3.1/easel/miniapps/esl-mask.c
+   hmmer-3.3.1/easel/miniapps/esl-weight.man.in
+   hmmer-3.3.1/easel/miniapps/esl-alipid.c
+   hmmer-3.3.1/easel/miniapps/esl-alimask.man.in
+   hmmer-3.3.1/easel/miniapps/esl-weight.c
+   hmmer-3.3.1/easel/miniapps/cmd_filter.md
+   hmmer-3.3.1/easel/miniapps/cmd_alistat.c
+   hmmer-3.3.1/easel/miniapps/esl-ssdraw.man.in
+   hmmer-3.3.1/easel/miniapps/esl-seqrange.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-histplot.man.in
+   hmmer-3.3.1/easel/miniapps/esl-construct.itest.pl
+   hmmer-3.3.1/easel/miniapps/esl-afetch.c
+   hmmer-3.3.1/easel/miniapps/esl-alimerge.man.in
+   hmmer-3.3.1/easel/miniapps/esl-ssdraw.c
+   hmmer-3.3.1/easel/miniapps/esl-selectn.c
+   hmmer-3.3.1/easel/miniapps/cmd_filter.c
+   hmmer-3.3.1/easel/miniapps/esl-alipid.man.in
+   hmmer-3.3.1/easel/miniapps/esl-selectn.man.in
+   hmmer-3.3.1/easel/miniapps/esl-construct.man.in
+   hmmer-3.3.1/easel/miniapps/esl-alirev.man.in
+   hmmer-3.3.1/easel/miniapps/esl-mixdchlet.man.in
+   hmmer-3.3.1/easel/miniapps/cmd_downsample.c
+   hmmer-3.3.1/easel/miniapps/esl-afetch.itest.pl
+   hmmer-3.3.1/easel/miniapps/Makefile.in
+   hmmer-3.3.1/easel/miniapps/esl-sfetch.c
+   hmmer-3.3.1/easel/miniapps/esl-alistat.man.in
+   hmmer-3.3.1/easel/miniapps/esl-compalign.man.in
+   hmmer-3.3.1/easel/miniapps/esl-sfetch.man.in
+   hmmer-3.3.1/easel/miniapps/esl-compstruct.man.in
+   hmmer-3.3.1/profmark/x-h2-ls
+   hmmer-3.3.1/profmark/x-psiblast+
+   hmmer-3.3.1/profmark/x-h2-fs
+   hmmer-3.3.1/profmark/x-single-ssearch
+   hmmer-3.3.1/profmark/pmark-master.pl
+   hmmer-3.3.1/profmark/x-iterate-psiblast
+   hmmer-3.3.1/profmark/x-fps-fasta
+   hmmer-3.3.1/profmark/00README
+   hmmer-3.3.1/profmark/x-fps-ssearch
+   hmmer-3.3.1/profmark/x-phmmer-consensus
+   hmmer-3.3.1/profmark/rocplot.pl
+   hmmer-3.3.1/profmark/x-single-phmmer
+   hmmer-3.3.1/profmark/x-fps-ncbiblast+
+   hmmer-3.3.1/profmark/x-hmmsearch
+   hmmer-3.3.1/profmark/x-sam
+   hmmer-3.3.1/profmark/x-iterate-jackhmmer
+   hmmer-3.3.1/profmark/rocplot.c
+   hmmer-3.3.1/profmark/pmark.param
+   hmmer-3.3.1/profmark/x-fps-wublast
+   hmmer-3.3.1/profmark/create-profmark.c
+   hmmer-3.3.1/profmark/x-hmmsearch-max
+   hmmer-3.3.1/profmark/x-fps-ncbiblast
+   hmmer-3.3.1/profmark/x-fps-phmmer
+   hmmer-3.3.1/profmark/Makefile.in
+   hmmer-3.3.1/profmark/x-single-ncbiblast
+   hmmer-3.3.1/profmark/x-psiblast
+   hmmer-3.3.1/testsuite/20aa-alitest.afa
+   hmmer-3.3.1/testsuite/20aa-alitest.phr
+   hmmer-3.3.1/testsuite/RRM_1.sto
+   hmmer-3.3.1/testsuite/3box-alitest.nhr
+   hmmer-3.3.1/testsuite/20aa-alitest.sto
+   hmmer-3.3.1/testsuite/i15-hmmconvert.pl
+   hmmer-3.3.1/testsuite/i19-hmmpgmd-ga.pl
+   hmmer-3.3.1/testsuite/2OG-FeII_Oxy_3.hmm
+   hmmer-3.3.1/testsuite/20aa-alitest.psi
+   hmmer-3.3.1/testsuite/RRM_1.hmm
+   hmmer-3.3.1/testsuite/h3.pm
+   hmmer-3.3.1/testsuite/3box-alitest.fa
+   hmmer-3.3.1/testsuite/3box-alitest.nsi
+   hmmer-3.3.1/testsuite/XYPPX.hmm
+   hmmer-3.3.1/testsuite/i8-nonresidues.pl
+   hmmer-3.3.1/testsuite/iss159-nhmmer-overlap.py
+   hmmer-3.3.1/testsuite/i22-hmmpgmd-shard-ga.pl
+   hmmer-3.3.1/testsuite/i7-hmmbuild-fragments.pl
+   hmmer-3.3.1/testsuite/i11-hmmalign-mapali.pl
+   hmmer-3.3.1/testsuite/i21-rewind.pl
+   hmmer-3.3.1/testsuite/20aa-alitest.pog
+   hmmer-3.3.1/testsuite/i12-delete-corruption.pl
+   hmmer-3.3.1/testsuite/XYPPX.sto
+   hmmer-3.3.1/testsuite/3box-alitest.nog
+   hmmer-3.3.1/testsuite/i2-search-variation.sh
+   hmmer-3.3.1/testsuite/ecori.hmm
+   hmmer-3.3.1/testsuite/i18-nhmmer-generic.pl
+   hmmer-3.3.1/testsuite/ecori.fa
+   hmmer-3.3.1/testsuite/20aa.hmm
+   hmmer-3.3.1/testsuite/parse_test_results.py
+   hmmer-3.3.1/testsuite/3box.hmm
+   hmmer-3.3.1/testsuite/M1.sto
+   hmmer-3.3.1/testsuite/i14-hmmemit-consensus.pl
+   hmmer-3.3.1/testsuite/2OG-FeII_Oxy_3-nt.hmm
+   hmmer-3.3.1/testsuite/PSE.sto
+   hmmer-3.3.1/testsuite/minifam
+   hmmer-3.3.1/testsuite/20aa-alitest.psd
+   hmmer-3.3.1/testsuite/PSE.hmm
+   hmmer-3.3.1/testsuite/rndseq400-10.fa
+   hmmer-3.3.1/testsuite/M1.hmm
+   hmmer-3.3.1/testsuite/20aa-alitest.psq
+   hmmer-3.3.1/testsuite/testsuite.sqc
+   hmmer-3.3.1/testsuite/3box-alitest.nsd
+   hmmer-3.3.1/testsuite/3box.sto
+   hmmer-3.3.1/testsuite/20aa.sto
+   hmmer-3.3.1/testsuite/ecori.sto
+   hmmer-3.3.1/testsuite/i3-seqsearch-variation.sh
+   hmmer-3.3.1/testsuite/3box-alitest.nsq
+   hmmer-3.3.1/testsuite/LuxC.hmm
+   hmmer-3.3.1/testsuite/i23-bad-fasta.sh
+   hmmer-3.3.1/testsuite/SMC_N.sto
+   hmmer-3.3.1/testsuite/Caudal_act.sto
+   hmmer-3.3.1/testsuite/PAX8_HUMAN
+   hmmer-3.3.1/testsuite/i5-hmmbuild-naming.pl
+   hmmer-3.3.1/testsuite/20aa-alitest.fa
+   hmmer-3.3.1/testsuite/i17-stdin.pl
+   hmmer-3.3.1/testsuite/Patched.hmm
+   hmmer-3.3.1/testsuite/i1-build-variation.sh
+   hmmer-3.3.1/testsuite/Patched.sto
+   hmmer-3.3.1/testsuite/Makefile.in
+   hmmer-3.3.1/testsuite/i4-zerolength-seqs.sh
+   hmmer-3.3.1/testsuite/Caudal_act.hmm
+   hmmer-3.3.1/testsuite/i10-duplicate-names.pl
+   hmmer-3.3.1/testsuite/3box-alitest.nin
+   hmmer-3.3.1/testsuite/i6-hmmalign-mapali.pl
+   hmmer-3.3.1/testsuite/SMC_N.hmm
+   hmmer-3.3.1/testsuite/i20-fmindex-core.pl
+   hmmer-3.3.1/testsuite/i9-optional-annotation.pl
+   hmmer-3.3.1/testsuite/LuxC.sto
+   hmmer-3.3.1/testsuite/20aa-alitest.pin
+   hmmer-3.3.1/testsuite/i16-build-allins.pl
+   hmmer-3.3.1/testsuite/i13-msa-integrity.pl
+   hmmer-3.3.1/test-speed/x-psiblast+
+   hmmer-3.3.1/test-speed/x-ssearch
+   hmmer-3.3.1/test-speed/00README
+   hmmer-3.3.1/test-speed/x-hmmer2
+   hmmer-3.3.1/test-speed/x-ncbiblast+
+   hmmer-3.3.1/test-speed/speed-master.pl
+   hmmer-3.3.1/test-speed/speedA-list.pl
+   hmmer-3.3.1/test-speed/x-hmmsearch
+   hmmer-3.3.1/test-speed/x-sam
+   hmmer-3.3.1/test-speed/component-benchmark.pl
+   hmmer-3.3.1/test-speed/x-ncbiblast
+   hmmer-3.3.1/test-speed/x-wublast
+   hmmer-3.3.1/test-speed/x-fasta
+   hmmer-3.3.1/test-speed/x-psiblast
+   hmmer-3.3.1/libdivsufsort/AUTHORS
+   hmmer-3.3.1/libdivsufsort/divsufsort.h.in
+   hmmer-3.3.1/libdivsufsort/divsufsort.c
+   hmmer-3.3.1/libdivsufsort/README
+   hmmer-3.3.1/libdivsufsort/COPYING
+   hmmer-3.3.1/libdivsufsort/VERSION
+   hmmer-3.3.1/libdivsufsort/Makefile.in
+   hmmer-3.3.1/tutorial/MADE1.sto
+   hmmer-3.3.1/tutorial/Pkinase.hmm
+   hmmer-3.3.1/tutorial/Pkinase.sto
+   hmmer-3.3.1/tutorial/dna_target.fa
+   hmmer-3.3.1/tutorial/MADE1.hmm
+   hmmer-3.3.1/tutorial/globins45.fa
+   hmmer-3.3.1/tutorial/fn3.hmm
+   hmmer-3.3.1/tutorial/fn3.sto
+   hmmer-3.3.1/tutorial/globins4.sto
+   hmmer-3.3.1/tutorial/globins4.hmm
+   hmmer-3.3.1/tutorial/7LESS_DROME
+   hmmer-3.3.1/tutorial/HBB_HUMAN
+   hmmer-3.3.1/documentation/man/
+   hmmer-3.3.1/documentation/userguide/
+   hmmer-3.3.1/documentation/Makefile.in
+   hmmer-3.3.1/documentation/userguide/titlepage_daemon.tex.in
+   hmmer-3.3.1/documentation/userguide/tufte-common-local.tex
+   hmmer-3.3.1/documentation/userguide/tutorial.tex
+   hmmer-3.3.1/documentation/userguide/daemon.tex
+   hmmer-3.3.1/documentation/userguide/macros.tex
+   hmmer-3.3.1/documentation/userguide/hmmc.tex
+   hmmer-3.3.1/documentation/userguide/install.tex
+   hmmer-3.3.1/documentation/userguide/inclusions/
+   hmmer-3.3.1/documentation/userguide/tufte-book.cls
+   hmmer-3.3.1/documentation/userguide/main.tex
+   hmmer-3.3.1/documentation/userguide/tabular.tex
+   hmmer-3.3.1/documentation/userguide/copyright.tex.in
+   hmmer-3.3.1/documentation/userguide/formats.tex
+   hmmer-3.3.1/documentation/userguide/introduction.tex
+   hmmer-3.3.1/documentation/userguide/tufte-common.def
+   hmmer-3.3.1/documentation/userguide/unsrtnat-brief.bst
+   hmmer-3.3.1/documentation/userguide/titlepage.tex.in
+   hmmer-3.3.1/documentation/userguide/glossary.tex
+   hmmer-3.3.1/documentation/userguide/pipeline.tex
+   hmmer-3.3.1/documentation/userguide/distilled.bib
+   hmmer-3.3.1/documentation/userguide/Makefile.in
+   hmmer-3.3.1/documentation/userguide/hmmbuild.tex
+   hmmer-3.3.1/documentation/userguide/ack.tex
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmscan-noargs.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-globins.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmalign-globins.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmstat-minifam.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmbuild-noargs.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hit-serialize.ai
+   hmmer-3.3.1/documentation/userguide/inclusions/domain-serialize.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/inclusions.def
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out4
+   hmmer-3.3.1/documentation/userguide/inclusions/daemon.ai
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out3
+   hmmer-3.3.1/documentation/userguide/inclusions/nhmmer-made1.out3
+   hmmer-3.3.1/documentation/userguide/inclusions/alidisplay-serialize.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/nhmmer-made1.out4
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmpress-minifam.out
+   hmmer-3.3.1/documentation/userguide/inclusions/daemon.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/nhmmer-made1.out5
+   hmmer-3.3.1/documentation/userguide/inclusions/nhmmer-made1.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/daemon-results.ai
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out5
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmscan-minifam-sevenless.out
+   hmmer-3.3.1/documentation/userguide/inclusions/domain-serialize.ai
+   hmmer-3.3.1/documentation/userguide/inclusions/daemon-results.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmbuild-globins.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmbuild-globins.out
+   hmmer-3.3.1/documentation/userguide/inclusions/nhmmer-made1.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-fn3-sevenless.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-fn3-uniprot.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmpgmd-search-stats-serialize.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmalign-globins.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-fn3-sevenless.out4
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-fn3-sevenless.out3
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmc2_2.out
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out7
+   hmmer-3.3.1/documentation/userguide/inclusions/hit-serialize.pdf
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmscan-minifam-sevenless.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-globins.out2
+   hmmer-3.3.1/documentation/userguide/inclusions/alidisplay-serialize.ai
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-globins.out3
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmscan-minifam-sevenless.out3
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmbuild-made1.out
+   hmmer-3.3.1/documentation/userguide/inclusions/jackhmmer-hbb-uniprot.out6
+   hmmer-3.3.1/documentation/userguide/inclusions/globins4.sto
+   hmmer-3.3.1/documentation/userguide/inclusions/Makefile.in
+   hmmer-3.3.1/documentation/userguide/inclusions/gen-inclusions.py
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmsearch-fn3-sevenless.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmc2.out
+   hmmer-3.3.1/documentation/userguide/inclusions/sevenless_domains.out
+   hmmer-3.3.1/documentation/userguide/inclusions/hmmpgmd-search-stats-serialize.ai
+   hmmer-3.3.1/documentation/man/nhmmscan.man.in
+   hmmer-3.3.1/documentation/man/phmmer.man.in
+   hmmer-3.3.1/documentation/man/makehmmerdb.man.in
+   hmmer-3.3.1/documentation/man/hmmconvert.man.in
+   hmmer-3.3.1/documentation/man/hmmalign.man.in
+   hmmer-3.3.1/documentation/man/hmmpgmd.man.in
+   hmmer-3.3.1/documentation/man/hmmstat.man.in
+   hmmer-3.3.1/documentation/man/hmmc2.man.in
+   hmmer-3.3.1/documentation/man/hmmpgmd_shard.man.in
+   hmmer-3.3.1/documentation/man/alimask.man.in
+   hmmer-3.3.1/documentation/man/hmmpress.man.in
+   hmmer-3.3.1/documentation/man/hmmfetch.man.in
+   hmmer-3.3.1/documentation/man/nhmmer.man.in
+   hmmer-3.3.1/documentation/man/hmmsearch.man.in
+   hmmer-3.3.1/documentation/man/hmmer.man.in
+   hmmer-3.3.1/documentation/man/hmmsim.man.in
+   hmmer-3.3.1/documentation/man/hmmlogo.man.in
+   hmmer-3.3.1/documentation/man/jackhmmer.man.in
+   hmmer-3.3.1/documentation/man/hmmbuild.man.in
+   hmmer-3.3.1/documentation/man/hmmemit.man.in
+   hmmer-3.3.1/documentation/man/Makefile.in
+   hmmer-3.3.1/documentation/man/hmmscan.man.in
+   configure: Configuring HMMER3 for your system.
+   checking build system type... x86_64-pc-linux-gnu
+   checking host system type... x86_64-pc-linux-gnu
+   checking whether to compile using MPI... no
+   checking for gcc... gcc
+   checking whether the C compiler works... yes
+   checking for C compiler default output file name... a.out
+   checking for suffix of executables... 
+   checking whether we are cross compiling... no
+   checking for suffix of object files... o
+   checking whether we are using the GNU C compiler... yes
+   checking whether gcc accepts -g... yes
+   checking for gcc option to accept ISO C89... none needed
+   checking for gcc option to accept ISO C99... none needed
+   checking for gcc option to accept ISO Standard C... (cached) none needed
+   checking how to run the C preprocessor... gcc -E
+   checking for a BSD-compatible install... /usr/bin/install -c
+   checking for ranlib... ranlib
+   checking for ar... /usr/bin/ar
+   checking whether ln -s works... yes
+   checking for a sed that does not truncate output... /bin/sed
+   checking for grep that handles long lines and -e... /bin/grep
+   checking for egrep... /bin/grep -E
+   checking whether gcc is Clang... no
+   checking whether pthreads work with -pthread... yes
+   checking for joinable pthread attribute... PTHREAD_CREATE_JOINABLE
+   checking whether more special flags are required for pthreads... no
+   checking for PTHREAD_PRIO_INHERIT... yes
+   checking whether gcc can compile our Altivec/VMX code... no
+   checking whether gcc can compile our SSE code... yes
+   configure: Activating Intel/AMD SSE vector DP implementation
+   checking whether _MM_SET_FLUSH_ZERO_MODE is supported... yes
+   checking compiler support --start-group... yes
+   checking for gzip... /bin/gzip
+   checking for python3... yes
+   checking for library containing clock_gettime... none required
+   checking for ANSI C header files... yes
+   checking for sys/types.h... yes
+   checking for sys/stat.h... yes
+   checking for stdlib.h... yes
+   checking for string.h... yes
+   checking for memory.h... yes
+   checking for strings.h... yes
+   checking for inttypes.h... yes
+   checking for stdint.h... yes
+   checking for unistd.h... yes
+   checking endian.h usability... yes
+   checking endian.h presence... yes
+   checking for endian.h... yes
+   checking for inttypes.h... (cached) yes
+   checking for stdint.h... (cached) yes
+   checking for unistd.h... (cached) yes
+   checking for sys/types.h... (cached) yes
+   checking netinet/in.h usability... yes
+   checking netinet/in.h presence... yes
+   checking for netinet/in.h... yes
+   checking sys/param.h usability... yes
+   checking sys/param.h presence... yes
+   checking for sys/param.h... yes
+   checking for sys/sysctl.h... yes
+   checking for uint8_t... yes
+   checking for uint16_t... yes
+   checking for uint32_t... yes
+   checking for uint64_t... yes
+   checking for off_t... yes
+   checking whether byte ordering is bigendian... no
+   checking for __attribute__((noreturn))... yes
+   checking for __attribute__((format))... yes
+   checking for mkstemp... yes
+   checking for popen... yes
+   checking for putenv... yes
+   checking for strcasecmp... yes
+   checking for strsep... yes
+   checking for times... yes
+   checking for getpid... yes
+   checking for sysctl... yes
+   checking for sysconf... yes
+   checking for getcwd... yes
+   checking for chmod... yes
+   checking for stat... yes
+   checking for fstat... yes
+   checking for erfc... no
+   checking for library containing ntohs... none required
+   checking for library containing ntohl... none required
+   checking for library containing htons... none required
+   checking for library containing htonl... none required
+   checking for library containing socket... none required
+   checking for library containing inet_pton... none required
+   checking for _LARGEFILE_SOURCE value needed for large files... no
+   checking for special C compiler options needed for large files... no
+   checking for _FILE_OFFSET_BITS value needed for large files... no
+   configure: creating ./config.status
+   config.status: creating Makefile
+   config.status: creating src/Makefile
+   config.status: creating testsuite/Makefile
+   config.status: creating profmark/Makefile
+   config.status: creating src/impl_sse/Makefile
+   config.status: creating documentation/Makefile
+   config.status: creating documentation/man/Makefile
+   config.status: creating documentation/userguide/Makefile
+   config.status: creating documentation/userguide/inclusions/Makefile
+   config.status: creating libdivsufsort/Makefile
+   config.status: creating easel/Makefile
+   config.status: creating easel/miniapps/Makefile
+   config.status: creating easel/testsuite/Makefile
+   config.status: creating easel/documentation/Makefile
+   config.status: creating documentation/userguide/titlepage.tex
+   config.status: creating documentation/userguide/titlepage_daemon.tex
+   config.status: creating documentation/userguide/copyright.tex
+   config.status: creating documentation/man/alimask.man
+   config.status: creating documentation/man/hmmalign.man
+   config.status: creating documentation/man/hmmbuild.man
+   config.status: creating documentation/man/hmmc2.man
+   config.status: creating documentation/man/hmmconvert.man
+   config.status: creating documentation/man/hmmemit.man
+   config.status: creating documentation/man/hmmer.man
+   config.status: creating documentation/man/hmmfetch.man
+   config.status: creating documentation/man/hmmlogo.man
+   config.status: creating documentation/man/hmmpgmd.man
+   config.status: creating documentation/man/hmmpgmd_shard.man
+   config.status: creating documentation/man/hmmpress.man
+   config.status: creating documentation/man/hmmscan.man
+   config.status: creating documentation/man/hmmsearch.man
+   config.status: creating documentation/man/hmmsim.man
+   config.status: creating documentation/man/hmmstat.man
+   config.status: creating documentation/man/jackhmmer.man
+   config.status: creating documentation/man/makehmmerdb.man
+   config.status: creating documentation/man/nhmmer.man
+   config.status: creating documentation/man/nhmmscan.man
+   config.status: creating documentation/man/phmmer.man
+   config.status: creating easel/miniapps/esl-afetch.man
+   config.status: creating easel/miniapps/esl-alimanip.man
+   config.status: creating easel/miniapps/esl-alimap.man
+   config.status: creating easel/miniapps/esl-alimask.man
+   config.status: creating easel/miniapps/esl-alimerge.man
+   config.status: creating easel/miniapps/esl-alipid.man
+   config.status: creating easel/miniapps/esl-alirev.man
+   config.status: creating easel/miniapps/esl-alistat.man
+   config.status: creating easel/miniapps/esl-compalign.man
+   config.status: creating easel/miniapps/esl-compstruct.man
+   config.status: creating easel/miniapps/esl-construct.man
+   config.status: creating easel/miniapps/esl-histplot.man
+   config.status: creating easel/miniapps/esl-mask.man
+   config.status: creating easel/miniapps/esl-mixdchlet.man
+   config.status: creating easel/miniapps/esl-reformat.man
+   config.status: creating easel/miniapps/esl-selectn.man
+   config.status: creating easel/miniapps/esl-seqrange.man
+   config.status: creating easel/miniapps/esl-seqstat.man
+   config.status: creating easel/miniapps/esl-sfetch.man
+   config.status: creating easel/miniapps/esl-shuffle.man
+   config.status: creating easel/miniapps/esl-ssdraw.man
+   config.status: creating easel/miniapps/esl-translate.man
+   config.status: creating easel/miniapps/esl-weight.man
+   config.status: creating easel/decoy_config.h
+   config.status: creating src/p7_config.h
+   config.status: creating easel/esl_config.h
+   config.status: creating libdivsufsort/divsufsort.h
+   config.status: linking src/impl_sse to src/impl
+
+
+   HMMER configuration:
+      compiler:             gcc -O3   -pthread 
+      host:                 x86_64-pc-linux-gnu
+      linker:               
+      libraries:              
+      DP implementation:    sse
+
+   Now do 'make'  to build HMMER, and optionally:
+          'make check'  to run self tests,
+          'make install'  to install programs and man pages,
+          '(cd easel; make install)'  to install Easel tools.
+
+        SUBDIR easel
+        CC easel.o
+        CC esl_alloc.o
+        CC esl_alphabet.o
+        CC esl_arr2.o
+        CC esl_arr3.o
+        CC esl_bitfield.o
+        CC esl_buffer.o
+        CC esl_cluster.o
+        CC esl_composition.o
+        CC esl_cpu.o
+        CC esl_dirichlet.o
+        CC esl_distance.o
+        CC esl_dmatrix.o
+        CC esl_dsqdata.o
+        CC esl_exponential.o
+        CC esl_fileparser.o
+        CC esl_gamma.o
+        CC esl_gencode.o
+        CC esl_getopts.o
+        CC esl_gev.o
+        CC esl_graph.o
+        CC esl_gumbel.o
+        CC esl_heap.o
+        CC esl_histogram.o
+        CC esl_hmm.o
+        CC esl_huffman.o
+        CC esl_hyperexp.o
+        CC esl_json.o
+        CC esl_keyhash.o
+        CC esl_matrixops.o
+        CC esl_mem.o
+        CC esl_minimizer.o
+        CC esl_mixdchlet.o
+        CC esl_mixgev.o
+        CC esl_mpi.o
+        CC esl_msa.o
+        CC esl_msacluster.o
+        CC esl_msafile.o
+        CC esl_msafile2.o
+        CC esl_msafile_a2m.o
+        CC esl_msafile_afa.o
+        CC esl_msafile_clustal.o
+        CC esl_msafile_phylip.o
+        CC esl_msafile_psiblast.o
+        CC esl_msafile_selex.o
+        CC esl_msafile_stockholm.o
+        CC esl_msashuffle.o
+        CC esl_msaweight.o
+        CC esl_normal.o
+        CC esl_paml.o
+        CC esl_quicksort.o
+        CC esl_random.o
+        CC esl_rand64.o
+        CC esl_randomseq.o
+        CC esl_ratematrix.o
+        CC esl_recorder.o
+        CC esl_red_black.o
+        CC esl_regexp.o
+        CC esl_rootfinder.o
+        CC esl_scorematrix.o
+        CC esl_sq.o
+        CC esl_sqio.o
+        CC esl_sqio_ascii.o
+        CC esl_sqio_ncbi.o
+        CC esl_ssi.o
+        CC esl_stack.o
+        CC esl_stats.o
+        CC esl_stopwatch.o
+        CC esl_stretchexp.o
+        CC esl_subcmd.o
+        CC esl_threads.o
+        CC esl_tree.o
+        CC esl_varint.o
+        CC esl_vectorops.o
+        CC esl_weibull.o
+        CC esl_workqueue.o
+        CC esl_wuss.o
+        CC esl_sse.o
+        CC esl_avx.o
+        CC esl_avx512.o
+        CC esl_neon.o
+        CC esl_vmx.o
+        AR libeasel.a
+        SUBDIR miniapps
+        GEN esl-afetch
+        GEN esl-alimanip
+        GEN esl-alimap
+        GEN esl-alimask
+        GEN esl-alimerge
+        GEN esl-alipid
+        GEN esl-alirev
+        GEN esl-alistat
+        GEN esl-compalign
+        GEN esl-compstruct
+        GEN esl-construct
+        GEN esl-histplot
+        GEN esl-mask
+        GEN esl-mixdchlet
+        GEN esl-reformat
+        GEN esl-selectn
+        GEN esl-seqrange
+        GEN esl-seqstat
+        GEN esl-sfetch
+        GEN esl-shuffle
+        GEN esl-ssdraw
+        GEN esl-translate
+        GEN esl-weight
+        CC cmd_alistat.o
+        CC cmd_downsample.o
+        CC cmd_filter.o
+        GEN easel
+        SUBDIR libdivsufsort
+        CC divsufsort.o
+        AR libdivsufsort.a
+        SUBDIR src
+        CC alimask.o
+        CC build.o
+        CC cachedb.o
+        CC cachedb_shard.o
+        CC emit.o
+        CC errors.o
+        CC evalues.o
+        CC eweight.o
+        CC generic_decoding.o
+        CC generic_fwdback.o
+        CC generic_fwdback_chk.o
+        CC generic_fwdback_banded.o
+        CC generic_null2.o
+        CC generic_msv.o
+        CC generic_optacc.o
+        CC generic_stotrace.o
+        CC generic_viterbi.o
+        CC generic_vtrace.o
+        CC h2_io.o
+        CC heatmap.o
+        CC hmmlogo.o
+        CC hmmdmstr.o
+        CC hmmdmstr_shard.o
+        CC hmmd_search_status.o
+        CC hmmdwrkr.o
+        CC hmmdwrkr_shard.o
+        CC hmmdutils.o
+        CC hmmer.o
+        CC logsum.o
+        CC modelconfig.o
+        CC modelstats.o
+        CC mpisupport.o
+        CC seqmodel.o
+        CC tracealign.o
+        CC p7_alidisplay.o
+        CC p7_bg.o
+        CC p7_builder.o
+        CC p7_domain.o
+        CC p7_domaindef.o
+        CC p7_gbands.o
+        CC p7_gmx.o
+        CC p7_gmxb.o
+        CC p7_gmxchk.o
+        CC p7_hit.o
+        CC p7_hmm.o
+        CC p7_hmmcache.o
+        CC p7_hmmd_search_stats.o
+        CC p7_hmmfile.o
+        CC p7_hmmwindow.o
+        CC p7_pipeline.o
+        CC p7_prior.o
+        CC p7_profile.o
+        CC p7_spensemble.o
+        CC p7_tophits.o
+        CC p7_trace.o
+        CC p7_scoredata.o
+        CC hmmpgmd2msa.o
+        CC fm_alphabet.o
+        CC fm_general.o
+        CC fm_sse.o
+        CC fm_ssv.o
+        AR libhmmer-src.stamp
+        SUBDIR impl_sse
+        CC decoding.o
+        CC fwdback.o
+        CC io.o
+        CC ssvfilter.o
+        CC msvfilter.o
+        CC null2.o
+        CC optacc.o
+        CC stotrace.o
+        CC vitfilter.o
+        CC p7_omx.o
+        CC p7_oprofile.o
+        CC mpi.o
+        AR libhmmer-impl.stamp
+        GEN alimask
+        CC hmmalign.o
+        GEN hmmalign
+        CC hmmbuild.o
+        GEN hmmbuild
+        CC hmmconvert.o
+        GEN hmmconvert
+        CC hmmemit.o
+        GEN hmmemit
+        CC hmmfetch.o
+        GEN hmmfetch
+        GEN hmmlogo
+        CC hmmpgmd.o
+        GEN hmmpgmd
+        CC hmmpgmd_shard.o
+        GEN hmmpgmd_shard
+        CC hmmpress.o
+        GEN hmmpress
+        CC hmmscan.o
+        GEN hmmscan
+        CC hmmsearch.o
+        GEN hmmsearch
+        CC hmmsim.o
+        GEN hmmsim
+        CC hmmstat.o
+        GEN hmmstat
+        CC jackhmmer.o
+        GEN jackhmmer
+        CC phmmer.o
+        GEN phmmer
+        CC nhmmer.o
+        GEN nhmmer
+        CC nhmmscan.o
+        GEN nhmmscan
+        CC makehmmerdb.o
+        GEN makehmmerdb
+        CC hmmc2.o
+        GEN hmmc2
+        CC hmmerfm-exactmatch.o
+        GEN hmmerfm-exactmatch
+        SUBDIR profmark
+        CC create-profmark.o
+        GEN create-profmark
+        CC rocplot.o
+        GEN rocplot
+        SUBDIR easel
+        GEN easel_utest
+        GEN esl_alloc_utest
+        GEN esl_alphabet_utest
+        GEN esl_bitfield_utest
+        GEN esl_buffer_utest
+        GEN esl_cluster_utest
+        GEN esl_cpu_utest
+        GEN esl_dirichlet_utest
+        GEN esl_distance_utest
+        GEN esl_dmatrix_utest
+        GEN esl_dsqdata_utest
+        GEN esl_exponential_utest
+        GEN esl_fileparser_utest
+        GEN esl_gamma_utest
+        GEN esl_gencode_utest
+        GEN esl_getopts_utest
+        GEN esl_graph_utest
+        GEN esl_gumbel_utest
+        GEN esl_heap_utest
+        GEN esl_histogram_utest
+        GEN esl_hmm_utest
+        GEN esl_huffman_utest
+        GEN esl_hyperexp_utest
+        GEN esl_json_utest
+        GEN esl_keyhash_utest
+        GEN esl_matrixops_utest
+        GEN esl_mem_utest
+        GEN esl_minimizer_utest
+        GEN esl_mixdchlet_utest
+        GEN esl_msa_utest
+        GEN esl_msacluster_utest
+        GEN esl_msafile_utest
+        GEN esl_msafile2_utest
+        GEN esl_msafile_a2m_utest
+        GEN esl_msafile_afa_utest
+        GEN esl_msafile_clustal_utest
+        GEN esl_msafile_phylip_utest
+        GEN esl_msafile_psiblast_utest
+        GEN esl_msafile_selex_utest
+        GEN esl_msafile_stockholm_utest
+        GEN esl_msaweight_utest
+        GEN esl_normal_utest
+        GEN esl_quicksort_utest
+        GEN esl_random_utest
+        GEN esl_rand64_utest
+        GEN esl_randomseq_utest
+        GEN esl_ratematrix_utest
+        GEN esl_red_black_utest
+        GEN esl_recorder_utest
+        GEN esl_regexp_utest
+        GEN esl_rootfinder_utest
+        GEN esl_scorematrix_utest
+        GEN esl_sq_utest
+        GEN esl_sqio_utest
+        GEN esl_ssi_utest
+        GEN esl_stack_utest
+        GEN esl_stats_utest
+        GEN esl_stretchexp_utest
+        GEN esl_tree_utest
+        GEN esl_varint_utest
+        GEN esl_vectorops_utest
+        GEN esl_weibull_utest
+        GEN esl_wuss_utest
+        GEN esl_sse_utest
+        GEN esl_avx_utest
+        GEN esl_avx512_utest
+        GEN esl_neon_utest
+        GEN esl_vmx_utest
+        SUBDIR miniapps
+        SUBDIR libdivsufsort
+        SUBDIR src
+        SUBDIR impl_sse
+        GEN build_utest
+        GEN generic_fwdback_utest
+        GEN generic_fwdback_chk_utest
+        GEN generic_msv_utest
+        GEN generic_stotrace_utest
+        GEN generic_viterbi_utest
+        GEN hmmer_utest
+        GEN logsum_utest
+        GEN modelconfig_utest
+        GEN seqmodel_utest
+        GEN p7_alidisplay_utest
+        GEN p7_bg_utest
+        GEN p7_domain_utest
+        GEN p7_gmx_utest
+        GEN p7_gmxchk_utest
+        GEN p7_hit_utest
+        GEN p7_hmmd_search_stats_utest
+        GEN p7_hmm_utest
+        GEN p7_hmmfile_utest
+        GEN p7_profile_utest
+        GEN p7_tophits_utest
+        GEN p7_trace_utest
+        GEN p7_scoredata_utest
+        GEN hmmpgmd2msa_utest
+        GEN hmmd_search_status_utest
+        CC itest_brute.o
+        GEN itest_brute
+        SUBDIR impl_sse
+        GEN decoding_utest
+        GEN fwdback_utest
+        GEN io_utest
+        GEN msvfilter_utest
+        GEN null2_utest
+        GEN optacc_utest
+        GEN stotrace_utest
+        GEN vitfilter_utest
+        SUBDIR easel
+        SUBDIR miniapps
+        SUBDIR testsuite
+
+   Running Easel test suite...
+
+       exercise    1 [          easel-utest] ...     ok.
+       exercise    2 [          alloc-utest] ...     ok.
+       exercise    3 [       alphabet-utest] ...     ok.
+       exercise    4 [            avx-utest] ...     ok.
+       exercise    5 [         avx512-utest] ...     ok.
+       exercise    6 [       bitfield-utest] ...     ok.
+       exercise    7 [         buffer-utest] ...     ok.
+       exercise    8 [        cluster-utest] ...     ok.
+       exercise    9 [            cpu-utest] ...     ok.
+       exercise   10 [      dirichlet-utest] ...     ok.
+       exercise   11 [       distance-utest] ...     ok.
+       exercise   12 [        dmatrix-utest] ...     ok.
+       exercise   13 [        dsqdata-utest] ...     ok.
+       exercise   14 [    exponential-utest] ...     ok.
+       exercise   15 [     fileparser-utest] ...     ok.
+       exercise   16 [          gamma-utest] ...     ok.
+       exercise   17 [        gencode-utest] ...     ok.
+       exercise   18 [        getopts-utest] ...     ok.
+       exercise   19 [          graph-utest] ...     ok.
+       exercise   20 [         gumbel-utest] ...     ok.
+       exercise   21 [           heap-utest] ...     ok.
+       exercise   22 [      histogram-utest] ...     ok.
+       exercise   23 [        huffman-utest] ...     ok.
+       exercise   24 [       hyperexp-utest] ...     ok.
+       exercise   25 [           json-utest] ...     ok.
+       exercise   26 [        keyhash-utest] ...     ok.
+       exercise   27 [      matrixops-utest] ...     ok.
+       exercise   28 [            mem-utest] ...     ok.
+       exercise   29 [      minimizer-utest] ...     ok.
+       exercise   30 [      mixdchlet-utest] ...     ok.
+       exercise   31 [            msa-utest] ...     ok.
+       exercise   32 [     msacluster-utest] ...     ok.
+       exercise   33 [              msafile] ...     ok.
+       exercise   34 [             msafile2] ...     ok.
+       exercise   35 [          msafile-a2m] ...     ok.
+       exercise   36 [          msafile-afa] ...     ok.
+       exercise   37 [      msafile-clustal] ...     ok.
+       exercise   38 [       msafile-phylip] ...     ok.
+       exercise   39 [     msafile-psiblast] ...     ok.
+       exercise   40 [        msafile-selex] ...     ok.
+       exercise   41 [    msafile-stockholm] ...     ok.
+       exercise   42 [      msaweight-utest] ...     ok.
+       exercise   43 [           neon-utest] ...     ok.
+       exercise   44 [         normal-utest] ...     ok.
+       exercise   45 [      quicksort-utest] ...     ok.
+       exercise   46 [         random-utest] ...     ok.
+       exercise   47 [         rand64-utest] ...     ok.
+       exercise   48 [      randomseq-utest] ...     ok.
+       exercise   49 [     ratematrix-utest] ...     ok.
+       exercise   50 [       recorder-utest] ...     ok.
+       exercise   51 [      red_black-utest] ...     ok.
+       exercise   52 [         regexp-utest] ...     ok.
+       exercise   53 [     rootfinder-utest] ...     ok.
+       exercise   54 [    scorematrix-utest] ...     ok.
+       exercise   55 [             sq-utest] ...     ok.
+       exercise   56 [           sqio-utest] ...     ok.
+       exercise   57 [            sse-utest] ...     ok.
+       exercise   58 [            ssi-utest] ...     ok.
+       exercise   59 [          stack-utest] ...     ok.
+       exercise   60 [          stats-utest] ...     ok.
+       exercise   61 [     stretchexp-utest] ...     ok.
+       exercise   62 [           tree-utest] ...     ok.
+       exercise   63 [         varint-utest] ...     ok.
+       exercise   64 [      vectorops-utest] ...     ok.
+       exercise   65 [            vmx-utest] ...     ok.
+       exercise   66 [        weibull-utest] ...     ok.
+       exercise   67 [           wuss-utest] ...     ok.
+       exercise   68 [                   e2] ...     ok.
+       exercise   69 [       degen-residues] ...     ok.
+       exercise   70 [         ncbi-indices] ...     ok.
+       exercise   71 [             blank-gf] ...     ok.
+       exercise   72 [        esl-translate] ...     ok.
+       exercise   73 [           esl-afetch] ...     ok.
+       exercise   74 [         esl-alimanip] ...     ok.
+       exercise   75 [           esl-alimap] ...     ok.
+       exercise   76 [          esl-alimask] ...     ok.
+       exercise   77 [         esl-alimerge] ...     ok.
+       exercise   78 [          esl-alistat] ...     ok.
+       exercise   79 [        esl-compalign] ...     ok.
+       exercise   80 [        esl-construct] ...     ok.
+       exercise   81 [             esl-mask] ...     ok.
+       exercise   82 [         esl-seqrange] ...     ok.
+       exercise   83 [          esl-shuffle] ...     ok.
+       exercise   84 [           esl-ssdraw] ...     ok.
+
+   All 84 exercises at level <= 2 passed.
+
+
+   System information:
+   Mon Sep  7 00:17:26 UTC 2020
+   Linux hogrd01 4.15.0-108-generic #109-Ubuntu SMP Fri Jun 19 11:33:10 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+        SUBDIR testsuite
+
+   Running HMMER test suite...
+
+       exercise    1 [                hmmer] ...     ok.
+       exercise    2 [                build] ...     ok.
+       exercise    3 [      generic_fwdback] ...     ok.
+       exercise    4 [          generic_msv] ...     ok.
+       exercise    5 [     generic_stotrace] ...     ok.
+       exercise    6 [      generic_viterbi] ...     ok.
+       exercise    7 [   hmmd_search_status] ...     ok.
+       exercise    8 [               logsum] ...     ok.
+       exercise    9 [          modelconfig] ...     ok.
+       exercise   10 [             seqmodel] ...     ok.
+       exercise   11 [        p7_alidisplay] ...     ok.
+       exercise   12 [                p7_bg] ...     ok.
+       exercise   13 [            p7_domain] ...     ok.
+       exercise   14 [               p7_gmx] ...     ok.
+       exercise   15 [               p7_hit] ...     ok.
+       exercise   16 [               p7_hmm] ...     ok.
+       exercise   17 [           p7_hmmfile] ...     ok.
+       exercise   18 [ p7_hmmd_search_stats] ...     ok.
+       exercise   19 [           p7_profile] ...     ok.
+       exercise   20 [           p7_tophits] ...     ok.
+       exercise   21 [             p7_trace] ...     ok.
+       exercise   22 [         p7_scoredata] ...     ok.
+       exercise   23 [             decoding] ...     ok.
+       exercise   24 [              fwdback] ...     ok.
+       exercise   25 [                   io] ...     ok.
+       exercise   26 [            msvfilter] ...     ok.
+       exercise   27 [                null2] ...     ok.
+       exercise   28 [               optacc] ...     ok.
+       exercise   29 [             stotrace] ...     ok.
+       exercise   30 [            vitfilter] ...     ok.
+       exercise   31 [          hmmpgmd2msa] ...     ok.
+       exercise   32 [             hmmalign] ...     ok.
+       exercise   33 [          hmmalign/-h] ...     ok.
+       exercise   34 [          hmmalign/-o] ...     ok.
+       exercise   35 [    hmmalign/--mapali] ...     ok.
+       exercise   36 [      hmmalign/--trim] ...     ok.
+       exercise   37 [     hmmalign/--amino] ...     ok.
+       exercise   38 [  hmmalign/--informat] ...     ok.
+       exercise   39 [ hmmalign/--outformat] ...     ok.
+       exercise   40 [             hmmbuild] ...     ok.
+       exercise   41 [             build/-h] ...     ok.
+       exercise   42 [             build/-n] ...     ok.
+       exercise   43 [             build/-o] ...     ok.
+       exercise   44 [             build/-O] ...     ok.
+       exercise   45 [        build/--amino] ...     ok.
+       exercise   46 [          build/--dna] ...     ok.
+       exercise   47 [          build/--rna] ...     ok.
+       exercise   48 [         build/--fast] ...     ok.
+       exercise   49 [         build/--hand] ...     ok.
+       exercise   50 [      build/--symfrac] ...     ok.
+       exercise   51 [   build/--fragthresh] ...     ok.
+       exercise   52 [          build/--wpb] ...     ok.
+       exercise   53 [         build/--wgsc] ...     ok.
+       exercise   54 [      build/--wblosum] ...     ok.
+       exercise   55 [        build/--wnone] ...     ok.
+       exercise   56 [          build/--wid] ...     ok.
+       exercise   57 [         build/--eent] ...     ok.
+       exercise   58 [       build/--eclust] ...     ok.
+       exercise   59 [        build/--enone] ...     ok.
+       exercise   60 [         build/--eset] ...     ok.
+       exercise   61 [          build/--ere] ...     ok.
+       exercise   62 [       build/--esigma] ...     ok.
+       exercise   63 [          build/--eid] ...     ok.
+       exercise   64 [        build/--pnone] ...     ok.
+       exercise   65 [     build/--plaplace] ...     ok.
+       exercise   66 [          build/--EmL] ...     ok.
+       exercise   67 [          build/--EmN] ...     ok.
+       exercise   68 [          build/--EvL] ...     ok.
+       exercise   69 [          build/--EvN] ...     ok.
+       exercise   70 [          build/--EfL] ...     ok.
+       exercise   71 [          build/--EfN] ...     ok.
+       exercise   72 [          build/--Eft] ...     ok.
+       exercise   73 [     build/--informat] ...     ok.
+       exercise   74 [         build/--seed] ...     ok.
+       exercise   75 [               search] ...     ok.
+       exercise   76 [            search/-h] ...     ok.
+       exercise   77 [            search/-o] ...     ok.
+       exercise   78 [            search/-A] ...     ok.
+       exercise   79 [      search/--tblout] ...     ok.
+       exercise   80 [   search/--domtblout] ...     ok.
+       exercise   81 [  search/--pfamtblout] ...     ok.
+       exercise   82 [         search/--acc] ...     ok.
+       exercise   83 [       search/--noali] ...     ok.
+       exercise   84 [     search/--notextw] ...     ok.
+       exercise   85 [       search/--textw] ...     ok.
+       exercise   86 [            search/-E] ...     ok.
+       exercise   87 [            search/-T] ...     ok.
+       exercise   88 [        search/--domE] ...     ok.
+       exercise   89 [        search/--domT] ...     ok.
+       exercise   90 [        search/--incE] ...     ok.
+       exercise   91 [        search/--incT] ...     ok.
+       exercise   92 [     search/--incdomE] ...     ok.
+       exercise   93 [     search/--incdomT] ...     ok.
+       exercise   94 [      search/--cut_ga] ...     ok.
+       exercise   95 [      search/--cut_nc] ...     ok.
+       exercise   96 [      search/--cut_tc] ...     ok.
+       exercise   97 [         search/--max] ...     ok.
+       exercise   98 [          search/--F1] ...     ok.
+       exercise   99 [          search/--F2] ...     ok.
+       exercise  100 [          search/--F3] ...     ok.
+       exercise  101 [      search/--nobias] ...     ok.
+       exercise  102 [     search/--nonull2] ...     ok.
+       exercise  103 [            search/-Z] ...     ok.
+       exercise  104 [        search/--domZ] ...     ok.
+       exercise  105 [        search/--seed] ...     ok.
+       exercise  106 [     search/--tformat] ...     ok.
+       exercise  107 [              hmmscan] ...     ok.
+       exercise  108 [              scan/-h] ...     ok.
+       exercise  109 [              scan/-o] ...     ok.
+       exercise  110 [        scan/--tblout] ...     ok.
+       exercise  111 [     scan/--domtblout] ...     ok.
+       exercise  112 [    scan/--pfamtblout] ...     ok.
+       exercise  113 [           scan/--acc] ...     ok.
+       exercise  114 [         scan/--noali] ...     ok.
+       exercise  115 [       scan/--notextw] ...     ok.
+       exercise  116 [         scan/--textw] ...     ok.
+       exercise  117 [              scan/-E] ...     ok.
+       exercise  118 [              scan/-T] ...     ok.
+       exercise  119 [          scan/--domE] ...     ok.
+       exercise  120 [          scan/--domT] ...     ok.
+       exercise  121 [          scan/--incE] ...     ok.
+       exercise  122 [          scan/--incT] ...     ok.
+       exercise  123 [       scan/--incdomE] ...     ok.
+       exercise  124 [       scan/--incdomT] ...     ok.
+       exercise  125 [       scan/--incdomT] ...     ok.
+       exercise  126 [        scan/--cut_ga] ...     ok.
+       exercise  127 [        scan/--cut_nc] ...     ok.
+       exercise  128 [        scan/--cut_tc] ...     ok.
+       exercise  129 [           scan/--max] ...     ok.
+       exercise  130 [            scan/--F1] ...     ok.
+       exercise  131 [            scan/--F2] ...     ok.
+       exercise  132 [            scan/--F3] ...     ok.
+       exercise  133 [        scan/--nobias] ...     ok.
+       exercise  134 [       scan/--nonull2] ...     ok.
+       exercise  135 [              scan/-Z] ...     ok.
+       exercise  136 [          scan/--domZ] ...     ok.
+       exercise  137 [          scan/--seed] ...     ok.
+       exercise  138 [       scan/--qformat] ...     ok.
+       exercise  139 [           scan/--cpu] ...     ok.
+       exercise  140 [            jackhmmer] ...     ok.
+       exercise  141 [                 j/-h] ...     ok.
+       exercise  142 [                 j/-N] ...     ok.
+       exercise  143 [                 j/-o] ...     ok.
+       exercise  144 [                 j/-A] ...     ok.
+       exercise  145 [           j/--tblout] ...     ok.
+       exercise  146 [        j/--domtblout] ...     ok.
+       exercise  147 [           j/--chkhmm] ...     ok.
+       exercise  148 [           j/--chkali] ...     ok.
+       exercise  149 [              j/--acc] ...     ok.
+       exercise  150 [            j/--noali] ...     ok.
+       exercise  151 [          j/--notextw] ...     ok.
+       exercise  152 [            j/--textw] ...     ok.
+       exercise  153 [            j/--popen] ...     ok.
+       exercise  154 [          j/--pextend] ...     ok.
+       exercise  155 [           j/--mxfile] ...     ok.
+       exercise  156 [                 j/-E] ...     ok.
+       exercise  157 [                 j/-T] ...     ok.
+       exercise  158 [             j/--domE] ...     ok.
+       exercise  159 [             j/--domT] ...     ok.
+       exercise  160 [             j/--incE] ...     ok.
+       exercise  161 [             j/--incT] ...     ok.
+       exercise  162 [          j/--incdomE] ...     ok.
+       exercise  163 [          j/--incdomT] ...     ok.
+       exercise  164 [              j/--max] ...     ok.
+       exercise  165 [               j/--F1] ...     ok.
+       exercise  166 [               j/--F2] ...     ok.
+       exercise  167 [               j/--F3] ...     ok.
+       exercise  168 [           j/--nobias] ...     ok.
+       exercise  169 [              j/--EmL] ...     ok.
+       exercise  170 [              j/--EmN] ...     ok.
+       exercise  171 [              j/--EvL] ...     ok.
+       exercise  172 [              j/--EvN] ...     ok.
+       exercise  173 [              j/--EfL] ...     ok.
+       exercise  174 [              j/--EfN] ...     ok.
+       exercise  175 [              j/--Eft] ...     ok.
+       exercise  176 [          j/--nonull2] ...     ok.
+       exercise  177 [                 j/-Z] ...     ok.
+       exercise  178 [             j/--domZ] ...     ok.
+       exercise  179 [             j/--seed] ...     ok.
+       exercise  180 [          j/--qformat] ...     ok.
+       exercise  181 [          j/--tformat] ...     ok.
+       exercise  182 [               phmmer] ...     ok.
+       exercise  183 [            phmmer/-h] ...     ok.
+       exercise  184 [            phmmer/-o] ...     ok.
+       exercise  185 [            phmmer/-A] ...     ok.
+       exercise  186 [      phmmer/--tblout] ...     ok.
+       exercise  187 [   phmmer/--domtblout] ...     ok.
+       exercise  188 [  phmmer/--pfamtblout] ...     ok.
+       exercise  189 [         phmmer/--acc] ...     ok.
+       exercise  190 [       phmmer/--noali] ...     ok.
+       exercise  191 [     phmmer/--notextw] ...     ok.
+       exercise  192 [       phmmer/--textw] ...     ok.
+       exercise  193 [       phmmer/--popen] ...     ok.
+       exercise  194 [     phmmer/--pextend] ...     ok.
+       exercise  195 [      phmmer/--mxfile] ...     ok.
+       exercise  196 [            phmmer/-E] ...     ok.
+       exercise  197 [            phmmer/-T] ...     ok.
+       exercise  198 [        phmmer/--domE] ...     ok.
+       exercise  199 [        phmmer/--domT] ...     ok.
+       exercise  200 [        phmmer/--incE] ...     ok.
+       exercise  201 [        phmmer/--incT] ...     ok.
+       exercise  202 [     phmmer/--incdomE] ...     ok.
+       exercise  203 [     phmmer/--incdomT] ...     ok.
+       exercise  204 [         phmmer/--max] ...     ok.
+       exercise  205 [          phmmer/--F1] ...     ok.
+       exercise  206 [          phmmer/--F2] ...     ok.
+       exercise  207 [          phmmer/--F3] ...     ok.
+       exercise  208 [      phmmer/--nobias] ...     ok.
+       exercise  209 [         phmmer/--EmL] ...     ok.
+       exercise  210 [         phmmer/--EmN] ...     ok.
+       exercise  211 [         phmmer/--EvL] ...     ok.
+       exercise  212 [         phmmer/--EvN] ...     ok.
+       exercise  213 [         phmmer/--EfL] ...     ok.
+       exercise  214 [         phmmer/--EfN] ...     ok.
+       exercise  215 [         phmmer/--Eft] ...     ok.
+       exercise  216 [     phmmer/--nonull2] ...     ok.
+       exercise  217 [            phmmer/-Z] ...     ok.
+       exercise  218 [        phmmer/--domZ] ...     ok.
+       exercise  219 [        phmmer/--seed] ...     ok.
+       exercise  220 [     phmmer/--qformat] ...     ok.
+       exercise  221 [     phmmer/--tformat] ...     ok.
+       exercise  222 [               nhmmer] ...     ok.
+       exercise  223 [            nhmmer/-h] ...     ok.
+       exercise  224 [            nhmmer/-o] ...     ok.
+       exercise  225 [            nhmmer/-A] ...     ok.
+       exercise  226 [      nhmmer/--tblout] ...     ok.
+       exercise  227 [  nhmmer/--dfamtblout] ...     ok.
+       exercise  228 [         nhmmer/--acc] ...     ok.
+       exercise  229 [       nhmmer/--noali] ...     ok.
+       exercise  230 [     nhmmer/--notextw] ...     ok.
+       exercise  231 [       nhmmer/--textw] ...     ok.
+       exercise  232 [            nhmmer/-E] ...     ok.
+       exercise  233 [            nhmmer/-T] ...     ok.
+       exercise  234 [        nhmmer/--incE] ...     ok.
+       exercise  235 [        nhmmer/--incT] ...     ok.
+       exercise  236 [         nhmmer/--max] ...     ok.
+       exercise  237 [          nhmmer/--F1] ...     ok.
+       exercise  238 [          nhmmer/--F2] ...     ok.
+       exercise  239 [          nhmmer/--F3] ...     ok.
+       exercise  240 [      nhmmer/--nobias] ...     ok.
+       exercise  241 [     nhmmer/--nonull2] ...     ok.
+       exercise  242 [            nhmmer/-Z] ...     ok.
+       exercise  243 [        nhmmer/--seed] ...     ok.
+       exercise  244 [             nhmmscan] ...     ok.
+       exercise  245 [          nhmmscan/-h] ...     ok.
+       exercise  246 [          nhmmscan/-o] ...     ok.
+       exercise  247 [    nhmmscan/--tblout] ...     ok.
+       exercise  248 [nhmmscan/--dfamtblout] ...     ok.
+       exercise  249 [       nhmmscan/--acc] ...     ok.
+       exercise  250 [     nhmmscan/--noali] ...     ok.
+       exercise  251 [   nhmmscan/--notextw] ...     ok.
+       exercise  252 [     nhmmscan/--textw] ...     ok.
+       exercise  253 [          nhmmscan/-E] ...     ok.
+       exercise  254 [          nhmmscan/-T] ...     ok.
+       exercise  255 [      nhmmscan/--incE] ...     ok.
+       exercise  256 [      nhmmscan/--incT] ...     ok.
+       exercise  257 [       nhmmscan/--max] ...     ok.
+       exercise  258 [        nhmmscan/--F1] ...     ok.
+       exercise  259 [        nhmmscan/--F2] ...     ok.
+       exercise  260 [        nhmmscan/--F3] ...     ok.
+       exercise  261 [    nhmmscan/--nobias] ...     ok.
+       exercise  262 [   nhmmscan/--nonull2] ...     ok.
+       exercise  263 [          nhmmscan/-Z] ...     ok.
+       exercise  264 [      nhmmscan/--seed] ...     ok.
+       exercise  265 [              hmmemit] ...     ok.
+       exercise  266 [           hmmemit/-h] ...     ok.
+       exercise  267 [           hmmemit/-c] ...     ok.
+       exercise  268 [           hmmemit/-o] ...     ok.
+       exercise  269 [           hmmemit/-p] ...     ok.
+       exercise  270 [           hmmemit/-N] ...     ok.
+       exercise  271 [           hmmemit/-L] ...     ok.
+       exercise  272 [      hmmemit/--local] ...     ok.
+       exercise  273 [   hmmemit/--unilocal] ...     ok.
+       exercise  274 [     hmmemit/--glocal] ...     ok.
+       exercise  275 [  hmmemit/--uniglocal] ...     ok.
+       exercise  276 [             hmmfetch] ...     ok.
+       exercise  277 [              hmmstat] ...     ok.
+       exercise  278 [              hmmlogo] ...     ok.
+       exercise  279 [           hmmconvert] ...     ok.
+       exercise  280 [               hmmsim] ...     ok.
+       exercise  281 [   hmmbuild_variation] ...     ok.
+       exercise  282 [    hmmscan_variation] ...     ok.
+       exercise  283 [  hmmsearch_variation] ...     ok.
+       exercise  284 [     phmmer_variation] ...     ok.
+       exercise  285 [               mapali] ...     ok.
+       exercise  286 [            fragments] ...     ok.
+       exercise  287 [          nonresidues] ...     ok.
+       exercise  288 [       opt-annotation] ...     ok.
+       exercise  289 [            dup-names] ...     ok.
+       exercise  290 [         mapali-again] ...     ok.
+       exercise  291 [    delete-corruption] ...     ok.
+       exercise  292 [        msa-integrity] ...     ok.
+       exercise  293 [    hmmemit-consensus] ...     ok.
+       exercise  294 [           hmmconvert] ...     ok.
+       exercise  295 [          stdin_pipes] ...     ok.
+       exercise  296 [       nhmmer_generic] ...     ok.
+       exercise  297 [           hmmpgmd_ga] ...     ok.
+       exercise  298 [               rewind] ...     ok.
+       exercise  299 [     hmmpgmd_shard_ga] ...     ok.
+       exercise  300 [            bad-fasta] ...     ok.
+       exercise  301 [          brute-itest] ...     ok.
+       exercise  302 [       hmmpress-itest] ...     ok.
+       exercise  303 [                  h39] ...     ok.
+       exercise  304 [                  h45] ...     ok.
+       exercise  305 [                  h50] ...     ok.
+       exercise  306 [                  h82] ...     ok.
+       exercise  307 [               iss159] ...     ok.
+
+   All 307 exercises at level <= 2 passed.
+
+
+   System information:
+   Mon Sep  7 00:17:42 UTC 2020
+   Linux hogrd01 4.15.0-108-generic #109-Ubuntu SMP Fri Jun 19 11:33:10 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+        SUBDIR easel
+        SUBDIR miniapps
+        SUBDIR libdivsufsort
+        SUBDIR src
+        SUBDIR impl_sse
+        SUBDIR profmark
+   /usr/bin/install -c -d /data/scratch/Timo/SEQER_PFAM/bin
+   /usr/bin/install -c -d /data/scratch/Timo/SEQER_PFAM/share/man/man1
+   make -C src install
+   make[1]: Entering directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/src'
+   for file in alimask hmmalign hmmbuild hmmconvert hmmemit hmmfetch hmmlogo hmmpgmd hmmpgmd_shard hmmpress hmmscan hmmsearch hmmsim hmmstat jackhmmer phmmer nhmmer nhmmscan makehmmerdb; do \
+      /usr/bin/install -c -m 0755 $file /data/scratch/Timo/SEQER_PFAM/bin/ ;\
+   done
+   make[1]: Leaving directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/src'
+   make -C documentation install
+   make[1]: Entering directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/documentation'
+   make -C man install
+   make[2]: Entering directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/documentation/man'
+   for file in hmmer hmmalign hmmbuild hmmc2 hmmconvert hmmemit hmmfetch hmmlogo hmmpgmd hmmpgmd_shard hmmpress hmmscan hmmsearch hmmsim hmmstat jackhmmer makehmmerdb phmmer nhmmer nhmmscan alimask; do \
+      /usr/bin/install -c -m 0664 $file.man /data/scratch/Timo/SEQER_PFAM/share/man/man1/${file}.1 ;\
+   done
+   make[2]: Leaving directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/documentation/man'
+   make[1]: Leaving directory '/data/scratch/Timo/SEQER_PFAM/programs/hmmer-3.3.1/documentation'
+
+http://eddylab.org/software/hmmer/hmmer.tar.gz
 
 ** TODO make run dirs and run X alignments & makesearch in parallel 
 

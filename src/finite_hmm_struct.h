@@ -1,13 +1,12 @@
 #ifndef FINITE_HMM_STRUCT_H
 #define FINITE_HMM_STRUCT_H
 
-#define S_STATE 0
-#define N_STATE 1
-#define B_STATE 2
-#define E_STATE 3
-#define C_STATE 4
-#define J_STATE 5
-#define T_STATE 6
+#define N_STATE 0
+#define B_STATE 1
+#define E_STATE 2
+#define C_STATE 3
+#define J_STATE 4
+
 
 struct fhmm{
         float** F_matrix;

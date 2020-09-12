@@ -1,4 +1,3 @@
-
 #include "tldevel.h"
 #include "tllogsum.h"
 #include "tlrng.h"
@@ -72,7 +71,7 @@ int main(void)
         test_seq[7] = 0;
         LOG_MSG("Single  hit test");
         RUN(run_forward_diff_len(fhmm,dm,  test_seq, 8));
-
+        exit(0);
         test_seq[0] = 0;
         test_seq[1] = 0;
         test_seq[2] = 0;
@@ -96,7 +95,7 @@ int main(void)
         test_seq[4] = 3;
         test_seq[5] = 0;
         test_seq[6] = 0;
-        test_seq[7] = 3;
+        test_seq[7] = 0;
         test_seq[8] = 1;
         test_seq[9] = 2;
         test_seq[10] = 3;
@@ -171,22 +170,23 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
         int i;
         LOG_MSG("SeqLen: %d", len);
         for(i = MACRO_MAX(1, len -10); i < len+10   ;i++){
-                
+
                 //configure_target_len(fhmm, MACRO_MAX(1, i-2), 0);
                 //configure_target_len(fhmm, i, 0);
                 forward(fhmm, dm, &fhmm->f_score, seq, len,0);
                 backward(fhmm, dm, &fhmm->b_score, seq, len,0);
                 random_model_score(len,&fhmm->r_score);// ,seq, len,len );
 
-    
+
                 //random_model_score(fhmm->background , &fhmm->r_score ,seq, len,len);
                 fprintf(stdout,"LEN: %d\t",i);
                 fprintf(stdout,"SCORE (  uni) %f\n", fhmm->f_score);
                 fprintf(stdout,"LEN: %d\t",i);
                 fprintf(stdout,"SCORE (  uni) %f %f %f  %f  bit:%f\n", fhmm->b_score,scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),  fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score),(fhmm->f_score - fhmm->r_score) / logf(2.0f));
 
+
                 posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
-                exit(0);
+
                 //exit(0);
                 //break;
 
@@ -199,6 +199,7 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
                 fprintf(stdout,"SCORE (multi) %f \n", fhmm->f_score);
                 fprintf(stdout,"LEN: %d\t",i);
                 fprintf(stdout,"SCORE (multi) %f %f %f  %f\n", fhmm->b_score, scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score));
+
                 //LOG_MSG("%f", scaledprob2prob(fhmm->f_score - fhmm->b_score));
                 //exit(0);
         }
@@ -301,6 +302,3 @@ int generate_simple_fhmm(struct fhmm** f)
 ERROR:
         return FAIL;
 }
-
-
-

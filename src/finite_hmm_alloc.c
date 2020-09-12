@@ -29,8 +29,8 @@ int alloc_fhmm_dyn_mat(struct fhmm_dyn_mat** mat,int L,int K)
                         dm->B_matrix[i][j] = 0.0;
                 }
         }
-        RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 7));
-        RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 7));
+        RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 5));
+        RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 5));
         for(i = 0; i < dm->alloc_matrix_len+2;i++){
                 for(j = 0;j < 5;j++){
                         dm->F_NBECJ[i][j] = 0.0;
@@ -70,8 +70,8 @@ int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int L, int K)
                                 dm->B_matrix[i][j] = 0.0;
                         }
                 }
-                RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 7));
-                RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 7));
+                RUN(galloc(&dm->F_NBECJ, dm->alloc_matrix_len+2, 5));
+                RUN(galloc(&dm->B_NBECJ, dm->alloc_matrix_len+2, 5));
                 for(i = 0; i < dm->alloc_matrix_len+2;i++){
                         for(j = 0;j < 5;j++){
                                 dm->F_NBECJ[i][j] = 0.0;

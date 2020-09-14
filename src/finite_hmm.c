@@ -69,19 +69,11 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
         }
 
 
-        NBECJ[0][N_STATE] = prob2scaledprob(1.0F) + tSN; /* start -> N state has 1.0 prob */
+        NBECJ[0][N_STATE] = prob2scaledprob(1.0F);// + tSN; /* start -> N state has 1.0 prob */
         NBECJ[0][B_STATE] = tNB;
         NBECJ[0][E_STATE] = -INFINITY;
         NBECJ[0][C_STATE] = -INFINITY;
         NBECJ[0][J_STATE] = -INFINITY;
-
-        /* fprintf(stdout,"\n"); */
-        /* fprintf(stdout,"%0.2f\t%0.2f: \t", NBECJ[0][N_STATE],  NBECJ[0][B_STATE]); */
-        /* for(j = 0; j < fhmm->K;j++){ */
-        /*         fprintf(stdout,"%0.4f ",matrix[0][j]); */
-        /* } */
-        /* fprintf(stdout,": %0.2f\t%0.2f\t%0.2f\n", NBECJ[0][E_STATE],  NBECJ[0][J_STATE], NBECJ[0][C_STATE]); */
-
 
         for(i = 1; i < len+1;i++){
                 for(j = 0; j < fhmm->K;j++){
@@ -105,16 +97,17 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
                         NBECJ[i][E_STATE] = logsum(NBECJ[i][E_STATE], matrix[i][j] + tXE);
                 }
                 /* J */
-                NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + tJJ, NBECJ[i][E_STATE] + tEJ);
+                NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + tJJ, NBECJ[i-1][E_STATE] + tEJ);
                 /* C */
-                NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + tCC, NBECJ[i][E_STATE] + tEC);
+                NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + tCC, NBECJ[i-1][E_STATE] + tEC);
                 /* N */
                 NBECJ[i][N_STATE] = NBECJ[i-1][N_STATE] + tNN;
                 /* B */
                 NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB);
         }
+        *ret_score = logsum(NBECJ[len][C_STATE] + tCT, NBECJ[len][E_STATE] + tCT);
         /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
-        *ret_score = (NBECJ[len][C_STATE] + tCT);
+        //*ret_score = (NBECJ[len][C_STATE] + tCT);
         return OK;
 ERROR:
         return FAIL;
@@ -148,14 +141,12 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
         ASSERT(len > 0, "Seq is of length 0");
         //ASSERT(len == fhmm->config_len, "Model configured for len %d but seqlen is %d. ", fhmm->config_len,len);
 
-
         if(mode){
                 q = 0.5f;
                 p = (float) len / ((float)len + 3.0f);
         }else{
                 q = 0.0f;
                 p = (float) len / ((float)len + 2.0f);
-
         }
 
         tSN = prob2scaledprob(1.0f);
@@ -183,7 +174,7 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
         NBECJ[len][N_STATE] = -INFINITY;
 
         NBECJ[len][C_STATE] = tCT;
-        NBECJ[len][E_STATE] = NBECJ[len][C_STATE] +   tEC;
+        NBECJ[len][E_STATE] = tCT;//NBECJ[len][C_STATE] +   tEC;
 
         for(j = 0; j < fhmm->K;j++){
                 matrix[len][j] = NBECJ[len][E_STATE] + tXE + fhmm->e[j][a[len-1]];
@@ -197,12 +188,13 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
                 for(j = 0; j < fhmm->K;j++){
                         NBECJ[i][B_STATE] = logsum(NBECJ[i][B_STATE], matrix[i+1][j] + tBX);
                 }
+
                 /* not sure about this ...  */
                 NBECJ[i][J_STATE] = logsum(NBECJ[i+1][J_STATE] + tJJ, NBECJ[i][B_STATE] + tJB);
                 /* C state */
                 NBECJ[i][C_STATE] = NBECJ[i+1][C_STATE] + tCC;
                 /* E state */
-                NBECJ[i][E_STATE] = logsum(NBECJ[i][J_STATE] + tEJ, NBECJ[i][C_STATE] + tEC);
+                NBECJ[i][E_STATE] = logsum(NBECJ[i+1][J_STATE] + tEJ, NBECJ[i+1][C_STATE] + tEC);
                 /* N state  */
                 NBECJ[i][N_STATE] = logsum(NBECJ[i+1][N_STATE] + tNN, NBECJ[i][B_STATE] + tNB);
 
@@ -259,10 +251,10 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
 
         float** F = NULL;
         float** B = NULL;
-        float max;
+        //float max;
         int best;
         int i,j,c,f;
-
+        int o;
         F_NBECJ = m->F_NBECJ;
         B_NBECJ = m->B_NBECJ;
         F = m->F_matrix;
@@ -333,88 +325,153 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                         B_NBECJ[i][j] = 0.0F;
                 }
         }
+        float* max = NULL;
+        MMALLOC(max, sizeof(float) * fhmm->K);
 
 
-        F_NBECJ[0][N_STATE] = F_NBECJ[0][N_STATE];
-        F_NBECJ[0][B_STATE] = F_NBECJ[0][B_STATE] + F_NBECJ[0][N_STATE];
-        B_NBECJ[0][B_STATE] = N_STATE;
-
-        float* emission = NULL;
-        MMALLOC(emission, sizeof(float) * fhmm->K);
-
-
+        F_NBECJ[0][N_STATE] = 0.0;
         for(i = 1; i < len+1;i++){
+                F_NBECJ[i][B_STATE] =0.0;
+                F_NBECJ[i][E_STATE] =0.0;
+                B_NBECJ[i][B_STATE] =0.0;
+                B_NBECJ[i][E_STATE] =0.0;
+
                 for(j = 0; j < fhmm->K;j++){
-                        emission[j] = F[i][j];
-                        F[i][j] = 0.0;
+                        max[j] = F_NBECJ[i-1][N_STATE];
+                        B[i][j] = N_STATE;
+                        if(F_NBECJ[i-1][J_STATE] > max[j]){
+                                max[j] = F_NBECJ[i-1][J_STATE];
+                                B[i][j] = J_STATE;
+                        }
                 }
+
                 for(j = 0; j < fhmm->K;j++){
+
                         for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
-                                if(F[i][f] < F[i-1][j]){
-                                        F[i][f] = F[i-1][j];
+                                if(max[f] < F[i-1][j]){
+                                        max[f] = F[i-1][j];
                                         B[i][f] = j+5;
                                 }
-                                //matrix[i][f] = logsum(matrix[i][f], matrix[i-1][j] + fhmm->t[j][f]);
                         }
+
+                }
+                for(j = 0; j < fhmm->K;j++){
+                        F[i][j] += max[j];
                 }
 
-                for(j = 0;j < fhmm->K;j++){
-                        if(F[i][j] < F_NBECJ[i-1][B_STATE]){
-                                F[i][j] = F_NBECJ[i-1][B_STATE];
-                                B[i][j] = B_STATE;
-                        }
-                        F[i][j] += emission[j];
-                }
-                emission[0] = F_NBECJ[i][E_STATE];
-                F_NBECJ[i][E_STATE] = 0.0;
-
+                max[0] = F_NBECJ[i-1][C_STATE];
+                best = C_STATE;
 
                 for(j = 0; j < fhmm->K;j++){
-                        if(F_NBECJ[i][E_STATE] < F[i][j]){
-                                F_NBECJ[i][E_STATE] = F[i][j];
-                                B_NBECJ[i][E_STATE] = j+5;
+                        if(F[i-1][j] > max[0]){
+                                max[0] = F[i-1][j];
+                                best = j+5;
                         }
                 }
-                F_NBECJ[i][E_STATE] += emission[0];
+                F_NBECJ[i][C_STATE] += max[0];
+                B_NBECJ[i][C_STATE] = best;
 
+                max[0] = F_NBECJ[i-1][J_STATE];
+                best = J_STATE;
+                for(j = 0; j < fhmm->K;j++){
+                        if(F[i-1][j] > max[0]){
+                                max[0]= F[i-1][j];
+                                best = j+5;
+                        }
+                }
+                F_NBECJ[i][J_STATE] += max[0];
+                B_NBECJ[i][J_STATE] = best;
 
-                /* J */
-                if(F_NBECJ[i][J_STATE]){
-                if(F_NBECJ[i-1][J_STATE]  > F_NBECJ[i][E_STATE]){
-                        F_NBECJ[i][J_STATE] += F_NBECJ[i-1][J_STATE];
-                        B_NBECJ[i][J_STATE] = J_STATE;
-                }else{
-                        F_NBECJ[i][J_STATE] += F_NBECJ[i][E_STATE];
-                        B_NBECJ[i][J_STATE] = E_STATE;
-                }
-                }
-                //NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + tJJ, NBECJ[i][E_STATE] + tEJ);
-                /* C */
-                if(F_NBECJ[i-1][C_STATE] > F_NBECJ[i][E_STATE]){
-                        F_NBECJ[i][C_STATE] += F_NBECJ[i-1][C_STATE];
-                        B_NBECJ[i][C_STATE] = C_STATE;
-                }else{
-                        F_NBECJ[i][C_STATE] += F_NBECJ[i][E_STATE];
-                        B_NBECJ[i][C_STATE] = E_STATE;
-                }
-                //NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + tCC, NBECJ[i][E_STATE] + tEC);
-                /* N */
                 F_NBECJ[i][N_STATE] += F_NBECJ[i-1][N_STATE];
                 B_NBECJ[i][N_STATE] = N_STATE;
-                //NBECJ[i][N_STATE] = NBECJ[i-1][N_STATE] + tNN;
-                /* B */
-                if(F_NBECJ[i][N_STATE] > F_NBECJ[i][J_STATE]){
-                        F_NBECJ[i][B_STATE] += F_NBECJ[i][N_STATE];
-                        B_NBECJ[i][B_STATE] = N_STATE;
-                }else{
-                        F_NBECJ[i][B_STATE] += F_NBECJ[i][J_STATE];
-                        B_NBECJ[i][B_STATE] = J_STATE;
-                }
-
-
-                //NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB);
         }
+
+
+        /* F_NBECJ[0][N_STATE] = F_NBECJ[0][N_STATE]; */
+        /* F_NBECJ[0][B_STATE] = F_NBECJ[0][B_STATE] + F_NBECJ[0][N_STATE]; */
+        /* B_NBECJ[0][B_STATE] = N_STATE; */
+
+        /* float* emission = NULL; */
+        /* MMALLOC(emission, sizeof(float) * fhmm->K); */
+
+
+        /* for(i = 1; i < len+1;i++){ */
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 emission[j] = F[i][j]; */
+        /*                 F[i][j] = 0.0; */
+        /*         } */
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 for(c = 1; c < fhmm->tindex[j][0];c++){ */
+        /*                         f = fhmm->tindex[j][c]; */
+        /*                         if(F[i][f] < F[i-1][j]){ */
+        /*                                 F[i][f] = F[i-1][j]; */
+        /*                                 B[i][f] = j+5; */
+        /*                         } */
+        /*                         //matrix[i][f] = logsum(matrix[i][f], matrix[i-1][j] + fhmm->t[j][f]); */
+        /*                         LOG_MSG("T: %d -> %d ", j, f); */
+        /*                 } */
+        /*         } */
+
+        /*         for(j = 0;j < fhmm->K;j++){ */
+        /*                 LOG_MSG("%d %d cF:%f cB:%f from_BEGIN:%f",i,j, F[i][j],B[i][j],F_NBECJ[i-1][B_STATE]); */
+        /*                 if(F[i][j] < F_NBECJ[i-1][B_STATE]){ */
+        /*                         F[i][j] = F_NBECJ[i-1][B_STATE]; */
+        /*                         B[i][j] = B_STATE; */
+        /*                 } */
+        /*                 F[i][j] += emission[j]; */
+        /*                 LOG_MSG("%d %d cF:%f cB:%f from_BEGIN:%f",i,j, F[i][j],B[i][j],F_NBECJ[i-1][B_STATE]); */
+        /*         } */
+        /*         emission[0] = F_NBECJ[i][E_STATE]; */
+        /*         F_NBECJ[i][E_STATE] = 0.0; */
+
+
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 if(F_NBECJ[i][E_STATE] < F[i][j]){ */
+        /*                         F_NBECJ[i][E_STATE] = F[i][j]; */
+        /*                         B_NBECJ[i][E_STATE] = j+5; */
+        /*                 } */
+        /*         } */
+        /*         F_NBECJ[i][E_STATE] += emission[0]; */
+
+
+        /*         /\* J *\/ */
+
+        /*         if(F_NBECJ[i-1][J_STATE]  > F_NBECJ[i][E_STATE]){ */
+        /*                 F_NBECJ[i][J_STATE] += F_NBECJ[i-1][J_STATE]; */
+        /*                 B_NBECJ[i][J_STATE] = J_STATE; */
+        /*         }else{ */
+        /*                 F_NBECJ[i][J_STATE] += F_NBECJ[i][E_STATE]; */
+        /*                 B_NBECJ[i][J_STATE] = E_STATE; */
+        /*         } */
+
+        /*         //NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + tJJ, NBECJ[i][E_STATE] + tEJ); */
+        /*         /\* C *\/ */
+        /*         if(F_NBECJ[i-1][C_STATE] > F_NBECJ[i][E_STATE]){ */
+        /*                 F_NBECJ[i][C_STATE] += F_NBECJ[i-1][C_STATE]; */
+        /*                 B_NBECJ[i][C_STATE] = C_STATE; */
+        /*         }else{ */
+        /*                 F_NBECJ[i][C_STATE] += F_NBECJ[i][E_STATE]; */
+        /*                 B_NBECJ[i][C_STATE] = E_STATE; */
+        /*         } */
+        /*         //NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + tCC, NBECJ[i][E_STATE] + tEC); */
+        /*         /\* N *\/ */
+        /*         F_NBECJ[i][N_STATE] += F_NBECJ[i-1][N_STATE]; */
+        /*         B_NBECJ[i][N_STATE] = N_STATE; */
+        /*         //NBECJ[i][N_STATE] = NBECJ[i-1][N_STATE] + tNN; */
+        /*         /\* B *\/ */
+
+        /*         if(F_NBECJ[i][N_STATE] > F_NBECJ[i][J_STATE]){ */
+        /*                 F_NBECJ[i][B_STATE] += F_NBECJ[i][N_STATE]; */
+        /*                 B_NBECJ[i][B_STATE] = N_STATE; */
+        /*         }else{ */
+        /*                 F_NBECJ[i][B_STATE] += F_NBECJ[i][J_STATE]; */
+        /*                 B_NBECJ[i][B_STATE] = J_STATE; */
+        /*         } */
+
+
+        /*         //NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB); */
+        /* } */
         /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
         //*ret_score = (NBECJ[len][C_STATE] + tCT);
 
@@ -432,32 +489,54 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                 }
                 fprintf(stdout,"\n");
         }
-
+        //exit(0);
         int state = C_STATE;
 
 
 
         i = len;
         while (len >= 0){
-                //going to
-                if(i){
-                        LOG_MSG("%d %d",i,state);
-                        //path[i-1] = state;
-                }
-                if(state > 4){
-                        state = B[i][state-5];
-                }else{
+
+
+                /* Develop logic */
+                /* if state is C and points to E go there  */
+                /* don't decrement i  */
+                /* if state is j and points to B go there (?) */
+                /* if state is E and points to X go there  */
+                //LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
+                switch (state) {
+                case N_STATE:
+                case C_STATE:
+                case J_STATE: {
+                        LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
                         state = B_NBECJ[i][state];
+                        i--;
+                        break;
                 }
-                if(state == B_STATE || state == E_STATE){
-                        if(state > 4){
-                                state = B[i][state-5];
-                        }else{
-                                state = B_NBECJ[i][state];
-                        }
+                case E_STATE:{
+                        state = B_NBECJ[i][state];
+                        /* don't decrement i as B can't emit symbols  */
+                        break;
                 }
-                //state = Bmatrix[i][state];
-                i--;
+                case B_STATE:{
+                        state = B_NBECJ[i][state];
+                        break;
+                }
+
+                default:        /* These are the X states  */
+                        LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
+                        state = B[i][state-5];
+                        //if(state >= 5){ /* only decrement if I continue to another X */
+
+                                i--;
+                                //}
+                        break;
+                }
+                if(!i){
+                        break;
+                }
+
+//going to
         }
 
 

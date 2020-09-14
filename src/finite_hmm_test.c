@@ -185,7 +185,7 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
                 fprintf(stdout,"SCORE (  uni) %f %f %f  %f  bit:%f\n", fhmm->b_score,scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),  fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score),(fhmm->f_score - fhmm->r_score) / logf(2.0f));
 
 
-                posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
+                //posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
 
                 //exit(0);
                 //break;
@@ -199,7 +199,8 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
                 fprintf(stdout,"SCORE (multi) %f \n", fhmm->f_score);
                 fprintf(stdout,"LEN: %d\t",i);
                 fprintf(stdout,"SCORE (multi) %f %f %f  %f\n", fhmm->b_score, scaledprob2prob(fhmm->f_score) - scaledprob2prob(fhmm->b_score),fhmm->r_score, LOGISTIC_FLT(fhmm->f_score - fhmm->r_score));
-
+                posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
+                //posterior_decoding(fhmm, dm, fhmm->f_score, seq, len, path);
                 //LOG_MSG("%f", scaledprob2prob(fhmm->f_score - fhmm->b_score));
                 //exit(0);
         }

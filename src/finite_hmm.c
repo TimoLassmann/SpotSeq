@@ -105,6 +105,7 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
                 /* B */
                 NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB);
         }
+
         *ret_score = logsum(NBECJ[len][C_STATE] + tCT, NBECJ[len][E_STATE] + tCT);
         /* LOG_MSG("%f %f %f ",NBECJ[len][C_STATE] , fhmm->tCT,NBECJ[len][C_STATE] + fhmm->tCT); */
         //*ret_score = (NBECJ[len][C_STATE] + tCT);
@@ -169,6 +170,8 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
         matrix = m->B_matrix;
         NBECJ = m->B_NBECJ;
 
+
+        NBECJ[len+1][C_STATE] = prob2scaledprob(1.0F);
         NBECJ[len][J_STATE] = -INFINITY;
         NBECJ[len][B_STATE] = -INFINITY;
         NBECJ[len][N_STATE] = -INFINITY;
@@ -329,63 +332,136 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
         MMALLOC(max, sizeof(float) * fhmm->K);
 
 
-        F_NBECJ[0][N_STATE] = 0.0;
+
         for(i = 1; i < len+1;i++){
-                F_NBECJ[i][B_STATE] =0.0;
-                F_NBECJ[i][E_STATE] =0.0;
-                B_NBECJ[i][B_STATE] =0.0;
-                B_NBECJ[i][E_STATE] =0.0;
-
-                for(j = 0; j < fhmm->K;j++){
-                        max[j] = F_NBECJ[i-1][N_STATE];
-                        B[i][j] = N_STATE;
-                        if(F_NBECJ[i-1][J_STATE] > max[j]){
-                                max[j] = F_NBECJ[i-1][J_STATE];
-                                B[i][j] = J_STATE;
-                        }
+                for(j = 0;j < fhmm->K;j++){
+                        max[j] =  F_NBECJ[i-1][B_STATE];
+                        B[i][j] = B_STATE;
                 }
-
                 for(j = 0; j < fhmm->K;j++){
-
                         for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
                                 if(max[f] < F[i-1][j]){
                                         max[f] = F[i-1][j];
                                         B[i][f] = j+5;
                                 }
+                                //matrix[i][f] = logsum(matrix[i][f], matrix[i-1][j] + fhmm->t[j][f]);
                         }
-
                 }
-                for(j = 0; j < fhmm->K;j++){
+
+                for(j = 0;j < fhmm->K;j++){
+                        /* add transition from B state */
+                        //matrix[i][j] = logsum(matrix[i][j], NBECJ[i-1][B_STATE] + tBX);
                         F[i][j] += max[j];
+                        //cur[c] += fhmm->e[c][a[i-1]];
+                        //
                 }
-
-                max[0] = F_NBECJ[i-1][C_STATE];
-                best = C_STATE;
-
-                for(j = 0; j < fhmm->K;j++){
-                        if(F[i-1][j] > max[0]){
-                                max[0] = F[i-1][j];
-                                best = j+5;
+                /* E */
+                max[0] = F_NBECJ[i][E_STATE];
+                F_NBECJ[i][E_STATE] = -1;
+                B_NBECJ[i][E_STATE] = -1;
+                for(j = 0;j < fhmm->K;j++){
+                        if(F[i][j] > F_NBECJ[i][E_STATE]){
+                                F_NBECJ[i][E_STATE] = F[i][j];
+                                B_NBECJ[i][E_STATE] = j+5;
                         }
+                        //NBECJ[i][E_STATE] = logsum(NBECJ[i][E_STATE], matrix[i][j] + tXE);
                 }
-                F_NBECJ[i][C_STATE] += max[0];
-                B_NBECJ[i][C_STATE] = best;
+                F_NBECJ[i][E_STATE] += max[0];
 
-                max[0] = F_NBECJ[i-1][J_STATE];
-                best = J_STATE;
-                for(j = 0; j < fhmm->K;j++){
-                        if(F[i-1][j] > max[0]){
-                                max[0]= F[i-1][j];
-                                best = j+5;
-                        }
+                /* J */
+                if(F_NBECJ[i-1][J_STATE] > F_NBECJ[i-1][E_STATE]){
+                        F_NBECJ[i][J_STATE] += F_NBECJ[i-1][J_STATE];
+                        B_NBECJ[i][J_STATE] = J_STATE;
+                }else{
+                        F_NBECJ[i][J_STATE] += F_NBECJ[i-1][E_STATE];
+                        B_NBECJ[i][J_STATE] = E_STATE;
                 }
-                F_NBECJ[i][J_STATE] += max[0];
-                B_NBECJ[i][J_STATE] = best;
-
+                //NBECJ[i][J_STATE] = logsum(NBECJ[i-1][J_STATE] + tJJ, NBECJ[i-1][E_STATE] + tEJ);
+                /* C */
+                if(F_NBECJ[i-1][C_STATE] > F_NBECJ[i-1][E_STATE]){
+                        F_NBECJ[i][C_STATE] += F_NBECJ[i-1][C_STATE];
+                        B_NBECJ[i][C_STATE] = C_STATE;
+                }else{
+                        F_NBECJ[i][C_STATE] += F_NBECJ[i-1][E_STATE];
+                        B_NBECJ[i][C_STATE] = E_STATE;
+                }
+                //NBECJ[i][C_STATE] = logsum(NBECJ[i-1][C_STATE] + tCC, NBECJ[i-1][E_STATE] + tEC);
+                /* N */
                 F_NBECJ[i][N_STATE] += F_NBECJ[i-1][N_STATE];
                 B_NBECJ[i][N_STATE] = N_STATE;
+                //NBECJ[i][N_STATE] = NBECJ[i-1][N_STATE] + tNN;
+                /* B */
+
+                if(F_NBECJ[i][N_STATE] > F_NBECJ[i][J_STATE]){
+                        F_NBECJ[i][B_STATE] += F_NBECJ[i][N_STATE];
+                        B_NBECJ[i][B_STATE] = N_STATE;
+                }else{
+                        F_NBECJ[i][B_STATE] += F_NBECJ[i][J_STATE];
+                        B_NBECJ[i][B_STATE] = J_STATE;
+                }
+                //NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB);
         }
+
+
+        /* Let's put this attempt on ice  */
+        //F_NBECJ[0][N_STATE] = 0.0F;
+        /* for(i = 1; i < len+1;i++){ */
+        /*         //F_NBECJ[i][B_STATE] = 0.0F; */
+        /*         //F_NBECJ[i][E_STATE] = 0.0F; */
+        /*         //B_NBECJ[i][B_STATE] = 0.0F; */
+        /*         //B_NBECJ[i][E_STATE] = 0.0F; */
+
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 max[j] = F_NBECJ[i-1][N_STATE]; */
+        /*                 B[i][j] = N_STATE; */
+        /*                 if(F_NBECJ[i-1][J_STATE] > max[j]){ */
+        /*                         max[j] = F_NBECJ[i-1][J_STATE]; */
+        /*                         B[i][j] = J_STATE; */
+        /*                 } */
+        /*         } */
+
+        /*         for(j = 0; j < fhmm->K;j++){ */
+
+        /*                 for(c = 1; c < fhmm->tindex[j][0];c++){ */
+        /*                         f = fhmm->tindex[j][c]; */
+        /*                         if(max[f] < F[i-1][j]){ */
+        /*                                 max[f] = F[i-1][j]; */
+        /*                                 B[i][f] = j+5; */
+        /*                         } */
+        /*                 } */
+
+        /*         } */
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 F[i][j] += max[j]; */
+        /*         } */
+
+        /*         max[0] = F_NBECJ[i-1][C_STATE]; */
+        /*         best = C_STATE; */
+
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 if(F[i-1][j] > max[0]){ */
+        /*                         max[0] = F[i-1][j]; */
+        /*                         best = j+5; */
+        /*                 } */
+        /*         } */
+        /*         F_NBECJ[i][C_STATE] += max[0]; */
+        /*         B_NBECJ[i][C_STATE] = best; */
+
+        /*         max[0] = F_NBECJ[i-1][J_STATE]; */
+        /*         best = J_STATE; */
+        /*         for(j = 0; j < fhmm->K;j++){ */
+        /*                 if(F[i-1][j] > max[0]){ */
+        /*                         max[0]= F[i-1][j]; */
+        /*                         best = j+5; */
+        /*                 } */
+        /*         } */
+        /*         F_NBECJ[i][J_STATE] += max[0]; */
+        /*         B_NBECJ[i][J_STATE] = best; */
+
+        /*         F_NBECJ[i][N_STATE] += F_NBECJ[i-1][N_STATE]; */
+        /*         B_NBECJ[i][N_STATE] = N_STATE; */
+        /* } */
 
 
         /* F_NBECJ[0][N_STATE] = F_NBECJ[0][N_STATE]; */
@@ -490,9 +566,13 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                 fprintf(stdout,"\n");
         }
         //exit(0);
-        int state = C_STATE;
+        int state;
 
-
+        if(F_NBECJ[len][C_STATE] > F_NBECJ[len][E_STATE]){
+                state = C_STATE;
+        }else{
+                state = E_STATE;
+        }
 
         i = len;
         while (len >= 0){

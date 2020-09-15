@@ -7,7 +7,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <libgen.h>
-
+#include <omp.h>
 
 #include "tldevel.h"
 #include "tlmisc.h"
@@ -16,13 +16,8 @@
 #include "tlseqio.h"
 #include "tlalphabet.h"
 #include "tlseqbuffer.h"
-//#include "model.h"
+
 #include "sequence_struct.h"
-
-
-
-//#include "sequence_io.h"
-//#include "sequence_prep.h"
 
 #include "pst.h"
 #include "pst_io.h"
@@ -31,7 +26,6 @@
 
 #include "thread_data.h"
 
-//#include "ihmm_seq.h"
 #include "bias_model.h"
 
 #include "finite_hmm.h"
@@ -39,8 +33,6 @@
 #include "finite_hmm_alloc.h"
 
 #include "finite_hmm_score.h"
-
-#include "run_score.h"
 
 struct parameters{
         char* in_model;
@@ -60,20 +52,17 @@ static int scan_sequences_pst(struct parameters* param,struct tl_seq_buffer** hi
 static int print_help(char **argv);
 static int free_parameters(struct parameters* param);
 
+static int run_search(struct parameters* param);
+static int run_score_pipe(struct fhmm** fhmm, struct tl_seq_buffer* sb, struct parameters* param);
+
 int main (int argc, char *argv[])
 {
-        FILE* fptr = NULL;
+
 
         struct parameters* param = NULL;
-        struct fhmm** fhmm = NULL;
-        //struct fhmm* bias = NULL;
-        //struct tl_seq_buffer* sb = NULL;
-        double* s = NULL;
-        uint64_t db_size = 0;
-        struct seqer_thread_data** td = NULL;
 
 
-        int i;
+
         int c;
 
         //print_program_header(argv, "Scores sequences.");
@@ -85,7 +74,7 @@ int main (int argc, char *argv[])
         param->output = NULL;
         param->num_threads = 8;
         param->summary_file = NULL;
-        param->threshold = 2.0;   /* z_score cutoff for pst model scores  */
+        param->threshold = 3.0;   /* z_score cutoff for pst model scores  */
         param->rng = NULL;
 
         while (1){
@@ -181,36 +170,74 @@ int main (int argc, char *argv[])
         }
 
 
+        RUN(run_search(param));
+
+        RUN(free_parameters(param));
+        return EXIT_SUCCESS;
+ERROR:
+        fprintf(stdout,"\n  Try run with  --help.\n\n");
+        free_parameters(param);
+        return EXIT_FAILURE;
+}
+
+int run_search(struct parameters* param)
+{
+
+        FILE* fptr = NULL;
+        struct fhmm** fhmm = NULL;
+        struct tl_seq_buffer* sb = NULL;
+        double* s = NULL;
+        uint64_t db_size = 0;
+        int i;
+
+        ASSERT(param!=NULL, "No parameters.");
+
         LOG_MSG("Loading model.");
 
 
         init_logsum();
 
-        struct tl_seq_buffer* sb = NULL;
+        /* Step one: scan sequences with PST.
+           All resulting hits are stored in sb  */
         RUN(scan_sequences_pst(param, &sb,&db_size ));
 
         LOG_MSG("Found %d putative hits", sb->num_seq);
         LOG_MSG("Read search fhmm");
         //sb->sequences[0]->score_arr
 
+        /* Not very elegant: I am loading the main model
+           and bias modes into slots 0 and 1 and search with
+           both. This is done solely so I can re-use the generic
+           code for searching.
+        */
         MMALLOC(fhmm, sizeof(struct fhmm) * 2);
-        RUN(read_searchfhmm(param->in_model, &fhmm[0]));
 
+        RUN(read_searchfhmm(param->in_model, &fhmm[0]));
         RUN(read_biasfhmm(param->in_model, &fhmm[1]));
-        //RUN(alloc_dyn_matrices(fhmm));
-        RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm[0]->K+1, NULL));
 
         LOG_MSG("Run scoring");
+
         for(i = 0; i < sb->num_seq;i++){
                 s = NULL;
-                MMALLOC(s, sizeof(double)* 4);
+                MMALLOC(s, sizeof(double)* 6);
                 sb->sequences[i]->data = s;
         }
-        RUN(run_score_sequences(fhmm,sb, td, 2, FHMM_SCORE_FULL ));
+
+        RUN(run_score_pipe(fhmm, sb, param));
+
+
+        //exit(0);
+        /* Allocate storage for dynamic programming */
+        //RUN(create_seqer_thread_data(&td,param->num_threads,(sb->max_len+2)  , fhmm[0]->K+1, NULL));
+
+        //LOG_MSG("Run scoring");
+
+        /* Attach a double vector to each sequence to store the scores */
+        //RUN(run_score_sequences(fhmm,sb, td, 2, FHMM_SCORE_FULL ));
          /* Print scores.. */
         RUNP(fptr = fopen(param->output, "w"));
         fprintf(fptr, "Name,score,score_bias,p_score,p_score_bias,e,e_bias\n");
-        
+
         for(i = 0; i < sb->num_seq;i++){
                 s = sb->sequences[i]->data;
                 sb->sequences[i]->name[strcspn(sb->sequences[i]->name, " ")] = 0;
@@ -218,7 +245,7 @@ int main (int argc, char *argv[])
         }
         fclose(fptr);
 
-        free_seqer_thread_data(td);
+        //free_seqer_thread_data(td);
         for(i = 0; i < sb->num_seq;i++){
                  s = sb->sequences[i]->data;
                  MFREE(s);
@@ -228,10 +255,9 @@ int main (int argc, char *argv[])
         free_fhmm(fhmm[0]);
         free_fhmm(fhmm[1]);
         MFREE(fhmm);
-        RUN(free_parameters(param));
-        return EXIT_SUCCESS;
+
+        return OK;
 ERROR:
-        fprintf(stdout,"\n  Try run with  --help.\n\n");
         if(fptr){
                 fclose(fptr);
         }
@@ -241,9 +267,69 @@ ERROR:
                 free_fhmm(fhmm[1]);
                 MFREE(fhmm);
         }
-        free_seqer_thread_data(td);
-        free_parameters(param);
-        return EXIT_FAILURE;
+        return FAIL;
+}
+
+int run_score_pipe(struct fhmm** fhmm, struct tl_seq_buffer* sb, struct parameters* param)
+{
+        struct fhmm_dyn_mat** mats = NULL;
+        int i;
+
+        ASSERT(fhmm != NULL,"no model");
+        ASSERT(sb != NULL, "no parameters");
+        /* just to be 100% safe... */
+        init_logsum();
+        //MMALLOC(container, sizeof(struct fhmm*) * 1);
+        //container[0] = fhmm;
+        MMALLOC(mats, sizeof(struct  fhmm_dyn_mat*)* param->num_threads);
+        for(i = 0; i < param->num_threads;i++){
+                mats[i] = NULL;
+                RUN(alloc_fhmm_dyn_mat(&mats[i], sb->max_len+2, MACRO_MAX(fhmm[0]->K,fhmm[1]->K)));
+        }
+
+#ifdef HAVE_OPENMP
+        omp_set_num_threads(param->num_threads);
+#pragma omp parallel shared(mats,fhmm,sb,param) private(i)
+        {
+#pragma omp for schedule(dynamic) nowait
+#endif
+                for(i =0; i < sb->num_seq;i++){
+#ifdef HAVE_OPENMP
+                        int ID = omp_get_thread_num();
+#else
+                        int ID = 0;
+#endif
+
+                        //LOG_MSG("Thread %d working on %s", ID, sb->sequences[i]->name);
+                        double* s = sb->sequences[i]->data;
+                        uint8_t * seq = sb->sequences[i]->seq;
+                        int len = sb->sequences[i]->len;
+
+                        double fwd,bwd,bias,null;
+
+                        fhmm_score_fwd(fhmm[0],mats[ID],seq, len,1, &fwd);
+                        fhmm_score_fwd(fhmm[1],mats[ID],seq, len,1, &bias);
+                        fhmm_score_null(fhmm[1],mats[ID],seq, len,1, &null);
+                        fhmm_score_bwd(fhmm[0],mats[ID],seq, len,1, &bwd);
+                        s[0] =(fwd - null) / 0.69314718055994529;
+                        s[1] =(fwd - bias) / 0.69314718055994529;
+                        s[2] = esl_exp_surv(s[0], fhmm[0]->tau,fhmm[0]->lambda);
+                        s[3] = esl_exp_surv(s[1], fhmm[0]->tau,fhmm[0]->lambda);
+                        LOG_MSG("%f %f diff: %f ",fwd,bwd,fwd-bwd);
+
+
+                }
+#ifdef HAVE_OPENMP
+        }
+#endif
+
+        for(i = 0; i < param->num_threads;i++){
+                free_fhmm_dyn_mat(mats[i]);
+        }
+        MFREE(mats);
+        return OK;
+ERROR:
+        return FAIL;
 }
 
 

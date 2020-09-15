@@ -18,9 +18,12 @@ int alloc_fhmm_dyn_mat(struct fhmm_dyn_mat** mat,int L,int K)
         dm->F_NBECJ = NULL;
         dm->B_NBECJ = NULL;
 
+        dm->path = NULL;
+
         dm->alloc_K = K;
         dm->alloc_matrix_len = L;
 
+        RUN(galloc(&dm->path, dm->alloc_matrix_len));
         RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
         RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
         for(i = 0; i < dm->alloc_matrix_len+2;i++){
@@ -61,7 +64,7 @@ int resize_fhmm_dyn_mat(struct fhmm_dyn_mat* dm,int L, int K)
         if(new_k > dm->alloc_K || new_l > dm->alloc_matrix_len){
                 dm->alloc_K = new_k;
                 dm->alloc_matrix_len = new_l;
-
+                RUN(galloc(&dm->path, dm->alloc_matrix_len));
                 RUN(galloc(&dm->F_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
                 RUN(galloc(&dm->B_matrix, dm->alloc_matrix_len+2, dm->alloc_K));
                 for(i = 0; i < dm->alloc_matrix_len+2;i++){
@@ -99,6 +102,9 @@ int free_fhmm_dyn_mat(struct fhmm_dyn_mat* dm)
                 }
                 if(dm->B_NBECJ){
                         gfree(dm->B_NBECJ);
+                }
+                if(dm->path){
+                        gfree(dm->path);
                 }
 
                 MFREE(dm);

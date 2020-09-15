@@ -1,5 +1,3 @@
-
-
 #include "tllogsum.h"
 #include "tlseqbuffer.h"
 #include "run_score.h"
@@ -114,7 +112,7 @@ void* do_score_sequences(void* threadarg)
                                     MACRO_MAX(m->alloc_K,j)
                         );
         }
-        
+
         if(mode == FHMM_SCORE_FULL){
                 /* run forward on model, bias model and random  */
                 for(i =0; i < data->sb->num_seq;i++){

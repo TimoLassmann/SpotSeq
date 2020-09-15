@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -176,6 +175,7 @@ int main (int argc, char *argv[])
                         param->num_start_states = atoi(optarg);
                         break;
                 case 'n':
+                        //strtol(const char *restrict __nptr, char **restrict __endptr, int __base)
                         param->num_iter = atoi(optarg);
                         break;
                 case 't':
@@ -756,7 +756,7 @@ ERROR:
 
 int print_help(char **argv)
 {
-        const char usage[] = " -in <fasta> -out <outfile>";
+        const char usage[] = " -in <fasta> -m <model outfile>";
         char* tmp = NULL;
 
         RUN(tlfilename(argv[0], &tmp));

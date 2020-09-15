@@ -15,7 +15,7 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
         float** matrix = NULL;
 
         //const float* trans = 0;
-        float tSN;
+        //float tSN;
         float tNN;
         float tNB;
 
@@ -37,8 +37,6 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
         ASSERT(a != NULL, "No sequence");
         ASSERT(len > 0, "Seq is of length 0");
 
-        //ASSERT(len == fhmm->config_len, "Model configured for len %d but seqlen is %d. ", fhmm->config_len,len);
-
         matrix = m->F_matrix;
         NBECJ = m->F_NBECJ;
 
@@ -50,7 +48,6 @@ int forward(struct fhmm* fhmm , struct fhmm_dyn_mat* m, float* ret_score, uint8_
                 p = (float) len / ((float)len + 2.0F);
         }
 
-        tSN = prob2scaledprob(1.0F);
         tNN = prob2scaledprob(p);
         tNB = prob2scaledprob(1.0F - p);
         tBX = prob2scaledprob(2.0F / (float) (fhmm->K * ( fhmm->K + 1.0F)));
@@ -116,7 +113,7 @@ ERROR:
 
 int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_t* a, int len,int mode)
 {
-        float tSN;
+
         float tNN;
         float tNB;
 
@@ -144,25 +141,24 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
 
         if(mode){
                 q = 0.5f;
-                p = (float) len / ((float)len + 3.0f);
+                p = (float) len / ((float)len + 3.0F);
         }else{
-                q = 0.0f;
-                p = (float) len / ((float)len + 2.0f);
+                q = 0.0F;
+                p = (float) len / ((float)len + 2.0F);
         }
 
-        tSN = prob2scaledprob(1.0f);
         tNN = prob2scaledprob(p);
-        tNB = prob2scaledprob(1.0f - p);
-        tBX = prob2scaledprob(2.0f / (float) (fhmm->K * ( fhmm->K + 1.0f)));
-        tXE = prob2scaledprob(1.0f);
+        tNB = prob2scaledprob(1.0F - p);
+        tBX = prob2scaledprob(2.0F / (float) (fhmm->K * ( fhmm->K + 1.0F)));
+        tXE = prob2scaledprob(1.0F);
         //LOG_MSG("%f", scaledprob2prob(fhmm->tBX));
-        tEC = prob2scaledprob(1.0f - q);
+        tEC = prob2scaledprob(1.0F - q);
         tCC = prob2scaledprob(p);
-        tCT = prob2scaledprob(1.0f - p);
+        tCT = prob2scaledprob(1.0F - p);
 
         tEJ = prob2scaledprob(q);
         tJJ = prob2scaledprob(p);
-        tJB = prob2scaledprob(1.0f - p);
+        tJB = prob2scaledprob(1.0F - p);
 
         //LOG_MSG("t EJ: %f", tEJ);
         //LOG_MSG("t JB: %f", tJB);
@@ -205,18 +201,13 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
                         matrix[i][j] = NBECJ[i][E_STATE] + tXE;
                 }
                 for(j = 0; j < fhmm->K;j++){
-
                         for(c = 1; c < fhmm->tindex[j][0];c++){
                                 f = fhmm->tindex[j][c];
                                 matrix[i][j] = logsum(matrix[i][j],fhmm->t[j][f] + matrix[i+1][f]);
-
-
                         }
                 }
                 for(j = 0; j < fhmm->K;j++){
-                        //matrix[i][j] = logsum(matrix[i][j], NBECJ[i][E_STATE] + fhmm->tXE);
                         matrix[i][j] += fhmm->e[j][(int)a[i-1]];
-                        //LOG_MSG("EMIT: %d (%d)  %f", a[i-1],i,matrix[i][j]);
                 }
         }
         NBECJ[0][B_STATE] = -INFINITY;
@@ -233,7 +224,7 @@ int backward(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float* ret_score, uint8_
                 matrix[0][j] = -INFINITY;
                 }*/
 
-        *ret_score = NBECJ[0][N_STATE] + tSN;
+        *ret_score = NBECJ[0][N_STATE] ;
         return OK;
 ERROR:
         return FAIL;
@@ -247,6 +238,7 @@ ERROR:
   and B and subtract the emission score. Not super efficient but
   I think this makes the code easier (?) to understand.
 */
+
 int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_score, uint8_t* a, int len,int* path)
 {
         float** F_NBECJ = NULL;
@@ -254,15 +246,19 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
 
         float** F = NULL;
         float** B = NULL;
-        //float max;
-        int best;
+
+        float* max = NULL;
+
+        float old;
+        int state;
+
         int i,j,c,f;
-        int o;
+
         F_NBECJ = m->F_NBECJ;
         B_NBECJ = m->B_NBECJ;
         F = m->F_matrix;
         B = m->B_matrix;
-        LOG_MSG("F going in:");
+        /*LOG_MSG("F going in:");
         for(i = 0; i <= len; i++){
                 fprintf(stdout,"N:%f B:%f ", F_NBECJ[i][N_STATE], F_NBECJ[i][B_STATE]);
                 for(j = 0; j <fhmm->K;j++){
@@ -286,8 +282,7 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                         fprintf(stdout,"\t%d",a[i-1] );
                 }
                 fprintf(stdout,"\n");
-        }
-
+                }*/
 
         for(i = 0; i <= len; i++){
                 F_NBECJ[i][N_STATE] = scaledprob2prob(F_NBECJ[i][N_STATE] + B_NBECJ[i][N_STATE] - total_score);
@@ -303,7 +298,7 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
         }
 
         /* print for debugging */
-        LOG_MSG("F going out:");
+        /*LOG_MSG("F going out:");
         for(i = 0; i <= len; i++){
                 fprintf(stdout,"N:%f B:%f ", F_NBECJ[i][N_STATE], F_NBECJ[i][B_STATE]);
                 for(j = 0; j <fhmm->K;j++){
@@ -316,7 +311,8 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                         fprintf(stdout,"\t%d",a[i-1] );
                 }
                 fprintf(stdout,"\n");
-        }
+        }*/
+        //exit(0);
 
         /* erase B  */
         for(i = 0; i <= len; i++){
@@ -328,10 +324,8 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                         B_NBECJ[i][j] = 0.0F;
                 }
         }
-        float* max = NULL;
+
         MMALLOC(max, sizeof(float) * fhmm->K);
-
-
 
         for(i = 1; i < len+1;i++){
                 for(j = 0;j < fhmm->K;j++){
@@ -402,7 +396,7 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                 }
                 //NBECJ[i][B_STATE] = logsum(NBECJ[i][N_STATE] + tNB, NBECJ[i][J_STATE]+ tJB);
         }
-
+        MFREE(max);
 
         /* Let's put this attempt on ice  */
         //F_NBECJ[0][N_STATE] = 0.0F;
@@ -552,7 +546,7 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
         //*ret_score = (NBECJ[len][C_STATE] + tCT);
 
         /* print for debugging */
-        LOG_MSG("F going out:");
+        /*LOG_MSG("F going out:");
         for(i = 0; i <= len; i++){
                 fprintf(stdout,"N:%f,%d B:%f,%d ", F_NBECJ[i][N_STATE],(int)B_NBECJ[i][N_STATE], F_NBECJ[i][B_STATE],(int) B_NBECJ[i][B_STATE]);
                 for(j = 0; j <fhmm->K;j++){
@@ -564,9 +558,9 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                         fprintf(stdout,"\t%d",a[i-1] );
                 }
                 fprintf(stdout,"\n");
-        }
+        }*/
         //exit(0);
-        int state;
+
 
         if(F_NBECJ[len][C_STATE] > F_NBECJ[len][E_STATE]){
                 state = C_STATE;
@@ -574,51 +568,97 @@ int posterior_decoding(struct fhmm* fhmm,struct fhmm_dyn_mat* m , float total_sc
                 state = E_STATE;
         }
 
+
+        old = F_NBECJ[len][state];
+
+        c = 0;
         i = len;
-        while (len >= 0){
-
-
-                /* Develop logic */
-                /* if state is C and points to E go there  */
-                /* don't decrement i  */
-                /* if state is j and points to B go there (?) */
-                /* if state is E and points to X go there  */
-                //LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
+        while (i > 0){
+                /* Logic:
+                   When encountering a state capable of emitting symbols
+                   decrement i otherwise (B and E states) don't - simple.
+                */
                 switch (state) {
                 case N_STATE:
                 case C_STATE:
                 case J_STATE: {
-                        LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
+                        //LOG_MSG("%d %d LETTER: %d %f ",i,state,a[i-1], F_NBECJ[i][state]);
+                        path[c] = state;
+                        c++;
                         state = B_NBECJ[i][state];
+
                         i--;
                         break;
                 }
+                case B_STATE:
                 case E_STATE:{
                         state = B_NBECJ[i][state];
-                        /* don't decrement i as B can't emit symbols  */
                         break;
                 }
-                case B_STATE:{
-                        state = B_NBECJ[i][state];
-                        break;
-                }
-
                 default:        /* These are the X states  */
-                        LOG_MSG("%d %d LETTER: %d",i,state,a[i-1]);
+                        //LOG_MSG("%d %d LETTER: %d %f",i,state,a[i-1] , F[i][state]);
+                        path[c] = state;
+                        c++;
                         state = B[i][state-5];
-                        //if(state >= 5){ /* only decrement if I continue to another X */
-
-                                i--;
-                                //}
+                        i--;
                         break;
                 }
-                if(!i){
-                        break;
-                }
-
-//going to
         }
 
+        j = c - 1;   // Assigning j to Last array element
+        i = 0;       // Assigning i to first array element
+
+        while (i < j)
+        {
+                f  = path[i];
+                path[i] = path[j];
+                path[j] = f;
+                i++;
+                j--;
+        }
+
+        /*for(i = 0; i < len; i++){
+                fprintf(stdout,"%3d ", a[i]);
+        }
+        fprintf(stdout,"\n");
+        for(i = 0; i < len; i++){
+                char s;
+
+                if(path[i] < 5){
+                        switch (path[i]) {
+                        case 0: {
+                                s = 'N';
+                                break;
+                        }
+                        case 1: {
+                                s = 'B';
+                                break;
+                        }
+                        case 2: {
+                                s = 'E';
+                                break;
+                        }
+
+                        case 3: {
+                                s = 'C';
+                                break;
+                        }
+                        case 4: {
+                                s = 'J';
+                                break;
+                        }
+                        default:
+                                break;
+                        }
+                        fprintf(stdout,"%3c ", s);
+                }else{
+
+
+                        fprintf(stdout,"%3d ", path[i]-5);
+                }
+        }
+        fprintf(stdout,"\n");
+        */
 
         return OK;
 ERROR:

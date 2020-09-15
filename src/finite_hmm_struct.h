@@ -11,7 +11,6 @@
 struct fhmm{
         float** F_matrix;
         float** B_matrix;
-
         float** F_NBECJ;
         float** B_NBECJ;
         float** e;
@@ -29,22 +28,6 @@ struct fhmm{
         int alloc_K;
         int K;
         int L;
-        /* int config_len; */
-
-        /* float tSN; */
-        /* float tNN; */
-        /* float tNB; */
-
-        /* float tBX; */
-        /* float tXE; */
-
-        /* float tEC; */
-        /* float tCC; */
-        /* float tCT; */
-
-        /* float tEJ; */
-        /* float tJJ; */
-        /* float tJB; */
 };
 
 struct fhmm_dyn_mat{
@@ -53,6 +36,8 @@ struct fhmm_dyn_mat{
 
         float** F_NBECJ;
         float** B_NBECJ;
+
+        int* path;
         int alloc_matrix_len;
         int alloc_K;
 };

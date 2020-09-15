@@ -120,7 +120,7 @@ LOGO_SOURCES = motif_logo.c motif_logo.h
 
 SEQUENCE_DB = search_db.h search_db.c
 
-bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_score fhmm_test
+bin_PROGRAMS = seqer_model seqer_build_search seqer_eval sim_seq  seqer_plot seqer_search fhmm_test
 
 # seqer_iclu seqer_emit tfbs_bench composition_bench  seqer_ari pst_test seqer_emit_motif makedb fhmm_test
 
@@ -197,8 +197,8 @@ sequences_sim.c
 
 
 
-seqer_score_SOURCES = \
-score_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE) bias_model.c bias_model.h
+seqer_search_SOURCES = \
+search_sequences.c $(CONVERSION)  $(SCORESOURCE) $(SEQUENCESOURCES) $(FINITEHMM) $(MODELSOURCE) $(FASTHMMSOURCE)  $(RANDOMKIT_FILES) $(THREADSOURCE) $(PSTMODELSOURCE) bias_model.c bias_model.h
 
 seqer_ari_SOURCES = model_ari_comparison.c $(MODELSOURCE) $(SEQUENCESOURCES) $(ADJUSTEDRANDINDEXSOURCE) $(FINITEHMM) $(RANDOMKIT_FILES)
 
@@ -303,7 +303,7 @@ make_dot_file.c
 
 TESTS =  kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST ari_ITEST
 
-check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST ari_ITEST 
+check_PROGRAMS = kalign_ITEST dijkstra_ITEST fast_hmm_param_ITEST dtest_ITEST randomkit_tl_test sequences_TEST ari_ITEST
 
 #libihmm_ITEST_SOURCES = $(libihmm_a_SOURCES)
 #libihmm_ITEST_CPPFLAGS = $(AM_CPPFLAGS)   -DITEST
@@ -367,4 +367,3 @@ sequence_io.c \
 sequence_prep.h \
 sequence_prep.c \
 sequence_test.c
-

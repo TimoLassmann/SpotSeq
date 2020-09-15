@@ -71,7 +71,7 @@ int main(void)
         test_seq[7] = 0;
         LOG_MSG("Single  hit test");
         RUN(run_forward_diff_len(fhmm,dm,  test_seq, 8));
-        exit(0);
+
         test_seq[0] = 0;
         test_seq[1] = 0;
         test_seq[2] = 0;
@@ -169,6 +169,8 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
         int* path = NULL;
         int i;
         LOG_MSG("SeqLen: %d", len);
+
+        MMALLOC(path , sizeof(int) * len);
         for(i = MACRO_MAX(1, len -10); i < len+10   ;i++){
 
                 //configure_target_len(fhmm, MACRO_MAX(1, i-2), 0);
@@ -204,8 +206,13 @@ int run_forward_diff_len(struct fhmm* fhmm, struct fhmm_dyn_mat*dm, uint8_t* seq
                 //LOG_MSG("%f", scaledprob2prob(fhmm->f_score - fhmm->b_score));
                 //exit(0);
         }
-
+        MFREE(path);
         return OK;
+ERROR:
+        if(path){
+                MFREE(path);
+        }
+        return FAIL;
 }
 
 /* generate simple HMM A->C->G->T  */
